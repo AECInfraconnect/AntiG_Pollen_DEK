@@ -12,3 +12,5 @@ clap = { version = "4.5.4", features = ["derive"] }
 dek-agent-connector = { path = "../dek-agent-connector" }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+futures = "0.3"

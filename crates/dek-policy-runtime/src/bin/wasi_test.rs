@@ -1,19 +1,19 @@
 #![allow(unused)]
 use std::io::Cursor;
-use wasi_common::pipe::{ReadPipe, WritePipe};
 use wasmtime::*;
 use wasmtime_wasi::WasiCtxBuilder;
+use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
 
 fn main() {
     let input_str = r#"{"allow": true}"#;
-    let stdin = ReadPipe::from(input_str);
-    let stdout = WritePipe::new_in_memory();
+    let stdin = MemoryInputPipe::new(bytes::Bytes::from(input_str.to_string().into_bytes()));
+    let stdout = MemoryOutputPipe::new(1024 * 1024);
 
     let mut builder = WasiCtxBuilder::new();
-    builder.stdin(Box::new(stdin.clone()));
-    builder.stdout(Box::new(stdout.clone()));
+    builder.stdin(stdin.clone());
+    builder.stdout(stdout.clone());
 
-    let wasi = builder.build();
-    let bytes = stdout.try_into_inner().unwrap().into_inner();
+    let wasi = builder.build_p1();
+    let bytes = stdout.contents();
     println!("bytes len: {}", bytes.len());
 }
