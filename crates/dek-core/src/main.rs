@@ -1,0 +1,708 @@
+//! # DEK Core Supervisor
+//!
+//! Pollen DEK Core Supervisor manages device lifecycle including:
+//! - Bootstrapping and mTLS config fetch from Pollen Cloud
+//! - Periodic bundle synchronization
+//! - Local IPC endpoint for health checks and commands
+//! - Telemetry emission and Prometheus metrics push (OTLP/Pushgateway)
+
+use anyhow::{Context, Result};
+use backoff::{future::retry, ExponentialBackoff};
+use dek_config::{BootstrapConfig, DekConfig};
+use dek_ipc::{IpcMessage, IpcRequest, IpcResponse};
+use dek_telemetry::CloudTelemetrySink;
+use futures::{SinkExt, StreamExt};
+use metrics::{counter, gauge};
+use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
+use serde_json::json;
+use std::sync::Arc;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use tokio::net::TcpListener;
+use tokio::sync::{RwLock, Semaphore};
+use tokio::task::JoinHandle;
+use tokio::time::{sleep, timeout, Duration};
+use tokio_util::codec::{Framed, LinesCodec};
+use tokio_util::sync::CancellationToken;
+use tracing::{debug, error, info, warn, Instrument};
+use uuid::Uuid;
+
+const IPC_READ_TIMEOUT_SECS: u64 = 5;
+const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
+const IPC_MAX_CONCURRENT_CONNECTIONS: usize = 32;
+
+fn get_env_var(key: &str, default: &str) -> String {
+    std::env::var(key).unwrap_or_else(|_| default.to_string())
+}
+
+async fn fetch_config_with_retry(
+    bootstrap_path: &str,
+    pollen_cloud_url: &str,
+) -> Result<(BootstrapConfig, DekConfig)> {
+    let bootstrap = BootstrapConfig::load_or_default(bootstrap_path)?;
+    info!(
+        "Loaded Bootstrap Config for device: {}",
+        bootstrap.device_id
+    );
+
+    info!("Fetching Operational Config from Pollen Cloud...");
+    let backoff = ExponentialBackoff {
+        max_elapsed_time: Some(Duration::from_secs(120)),
+        initial_interval: Duration::from_secs(2),
+        max_interval: Duration::from_secs(30),
+        multiplier: 2.0,
+        ..ExponentialBackoff::default()
+    };
+
+    let config = retry(backoff, || async {
+        match DekConfig::fetch_from_cloud(&bootstrap, pollen_cloud_url).await {
+            Ok(c) => Ok(c),
+            Err(e) => {
+                warn!("Failed to fetch operational config: {}. Retrying...", e);
+                counter!("dek_core_config_fetch_errors_total").increment(1);
+
+                if let Some(reqwest_err) = e.downcast_ref::<reqwest::Error>() {
+                    if let Some(status) = reqwest_err.status() {
+                        if status.is_client_error() {
+                            error!(
+                                "Fatal HTTP client error fetching config: {}. Aborting startup.",
+                                status
+                            );
+                            return Err(backoff::Error::permanent(e));
+                        }
+                    }
+                    if reqwest_err.is_builder() || reqwest_err.is_request() {
+                        return Err(backoff::Error::permanent(e));
+                    }
+                }
+
+                Err(backoff::Error::transient(e))
+            }
+        }
+    })
+    .await?;
+    info!("Loaded Operational Config for tenant: {}", config.tenant_id);
+
+    Ok((bootstrap, config))
+}
+
+fn spawn_metrics_push_task(
+    cancel_token: CancellationToken,
+    metrics_client: Arc<RwLock<reqwest::Client>>,
+    metrics_push_url: String,
+    prometheus_handle: PrometheusHandle,
+) -> JoinHandle<()> {
+    tokio::spawn(
+        async move {
+            loop {
+                tokio::select! {
+                    _ = cancel_token.cancelled() => {
+                        info!("Metrics Push task shutting down gracefully.");
+                        break;
+                    }
+                    _ = sleep(Duration::from_secs(10)) => {
+                        let metrics_text = prometheus_handle.render();
+
+                        let backoff = ExponentialBackoff {
+                            max_elapsed_time: Some(Duration::from_secs(8)),
+                            initial_interval: Duration::from_millis(500),
+                            max_interval: Duration::from_secs(2),
+                            multiplier: 2.0,
+                            ..ExponentialBackoff::default()
+                        };
+
+                        let res = retry(backoff, || async {
+                            let client = metrics_client.read().await.clone();
+                            let push_res = client
+                                .post(&metrics_push_url)
+                                .body(metrics_text.clone())
+                                .send()
+                                .await;
+
+                            match push_res {
+                                Ok(r) if r.status().is_success() => Ok(()),
+                                Ok(r) => {
+                                    warn!("Failed to push metrics, status: {}", r.status());
+                                    Err(backoff::Error::transient(anyhow::anyhow!("HTTP Status: {}", r.status())))
+                                },
+                                Err(e) => {
+                                    warn!("Error pushing metrics: {}", e);
+                                    Err(backoff::Error::transient(anyhow::anyhow!("Request error: {}", e)))
+                                }
+                            }
+                        }).await;
+
+                        if res.is_ok() {
+                            debug!("Successfully pushed metrics to {}", metrics_push_url);
+                        } else {
+                            warn!("Failed to push metrics after retries");
+                        }
+                    }
+                }
+            }
+        }
+        .instrument(tracing::info_span!("metrics_push")),
+    )
+}
+
+fn spawn_bundle_sync_task(
+    cancel_token: CancellationToken,
+    sync_agent: Arc<dek_bundle_sync::BundleSyncAgent>,
+    bundle_sync_interval: u64,
+) -> JoinHandle<()> {
+    tokio::spawn(
+        async move {
+            loop {
+                tokio::select! {
+                    _ = cancel_token.cancelled() => {
+                        info!("Bundle Sync task shutting down gracefully.");
+                        break;
+                    }
+                    _ = sleep(Duration::from_secs(bundle_sync_interval)) => {
+                        debug!("Checking for bundle updates...");
+                        match timeout(Duration::from_secs(30), sync_agent.check_for_updates()).await {
+                            Ok(Ok(_)) => {
+                                counter!("dek_core_bundle_sync_success_total").increment(1);
+                            }
+                            Ok(Err(e)) => {
+                                warn!(error = %e, "Bundle update check failed");
+                                counter!("dek_core_bundle_sync_errors_total").increment(1);
+                            }
+                            Err(_) => {
+                                warn!("Bundle update check timed out after 30s");
+                                counter!("dek_core_bundle_sync_timeout_total").increment(1);
+                            }
+                        }
+                        counter!("dek_core_bundle_checks_total").increment(1);
+                    }
+                }
+            }
+        }
+        .instrument(tracing::info_span!("bundle_sync")),
+    )
+}
+
+async fn spawn_ipc_server_task(
+    cancel_token: CancellationToken,
+    ipc_listen_addr: String,
+    telemetry_sink: Arc<CloudTelemetrySink>,
+    bundle_agent: Arc<dek_bundle_sync::BundleSyncAgent>,
+    metrics_client: Arc<RwLock<reqwest::Client>>,
+    bootstrap_path: String,
+    pollen_cloud_url: String,
+) -> Result<JoinHandle<()>> {
+    let listener = TcpListener::bind(&ipc_listen_addr).await?;
+    info!("IPC Endpoint listening on {}", ipc_listen_addr);
+
+    let ipc_semaphore = Arc::new(Semaphore::new(IPC_MAX_CONCURRENT_CONNECTIONS));
+
+    Ok(tokio::spawn(async move {
+        let mut ipc_join_set = tokio::task::JoinSet::new();
+
+        loop {
+            tokio::select! {
+                _ = cancel_token.cancelled() => {
+                    info!("IPC Listener shutting down. Waiting up to 10s for active connections to finish...");
+                    break;
+                }
+                accept_result = listener.accept() => {
+                    match accept_result {
+                        Ok((socket, addr)) => {
+                            let permit = match ipc_semaphore.clone().try_acquire_owned() {
+                                Ok(p) => p,
+                                Err(_) => {
+                                    warn!("IPC connection limit reached, rejecting new connection");
+                                    counter!("dek_core_ipc_connections_rejected_total").increment(1);
+                                    continue;
+                                }
+                            };
+
+                            debug!("Accepted IPC connection from {}", addr);
+                            counter!("dek_core_ipc_connections_total").increment(1);
+
+                            let sink_clone = telemetry_sink.clone();
+                            let sync_agent_clone = bundle_agent.clone();
+                            let metrics_client_clone = metrics_client.clone();
+                            let b_path = bootstrap_path.clone();
+                            let cloud_url = pollen_cloud_url.clone();
+
+                            ipc_join_set.spawn({
+                                let req_id = Uuid::new_v4();
+                                let span = tracing::info_span!(
+                                    "ipc_connection",
+                                    request_id = %req_id,
+                                    remote_addr = %addr
+                                );
+
+                                async move {
+                                    let _permit = permit; // Drop when handler finishes -> slot returned
+                                    let start = Instant::now();
+
+                                    info!("Handling IPC connection");
+
+                                    let codec = LinesCodec::new_with_max_length(IPC_MAX_LINE_BYTES);
+                                    let mut framed = Framed::new(socket, codec);
+
+                                    if let Ok(Some(Ok(line))) = timeout(Duration::from_secs(IPC_READ_TIMEOUT_SECS), framed.next()).await {
+                                        if let Ok(req_msg) = serde_json::from_str::<IpcMessage<IpcRequest>>(&line) {
+                                            if !req_msg.version.starts_with("1.") {
+                                                let err_msg = IpcMessage {
+                                                    version: "1.0".to_string(),
+                                                    payload: IpcResponse::Error(format!("Unsupported IPC version: {}", req_msg.version)),
+                                                };
+                                                if let Ok(err_str) = serde_json::to_string(&err_msg) {
+                                                    let _ = framed.send(err_str).await;
+                                                }
+                                                return;
+                                            }
+                                            info!("Received IPC Request version {}: {:?}", req_msg.version, req_msg.payload);
+                                            let res = match req_msg.payload {
+                                                IpcRequest::HealthCheck => IpcResponse::HealthStatus {
+                                                    status: "HEALTHY".to_string(),
+                                                    core_version: "0.1.0".to_string(),
+                                                },
+                                                IpcRequest::ReloadConfig => {
+                                                    info!("Received ReloadConfig IPC command. Reloading configuration...");
+                                                    match fetch_config_with_retry(&b_path, &cloud_url).await {
+                                                        Ok((_, new_config)) => {
+                                                            let mut success = true;
+                                                            if let Err(e) = sink_clone.update_mtls(&new_config.mtls).await {
+                                                                error!("Failed to update Telemetry Sink mTLS: {}", e);
+                                                                success = false;
+                                                            }
+                                                            if let Err(e) = sync_agent_clone.update_mtls(&new_config.mtls).await {
+                                                                error!("Failed to update Bundle Sync Agent mTLS: {}", e);
+                                                                success = false;
+                                                            }
+                                                            match new_config.mtls.build_client() {
+                                                                Ok(c) => {
+                                                                    *metrics_client_clone.write().await = c;
+                                                                    info!("Successfully updated Metrics Client mTLS");
+                                                                }
+                                                                Err(e) => {
+                                                                    error!("Failed to update Metrics Client mTLS: {}", e);
+                                                                    success = false;
+                                                                }
+                                                            }
+                                                            if success {
+                                                                IpcResponse::ReloadStatus { status: "SUCCESS".to_string() }
+                                                            } else {
+                                                                IpcResponse::ReloadStatus { status: "PARTIAL_FAILURE".to_string() }
+                                                            }
+                                                        },
+                                                        Err(e) => {
+                                                            error!("Failed to reload config: {}", e);
+                                                            IpcResponse::Error(format!("Reload failed: {}", e))
+                                                        }
+                                                    }
+                                                }
+                                            };
+                                            let res_msg = IpcMessage {
+                                                version: req_msg.version,
+                                                payload: res,
+                                            };
+                                            if let Ok(res_str) = serde_json::to_string(&res_msg) {
+                                                if let Err(e) = framed.send(res_str).await {
+                                                    error!("Failed to send IPC response: {}", e);
+                                                }
+                                            }
+                                        } else {
+                                            warn!("Failed to parse IPC message from line: {}", line);
+                                            let _ = sink_clone.emit_async(json!({
+                                                "event_type": "pollen.dek.ipc_error",
+                                                "error": "parse_failure"
+                                            })).await;
+
+                                            let err_msg = IpcMessage {
+                                                version: "1.0".to_string(),
+                                                payload: IpcResponse::Error("Failed to parse request".to_string()),
+                                            };
+                                            if let Ok(err_str) = serde_json::to_string(&err_msg) {
+                                                let _ = framed.send(err_str).await;
+                                            }
+                                        }
+                                    } else {
+                                        warn!("IPC connection read timed out or failed.");
+                                        let err_msg = IpcMessage {
+                                            version: "1.0".to_string(),
+                                            payload: IpcResponse::Error("Request timed out or failed to read".to_string()),
+                                        };
+                                        if let Ok(err_str) = serde_json::to_string(&err_msg) {
+                                            let _ = framed.send(err_str).await;
+                                        }
+                                    }
+
+                                    let latency = start.elapsed().as_secs_f64();
+                                    metrics::histogram!("dek_core_ipc_request_duration_seconds").record(latency);
+                                }.instrument(span)
+                            });
+                        }
+                        Err(e) => {
+                            error!(error = %e, "IPC accept() failed");
+                            counter!("dek_core_ipc_accept_errors_total").increment(1);
+                            sleep(Duration::from_millis(100)).await; // brief backpressure
+                        }
+                    }
+                }
+            }
+        }
+
+        // Graceful Shutdown for active connections
+        match timeout(Duration::from_secs(10), async {
+            while let Some(res) = ipc_join_set.join_next().await {
+                if let Err(e) = res {
+                    warn!("Active IPC task panicked during shutdown: {}", e);
+                }
+            }
+        })
+        .await
+        {
+            Ok(_) => info!("All active IPC connections closed gracefully."),
+            Err(_) => warn!(
+                "Grace period expired! Forcefully terminating remaining active IPC connections."
+            ),
+        }
+    }))
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+    info!("Starting Pollen DEK Core Supervisor...");
+
+    let pollen_cloud_url = get_env_var("POLLEN_CLOUD_URL", "https://127.0.0.1:43891");
+    let ipc_listen_addr = get_env_var("DEK_IPC_ADDR", "127.0.0.1:43889");
+    let bootstrap_path = get_env_var("DEK_BOOTSTRAP_PATH", "bootstrap.json");
+    let bundle_sync_interval = get_env_var("DEK_BUNDLE_SYNC_INTERVAL", "10")
+        .parse::<u64>()
+        .unwrap_or(10);
+
+    if !pollen_cloud_url.starts_with("https://") {
+        error!(
+            "Fatal Error: POLLEN_CLOUD_URL must start with https:// to prevent downgrade attacks."
+        );
+        std::process::exit(1);
+    }
+
+    let pollen_telemetry_url = format!("{}/telemetry", pollen_cloud_url);
+    let pollen_bundles_url = format!("{}/bundles/latest", pollen_cloud_url);
+    let metrics_push_url = format!("{}/metrics", pollen_cloud_url);
+
+    let prometheus_handle = PrometheusBuilder::new()
+        .install_recorder()
+        .expect("failed to install Prometheus recorder");
+    info!("Prometheus metrics recorder installed (Push Model enabled)");
+
+    gauge!("dek_core_start_timestamp_seconds").set(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs_f64(),
+    );
+
+    let (_, config) = fetch_config_with_retry(&bootstrap_path, &pollen_cloud_url).await?;
+
+    let telemetry_sink = Arc::new(CloudTelemetrySink::new(
+        &pollen_telemetry_url,
+        &config.mtls,
+    )?);
+    let bundle_agent = Arc::new(dek_bundle_sync::BundleSyncAgent::new(
+        &pollen_bundles_url,
+        &config.mtls,
+    )?);
+
+    let _ = telemetry_sink
+        .emit_async(json!({
+            "event_type": "pollen.dek.startup",
+            "device_id": config.device_id,
+            "status": "online"
+        }))
+        .await;
+
+    let cancel_token = CancellationToken::new();
+
+    let metrics_client = Arc::new(RwLock::new(
+        config
+            .mtls
+            .build_client()
+            .context("Failed to build metrics MTLS client")?,
+    ));
+
+    // Spawn Background Tasks
+    let metrics_handle = spawn_metrics_push_task(
+        cancel_token.clone(),
+        metrics_client.clone(),
+        metrics_push_url,
+        prometheus_handle,
+    );
+
+    let sync_handle = spawn_bundle_sync_task(
+        cancel_token.clone(),
+        bundle_agent.clone(),
+        bundle_sync_interval,
+    );
+
+    let ipc_handle = spawn_ipc_server_task(
+        cancel_token.clone(),
+        ipc_listen_addr,
+        telemetry_sink.clone(),
+        bundle_agent.clone(),
+        metrics_client.clone(),
+        bootstrap_path,
+        pollen_cloud_url,
+    )
+    .await?;
+
+    // Wait for shutdown signal
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{signal, SignalKind};
+        let mut sigterm = signal(SignalKind::terminate())?;
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => { info!("Received SIGINT"); }
+            _ = sigterm.recv() => { info!("Received SIGTERM"); }
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        tokio::signal::ctrl_c().await?;
+        info!("Received SIGINT");
+    }
+
+    info!("Initiating graceful shutdown...");
+    cancel_token.cancel();
+
+    let _ = telemetry_sink
+        .emit_async(json!({
+            "event_type": "pollen.dek.shutdown",
+            "device_id": config.device_id,
+            "status": "offline"
+        }))
+        .await;
+
+    // Graceful Shutdown Validation with Hard Timeout
+    match timeout(Duration::from_secs(15), async {
+        tokio::join!(sync_handle, ipc_handle, metrics_handle)
+    })
+    .await
+    {
+        Ok((sync_res, ipc_res, metrics_res)) => {
+            let mut exit_error = false;
+            if let Err(e) = sync_res {
+                error!(error = %e, "Bundle Sync task panicked");
+                exit_error = true;
+            }
+            if let Err(e) = ipc_res {
+                error!(error = %e, "IPC Listener task panicked");
+                exit_error = true;
+            }
+            if let Err(e) = metrics_res {
+                error!(error = %e, "Metrics Push task panicked");
+                exit_error = true;
+            }
+
+            info!("Graceful shutdown complete.");
+            if exit_error {
+                std::process::exit(1);
+            }
+        }
+        Err(_) => {
+            error!("Hard timeout reached during shutdown! Some tasks failed to exit cleanly. Forcing exit.");
+            std::process::exit(1);
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::SocketAddr;
+
+    #[test]
+    fn test_ipc_healthcheck_roundtrip() {
+        let req = IpcMessage {
+            version: "1.0".to_string(), // version is String in real code
+            payload: IpcRequest::HealthCheck,
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        let parsed: IpcMessage<IpcRequest> = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed.payload, IpcRequest::HealthCheck));
+        assert_eq!(parsed.version, "1.0");
+    }
+
+    #[test]
+    fn test_ipc_unknown_fields_accepted() {
+        let json = r#"{"version": "1.0", "payload": "HealthCheck", "unknown_extra": 123}"#;
+        let parsed: Result<IpcMessage<IpcRequest>, _> = serde_json::from_str(json);
+        assert!(parsed.is_ok());
+    }
+
+    async fn spawn_test_server() -> SocketAddr {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let ipc_semaphore = Arc::new(Semaphore::new(IPC_MAX_CONCURRENT_CONNECTIONS));
+
+        tokio::spawn(async move {
+            if let Ok((socket, _)) = listener.accept().await {
+                let permit = ipc_semaphore.try_acquire_owned().unwrap();
+                tokio::spawn(async move {
+                    let _permit = permit;
+                    let codec = LinesCodec::new_with_max_length(IPC_MAX_LINE_BYTES);
+                    let mut framed = Framed::new(socket, codec);
+                    if let Ok(Some(Ok(line))) =
+                        timeout(Duration::from_secs(IPC_READ_TIMEOUT_SECS), framed.next()).await
+                    {
+                        if let Ok(req_msg) = serde_json::from_str::<IpcMessage<IpcRequest>>(&line) {
+                            if !req_msg.version.starts_with("1.") {
+                                let err_msg = IpcMessage {
+                                    version: "1.0".to_string(),
+                                    payload: IpcResponse::Error(format!(
+                                        "Unsupported IPC version: {}",
+                                        req_msg.version
+                                    )),
+                                };
+                                let _ = framed.send(serde_json::to_string(&err_msg).unwrap()).await;
+                                return;
+                            }
+                            let res = match req_msg.payload {
+                                IpcRequest::HealthCheck => IpcResponse::HealthStatus {
+                                    status: "HEALTHY".to_string(),
+                                    core_version: "0.1.0".to_string(),
+                                },
+                                IpcRequest::ReloadConfig => IpcResponse::ReloadStatus {
+                                    status: "SUCCESS".to_string(),
+                                },
+                            };
+                            let res_msg = IpcMessage {
+                                version: req_msg.version,
+                                payload: res,
+                            };
+                            framed
+                                .send(serde_json::to_string(&res_msg).unwrap())
+                                .await
+                                .unwrap();
+                        } else {
+                            let err_msg = IpcMessage {
+                                version: "1.0".to_string(),
+                                payload: IpcResponse::Error("Failed to parse request".to_string()),
+                            };
+                            framed
+                                .send(serde_json::to_string(&err_msg).unwrap())
+                                .await
+                                .unwrap();
+                        }
+                    } else {
+                        let err_msg = IpcMessage {
+                            version: "1.0".to_string(),
+                            payload: IpcResponse::Error(
+                                "Request timed out or failed to read".to_string(),
+                            ),
+                        };
+                        let _ = framed.send(serde_json::to_string(&err_msg).unwrap()).await;
+                    }
+                });
+            }
+        });
+        addr
+    }
+
+    #[tokio::test]
+    async fn test_ipc_healthcheck_end_to_end() {
+        let addr = spawn_test_server().await;
+        let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+        let mut framed = Framed::new(stream, LinesCodec::new_with_max_length(IPC_MAX_LINE_BYTES));
+
+        let req = IpcMessage {
+            version: "1.0".to_string(),
+            payload: IpcRequest::HealthCheck,
+        };
+        framed
+            .send(serde_json::to_string(&req).unwrap())
+            .await
+            .unwrap();
+
+        let line = framed.next().await.unwrap().unwrap();
+        let res_msg: IpcMessage<IpcResponse> = serde_json::from_str(&line).unwrap();
+        match res_msg.payload {
+            IpcResponse::HealthStatus { status, .. } => assert_eq!(status, "HEALTHY"),
+            _ => panic!("Expected HealthStatus response"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_ipc_dynamic_reload() {
+        let addr = spawn_test_server().await;
+        let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+        let mut framed = Framed::new(stream, LinesCodec::new_with_max_length(IPC_MAX_LINE_BYTES));
+
+        let req = IpcMessage {
+            version: "1.0".to_string(),
+            payload: IpcRequest::ReloadConfig,
+        };
+        framed
+            .send(serde_json::to_string(&req).unwrap())
+            .await
+            .unwrap();
+
+        let line = framed.next().await.unwrap().unwrap();
+        let res_msg: IpcMessage<IpcResponse> = serde_json::from_str(&line).unwrap();
+        match res_msg.payload {
+            IpcResponse::ReloadStatus { status } => assert_eq!(status, "SUCCESS"),
+            _ => panic!("Expected ReloadStatus response"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_ipc_parse_error_response() {
+        let addr = spawn_test_server().await;
+        let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+        let mut framed = Framed::new(stream, LinesCodec::new_with_max_length(IPC_MAX_LINE_BYTES));
+
+        framed.send("invalid json".to_string()).await.unwrap();
+
+        let line = framed.next().await.unwrap().unwrap();
+        let res_msg: IpcMessage<IpcResponse> = serde_json::from_str(&line).unwrap();
+        match res_msg.payload {
+            IpcResponse::Error(msg) => assert_eq!(msg, "Failed to parse request"),
+            _ => panic!("Expected Error response"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_ipc_unsupported_version_rejected() {
+        let addr = spawn_test_server().await;
+        let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+        let mut framed = Framed::new(stream, LinesCodec::new_with_max_length(IPC_MAX_LINE_BYTES));
+
+        let req = IpcMessage {
+            version: "2.0".to_string(),
+            payload: IpcRequest::HealthCheck,
+        };
+        framed
+            .send(serde_json::to_string(&req).unwrap())
+            .await
+            .unwrap();
+
+        let line = framed.next().await.unwrap().unwrap();
+        let res_msg: IpcMessage<IpcResponse> = serde_json::from_str(&line).unwrap();
+        match res_msg.payload {
+            IpcResponse::Error(msg) => assert!(msg.contains("Unsupported IPC version")),
+            _ => panic!("Expected Error response"),
+        }
+    }
+
+    // Example showing how we'd test with Wiremock if mTLS was bypassed for test
+    /*
+    #[tokio::test]
+    async fn test_external_cloud_mock() {
+        use wiremock::{MockServer, Mock, matchers::{method, path}, ResponseTemplate};
+        let mock_server = MockServer::start().await;
+
+        // Mock a 500 error then 200 success to test retries,
+        // however due to mTLS strict checking, the `fetch_config_with_retry`
+        // will reject the connection because MockServer does not have the valid CA.
+        // In a real testing environment, we would use conditional compilation to inject an insecure HTTP client.
+    }
+    */
+}

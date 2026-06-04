@@ -1,0 +1,25 @@
+[package]
+name = "dek-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dek-config = { path = "../dek-config" }
+dek-ipc = { path = "../dek-ipc" }
+dek-telemetry = { path = "../dek-telemetry" }
+dek-bundle-sync = { path = "../dek-bundle-sync" }
+tokio.workspace = true
+tokio-util = { version = "0.7", features = ["codec"] }
+serde_json.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+backoff = { version = "0.4", features = ["tokio"] }
+metrics = "0.22"
+metrics-exporter-prometheus = "0.13"
+futures = "0.3"
+uuid = { version = "1.23.1", features = ["v4"] }
+reqwest = { workspace = true, features = ["rustls-tls"] }
+
+[dev-dependencies]
+wiremock = "0.6"

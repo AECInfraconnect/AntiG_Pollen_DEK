@@ -1,0 +1,9 @@
+[package]
+name = "cert-gen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rcgen = "0.11"
+anyhow.workspace = true
+tracing.workspace = true

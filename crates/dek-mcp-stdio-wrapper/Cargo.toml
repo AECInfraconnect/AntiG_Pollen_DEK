@@ -1,0 +1,19 @@
+[package]
+name = "dek-mcp-stdio-wrapper"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+tokio = { workspace = true, features = ["full"] }
+serde.workspace = true
+serde_json.workspace = true
+clap = { version = "4.5.4", features = ["derive"] }
+dek-mcp-normalizer = { path = "../dek-mcp-normalizer" }
+dek-policy-router = { path = "../dek-policy-router" }
+dek-cedar = { path = "../dek-cedar" }
+dek-openfga = { path = "../dek-openfga" }
+dek-policy-runtime = { path = "../dek-policy-runtime" }
+uuid = { version = "1.10.0", features = ["v4"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
