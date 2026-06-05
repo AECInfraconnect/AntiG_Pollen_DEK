@@ -9,13 +9,17 @@ use std::str::FromStr;
 
 pub struct CedarAdapter {
     policy_src: String,
+    policy_set: PolicySet,
 }
 
 impl CedarAdapter {
-    pub fn new(policy_src: &str) -> Self {
-        Self {
+    pub fn new(policy_src: &str) -> Result<Self> {
+        let policy_set = PolicySet::from_str(policy_src)
+            .map_err(|e| anyhow::anyhow!("Cedar Parse Error: {}", e))?;
+        Ok(Self {
             policy_src: policy_src.to_string(),
-        }
+            policy_set,
+        })
     }
 }
 
@@ -37,24 +41,17 @@ impl PolicyRuntime for CedarAdapter {
 
         println!("Evaluating Cedar Policy:\n{}", self.policy_src);
 
-        // Parse the policy set
-        let policy_set = match PolicySet::from_str(&self.policy_src) {
-            Ok(ps) => ps,
-            Err(e) => {
-                println!("Cedar Parse Error: {}", e);
-                return Ok(PolicyDecision {
-                    evaluator_id: "cedar_native".to_string(),
-                    evaluator_type: "local_pdp".to_string(),
-                    required: true,
-                    status: "error".to_string(),
-                    decision: "deny".to_string(),
-                    allow: false,
-                    reason: format!("Cedar parse error: {}", e),
-                    effects: serde_json::json!({}),
-                    obligations: vec![],
-                    metadata: serde_json::json!({}),
-                });
+        let context = match input.get("context") {
+            Some(ctx_val) => {
+                Context::from_json_value(ctx_val.clone(), None).unwrap_or_else(|_| Context::empty())
             }
+            None => Context::empty(),
+        };
+
+        let entities = match input.get("entities") {
+            Some(ent_val) => Entities::from_json_value(ent_val.clone(), None)
+                .unwrap_or_else(|_| Entities::empty()),
+            None => Entities::empty(),
         };
 
         // For simplicity, we assume strings are fully qualified like `User::"alice"`
@@ -79,18 +76,11 @@ impl PolicyRuntime for CedarAdapter {
         let action_uid = make_uid("Action", action);
         let resource_uid = make_uid("Resource", resource);
 
-        let request = Request::new(
-            principal_uid,
-            action_uid,
-            resource_uid,
-            Context::empty(),
-            None,
-        )
-        .map_err(|e| anyhow::anyhow!("Cedar Request Error: {}", e))?;
+        let request = Request::new(principal_uid, action_uid, resource_uid, context, None)
+            .map_err(|e| anyhow::anyhow!("Cedar Request Error: {}", e))?;
 
-        let entities = Entities::empty();
         let authorizer = Authorizer::new();
-        let answer = authorizer.is_authorized(&request, &policy_set, &entities);
+        let answer = authorizer.is_authorized(&request, &self.policy_set, &entities);
 
         let allowed = answer.decision() == Decision::Allow;
 
@@ -118,5 +108,20 @@ impl PolicyRuntime for CedarAdapter {
 
     fn version(&self) -> String {
         "cedar-v1.0.0".to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_cedar_json_parse() {
+        let ctx_val = json!({ "ip": "127.0.0.1" });
+        let _ctx = Context::from_json_value(ctx_val, None).unwrap();
+
+        let ent_val = serde_json::json!([]);
+        let _ents = Entities::from_json_value(ent_val, None).unwrap();
     }
 }

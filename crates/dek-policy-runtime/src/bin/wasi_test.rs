@@ -1,8 +1,8 @@
 #![allow(unused)]
 use std::io::Cursor;
 use wasmtime::*;
-use wasmtime_wasi::WasiCtxBuilder;
 use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
+use wasmtime_wasi::WasiCtxBuilder;
 
 fn main() {
     let input_str = r#"{"allow": true}"#;

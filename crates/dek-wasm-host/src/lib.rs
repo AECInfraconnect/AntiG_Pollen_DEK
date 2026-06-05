@@ -2,9 +2,9 @@ use anyhow::{Context, Result};
 use serde_json::Value;
 use std::collections::HashMap;
 use wasmtime::*;
+use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
 use wasmtime_wasi::preview1;
 use wasmtime_wasi::WasiCtxBuilder;
-use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
 
 pub trait PluginHost {
     fn invoke(&self, plugin_id: &str, input: Value) -> Result<Value>;
@@ -25,7 +25,8 @@ impl WasmtimePluginHost {
 
         for (plugin_id, path) in plugin_paths {
             if std::path::Path::new(&path).exists() {
-                let module = Module::from_file(&engine, &path).with_context(|| format!("Failed to load plugin WASM module: {}", path))?;
+                let module = Module::from_file(&engine, &path)
+                    .with_context(|| format!("Failed to load plugin WASM module: {}", path))?;
                 let instance_pre = linker.instantiate_pre(&module)?;
                 instances_pre.insert(plugin_id, instance_pre);
             } else {
@@ -33,7 +34,10 @@ impl WasmtimePluginHost {
             }
         }
 
-        Ok(Self { engine, instances_pre })
+        Ok(Self {
+            engine,
+            instances_pre,
+        })
     }
 }
 
