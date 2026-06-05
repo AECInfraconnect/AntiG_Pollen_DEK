@@ -1,8 +1,10 @@
 use serde_json::Value;
-use std::fs;
+use std::io::{self, Read};
 
 fn main() {
-    let input = fs::read_to_string("input.json").unwrap_or_default();
+    let mut input = String::new();
+    let _ = io::stdin().read_to_string(&mut input);
+    
     if input.trim().is_empty() {
         return;
     }
@@ -16,9 +18,9 @@ fn main() {
             }
         }
 
-        // Write modified JSON payload
+        // Write modified JSON payload to stdout
         if let Ok(output_str) = serde_json::to_string(&payload) {
-            let _ = fs::write("output.json", output_str);
+            print!("{}", output_str);
         }
     }
 }

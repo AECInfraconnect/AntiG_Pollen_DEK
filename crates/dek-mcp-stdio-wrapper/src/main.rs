@@ -1,6 +1,5 @@
 use anyhow::Result;
 use clap::Parser;
-use dek_cedar::CedarAdapter;
 use dek_mcp_normalizer::{MessageDirection, NormalizedMcpEvent, TransportType};
 use dek_openfga::OpenFgaAdapter;
 use dek_policy_router::{ConditionalPdp, MatchRule, PolicyRouter, Route};
@@ -47,15 +46,39 @@ async fn main() -> Result<()> {
         args.server_id, args.agent_id
     );
 
+    // Load Bootstrap and Config
+    use dek_config::BootstrapConfig;
+    let bootstrap = BootstrapConfig::load_or_default("bootstrap.json").unwrap_or_else(|_| BootstrapConfig {
+        device_id: "local-device".into(),
+        mtls: dek_config::MtlsConfig {
+            client_cert_path: "".into(),
+            client_key_path: "".into(),
+            root_ca_path: "".into(),
+        },
+    });
+
+    let mut tenant_id = "default-tenant".to_string();
+    let mut spiffe_id: Option<String> = None;
+
+    let staged_path = std::path::Path::new("target/active_bundle.json");
+    if staged_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(staged_path) {
+            if let Ok(payload) = serde_json::from_str::<Value>(&content) {
+                if let Some(t) = payload.get("tenant_id").and_then(|v| v.as_str()) {
+                    tenant_id = t.to_string();
+                }
+                if let Some(s) = payload.get("spiffe_id").and_then(|v| v.as_str()) {
+                    spiffe_id = Some(s.to_string());
+                }
+            }
+        }
+    }
+
     // Setup Adaptive Policy Pipeline
     let mut router = PolicyRouter::new();
     router.register_evaluator(
         "openfga",
-        Box::new(OpenFgaAdapter::new("http://localhost:8080", "store_123")),
-    );
-    router.register_evaluator(
-        "cedar",
-        Box::new(CedarAdapter::new("permit(principal, action, resource);")),
+        Box::new(OpenFgaAdapter::new("http://localhost:8080", "store_123", None).unwrap()),
     );
     router.register_evaluator("opa_wasm", Box::new(MockPolicyRuntime));
 
@@ -144,8 +167,10 @@ async fn main() -> Result<()> {
                     direction: MessageDirection::Request,
                     request_type: method.to_string(),
                     jsonrpc_id: payload.get("id").cloned(),
-                    tenant_id: "default-tenant".to_string(),
-                    device_id: "local-device".to_string(),
+                    tenant_id: tenant_id.clone(),
+                    device_id: bootstrap.device_id.clone(),
+                    spiffe_id: spiffe_id.clone(),
+                    user_id: Some(agent_id.clone()),
                     agent_id: Some(agent_id.clone()),
                     server_id: Some(server_id.clone()),
                     tool_name: payload
@@ -157,7 +182,7 @@ async fn main() -> Result<()> {
                     prompt_name: None,
                     payload: payload.clone(),
                     session: json!({}),
-                    runtime: json!({ "os": "windows" }),
+                    runtime: json!({ "os": std::env::consts::OS }),
                 };
 
                 let mut policy_input = serde_json::to_value(&normalized).unwrap_or(json!({}));

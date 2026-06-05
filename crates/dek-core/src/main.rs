@@ -35,27 +35,26 @@ fn get_env_var(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| default.to_string())
 }
 
-async fn fetch_config_with_retry(
-    bootstrap_path: &str,
-    pollen_cloud_url: &str,
-) -> Result<(BootstrapConfig, DekConfig)> {
+async fn load_bootstrap(bootstrap_path: &str) -> Result<BootstrapConfig> {
     let bootstrap = BootstrapConfig::load_or_default(bootstrap_path)?;
-    info!(
-        "Loaded Bootstrap Config for device: {}",
-        bootstrap.device_id
-    );
+    info!("Loaded Bootstrap Config for device: {}", bootstrap.device_id);
+    Ok(bootstrap)
+}
 
-    info!("Fetching Operational Config from Pollen Cloud...");
+async fn run_sync_pipeline_with_retry(
+    sync_agent: &dek_bundle_sync::BundleSyncAgent,
+) -> Result<DekConfig> {
+    info!("Running Unified Sync Pipeline...");
     let strategy = ExponentialBackoff::from_millis(2000)
         .factor(2)
         .max_delay(Duration::from_secs(30))
         .take(10); // roughly 120s max
 
-    let config = RetryIf::spawn(strategy, || async {
-        match DekConfig::fetch_from_cloud(&bootstrap, pollen_cloud_url).await {
+    RetryIf::spawn(strategy, || async {
+        match sync_agent.run_pipeline().await {
             Ok(c) => Ok(c),
             Err(e) => {
-                warn!("Failed to fetch operational config: {}. Retrying...", e);
+                warn!("Pipeline run failed: {}. Retrying...", e);
                 counter!("dek_core_config_fetch_errors_total").increment(1);
                 Err(e)
             }
@@ -65,7 +64,7 @@ async fn fetch_config_with_retry(
             if let Some(status) = reqwest_err.status() {
                 if status.is_client_error() {
                     error!(
-                        "Fatal HTTP client error fetching config: {}. Aborting startup.",
+                        "Fatal HTTP client error running pipeline: {}. Aborting startup.",
                         status
                     );
                     return false;
@@ -77,10 +76,7 @@ async fn fetch_config_with_retry(
         }
         true
     })
-    .await?;
-    info!("Loaded Operational Config for tenant: {}", config.tenant_id);
-
-    Ok((bootstrap, config))
+    .await
 }
 
 fn spawn_metrics_push_task(
@@ -153,17 +149,17 @@ fn spawn_bundle_sync_task(
                         break;
                     }
                     _ = sleep(Duration::from_secs(bundle_sync_interval)) => {
-                        debug!("Checking for bundle updates...");
-                        match timeout(Duration::from_secs(30), sync_agent.check_for_updates()).await {
+                        debug!("Running unified bundle sync pipeline...");
+                        match timeout(Duration::from_secs(30), sync_agent.run_pipeline()).await {
                             Ok(Ok(_)) => {
                                 counter!("dek_core_bundle_sync_success_total").increment(1);
                             }
                             Ok(Err(e)) => {
-                                warn!(error = %e, "Bundle update check failed");
+                                warn!(error = %e, "Bundle sync pipeline failed");
                                 counter!("dek_core_bundle_sync_errors_total").increment(1);
                             }
                             Err(_) => {
-                                warn!("Bundle update check timed out after 30s");
+                                warn!("Bundle sync pipeline timed out after 30s");
                                 counter!("dek_core_bundle_sync_timeout_total").increment(1);
                             }
                         }
@@ -182,8 +178,6 @@ async fn spawn_ipc_server_task(
     telemetry_sink: Arc<CloudTelemetrySink>,
     bundle_agent: Arc<dek_bundle_sync::BundleSyncAgent>,
     metrics_client: Arc<RwLock<reqwest::Client>>,
-    bootstrap_path: String,
-    pollen_cloud_url: String,
 ) -> Result<JoinHandle<()>> {
     let listener = TcpListener::bind(&ipc_listen_addr).await?;
     info!("IPC Endpoint listening on {}", ipc_listen_addr);
@@ -217,8 +211,6 @@ async fn spawn_ipc_server_task(
                             let sink_clone = telemetry_sink.clone();
                             let sync_agent_clone = bundle_agent.clone();
                             let metrics_client_clone = metrics_client.clone();
-                            let b_path = bootstrap_path.clone();
-                            let cloud_url = pollen_cloud_url.clone();
 
                             ipc_join_set.spawn({
                                 let req_id = Uuid::new_v4();
@@ -256,9 +248,9 @@ async fn spawn_ipc_server_task(
                                                     core_version: "0.1.0".to_string(),
                                                 },
                                                 IpcRequest::ReloadConfig => {
-                                                    info!("Received ReloadConfig IPC command. Reloading configuration...");
-                                                    match fetch_config_with_retry(&b_path, &cloud_url).await {
-                                                        Ok((_, new_config)) => {
+                                                    info!("Received ReloadConfig IPC command. Triggering unified sync pipeline...");
+                                                    match sync_agent_clone.run_pipeline().await {
+                                                        Ok(new_config) => {
                                                             let mut success = true;
                                                             if let Err(e) = sink_clone.update_mtls(&new_config.mtls).await {
                                                                 error!("Failed to update Telemetry Sink mTLS: {}", e);
@@ -379,7 +371,7 @@ async fn main() -> Result<()> {
     }
 
     let pollen_telemetry_url = format!("{}/telemetry", pollen_cloud_url);
-    let pollen_bundles_url = format!("{}/bundles/latest", pollen_cloud_url);
+
     let metrics_push_url = format!("{}/metrics", pollen_cloud_url);
 
     let prometheus_handle = PrometheusBuilder::new()
@@ -394,14 +386,20 @@ async fn main() -> Result<()> {
             .as_secs_f64(),
     );
 
-    let (_, config) = fetch_config_with_retry(&bootstrap_path, &pollen_cloud_url).await?;
+    let bootstrap = load_bootstrap(&bootstrap_path).await?;
+    
+    // Create BundleSyncAgent using Bootstrap mTLS
+    let bundle_agent = Arc::new(dek_bundle_sync::BundleSyncAgent::new(
+        &pollen_cloud_url,
+        &bootstrap.device_id,
+        &bootstrap.mtls,
+    )?);
+
+    // Initial startup sync using the unified pipeline
+    let config = run_sync_pipeline_with_retry(&bundle_agent).await?;
 
     let telemetry_sink = Arc::new(CloudTelemetrySink::new(
         &pollen_telemetry_url,
-        &config.mtls,
-    )?);
-    let bundle_agent = Arc::new(dek_bundle_sync::BundleSyncAgent::new(
-        &pollen_bundles_url,
         &config.mtls,
     )?);
 
@@ -442,8 +440,6 @@ async fn main() -> Result<()> {
         telemetry_sink.clone(),
         bundle_agent.clone(),
         metrics_client.clone(),
-        bootstrap_path,
-        pollen_cloud_url,
     )
     .await?;
 

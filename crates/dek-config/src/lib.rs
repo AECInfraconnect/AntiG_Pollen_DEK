@@ -85,10 +85,16 @@ pub struct PolicyConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpireServerConfig {
+    pub endpoint: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DekConfig {
     pub device_id: String,
     pub tenant_id: String,
     pub mtls: MtlsConfig,
+    pub spire_server: Option<SpireServerConfig>,
     pub policy_config: Option<PolicyConfig>,
 }
 
