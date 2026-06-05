@@ -1,0 +1,149 @@
+name: Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-release:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            zigbuild: true
+            ext: tar.gz
+            bin_ext: ""
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            zigbuild: true
+            ext: tar.gz
+            bin_ext: ""
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            zigbuild: true
+            ext: tar.gz
+            bin_ext: ""
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            zigbuild: true
+            ext: tar.gz
+            bin_ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            zigbuild: false
+            ext: zip
+            bin_ext: ".exe"
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            zigbuild: false
+            ext: zip
+            bin_ext: ".exe"
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            zigbuild: false
+            ext: tar.gz
+            bin_ext: ""
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            zigbuild: false
+            ext: tar.gz
+            bin_ext: ""
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}, wasm32-wasip1
+
+      - name: Install cargo-zigbuild
+        if: matrix.zigbuild
+        run: |
+          pip3 install cargo-zigbuild
+          rustup target add ${{ matrix.target }}
+
+      - name: Build WASM Plugins
+        run: cargo build -p pii-redactor -p dummy_policy --target wasm32-wasip1 --release
+
+      - name: Generate Plugin Manifest and Checksums
+        shell: bash
+        run: |
+          mkdir -p plugins
+          cp target/wasm32-wasip1/release/pii_redactor.wasm plugins/
+          cp target/wasm32-wasip1/release/dummy_policy.wasm plugins/
+          cd plugins
+          
+          # Compute SHA256 hashes
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            sha256sum * > manifest.txt
+          else
+            shasum -a 256 * > manifest.txt
+          fi
+          
+          # Convert to JSON securely via jq
+          jq -R -s -c 'split("\n") | map(select(length > 0)) | map(split("  ")) | map({(.[1]): .[0]}) | add' < manifest.txt > manifest.json
+          cat manifest.json
+          cd ..
+
+      - name: Build Target
+        if: matrix.zigbuild == false
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Build Target (Zigbuild)
+        if: matrix.zigbuild == true
+        run: cargo zigbuild --release --target ${{ matrix.target }}
+
+      - name: Package Artifacts (Linux/macOS)
+        if: matrix.ext == 'tar.gz'
+        run: |
+          mkdir release-pkg
+          cp target/${{ matrix.target }}/release/dek-mcp-proxy${{ matrix.bin_ext }} release-pkg/
+          cp target/${{ matrix.target }}/release/dek-mcp-stdio-wrapper${{ matrix.bin_ext }} release-pkg/
+          cp -r plugins release-pkg/
+          cd release-pkg
+          tar -czvf ../pollen-dek-${{ matrix.target }}.tar.gz *
+
+      - name: Package Artifacts (Windows)
+        if: matrix.ext == 'zip'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release-pkg
+          Copy-Item "target/${{ matrix.target }}/release/dek-mcp-proxy.exe" -Destination release-pkg/
+          Copy-Item "target/${{ matrix.target }}/release/dek-mcp-stdio-wrapper.exe" -Destination release-pkg/
+          Copy-Item -Recurse plugins -Destination release-pkg/
+          Compress-Archive -Path release-pkg/* -DestinationPath pollen-dek-${{ matrix.target }}.zip
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pollen-dek-${{ matrix.target }}
+          path: pollen-dek-${{ matrix.target }}.${{ matrix.ext }}
+
+  release:
+    name: GitHub Release
+    needs: build-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Generate Checksums
+        run: |
+          cd artifacts
+          find . -type f -exec shasum -a 256 {} \; > checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*
+          generate_release_notes: true
+          draft: true

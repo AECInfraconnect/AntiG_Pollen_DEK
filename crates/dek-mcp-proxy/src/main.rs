@@ -66,7 +66,16 @@ async fn main() -> Result<()> {
     };
 
     // Attempt to load from staged bundle first
-    let staged_path = std::path::Path::new("target/active_bundle.json");
+    let bundle_path_str = std::env::var("DEK_BUNDLE_PATH").unwrap_or_else(|_| {
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join("active_bundle.json")
+            .to_string_lossy()
+            .into_owned()
+    });
+    let staged_path = std::path::Path::new(&bundle_path_str);
     if staged_path.exists() {
         if let Ok(content) = std::fs::read_to_string(staged_path) {
             if let Ok(payload) = serde_json::from_str::<Value>(&content) {
@@ -95,14 +104,26 @@ async fn main() -> Result<()> {
 
     // Determine plugin paths
     let mut plugin_paths = std::collections::HashMap::new();
+    
+    // Resolve plugins path via standard installation directory or env var
+    let base_dir = std::env::var("DEK_PLUGIN_DIR").unwrap_or_else(|_| {
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join("plugins")
+            .to_string_lossy()
+            .into_owned()
+    });
+
     let paths_to_try = vec![
-        "target/wasm32-wasip1/release/pii_redactor.wasm",
-        "target/wasm32-wasip1/debug/pii_redactor.wasm",
-        "../../target/wasm32-wasip1/release/pii_redactor.wasm",
-        "../../target/wasm32-wasip1/debug/pii_redactor.wasm",
+        format!("{}/pii_redactor.wasm", base_dir),
+        "target/wasm32-wasip1/release/pii_redactor.wasm".to_string(),
+        "target/wasm32-wasip1/debug/pii_redactor.wasm".to_string(),
     ];
+
     for p in paths_to_try {
-        if std::path::Path::new(p).exists() {
+        if std::path::Path::new(&p).exists() {
             plugin_paths.insert("pii-redactor".to_string(), p.to_string());
             break;
         }
@@ -134,12 +155,15 @@ async fn main() -> Result<()> {
             }
         };
 
-        if let Err(e) = watcher.watch(std::path::Path::new("target"), RecursiveMode::NonRecursive) {
+        let bundle_path_clone = bundle_path_str.clone();
+        let staged_path_local = std::path::Path::new(&bundle_path_clone);
+        let parent_dir = staged_path_local.parent().unwrap_or(std::path::Path::new("."));
+        if let Err(e) = watcher.watch(parent_dir, RecursiveMode::NonRecursive) {
             error!("Failed to watch target directory: {}", e);
             return;
         }
 
-        info!("Started background file watcher for hot-reloading on target/active_bundle.json");
+        info!("Started background file watcher for hot-reloading on {}", staged_path_local.display());
 
         while let Some(event) = rx.recv().await {
             match event.kind {
