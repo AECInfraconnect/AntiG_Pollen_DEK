@@ -80,6 +80,7 @@ pub async fn run_update(
             let marker_data = serde_json::json!({
                 "target_version": "pending",
                 "backup_path": backup_path.to_string_lossy().to_string(),
+                "target_path": exe_path.to_string_lossy().to_string(),
                 "timestamp": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
             });
             

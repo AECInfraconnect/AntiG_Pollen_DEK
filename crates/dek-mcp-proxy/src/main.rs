@@ -12,27 +12,12 @@ use dek_openfga::OpenFgaAdapter;
 use dek_policy_router::PolicyRouter;
 use dek_wasm_host::{PluginHost, WasmtimePluginHost};
 use serde_json::{json, Value};
-use arc_swap::ArcSwap;
-use dek_auth::{extract_bearer, AuthError, Verifier, VerifierConfig};
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
-#[derive(Clone)]
-struct DekMetadata {
-    tenant_id: String,
-    device_id: String,
-    spiffe_id: Option<String>,
-}
-
-struct AppState {
-    plugin_host: WasmtimePluginHost,
-    router: ArcSwap<PolicyRouter>,
-    http_adapter: HttpTransportAdapter,
-    metadata: ArcSwap<DekMetadata>,
-    verifier: ArcSwap<Verifier>,
-}
+mod state;
+use state::{AppState, DekMetadata, PolicySnapshot};
 
 use dek_config::{BootstrapConfig, DekConfig};
 
@@ -67,7 +52,7 @@ async fn main() -> Result<()> {
         device_id: device_id.clone(),
         spiffe_id: None,
     };
-    let mut initial_verifier_cfg = VerifierConfig::default();
+    let mut initial_verifier_cfg = dek_auth::VerifierConfig::default();
 
     // Attempt to load from staged bundle first
     let bundle_path_buf = dek_config::paths::get_active_bundle_path();
@@ -130,13 +115,17 @@ async fn main() -> Result<()> {
         }
     }
 
-    let state = Arc::new(AppState {
-        plugin_host: WasmtimePluginHost::new(plugin_paths)?,
-        router: ArcSwap::from_pointee(router),
-        http_adapter: HttpTransportAdapter,
-        metadata: ArcSwap::from_pointee(initial_metadata),
-        verifier: ArcSwap::from_pointee(Verifier::new(initial_verifier_cfg)),
-    });
+    let initial_snapshot = PolicySnapshot {
+        metadata: initial_metadata,
+        verifier: dek_auth::Verifier::new(initial_verifier_cfg),
+        router,
+    };
+
+    let state = Arc::new(AppState::new(
+        WasmtimePluginHost::new(plugin_paths)?,
+        HttpTransportAdapter,
+        initial_snapshot,
+    ));
 
     // Start background file watcher for hot-reloading
     let state_clone = state.clone();
@@ -188,11 +177,9 @@ async fn main() -> Result<()> {
                                         &payload,
                                     );
 
-                                    // Safely swap the router
-                                    state_clone.router.store(Arc::new(new_router));
-
-                                    let mut metadata_clone = (**state_clone.metadata.load()).clone();
-                                    let mut verifier_cfg = VerifierConfig::default();
+                                    let old_snapshot = state_clone.snapshot.load();
+                                    let mut metadata_clone = old_snapshot.metadata.clone();
+                                    let mut verifier_cfg = dek_auth::VerifierConfig::default();
                                     if let Some(t) =
                                         payload.get("tenant_id").and_then(|v| v.as_str())
                                     {
@@ -224,8 +211,13 @@ async fn main() -> Result<()> {
                                             }
                                         }
                                     }
-                                    state_clone.metadata.store(Arc::new(metadata_clone));
-                                    state_clone.verifier.store(Arc::new(Verifier::new(verifier_cfg)));
+
+                                    let new_snapshot = PolicySnapshot {
+                                        metadata: metadata_clone,
+                                        verifier: dek_auth::Verifier::new(verifier_cfg),
+                                        router: new_router,
+                                    };
+                                    state_clone.snapshot.store(Arc::new(new_snapshot));
 
                                     info!("Hot-reloaded policies and metadata from disk successfully!");
                                 } else {
@@ -296,10 +288,11 @@ async fn handle_mcp_request(
 
     let auth_header = headers.get("Authorization").and_then(|h| h.to_str().ok());
     
-    let metadata = (**state.metadata.load()).clone();
-    let verifier = state.verifier.load();
+    let snapshot = state.snapshot.load();
+    let metadata = &snapshot.metadata;
+    let verifier = &snapshot.verifier;
 
-    let token = match extract_bearer(auth_header) {
+    let token = match dek_auth::extract_bearer(auth_header) {
         Ok(t) => t,
         Err(_) => {
             warn!("missing bearer token");
@@ -313,7 +306,7 @@ async fn handle_mcp_request(
 
     let identity = match verifier.verify(token) {
         Ok(id) => id,
-        Err(AuthError::NoKeyConfigured) => {
+        Err(dek_auth::AuthError::NoKeyConfigured) => {
             warn!("auth not configured");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -334,7 +327,7 @@ async fn handle_mcp_request(
     let principal = identity.principal;
     let jwt_tenant_id = identity.tenant_id;
 
-    let final_tenant_id = jwt_tenant_id.unwrap_or(metadata.tenant_id);
+    let final_tenant_id = jwt_tenant_id.unwrap_or(metadata.tenant_id.clone());
 
     // Normalize Event
     let normalized = match state.http_adapter.normalize_request(
@@ -362,7 +355,7 @@ async fn handle_mcp_request(
     policy_input["resource"] = json!("mcp_tool");
 
     // Evaluate against the Adaptive Policy Pipeline
-    let decision_result = state.router.load().authorize(policy_input).await;
+    let decision_result = snapshot.router.authorize(policy_input).await;
 
     match decision_result {
         Ok(decision) => {

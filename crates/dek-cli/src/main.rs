@@ -40,6 +40,8 @@ enum Commands {
         #[command(subcommand)]
         agent_command: AgentCommands,
     },
+    /// Trigger an emergency rollback of the Pollen DEK Core
+    Rollback,
     /// Manage the DEK background service lifecycle
     Service {
         /// The service action to perform: install, uninstall, start, stop, status
@@ -151,6 +153,12 @@ async fn main() -> Result<()> {
                 Ok(IpcResponse::Error(e)) => error!("Error from DEK Core: {}", e),
                 Ok(_) => error!("Unexpected response from DEK Core"),
                 Err(e) => error!("IPC Request Failed: {}", e),
+            }
+        }
+        Commands::Rollback => {
+            if let Err(e) = service::rollback::execute_rollback() {
+                error!("Rollback failed: {}", e);
+                std::process::exit(1);
             }
         }
         Commands::Agent { agent_command } => {

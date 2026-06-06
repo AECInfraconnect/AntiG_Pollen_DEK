@@ -1,5 +1,7 @@
 use anyhow::Result;
 
+pub mod rollback;
+
 pub trait ServiceManager {
     fn install(&self) -> Result<()>;
     fn uninstall(&self) -> Result<()>;
