@@ -167,7 +167,9 @@ async fn get_latest_bundle(State(state): State<AppState>) -> Json<Value> {
 
     let payload = json!({
         "jwt_config": {
-            "public_key_pem": state.rsa_public_key_pem.clone()
+            "public_key_pem": state.rsa_public_key_pem.clone(),
+            "issuer_url": "https://127.0.0.1:43891",
+            "audience": ["pollen-dek"]
         },
         "openfga": {
             "endpoint": "http://127.0.0.1:8080",
@@ -254,7 +256,9 @@ async fn get_config(Path(device_id): Path<String>, State(state): State<AppState>
             "endpoint": "https://127.0.0.1:43891/spire"
         },
         "jwt_config": {
-            "public_key_pem": state.rsa_public_key_pem.clone()
+            "public_key_pem": state.rsa_public_key_pem.clone(),
+            "issuer_url": "https://127.0.0.1:43891",
+            "audience": ["pollen-dek"]
         },
         "policy_config": {
             "openfga": {
