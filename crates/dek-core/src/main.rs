@@ -27,6 +27,8 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn, Instrument};
 use uuid::Uuid;
 
+mod service_integration;
+
 const IPC_READ_TIMEOUT_SECS: u64 = 5;
 const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
 const IPC_MAX_CONCURRENT_CONNECTIONS: usize = 32;
@@ -197,7 +199,7 @@ async fn spawn_ipc_server_task(
         loop {
             tokio::select! {
                 _ = cancel_token.cancelled() => {
-                    info!("IPC Listener shutting down. Waiting up to 10s for active connections to finish...");
+                    info!("IPC Listener shutting down due to cancellation. Waiting up to 10s for active connections to finish...");
                     break;
                 }
                 accept_result = listener.accept() => {
@@ -339,8 +341,10 @@ async fn spawn_ipc_server_task(
                 }
             }
         }
+        
+        info!("IPC Listener task has exited the loop!");
 
-        // Graceful Shutdown for active connections
+        // Wait for active handlers to finish
         match timeout(Duration::from_secs(10), async {
             while let Some(res) = ipc_join_set.join_next().await {
                 if let Err(e) = res {
@@ -358,14 +362,17 @@ async fn spawn_ipc_server_task(
     }))
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
+    service_integration::run_as_service_if_needed(core_main())
+}
+
+async fn core_main() -> Result<()> {
     tracing_subscriber::fmt::init();
     info!("Starting Pollen DEK Core Supervisor...");
 
     let pollen_cloud_url = get_env_var("POLLEN_CLOUD_URL", "https://127.0.0.1:43891");
     let ipc_listen_addr = get_env_var("DEK_IPC_ADDR", "127.0.0.1:43889");
-    let bootstrap_path = get_env_var("DEK_BOOTSTRAP_PATH", "bootstrap.json");
+    let bootstrap_path = get_env_var("DEK_BOOTSTRAP_PATH", &dek_config::paths::get_bootstrap_path().to_string_lossy());
     let bundle_sync_interval = get_env_var("DEK_BUNDLE_SYNC_INTERVAL", "10")
         .parse::<u64>()
         .unwrap_or(10);
@@ -403,44 +410,19 @@ async fn main() -> Result<()> {
         &bootstrap.pinned_bundle_public_key,
     )?);
 
-    // Initial startup sync using the unified pipeline
-    let config = run_sync_pipeline_with_retry(&bundle_agent).await?;
-
     let telemetry_sink = Arc::new(CloudTelemetrySink::new(
         &pollen_telemetry_url,
-        &config.mtls,
+        &bootstrap.mtls,
     )?);
 
-    let _ = telemetry_sink
-        .emit_async(json!({
-            "event_type": "pollen.dek.startup",
-            "device_id": config.device_id,
-            "status": "online"
-        }))
-        .await;
-
-    let cancel_token = CancellationToken::new();
-
     let metrics_client = Arc::new(RwLock::new(
-        config
+        bootstrap
             .mtls
             .build_client()
             .context("Failed to build metrics MTLS client")?,
     ));
 
-    // Spawn Background Tasks
-    let metrics_handle = spawn_metrics_push_task(
-        cancel_token.clone(),
-        metrics_client.clone(),
-        metrics_push_url,
-        prometheus_handle,
-    );
-
-    let sync_handle = spawn_bundle_sync_task(
-        cancel_token.clone(),
-        bundle_agent.clone(),
-        bundle_sync_interval,
-    );
+    let cancel_token = CancellationToken::new();
 
     let ipc_handle = spawn_ipc_server_task(
         cancel_token.clone(),
@@ -451,14 +433,60 @@ async fn main() -> Result<()> {
     )
     .await?;
 
+    // Signal readiness to OS Service Managers BEFORE blocking on cloud sync
+    service_integration::notify_ready();
+
+    // Spawn the cloud sync and background tasks into a separate tokio task
+    // so that the IPC Server remains healthy and responsive immediately!
+    let sync_bundle_agent = bundle_agent.clone();
+    let sync_telemetry_sink = telemetry_sink.clone();
+    let sync_metrics_client = metrics_client.clone();
+    let sync_cancel_token = cancel_token.clone();
+    
+    let background_tasks_handle = tokio::spawn(async move {
+        // Initial startup sync using the unified pipeline (blocks up to 2 minutes on retries)
+        let config = match run_sync_pipeline_with_retry(&sync_bundle_agent).await {
+            Ok(c) => c,
+            Err(e) => {
+                error!("Initial cloud sync failed completely: {}. Background tasks will not start.", e);
+                return;
+            }
+        };
+
+        let _ = sync_telemetry_sink
+            .emit_async(json!({
+                "event_type": "pollen.dek.startup",
+                "device_id": config.device_id,
+                "status": "online"
+            }))
+            .await;
+
+        let sync_handle = spawn_bundle_sync_task(
+            sync_cancel_token.clone(),
+            sync_bundle_agent,
+            bundle_sync_interval,
+        );
+
+        let metrics_handle = spawn_metrics_push_task(
+            sync_cancel_token.clone(),
+            sync_metrics_client,
+            metrics_push_url,
+            prometheus_handle,
+        );
+        
+        // Wait for them to finish
+        let _ = tokio::join!(sync_handle, metrics_handle);
+    });
+
     // Wait for shutdown signal
     #[cfg(unix)]
     {
         use tokio::signal::unix::{signal, SignalKind};
         let mut sigterm = signal(SignalKind::terminate())?;
+        let mut sigint = signal(SignalKind::interrupt())?;
         tokio::select! {
-            _ = tokio::signal::ctrl_c() => { info!("Received SIGINT"); }
-            _ = sigterm.recv() => { info!("Received SIGTERM"); }
+            _ = sigterm.recv() => info!("Received SIGTERM"),
+            _ = sigint.recv() => info!("Received SIGINT"),
         }
     }
     #[cfg(not(unix))]
@@ -470,43 +498,30 @@ async fn main() -> Result<()> {
     info!("Initiating graceful shutdown...");
     cancel_token.cancel();
 
-    let _ = telemetry_sink
-        .emit_async(json!({
-            "event_type": "pollen.dek.shutdown",
-            "device_id": config.device_id,
-            "status": "offline"
-        }))
-        .await;
-
     // Graceful Shutdown Validation with Hard Timeout
     match timeout(Duration::from_secs(15), async {
-        tokio::join!(sync_handle, ipc_handle, metrics_handle)
+        tokio::join!(background_tasks_handle, ipc_handle)
     })
     .await
     {
-        Ok((sync_res, ipc_res, metrics_res)) => {
+        Ok((background_res, ipc_res)) => {
             let mut exit_error = false;
-            if let Err(e) = sync_res {
-                error!(error = %e, "Bundle Sync task panicked");
+            if let Err(e) = background_res {
+                error!(error = %e, "Background task panicked");
                 exit_error = true;
             }
             if let Err(e) = ipc_res {
                 error!(error = %e, "IPC Listener task panicked");
                 exit_error = true;
             }
-            if let Err(e) = metrics_res {
-                error!(error = %e, "Metrics Push task panicked");
-                exit_error = true;
-            }
-
-            info!("Graceful shutdown complete.");
             if exit_error {
-                std::process::exit(1);
+                error!("Graceful shutdown completed, but some tasks had errors.");
+            } else {
+                info!("Graceful shutdown completed successfully.");
             }
         }
         Err(_) => {
-            error!("Hard timeout reached during shutdown! Some tasks failed to exit cleanly. Forcing exit.");
-            std::process::exit(1);
+            warn!("Graceful shutdown timed out. Force quitting.");
         }
     }
 
