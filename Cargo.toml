@@ -3,6 +3,10 @@ members = [
     "crates/*",
     "plugins/*"
 ]
+exclude = [
+    "crates/dek-ebpf-prog",
+    "crates/dek-ebpfd"
+]
 resolver = "2"
 
 [workspace.dependencies]

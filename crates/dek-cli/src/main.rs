@@ -7,6 +7,8 @@ use std::path::PathBuf;
 mod service;
 use service::{ServiceManager, OsServiceManager};
 
+mod proxy;
+
 use tokio::net::TcpStream;
 use tracing::{error, info};
 
@@ -39,6 +41,11 @@ enum Commands {
     /// Manage the DEK background service lifecycle
     Service {
         /// The service action to perform: install, uninstall, start, stop, status
+        action: String,
+    },
+    /// Manage Layer 2 System Proxy Settings (Opt-in redirect)
+    Proxy {
+        /// action to perform: enable, disable
         action: String,
     },
 }
@@ -208,6 +215,24 @@ async fn main() -> Result<()> {
                 }
                 _ => {
                     error!("Unknown service action: {}. Valid actions: install, uninstall, start, stop, status", action);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Commands::Proxy { action } => {
+            match action.as_str() {
+                "enable" => {
+                    info!("Enabling Layer 2 System Proxy Redirect...");
+                    proxy::enable_system_proxy()?;
+                    info!("System proxy enabled. Traffic redirected to DEK MCP Proxy.");
+                }
+                "disable" => {
+                    info!("Disabling Layer 2 System Proxy Redirect...");
+                    proxy::disable_system_proxy()?;
+                    info!("System proxy disabled.");
+                }
+                _ => {
+                    error!("Unknown proxy action: {}. Valid actions: enable, disable", action);
                     std::process::exit(1);
                 }
             }

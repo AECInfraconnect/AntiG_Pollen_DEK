@@ -85,6 +85,11 @@ async fn main() -> Result<()> {
     let router = Arc::new(RwLock::new(router));
     let mut cmd = Command::new(&args.command_args[0]);
     cmd.args(&args.command_args[1..]);
+    
+    // Inject opt-in proxy redirect environment variables
+    cmd.env("HTTP_PROXY", "http://127.0.0.1:43890");
+    cmd.env("HTTPS_PROXY", "http://127.0.0.1:43890");
+    
     cmd.stdin(Stdio::piped());
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());

@@ -11,6 +11,26 @@ Pollen DEK is an extensible, highly concurrent and robust edge computing proxy n
 - **dek-openfga** and **dek-cedar**: Integrations for fine-grained authorization with external stores (OpenFGA) and Cedar policy engine.
 - **mock-cloud**: A mock Pollen Cloud for development and testing.
 
+## PEP Enforcement Model
+
+Pollen DEK shifts from a purely cooperative policy enforcement to a machine-level enforcement architecture. The model is structured into two layers, with strict "enforcement ceilings" defined for each Operating System to balance security and system stability.
+
+### Layer 1: Application-Layer MCP (All OS - Core)
+- **Mechanism:** Deep policy inspection on JSON-RPC and MCP payloads using `dek-mcp-proxy` and `dek-mcp-stdio-wrapper`.
+- **Scope:** Available universally across Linux, Windows, and macOS.
+- **Role:** Remains the primary and deepest point of policy enforcement for all connected applications.
+
+### Layer 2: Network Egress Guardrails (OS-Specific)
+- **Linux (via eBPF / WS-D):** 
+  - Implements coarse L3/L4 network egress guardrails.
+  - Enforces traffic policies at the kernel level, catching and blocking unauthorized traffic even if a rogue or misconfigured application attempts to bypass the Layer 1 proxy.
+- **Windows & macOS (Phase 1):** 
+  - **No transparent kernel interception** is performed (e.g., no WFP callouts on Windows or Network Extensions on Mac). This deliberate architectural decision eliminates the risk of system-wide BSODs or kernel panics.
+  - **Opt-in Redirect Options:** Enforcement at this layer is limited to opt-in traffic redirection, such as configuring system-wide proxy settings or injecting per-application proxy environment variables (`HTTP_PROXY`, `HTTPS_PROXY`).
+
+> [!WARNING]
+> **Enforcement Ceiling:** It is critical to understand that Windows and macOS currently have a lower enforcement ceiling than Linux. While Linux guarantees network-level egress enforcement via eBPF regardless of application behavior, Windows and macOS rely strictly on Layer 1 App-layer MCP proxies and cooperative opt-in network redirects.
+
 ## License
 
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for more information.

@@ -209,10 +209,12 @@ async fn main() -> Result<()> {
 
     let app = AxumRouter::new()
         .route("/mcp", post(handle_mcp_request))
+        // Layer 2 Opt-in Proxy Redirect Handlers
+        .fallback(handle_forward_proxy)
         .with_state(state);
 
     let listener = TcpListener::bind("127.0.0.1:43890").await?;
-    info!("MCP Proxy listening on http://127.0.0.1:43890/mcp");
+    info!("MCP Proxy + Forward Proxy listening on http://127.0.0.1:43890");
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
