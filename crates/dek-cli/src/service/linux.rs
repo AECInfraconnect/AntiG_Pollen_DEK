@@ -35,6 +35,8 @@ impl ServiceManager for OsServiceManager {
             r#"[Unit]
 Description=Pollen DEK Core
 After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=notify
@@ -45,6 +47,8 @@ ProtectSystem=full
 User=pollendek
 Group=pollendek
 AmbientCapabilities=CAP_BPF CAP_NET_ADMIN
+WatchdogSec=30
+OnFailure=pollen-dek-rollback.service
 
 [Install]
 WantedBy=multi-user.target
@@ -52,7 +56,19 @@ WantedBy=multi-user.target
             exe_path.display()
         );
 
+        let rollback_unit_content = format!(
+            r#"[Unit]
+Description=Pollen DEK Core Rollback
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'if [ -f {exe_path}.bak ]; then mv {exe_path}.bak {exe_path}; fi; rm -f /etc/pollen-dek/update_pending.json; systemctl restart pollen-dek.service'
+"#
+            , exe_path = exe_path.display()
+        );
+
         fs::write(&self.unit_path, unit_content)?;
+        fs::write("/etc/systemd/system/pollen-dek-rollback.service", rollback_unit_content)?;
         Command::new("systemctl")
             .arg("daemon-reload")
             .status()

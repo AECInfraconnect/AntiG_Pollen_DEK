@@ -34,3 +34,13 @@ pub struct EgressEvent {
     pub dest_port: u16,
     pub action_taken: u8, // 1 = allowed, 0 = denied
 }
+
+pub const DNS_PAYLOAD_MAX: usize = 512;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct DnsCaptureEvent {
+    pub cgroup_id: u64,
+    pub len: u16,
+    pub data: [u8; DNS_PAYLOAD_MAX],
+}

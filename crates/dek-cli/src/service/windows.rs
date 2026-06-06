@@ -63,6 +63,35 @@ impl ServiceManager for OsServiceManager {
             .args(["description", self.service_name, "Pollen DEK IPC Supervisor and Policy Enforcer"])
             .output()?;
 
+        // Generate rollback script
+        let rollback_bat_path = bin_dir.join("rollback.bat");
+        let bat_content = format!(
+            r#"@echo off
+if exist "{exe}.bak" (
+    copy /Y "{exe}.bak" "{exe}"
+)
+if exist "{cfg}\update_pending.json" (
+    del /F /Q "{cfg}\update_pending.json"
+)
+sc start PollenDEK
+"#,
+            exe = target_exe.display(),
+            cfg = "C:\\ProgramData\\PollenDEK"
+        );
+        std::fs::write(&rollback_bat_path, bat_content)?;
+
+        // Configure SC failure actions: Restart after 1st and 2nd failure, run rollback.bat on 3rd failure
+        let failure_command = format!("\"{}\"", rollback_bat_path.display());
+        Command::new("sc")
+            .args([
+                "failure",
+                self.service_name,
+                "reset=", "60",
+                "actions=", "restart/5000/restart/5000/run/5000",
+                "command=", &failure_command
+            ])
+            .output()?;
+
         Ok(())
     }
 

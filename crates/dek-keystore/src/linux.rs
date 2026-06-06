@@ -1,52 +1,41 @@
 use crate::Keystore;
 use anyhow::{Context, Result};
-use std::fs::{self, OpenOptions};
-use std::io::Write;
-use std::os::unix::fs::OpenOptionsExt;
-use std::path::PathBuf;
+use linux_keyutils::{Key, KeyRing, KeyRingIdentifier};
 
-pub struct FileKeystore {
-    store_dir: PathBuf,
-}
+pub struct KernelKeystore {}
 
-impl FileKeystore {
+impl KernelKeystore {
     pub fn new() -> Self {
-        let dir = PathBuf::from("/var/lib/pollen-dek/keystore");
-        if !dir.exists() {
-            // Ideally we also set 0700 on the directory
-            let _ = fs::create_dir_all(&dir);
-        }
-        Self { store_dir: dir }
+        Self {}
     }
 }
 
-impl Keystore for FileKeystore {
+impl Keystore for KernelKeystore {
     fn store_key(&self, alias: &str, data: &[u8]) -> Result<()> {
-        tracing::info!("Writing {} to Linux FileKeystore with 0600 perms", alias);
-        let path = self.store_dir.join(alias);
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o600)
-            .open(&path)
-            .context("Failed to open keystore file with strict permissions")?;
-        
-        file.write_all(data)?;
+        tracing::info!("Writing {} to Linux User Keyring", alias);
+        let _key = Key::add(
+            alias,
+            data,
+            KeyRingIdentifier::User,
+            None,
+        ).context("Failed to add key to user keyring")?;
         Ok(())
     }
 
     fn load_key(&self, alias: &str) -> Result<Vec<u8>> {
-        tracing::info!("Reading {} from Linux FileKeystore", alias);
-        let path = self.store_dir.join(alias);
-        let data = fs::read(&path).context("Failed to read from keystore file")?;
+        tracing::info!("Reading {} from Linux User Keyring", alias);
+        let keyring = KeyRing::from(KeyRingIdentifier::User);
+        let key = keyring.search::<Key>(alias).context("Failed to search for key")?;
+        let mut data = vec![0u8; 2048]; // Max reasonable size for a key
+        let len = key.read(&mut data).context("Failed to read key data")?;
+        data.truncate(len);
         Ok(data)
     }
 
     fn delete_key(&self, alias: &str) -> Result<()> {
-        let path = self.store_dir.join(alias);
-        if path.exists() {
-            fs::remove_file(&path)?;
+        let keyring = KeyRing::from(KeyRingIdentifier::User);
+        if let Ok(key) = keyring.search::<Key>(alias) {
+            let _ = key.invalidate();
         }
         Ok(())
     }

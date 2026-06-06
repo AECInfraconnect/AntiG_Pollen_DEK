@@ -21,7 +21,7 @@ pub fn get_keystore() -> Box<dyn Keystore + Send + Sync> {
     return Box::new(macos::KeychainKeystore::new());
     
     #[cfg(target_os = "linux")]
-    return Box::new(linux::FileKeystore::new());
+    return Box::new(linux::KernelKeystore::new());
     
     #[allow(unreachable_code)]
     Box::new(MockKeystore {})

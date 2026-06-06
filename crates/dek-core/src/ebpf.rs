@@ -1,21 +1,39 @@
 use tracing::{info, warn};
 
 #[cfg(target_os = "linux")]
+fn has_bpf_caps() -> bool {
+    if let Ok(content) = std::fs::read_to_string("/proc/self/status") {
+        for line in content.lines() {
+            if line.starts_with("CapEff:") {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() == 2 {
+                    if let Ok(cap) = u64::from_str_radix(parts[1], 16) {
+                        // CAP_SYS_ADMIN is bit 21, CAP_BPF is bit 39
+                        return (cap & (1 << 39)) != 0 || (cap & (1 << 21)) != 0;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+#[cfg(target_os = "linux")]
 pub fn probe_ebpf_support() -> bool {
     // Basic checks for eBPF support on Linux:
-    // 1. Check if running as root
+    // 1. Check for CAP_BPF or CAP_SYS_ADMIN capabilities (Least-Privilege)
     // 2. Check for BTF support
-    let is_root = unsafe { libc::geteuid() == 0 };
+    let has_caps = has_bpf_caps();
     let has_btf = std::path::Path::new("/sys/kernel/btf/vmlinux").exists();
     
-    if !is_root {
-        warn!("eBPF requires root privileges. Falling back to App-Layer-Only.");
+    if !has_caps {
+        warn!("Missing CAP_BPF or CAP_SYS_ADMIN. Falling back to App-Layer-Only.");
     }
     if !has_btf {
         warn!("Kernel BTF (/sys/kernel/btf/vmlinux) not found. Falling back to App-Layer-Only.");
     }
     
-    is_root && has_btf
+    has_caps && has_btf
 }
 
 #[cfg(target_os = "linux")]
