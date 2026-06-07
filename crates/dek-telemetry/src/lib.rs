@@ -59,13 +59,14 @@ pub struct McpDecisionLog {
 pub struct CloudTelemetrySink {
     spooler: Arc<Spooler>,
     redactor: Arc<Redactor>,
-    client: Arc<RwLock<reqwest::Client>>,
+    client: Arc<tokio::sync::RwLock<reqwest::Client>>,
     endpoint_url: String,
+    enterprise_profile: Arc<std::sync::RwLock<dek_config::EnterpriseProfile>>,
 }
 
 impl CloudTelemetrySink {
     pub fn new(endpoint_url: &str, mtls: &MtlsConfig, client_key_override: Option<&[u8]>, db_path: &str) -> Result<Arc<Self>> {
-        let client = Arc::new(RwLock::new(mtls.build_client(client_key_override)?));
+        let client = Arc::new(tokio::sync::RwLock::new(mtls.build_client(client_key_override)?));
         let spooler = Arc::new(Spooler::new(db_path)?);
         let redactor = Arc::new(Redactor::new());
 
@@ -74,6 +75,7 @@ impl CloudTelemetrySink {
             redactor,
             client: client.clone(),
             endpoint_url: endpoint_url.to_string(),
+            enterprise_profile: Arc::new(std::sync::RwLock::new(dek_config::EnterpriseProfile::default())),
         });
 
         // Initialize OTLP Metrics Provider
@@ -126,7 +128,22 @@ impl CloudTelemetrySink {
         Ok(())
     }
 
+    pub fn set_enterprise_profile(&self, profile: dek_config::EnterpriseProfile) {
+        if let Ok(mut lock) = self.enterprise_profile.write() {
+            *lock = profile;
+        }
+    }
+
     pub fn emit_async(&self, mut event: Value, priority: Priority) {
+        // Enforce Enterprise Regulated Profile: Strip any raw payload capture
+        let profile = self.enterprise_profile.read().map(|p| p.clone()).unwrap_or_default();
+        if profile == dek_config::EnterpriseProfile::Regulated {
+            if let Some(obj) = event.as_object_mut() {
+                obj.remove("raw_payload");
+                obj.remove("http_body");
+            }
+        }
+
         // Redact PII / Secrets before queueing
         self.redactor.redact_value(&mut event);
 

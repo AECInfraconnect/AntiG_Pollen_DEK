@@ -12,6 +12,7 @@ pub struct DekMetadata {
     pub jwks: Option<jsonwebtoken::jwk::JwkSet>,
     pub issuer_url: Option<String>,
     pub audience: Option<Vec<String>>,
+    pub enterprise_profile: dek_config::EnterpriseProfile,
 }
 
 pub struct RuntimeSnapshot {

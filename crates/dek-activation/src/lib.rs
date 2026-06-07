@@ -39,6 +39,7 @@ pub enum ActivationError {
     CanaryFailed(String),
     SnapshotSwapFailed(String),
     RollbackFailed(String),
+    ProfileViolation(String),
     Timeout,
 }
 
@@ -51,6 +52,7 @@ impl std::fmt::Display for ActivationError {
             Self::CanaryFailed(msg) => write!(f, "Canary Failed: {}", msg),
             Self::SnapshotSwapFailed(msg) => write!(f, "Snapshot Swap Failed: {}", msg),
             Self::RollbackFailed(msg) => write!(f, "Rollback Failed: {}", msg),
+            Self::ProfileViolation(msg) => write!(f, "Profile Violation: {}", msg),
             Self::Timeout => write!(f, "Activation Timeout"),
         }
     }

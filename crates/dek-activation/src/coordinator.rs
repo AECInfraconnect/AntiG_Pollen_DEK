@@ -40,6 +40,19 @@ impl ActivationCoordinator {
         *state = ActivationState::Warming;
         info!("ActivationCoordinator: Starting activation for bundle at {:?}", req.manifest_path);
 
+        // Enforce Enterprise Profiles
+        match config.enterprise_profile {
+            dek_config::EnterpriseProfile::Enterprise | dek_config::EnterpriseProfile::Regulated => {
+                if config.activation_mode != dek_config::ActivationMode::Full {
+                    *state = ActivationState::Failed;
+                    return Ok(ActivationDecision::Rejected(ActivationError::ProfileViolation(
+                        format!("Profile {:?} requires Full activation mode. Current mode: {:?}", config.enterprise_profile, config.activation_mode)
+                    )));
+                }
+            }
+            _ => {}
+        }
+
         // 1. Read Payload
         let payload_str = match std::fs::read_to_string(&req.manifest_path) {
             Ok(s) => s,
@@ -85,6 +98,7 @@ impl ActivationCoordinator {
         // 5. Atomic Snapshot Swap
         let gen = self.generation.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let mut metadata = crate::snapshot::DekMetadata::default();
+        metadata.enterprise_profile = config.enterprise_profile.clone();
         if let Some(t) = payload.get("tenant_id").and_then(|v| v.as_str()) { metadata.tenant_id = t.to_string(); }
         if let Some(s) = payload.get("spiffe_id").and_then(|v| v.as_str()) { metadata.spiffe_id = Some(s.to_string()); }
         if let Some(jwt_cfg) = payload.get("jwt_config") {
