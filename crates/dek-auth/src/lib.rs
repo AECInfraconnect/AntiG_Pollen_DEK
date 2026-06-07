@@ -117,12 +117,10 @@ impl Verifier {
                 validation.validate_aud = true;
             }
             _ => {
-                // No audience configured. We DON'T silently trust any aud:
-                // log loudly so this isn't forgotten in production.
-                validation.validate_aud = false;
-                tracing::warn!(
-                    "dek-auth: no audience configured; 'aud' is NOT enforced. Set jwt_config.audience for production."
-                );
+                // Audience bypass is now closed: MUST be configured in bundle.
+                return Err(AuthError::Validation(
+                    "no audience configured in jwt_config; 'aud' enforcement is mandatory".into()
+                ));
             }
         }
 
