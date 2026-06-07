@@ -8,17 +8,21 @@ description = "Pollen DEK Supervisor and Agent"
 
 [dependencies]
 dek-config = { path = "../dek-config" }
+dek-agent-connector = { path = "../dek-agent-connector" }
+dek-updater = { path = "../dek-updater" }
+dek-bundle-sync = { path = "../dek-bundle-sync" }
+dek-keystore = { path = "../dek-keystore" }
 dek-ipc = { path = "../dek-ipc" }
+dek-ebpf-common = { path = "../dek-ebpf-common" }
+dek-ebpfd = { path = "../dek-ebpfd" }
+dek-wasm-host = { path = "../dek-wasm-host" }
 dek-policy-router = { path = "../dek-policy-router" }
 dek-openfga = { path = "../dek-openfga" }
 dek-cedar = { path = "../dek-cedar" }
 dek-router-builder = { path = "../dek-router-builder" }
 dek-telemetry = { path = "../dek-telemetry" }
-dek-bundle-sync = { path = "../dek-bundle-sync" }
-dek-keystore = { path = "../dek-keystore" }
-dek-agent-connector = { path = "../dek-agent-connector" }
+dek-activation = { path = "../dek-activation" }
 dek-spire-node = { path = "../dek-spire-node" }
-dek-ebpfd = { path = "../dek-ebpfd" }
 tokio.workspace = true
 tokio-util = { version = "0.7", features = ["codec"] }
 serde_json.workspace = true

@@ -10,6 +10,7 @@ dek-cedar = { path = "../dek-cedar" }
 dek-openfga = { path = "../dek-openfga" }
 dek-mcp-normalizer = { path = "../dek-mcp-normalizer" }
 dek-wasm-host = { path = "../dek-wasm-host" }
+dek-activation = { path = "../dek-activation" }
 serde.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["rt"] }

@@ -1,0 +1,47 @@
+use std::sync::Arc;
+use dek_policy_router::PolicyRouter;
+use dek_auth::{Verifier, VerifierConfig};
+use dek_wasm_host::WasmtimePluginHost;
+
+#[derive(Clone, Default)]
+pub struct DekMetadata {
+    pub tenant_id: String,
+    pub device_id: String,
+    pub spiffe_id: Option<String>,
+    pub jwt_public_key_pem: Option<String>,
+    pub jwks: Option<jsonwebtoken::jwk::JwkSet>,
+    pub issuer_url: Option<String>,
+    pub audience: Option<Vec<String>>,
+}
+
+pub struct RuntimeSnapshot {
+    pub generation: u64,
+    pub bundle_id: String,
+    pub bundle_version: u64,
+    pub router: Arc<PolicyRouter>,
+    pub metadata: DekMetadata,
+    pub verifier: Arc<Verifier>,
+    pub plugin_host: Arc<WasmtimePluginHost>,
+}
+
+impl RuntimeSnapshot {
+    pub fn new(generation: u64, bundle_id: String, bundle_version: u64, router: Arc<PolicyRouter>, metadata: DekMetadata, plugin_host: Arc<WasmtimePluginHost>) -> Self {
+        let verifier = Verifier::new(VerifierConfig {
+            jwks: metadata.jwks.clone(),
+            public_key_pem: metadata.jwt_public_key_pem.clone(),
+            issuer: metadata.issuer_url.clone(),
+            audience: metadata.audience.clone(),
+            leeway_secs: 60,
+        });
+
+        Self {
+            generation,
+            bundle_id,
+            bundle_version,
+            router,
+            metadata,
+            verifier: Arc::new(verifier),
+            plugin_host,
+        }
+    }
+}
