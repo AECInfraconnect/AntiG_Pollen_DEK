@@ -1,169 +1,232 @@
+//! dek-ebpfd — userspace supervisor for the DEK network Control Point.
+//!
+//! Production fix (HIGH): the loader now RETURNS an `EbpfHandle` that owns the
+//! `aya::Ebpf` object for the caller to store for the process lifetime. The
+//! previous version dropped `bpf` at function return, which made aya detach and
+//! unload the cgroup programs immediately. The handle's `Drop` aborts the
+//! background tasks and then drops `Ebpf`, giving a clean teardown on shutdown.
+//!
+//! DNS-observe: attaches `dek_dns_capture` (cgroup/skb) and reads the ring
+//! buffer, parsing each datagram with hickory into a `DnsObservation` (qname +
+//! resolved A/AAAA records + TTL, floored). Observe-only; never blocks traffic.
+
+use serde::Serialize;
+use std::net::IpAddr;
+
+/// A parsed DNS observation handed to userspace consumers (telemetry / IP map).
+#[derive(Debug, Clone, Serialize)]
+pub struct DnsObservation {
+    pub cgroup_id: u64,
+    pub qname: String,
+    pub qtype: String,
+    pub answers: Vec<ResolvedRecord>,
+    pub is_response: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ResolvedRecord {
+    pub ip: IpAddr,
+    pub ttl_secs: u32,
+}
+
+/// Floor applied to record TTLs before they drive any IP-map entry. Guards the
+/// kernel-map TTL race and prevents churn from hostile/short TTLs.
+pub const MIN_TTL_FLOOR_SECS: u32 = 30;
+
 #[cfg(target_os = "linux")]
-pub mod daemon {
+pub use linux::{start_ebpfd_supervisor, EbpfHandle};
+
+#[cfg(target_os = "linux")]
+mod linux {
+    use super::{DnsObservation, ResolvedRecord, MIN_TTL_FLOOR_SECS};
     use anyhow::{Context, Result};
     use aya::{
-        programs::{CgroupSockAddr, SockAddrAttachType},
+        programs::{CgroupSkb, CgroupSkbAttachType, CgroupSockAddr, SockAddrAttachType},
         Ebpf,
     };
-    use tracing::{error, info};
+    use hickory_proto::op::{Message, MessageType};
+    use hickory_proto::rr::RData;
     use std::fs;
-    use tokio::task;
+    use std::net::IpAddr;
+    use tokio::sync::mpsc::Sender;
+    use tokio::task::{self, JoinHandle};
+    use tracing::{error, info, warn};
 
     const BPFFS_PATH: &str = "/sys/fs/bpf/pollen-dek";
 
-    pub async fn start_ebpfd_supervisor(cgroup_path: &str) -> Result<()> {
-        info!("Starting eBPFD Supervisor (Userspace daemon for WS-D)...");
+    /// Owns the loaded eBPF object + background tasks for the process lifetime.
+    /// Dropping it aborts the tasks and detaches all programs cleanly.
+    pub struct EbpfHandle {
+        tasks: Vec<JoinHandle<()>>, // declared first => aborted before `_bpf` drops
+        _bpf: Ebpf,
+    }
 
-        // Ensure BPFFS directory exists
+    impl Drop for EbpfHandle {
+        fn drop(&mut self) {
+            for t in &self.tasks {
+                t.abort();
+            }
+            // `_bpf` drops here -> aya detaches cgroup programs + closes maps.
+            info!("eBPFD: detached programs and released maps (clean teardown).");
+        }
+    }
+
+    /// Load + attach the eBPF programs and start the DNS reader. Returns a handle
+    /// the caller MUST keep alive (store it in the supervisor). Dropping it tears
+    /// everything down.
+    ///
+    /// `obs_tx`, if provided, receives every parsed DNS observation.
+    pub async fn start_ebpfd_supervisor(
+        cgroup_path: &str,
+        obs_tx: Option<Sender<DnsObservation>>,
+    ) -> Result<EbpfHandle> {
+        info!("Starting eBPFD Supervisor (network Control Point)...");
+
         if let Err(e) = fs::create_dir_all(BPFFS_PATH) {
-            error!("Failed to create BPFFS path at {}: {}", BPFFS_PATH, e);
-            // It might fail if not mounted, normally systemd mounts /sys/fs/bpf
+            warn!("Could not create BPFFS path {} ({}); is /sys/fs/bpf mounted?", BPFFS_PATH, e);
         }
-
-        // Ensure the supervised cgroup exists, separating it from DEK's own cgroup
         if let Err(e) = fs::create_dir_all(cgroup_path) {
-            error!("Failed to create supervised cgroup {}: {}", cgroup_path, e);
+            warn!("Could not create supervised cgroup {} ({})", cgroup_path, e);
         } else {
-            info!("Created/Verified scoped cgroup at {}", cgroup_path);
+            info!("Scoped cgroup ready at {}", cgroup_path);
         }
 
-        // Load BPF object (Embedded at compile time per design doc)
-        let bpf_bytes: &[u8] = include_bytes!("../dummy.o"); // Replace dummy.o with actual bytecode artifact in CI
-        
+        // Bytecode embedded at compile time (replace dummy.o with the real
+        // artifact in CI: cargo build -p dek-ebpf-prog --target bpfel-unknown-none).
+        let bpf_bytes: &[u8] = include_bytes!("../dummy.o");
         if bpf_bytes.is_empty() {
-            info!("eBPF byte code is empty (compile time placeholder). Skipping real attach.");
-            return Ok(());
+            warn!("eBPF bytecode is empty (placeholder). Returning an inert handle.");
+            // Still return a handle (with an empty Ebpf) is not possible; bail soft.
+            anyhow::bail!("eBPF bytecode placeholder is empty; build dek-ebpf-prog first");
         }
 
-        let mut bpf = Ebpf::load(bpf_bytes).context("Failed to load eBPF object")?;
+        let mut bpf = Ebpf::load(bpf_bytes).context("load eBPF object")?;
 
-        // Extract maps and pin them
-        let map_names = ["VERDICT_MAP", "PORTS_MAP", "CGROUP_POLICY_MAP", "EVENTS"];
-        for name in map_names {
+        // Pin policy maps so they persist / can be updated out-of-band.
+        for name in ["VERDICT_MAP", "PORTS_MAP", "CGROUP_POLICY_MAP", "EVENTS"] {
             if let Some(map) = bpf.map_mut(name) {
-                let pin_path = format!("{}/{}", BPFFS_PATH, name);
-                let _ = fs::remove_file(&pin_path);
-                if let Err(e) = map.pin(&pin_path) {
-                    error!("Failed to pin map {} to {}: {}", name, pin_path, e);
-                } else {
-                    info!("Pinned map {} to {}", name, pin_path);
+                let pin = format!("{}/{}", BPFFS_PATH, name);
+                let _ = fs::remove_file(&pin);
+                if let Err(e) = map.pin(&pin) {
+                    warn!("pin {} failed: {}", name, e);
                 }
             }
         }
 
-        // Attach cgroup/connect4
-        let program: &mut CgroupSockAddr = bpf
-            .program_mut("dek_connect4")
-            .context("dek_connect4 program not found")?
-            .try_into()
-            .context("Failed to get dek_connect4 program")?;
-        
-        program.load().context("Failed to load cgroup program")?;
-        
-        let cgroup = std::fs::File::open(cgroup_path)
-            .context("Failed to open cgroup path")?;
-        
-        program.attach(cgroup, SockAddrAttachType::IPv4)
-            .context("Failed to attach connect4 hook to cgroup")?;
-            
-        info!("Attached cgroup/connect4 to {}", cgroup_path);
+        // ---- connect4 guardrail (kept; permissive until enforcement) ----
+        if let Some(prog) = bpf.program_mut("dek_connect4") {
+            let p: &mut CgroupSockAddr = prog.try_into().context("connect4 program")?;
+            p.load().context("load connect4")?;
+            let cg = fs::File::open(cgroup_path).context("open cgroup (connect4)")?;
+            // NOTE: attach signature is aya-version-sensitive; mirror the repo's
+            // existing connect4 call so this stays consistent.
+            p.attach(cg, SockAddrAttachType::IPv4).context("attach connect4")?;
+            info!("Attached cgroup/connect4 to {}", cgroup_path);
+        }
 
-        // Start DNS Telemetry RingBuf Reader and Map Updater
-        let bpf_fs_path = BPFFS_PATH.to_string();
-        if let Ok(dns_events_map) = bpf.take_map("DNS_EVENTS") {
-            if let Ok(mut ring_buf) = aya::maps::AsyncRingBuf::try_from(dns_events_map) {
-                task::spawn(async move {
-                    info!("eBPFD DNS RingBuf Reader started");
-                    use hickory_proto::op::Message;
-                    use hickory_proto::rr::RecordType;
-                    use aya::maps::MapData;
-                    
-                    // We open VERDICT_MAP from the pinned path to insert IPs dynamically
-                    let verdict_map_path = format!("{}/VERDICT_MAP", bpf_fs_path);
-                    
-                    loop {
-                        if let Some(item) = ring_buf.next().await {
-                            if item.len() >= std::mem::size_of::<dek_ebpf_common::DnsCaptureEvent>() {
-                                let event: dek_ebpf_common::DnsCaptureEvent = unsafe { std::ptr::read_unaligned(item.as_ptr() as *const _) };
-                                let dlen = event.len as usize;
-                                if dlen <= event.data.len() {
-                                    if let Ok(msg) = Message::from_vec(&event.data[..dlen]) {
-                                        let queries = msg.queries();
-                                        for q in queries {
-                                            info!("DNS Query Captured: {} ({:?})", q.name(), q.query_type());
-                                        }
-                                        
-                                        // Attempt to open the map and inject IPs
-                                        if let Ok(aya::maps::Map::LpmTrie(mut map)) = aya::maps::Map::open(&verdict_map_path, aya::maps::MapData::from_fd(0)) {
-                                            for answer in msg.answers() {
-                                                if answer.record_type() == RecordType::A {
-                                                    if let Some(data) = answer.data() {
-                                                        if let Some(ip) = data.as_a() {
-                                                            let ip_u32 = u32::from_be_bytes(ip.0);
-                                                            let key = dek_ebpf_common::Ipv4LpmKey { prefix_len: 32, ip: ip_u32 };
-                                                            let verdict = dek_ebpf_common::PolicyVerdict { allow: 1, log_event: 1 };
-                                                            if let Err(e) = map.insert(&key, &verdict, 0) {
-                                                                tracing::error!("Failed to insert IP into VERDICT_MAP: {}", e);
-                                                            } else {
-                                                                info!("Added IP {} to VERDICT_MAP (DNS-observe)", ip);
-                                                                // Future: Also send this to TTL sweeper channel
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
+        // ---- DNS capture on egress (queries) + ingress (responses) ----
+        if let Some(prog) = bpf.program_mut("dek_dns_capture") {
+            let p: &mut CgroupSkb = prog.try_into().context("dns_capture program")?;
+            p.load().context("load dns_capture")?;
+            let cg_e = fs::File::open(cgroup_path).context("open cgroup (egress)")?;
+            p.attach(cg_e, CgroupSkbAttachType::Egress).context("attach egress")?;
+            let cg_i = fs::File::open(cgroup_path).context("open cgroup (ingress)")?;
+            p.attach(cg_i, CgroupSkbAttachType::Ingress).context("attach ingress")?;
+            info!("Attached cgroup/skb DNS capture (egress+ingress) to {}", cgroup_path);
+        } else {
+            warn!("dek_dns_capture program not found in object");
+        }
+
+        let mut tasks: Vec<JoinHandle<()>> = Vec::new();
+
+        // ---- DNS ring buffer reader ----
+        // AsyncRingBuf is provided by aya's async_tokio feature (matches the
+        // repo's current dependency set).
+        if let Ok(dns_map) = bpf.take_map("DNS_EVENTS") {
+            match aya::maps::AsyncRingBuf::try_from(dns_map) {
+                Ok(mut ring) => {
+                    tasks.push(task::spawn(async move {
+                        info!("eBPFD DNS ring-buffer reader started");
+                        loop {
+                            match ring.next().await {
+                                Some(item) => {
+                                    let bytes: &[u8] = &item;
+                                    if bytes.len()
+                                        < std::mem::size_of::<dek_ebpf_common::DnsCaptureEvent>()
+                                    {
+                                        continue;
+                                    }
+                                    let ev: dek_ebpf_common::DnsCaptureEvent =
+                                        unsafe { std::ptr::read_unaligned(bytes.as_ptr() as *const _) };
+                                    let dlen = (ev.len as usize).min(ev.data.len());
+                                    if let Some(obs) = parse_dns(ev.cgroup_id, &ev.data[..dlen]) {
+                                        log_observation(&obs);
+                                        if let Some(tx) = &obs_tx {
+                                            let _ = tx.try_send(obs); // drop if consumer is slow
                                         }
                                     }
                                 }
+                                None => {
+                                    // ring closed
+                                    break;
+                                }
                             }
-                        } else {
-                            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                         }
-                    }
-                });
-            } else {
-                tracing::warn!("Failed to convert DNS_EVENTS map to AsyncRingBuf");
+                    }));
+                }
+                Err(e) => warn!("DNS_EVENTS -> AsyncRingBuf failed: {e}"),
             }
         } else {
-            tracing::warn!("DNS_EVENTS map not found in eBPF program");
+            warn!("DNS_EVENTS map not found");
         }
 
-        // Start Map Compiler & TTL Sweeper Loop
-        let bpf_fs_path2 = BPFFS_PATH.to_string();
-        task::spawn(async move {
-            info!("eBPFD Map Compiler & TTL Sweeper started");
-            let mut ttl_index: std::collections::HashMap<u32, std::time::Instant> = std::collections::HashMap::new();
-            // Note: In a complete implementation, the DNS reader task would send newly observed IPs 
-            // over an mpsc::channel to this TTL sweeper loop to populate `ttl_index`.
+        info!("eBPFD ready; programs attached and held alive by EbpfHandle.");
+        Ok(EbpfHandle { tasks, _bpf: bpf })
+    }
 
-            loop {
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                let now = std::time::Instant::now();
-                let verdict_map_path = format!("{}/VERDICT_MAP", bpf_fs_path2);
-                
-                if let Ok(aya::maps::Map::LpmTrie(mut map)) = aya::maps::Map::open(&verdict_map_path, aya::maps::MapData::from_fd(0)) {
-                    ttl_index.retain(|ip, expires_at| {
-                        if now > *expires_at {
-                            info!("Evicting IP {} from VERDICT_MAP due to TTL expiration", ip);
-                            let key = dek_ebpf_common::Ipv4LpmKey { prefix_len: 32, ip: *ip };
-                            let _ = map.remove(&key);
-                            false
-                        } else {
-                            true
-                        }
-                    });
-                }
+    fn parse_dns(cgroup_id: u64, payload: &[u8]) -> Option<DnsObservation> {
+        let msg = Message::from_vec(payload).ok()?;
+        let q = msg.queries().first()?;
+        let is_response = msg.header().message_type() == MessageType::Response;
+
+        let mut answers = Vec::new();
+        for rec in msg.answers() {
+            let ttl = rec.ttl().max(MIN_TTL_FLOOR_SECS);
+            match rec.data() {
+                Some(RData::A(a)) => answers.push(ResolvedRecord { ip: IpAddr::V4(a.0), ttl_secs: ttl }),
+                Some(RData::AAAA(a)) => answers.push(ResolvedRecord { ip: IpAddr::V6(a.0), ttl_secs: ttl }),
+                _ => {}
             }
-        });
+        }
 
-        Ok(())
+        Some(DnsObservation {
+            cgroup_id,
+            qname: q.name().to_utf8(),
+            qtype: format!("{:?}", q.query_type()),
+            answers,
+            is_response,
+        })
+    }
+
+    fn log_observation(obs: &DnsObservation) {
+        if obs.answers.is_empty() {
+            info!(cgroup = obs.cgroup_id, qname = %obs.qname, qtype = %obs.qtype, "DNS query");
+        } else {
+            let ips: Vec<String> =
+                obs.answers.iter().map(|r| format!("{}({}s)", r.ip, r.ttl_secs)).collect();
+            info!(cgroup = obs.cgroup_id, qname = %obs.qname, resolved = %ips.join(","), "DNS resolved");
+        }
     }
 }
 
 #[cfg(not(target_os = "linux"))]
-pub mod daemon {
-    pub async fn start_ebpfd_supervisor(_cgroup_path: &str) -> anyhow::Result<()> {
-        tracing::warn!("eBPFD supervisor is only supported on Linux.");
-        Ok(())
-    }
+pub struct EbpfHandle;
+
+#[cfg(not(target_os = "linux"))]
+pub async fn start_ebpfd_supervisor(
+    _cgroup_path: &str,
+    _obs_tx: Option<tokio::sync::mpsc::Sender<DnsObservation>>,
+) -> anyhow::Result<EbpfHandle> {
+    tracing::warn!("eBPFD supervisor is Linux-only; app-layer enforcement remains active.");
+    Ok(EbpfHandle)
 }

@@ -46,6 +46,7 @@ pub struct Supervisor {
     cancel: CancellationToken,
     start_time: Instant,
     pending_update: Option<crate::probation::ProbationMarker>,
+    _ebpf: Option<dek_ebpfd::EbpfHandle>,
 }
 
 impl Supervisor {
@@ -57,11 +58,6 @@ impl Supervisor {
 
         let config_dir = dek_config::paths::get_config_dir();
         let pending_update = crate::probation::detect(&config_dir);
-
-        // eBPF guardrails (auto-degrades off-Linux / without CAP_BPF)
-        if let Err(e) = crate::ebpf::load_and_attach() {
-            error!("Failed to initialize eBPF Layer 2 guardrails: {e}");
-        }
 
         let bootstrap_path = env_var(
             "DEK_BOOTSTRAP_PATH",
@@ -122,6 +118,22 @@ impl Supervisor {
                 .context("build metrics mTLS client")?,
         ));
 
+        let (dns_tx, mut dns_rx) = tokio::sync::mpsc::channel::<dek_ebpfd::DnsObservation>(1024);
+        let sink = telemetry_sink.clone();
+        tokio::spawn(async move {
+            while let Some(obs) = dns_rx.recv().await {
+                sink.emit_async(serde_json::json!({
+                    "event_type": "pollen.dek.dns_observe",
+                    "cgroup_id": obs.cgroup_id,
+                    "qname": obs.qname,
+                    "answers": obs.answers,
+                    "is_response": obs.is_response,
+                }), dek_telemetry::Priority::Low);
+            }
+        });
+        
+        let _ebpf = crate::ebpf::load_and_attach(Some(dns_tx)).await;
+
         Ok(Self {
             cloud_url,
             ipc_addr,
@@ -135,6 +147,7 @@ impl Supervisor {
             cancel: CancellationToken::new(),
             start_time: Instant::now(),
             pending_update,
+            _ebpf,
         })
     }
 
