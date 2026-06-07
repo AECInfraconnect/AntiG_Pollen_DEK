@@ -19,6 +19,8 @@ dek-config = { version = "0.1.0", path = "../dek-config" }
 dek-enroll = { path = "../dek-enroll" }
 dek-spire-node = { path = "../dek-spire-node" }
 dek-keystore = { path = "../dek-keystore" }
+webbrowser = "1.2.1"
+reqwest.workspace = true
 
 [dev-dependencies]
 axum = "0.7"

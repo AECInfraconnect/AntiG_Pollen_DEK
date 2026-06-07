@@ -214,10 +214,21 @@ impl EnrollClient {
         let url = format!("{}/enroll", self.cloud_url);
         let r = self
             .with_retry("enroll", || async {
+                let os = std::env::consts::OS;
+                let arch = std::env::consts::ARCH;
+                let hostname = gethostname::gethostname().to_string_lossy().into_owned();
+
+                let payload = serde_json::json!({
+                    "os": os,
+                    "arch": arch,
+                    "hostname": hostname
+                });
+
                 let resp = self
                     .http
                     .post(&url)
                     .bearer_auth(access_token)
+                    .json(&payload)
                     .send()
                     .await
                     .map_err(|e| classify(&url, e))?;

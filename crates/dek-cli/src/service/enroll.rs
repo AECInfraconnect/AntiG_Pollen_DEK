@@ -45,14 +45,15 @@ pub async fn run(cloud_url: &str) -> Result<()> {
     let enrollment = client
         .run(|p: &UserPrompt| {
             println!("──────────────────────────────────────────────");
-            if let Some(complete) = &p.verification_uri_complete {
-                println!("  Open: {complete}");
-            } else {
-                println!("  Open: {}", p.verification_uri);
-            }
+            let url = p.verification_uri_complete.as_deref().unwrap_or(&p.verification_uri);
+            println!("  Open: {}", url);
             println!("  Enter code: {}", p.user_code);
             println!("  (expires in {}s)", p.expires_in);
             println!("──────────────────────────────────────────────\n");
+            
+            if webbrowser::open(url).is_ok() {
+                println!("(Opened browser automatically. If it didn't open, please click the link above.)");
+            }
         })
         .await
         .context("device-flow enrollment failed")?;

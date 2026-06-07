@@ -20,6 +20,7 @@ pub enum IpcRequest {
     HealthCheck,
     ReloadConfig,
     Status,
+    RotateIdentity,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,6 +30,9 @@ pub enum IpcResponse {
         core_version: String,
     },
     ReloadStatus {
+        status: String,
+    },
+    RotateStatus {
         status: String,
     },
     ServiceStatus(ServiceStatus),
