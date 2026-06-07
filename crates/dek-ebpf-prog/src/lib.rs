@@ -35,16 +35,23 @@ pub fn dek_dns_capture(ctx: aya_bpf::programs::SkBuffContext) -> i32 {
 }
 
 fn try_capture(ctx: &aya_bpf::programs::SkBuffContext) -> Result<(), ()> {
-    // Basic skeleton for UDP/53 capture. 
-    // In production, we'd parse Ethernet -> IP -> UDP -> Payload
-    // For now we just mock the payload copy.
-    let dlen = 512; // MOCK
+    // L4 payload offset for Ethernet -> IPv4 -> UDP (approx 14 + 20 + 8 = 42 bytes)
+    // In production we'd parse protocol headers accurately.
+    const UDP_PAYLOAD_OFFSET: usize = 42; 
+    let dlen = ctx.len() as usize;
+    let capture_len = if dlen > UDP_PAYLOAD_OFFSET {
+        let l = dlen - UDP_PAYLOAD_OFFSET;
+        if l > dek_ebpf_common::DNS_PAYLOAD_MAX { dek_ebpf_common::DNS_PAYLOAD_MAX } else { l }
+    } else {
+        return Ok(());
+    };
+
     if let Some(mut ev) = DNS_EVENTS.reserve::<dek_ebpf_common::DnsCaptureEvent>(0) {
         let p = ev.as_mut_ptr() as *mut dek_ebpf_common::DnsCaptureEvent;
         unsafe {
             (*p).cgroup_id = ctx.cgroup_id();
-            (*p).len = dlen as u16;
-            // ctx.load_bytes(L4_PAYLOAD_OFF, &mut (*p).data[..dlen as usize])?;
+            (*p).len = capture_len as u16;
+            let _ = ctx.load_bytes(UDP_PAYLOAD_OFFSET, &mut (*p).data[..capture_len]);
         }
         ev.submit(0);
     }
