@@ -57,6 +57,8 @@ enum Commands {
         /// action to perform: enable, disable
         action: String,
     },
+    /// Print DEK capabilities matrix
+    Capabilities,
 }
 
 #[derive(Subcommand)]
@@ -271,6 +273,17 @@ async fn main() -> Result<()> {
                     std::process::exit(1);
                 }
             }
+        }
+        Commands::Capabilities => {
+            let caps = serde_json::json!({
+                "mcp_http_pep": { "linux": true, "windows": true, "macos": true },
+                "mcp_stdio_pep": { "linux": true, "windows": true, "macos": true },
+                "network_egress_ebpf": { "linux": true, "windows": false, "macos": false },
+                "system_transparent_interception": { "linux": "limited", "windows": false, "macos": false },
+                "opt_in_proxy_redirect": { "linux": true, "windows": true, "macos": true },
+                "envoy_istio_ext_authz": { "linux": true, "windows": false, "macos": false }
+            });
+            println!("{}", serde_json::to_string_pretty(&caps)?);
         }
     }
     Ok(())

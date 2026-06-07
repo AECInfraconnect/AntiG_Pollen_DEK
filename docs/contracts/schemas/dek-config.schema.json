@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DEK Config",
+  "type": "object",
+  "properties": {
+    "version": { "type": "string" },
+    "telemetry": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "endpoint": { "type": "string", "format": "uri" }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "properties": {
+        "engine": { "type": "string", "enum": ["cedar", "openfga"] },
+        "bundle_url": { "type": "string", "format": "uri" }
+      }
+    }
+  },
+  "required": ["version", "policy"]
+}

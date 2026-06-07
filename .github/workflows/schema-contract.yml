@@ -1,0 +1,41 @@
+name: Schema Contract Validation
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'docs/contracts/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'docs/contracts/**'
+
+jobs:
+  validate_schemas:
+    name: Validate JSON Schemas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Ajv CLI
+        run: npm install -g ajv-cli
+      - name: Validate schemas
+        run: |
+          for file in docs/contracts/schemas/*.schema.json; do
+            if [ -f "$file" ]; then
+              ajv compile -s "$file" || exit 1
+            fi
+          done
+
+  validate_openapi:
+    name: Validate OpenAPI Spec
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Spectral
+        run: npm install -g @stoplight/spectral-cli
+      - name: Lint OpenAPI Spec
+        run: spectral lint docs/contracts/pollen-cloud-dek-api.openapi.yaml --fail-severity=error
