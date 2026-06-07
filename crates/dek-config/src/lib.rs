@@ -143,7 +143,7 @@ impl DekConfig {
         let client = bootstrap.mtls.build_client(None)?;
 
         let url = format!("{}/config/{}", endpoint_base, bootstrap.device_id);
-        println!("Fetching dynamic config from cloud over MTLS: {}", url);
+        tracing::info!("Fetching dynamic config from cloud over MTLS: {}", url);
 
         let res = client.get(&url).send().await?;
         if !res.status().is_success() {

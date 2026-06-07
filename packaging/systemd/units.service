@@ -1,9 +1,12 @@
-# ----------------------------------------------------------------------------
-# /etc/systemd/system/pollen-dek.service
-# ----------------------------------------------------------------------------
+# ============================================================================
+# packaging/systemd/pollen-dek.service
+# ============================================================================
 [Unit]
-Description=Pollen DEK Core Supervisor
-After=network.target
+Description=Pollen DEK Core Supervisor (PEP)
+After=network-online.target
+Wants=network-online.target
+# After too many rapid restarts, systemd marks the unit failed -> OnFailure fires.
+OnFailure=dek-rollback.service
 
 [Service]
 Type=notify
@@ -11,36 +14,53 @@ ExecStart=/usr/local/bin/dek-core
 Restart=on-failure
 RestartSec=2
 
-# Health gating and Watchdog
+# Detect "started but wedged": dek-core must sd_notify WATCHDOG=1 periodically
+# (it already calls sd_notify in service_integration.rs). If it stops pinging,
+# systemd kills + restarts it. Probation also sends one Watchdog notify on entry.
 WatchdogSec=30
 
-# Prevent crash-looping (if it crashes 5 times in 60 seconds, stop restarting)
+# Crash-loop containment: >5 failures within 60s => stop trying (and OnFailure
+# -> dek-rollback). This is the safety net for a new binary that can't recover.
 StartLimitIntervalSec=60
 StartLimitBurst=5
 
-# Emergency rollback when hitting the StartLimit (unrecoverable new binary)
-OnFailure=dek-rollback.service
+# eBPF needs these (Linux); without them, dek-core auto-degrades to app-layer.
+AmbientCapabilities=CAP_BPF CAP_NET_ADMIN CAP_PERFMON
+# Least privilege otherwise.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
 
-# Least-privilege capabilities for eBPF
-AmbientCapabilities=CAP_BPF CAP_NET_ADMIN
-
+# systemd creates these with correct ownership/permissions; code reads them via
+# dek-config::paths (which honor the matching env vars).
 ConfigurationDirectory=pollen-dek
 StateDirectory=pollen-dek
 LogsDirectory=pollen-dek
 RuntimeDirectory=pollen-dek
+Environment=DEK_CONFIG_DIR=/etc/pollen-dek
+Environment=DEK_STATE_DIR=/var/lib/pollen-dek
+Environment=DEK_LOG_DIR=/var/log/pollen-dek
+Environment=DEK_RUNTIME_DIR=/run/pollen-dek
 
 [Install]
 WantedBy=multi-user.target
 
 
+# ============================================================================
+# packaging/systemd/dek-rollback.service
 # ----------------------------------------------------------------------------
-# /etc/systemd/system/dek-rollback.service
-# ----------------------------------------------------------------------------
+# Oneshot triggered by pollen-dek.service OnFailure (i.e. after the new binary
+# exhausts its restart budget). Runs `dekctl rollback`, which restores the .bak
+# and restarts pollen-dek. Because pollen-dek is stopped at this point, the
+# binary file is unlocked and the copy succeeds on every OS.
+# ============================================================================
 [Unit]
-Description=Pollen DEK Core Supervisor Rollback
-DefaultDependencies=no
-After=network.target
+Description=Pollen DEK A/B Rollback
+# Don't let a rollback failure itself trigger another OnFailure loop.
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/dekctl rollback
+# Give it room but don't hang forever.
+TimeoutStartSec=60

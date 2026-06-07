@@ -156,7 +156,7 @@ async fn main() -> Result<()> {
             }
         }
         Commands::Rollback => {
-            if let Err(e) = service::rollback::execute_rollback() {
+            if let Err(e) = service::rollback::run() {
                 error!("Rollback failed: {}", e);
                 std::process::exit(1);
             }

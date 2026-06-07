@@ -1,3 +1,5 @@
+#![warn(clippy::print_stdout, clippy::print_stderr)]
+#![deny(clippy::unwrap_used, clippy::expect_used)]
 use anyhow::Result;
 use dek_policy_runtime::{PolicyDecision, PolicyRuntime};
 use serde::{Deserialize, Serialize};
@@ -46,6 +48,12 @@ impl PolicyRouter {
         self.routes = routes;
     }
 
+    pub async fn clear_caches(&self) {
+        for evaluator in self.evaluators.values() {
+            evaluator.clear_cache().await;
+        }
+    }
+
     pub async fn authorize(&self, payload: serde_json::Value) -> Result<PolicyDecision> {
         // Support both old nested schema and new NormalizedMcpEvent schema
         let method = payload
@@ -87,7 +95,7 @@ impl PolicyRouter {
             }
         };
 
-        println!("== Adaptive Routing: Matched Route '{}' ==", route.id);
+        tracing::info!("== Adaptive Routing: Matched Route '{}' ==", route.id);
 
         let mut combined_decision = PolicyDecision {
             evaluator_id: "router_combiner".into(),
@@ -112,36 +120,53 @@ impl PolicyRouter {
 
         for ev_id in to_evaluate {
             if let Some(evaluator) = self.evaluators.get(&ev_id) {
-                let res = evaluator.evaluate(payload.clone()).await?;
-                println!("Evaluator {} returned: {}", ev_id, res.decision);
+                match evaluator.evaluate(payload.clone()).await {
+                    Ok(res) => {
+                        tracing::info!("Evaluator {} returned: {}", ev_id, res.decision);
 
-                // Combine obligations
-                combined_decision
-                    .obligations
-                    .extend(res.obligations.clone());
+                        // Combine obligations
+                        combined_decision
+                            .obligations
+                            .extend(res.obligations.clone());
 
-                // Merge effects (simple mock merge)
-                if let serde_json::Value::Object(mut combined_map) =
-                    combined_decision.effects.clone()
-                {
-                    if let serde_json::Value::Object(res_map) = res.effects.clone() {
-                        for (k, v) in res_map {
-                            combined_map.insert(k, v);
+                        // Merge effects (simple mock merge)
+                        if let serde_json::Value::Object(mut combined_map) =
+                            combined_decision.effects.clone()
+                        {
+                            if let serde_json::Value::Object(res_map) = res.effects.clone() {
+                                for (k, v) in res_map {
+                                    combined_map.insert(k, v);
+                                }
+                            }
+                            combined_decision.effects = serde_json::Value::Object(combined_map);
+                        }
+
+                        if !res.allow {
+                            // Deny overrides
+                            combined_decision.allow = false;
+                            combined_decision.decision = "deny".into();
+                            combined_decision.reason = format!("Blocked by {}", ev_id);
+                            // Short-circuit on deny
+                            break;
                         }
                     }
-                    combined_decision.effects = serde_json::Value::Object(combined_map);
-                }
-
-                if !res.allow {
-                    // Deny overrides
-                    combined_decision.allow = false;
-                    combined_decision.decision = "deny".into();
-                    combined_decision.reason = format!("Blocked by {}", ev_id);
-                    // Short-circuit on deny
-                    break;
+                    Err(dek_policy_runtime::PolicyError::Unavailable(msg)) => {
+                        tracing::warn!("required PDP unavailable: {msg}; failing closed");
+                        combined_decision.allow = false;
+                        combined_decision.decision = "deny".into();
+                        combined_decision.reason = format!("required PDP unavailable: {}", msg);
+                        break;
+                    }
+                    Err(e) => {
+                        tracing::warn!("PDP error: {e}; failing closed");
+                        combined_decision.allow = false;
+                        combined_decision.decision = "deny".into();
+                        combined_decision.reason = format!("PDP error: {}", e);
+                        break;
+                    }
                 }
             } else {
-                println!(
+                tracing::warn!(
                     "Error: Required evaluator {} not found. Failing closed.",
                     ev_id
                 );

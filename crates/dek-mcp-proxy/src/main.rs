@@ -1,3 +1,5 @@
+#![warn(clippy::print_stdout, clippy::print_stderr)]
+#![deny(clippy::unwrap_used, clippy::expect_used)]
 use anyhow::Result;
 use axum::{
     extract::State,
@@ -51,8 +53,11 @@ async fn main() -> Result<()> {
         tenant_id: tenant_id.clone(),
         device_id: device_id.clone(),
         spiffe_id: None,
+        jwt_public_key_pem: None,
+        jwks: None,
+        issuer_url: None,
+        audience: None,
     };
-    let mut initial_verifier_cfg = dek_auth::VerifierConfig::default();
 
     // Attempt to load from staged bundle first
     let bundle_path_buf = dek_config::paths::get_active_bundle_path();
@@ -70,19 +75,19 @@ async fn main() -> Result<()> {
                 }
                 if let Some(jwt_cfg) = payload.get("jwt_config") {
                     if let Some(pem) = jwt_cfg.get("public_key_pem").and_then(|v| v.as_str()) {
-                        initial_verifier_cfg.public_key_pem = Some(pem.to_string());
+                        initial_metadata.jwt_public_key_pem = Some(pem.to_string());
                     }
                     if let Some(jwks_val) = jwt_cfg.get("jwks") {
                         if let Ok(jwks) = serde_json::from_value(jwks_val.clone()) {
-                            initial_verifier_cfg.jwks = Some(jwks);
+                            initial_metadata.jwks = Some(jwks);
                         }
                     }
                     if let Some(issuer) = jwt_cfg.get("issuer_url").and_then(|v| v.as_str()) {
-                        initial_verifier_cfg.issuer = Some(issuer.to_string());
+                        initial_metadata.issuer_url = Some(issuer.to_string());
                     }
                     if let Some(aud_val) = jwt_cfg.get("audience") {
                         if let Ok(aud) = serde_json::from_value(aud_val.clone()) {
-                            initial_verifier_cfg.audience = Some(aud);
+                            initial_metadata.audience = Some(aud);
                         }
                     }
                 }
@@ -115,17 +120,13 @@ async fn main() -> Result<()> {
         }
     }
 
-    let initial_snapshot = PolicySnapshot {
-        metadata: initial_metadata,
-        verifier: dek_auth::Verifier::new(initial_verifier_cfg),
-        router,
-    };
+    let initial_snapshot = PolicySnapshot::build(router, initial_metadata);
 
-    let state = Arc::new(AppState::new(
+    let state = AppState::new(
         WasmtimePluginHost::new(plugin_paths)?,
         HttpTransportAdapter,
         initial_snapshot,
-    ));
+    );
 
     // Start background file watcher for hot-reloading
     let state_clone = state.clone();
@@ -179,7 +180,6 @@ async fn main() -> Result<()> {
 
                                     let old_snapshot = state_clone.snapshot.load();
                                     let mut metadata_clone = old_snapshot.metadata.clone();
-                                    let mut verifier_cfg = dek_auth::VerifierConfig::default();
                                     if let Some(t) =
                                         payload.get("tenant_id").and_then(|v| v.as_str())
                                     {
@@ -194,30 +194,29 @@ async fn main() -> Result<()> {
                                         if let Some(pem) =
                                             jwt_cfg.get("public_key_pem").and_then(|v| v.as_str())
                                         {
-                                            verifier_cfg.public_key_pem =
+                                            metadata_clone.jwt_public_key_pem =
                                                 Some(pem.to_string());
                                         }
                                         if let Some(jwks_val) = jwt_cfg.get("jwks") {
                                             if let Ok(jwks) = serde_json::from_value(jwks_val.clone()) {
-                                                verifier_cfg.jwks = Some(jwks);
+                                                metadata_clone.jwks = Some(jwks);
                                             }
                                         }
                                         if let Some(issuer) = jwt_cfg.get("issuer_url").and_then(|v| v.as_str()) {
-                                            verifier_cfg.issuer = Some(issuer.to_string());
+                                            metadata_clone.issuer_url = Some(issuer.to_string());
                                         }
                                         if let Some(aud_val) = jwt_cfg.get("audience") {
                                             if let Ok(aud) = serde_json::from_value(aud_val.clone()) {
-                                                verifier_cfg.audience = Some(aud);
+                                                metadata_clone.audience = Some(aud);
                                             }
                                         }
                                     }
 
-                                    let new_snapshot = PolicySnapshot {
-                                        metadata: metadata_clone,
-                                        verifier: dek_auth::Verifier::new(verifier_cfg),
-                                        router: new_router,
-                                    };
-                                    state_clone.snapshot.store(Arc::new(new_snapshot));
+                                    // Clear cache of the old router before replacing
+                                    old_snapshot.router.clear_caches().await;
+
+                                    let new_snapshot = PolicySnapshot::build(new_router, metadata_clone);
+                                    state_clone.reload(new_snapshot);
 
                                     info!("Hot-reloaded policies and metadata from disk successfully!");
                                 } else {

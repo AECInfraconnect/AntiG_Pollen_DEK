@@ -1,4 +1,11 @@
+//! ipc_server.rs — local IPC endpoint (health / status / reload).
+//!
+//! Lifted verbatim from `main.rs::spawn_ipc_server_task`, made `pub`, with the
+//! IPC constants moved here. Behaviour is unchanged: bounded concurrency
+//! (Semaphore), per-connection span, LinesCodec framing, graceful drain.
+
 use anyhow::Result;
+use dek_bundle_sync::BundleSyncAgent;
 use dek_ipc::{IpcMessage, IpcRequest, IpcResponse};
 use dek_telemetry::CloudTelemetrySink;
 use futures::{SinkExt, StreamExt};
@@ -15,15 +22,15 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn, Instrument};
 use uuid::Uuid;
 
-const IPC_READ_TIMEOUT_SECS: u64 = 5;
-const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
-const IPC_MAX_CONCURRENT_CONNECTIONS: usize = 32;
+pub const IPC_READ_TIMEOUT_SECS: u64 = 5;
+pub const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
+pub const IPC_MAX_CONCURRENT_CONNECTIONS: usize = 32;
 
 pub async fn spawn_ipc_server_task(
     cancel_token: CancellationToken,
     ipc_listen_addr: String,
     telemetry_sink: Arc<CloudTelemetrySink>,
-    bundle_agent: Arc<dek_bundle_sync::BundleSyncAgent>,
+    bundle_agent: Arc<BundleSyncAgent>,
     metrics_client: Arc<RwLock<reqwest::Client>>,
     start_time: Instant,
 ) -> Result<JoinHandle<()>> {
@@ -71,7 +78,6 @@ pub async fn spawn_ipc_server_task(
                                 async move {
                                     let _permit = permit; // Drop when handler finishes -> slot returned
                                     let start = Instant::now();
-
                                     info!("Handling IPC connection");
 
                                     let codec = LinesCodec::new_with_max_length(IPC_MAX_LINE_BYTES);
@@ -97,16 +103,13 @@ pub async fn spawn_ipc_server_task(
                                                 },
                                                 IpcRequest::Status => {
                                                     let uptime = start_time.elapsed().as_secs();
-                                                    
                                                     let bundle_path = dek_config::paths::get_active_bundle_path();
                                                     let bundle_version = std::fs::read_to_string(&bundle_path)
                                                         .ok()
                                                         .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
                                                         .and_then(|v| v.get("id").and_then(|id| id.as_str()).map(|s| s.to_string()));
-                                                    
-                                                    let ebpf_active = cfg!(target_os = "linux"); 
+                                                    let ebpf_active = cfg!(target_os = "linux");
                                                     let update_state = "IDLE".to_string();
-
                                                     IpcResponse::ServiceStatus(dek_ipc::ServiceStatus {
                                                         uptime_seconds: uptime,
                                                         ebpf_active,
@@ -151,10 +154,7 @@ pub async fn spawn_ipc_server_task(
                                                     }
                                                 }
                                             };
-                                            let res_msg = IpcMessage {
-                                                version: req_msg.version,
-                                                payload: res,
-                                            };
+                                            let res_msg = IpcMessage { version: req_msg.version, payload: res };
                                             if let Ok(res_str) = serde_json::to_string(&res_msg) {
                                                 if let Err(e) = framed.send(res_str).await {
                                                     error!("Failed to send IPC response: {}", e);
@@ -166,7 +166,6 @@ pub async fn spawn_ipc_server_task(
                                                 "event_type": "pollen.dek.ipc_error",
                                                 "error": "parse_failure"
                                             })).await;
-
                                             let err_msg = IpcMessage {
                                                 version: "1.0".to_string(),
                                                 payload: IpcResponse::Error("Failed to parse request".to_string()),
@@ -200,10 +199,9 @@ pub async fn spawn_ipc_server_task(
                 }
             }
         }
-        
+
         info!("IPC Listener task has exited the loop!");
 
-        // Wait for active handlers to finish
         match timeout(Duration::from_secs(10), async {
             while let Some(res) = ipc_join_set.join_next().await {
                 if let Err(e) = res {
@@ -214,9 +212,7 @@ pub async fn spawn_ipc_server_task(
         .await
         {
             Ok(_) => info!("All active IPC connections closed gracefully."),
-            Err(_) => warn!(
-                "Grace period expired! Forcefully terminating remaining active IPC connections."
-            ),
+            Err(_) => warn!("Grace period expired! Forcefully terminating remaining active IPC connections."),
         }
     }))
 }

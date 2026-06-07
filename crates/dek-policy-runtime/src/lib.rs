@@ -1,5 +1,22 @@
-use anyhow::Result;
+#![warn(clippy::print_stdout, clippy::print_stderr)]
+#![deny(clippy::unwrap_used, clippy::expect_used)]
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum PolicyError {
+    /// PDP backend is unavailable (network/timeout)
+    #[error("policy backend unavailable: {0}")]
+    Unavailable(String),
+    /// Invalid policy or input format (parse/validation)
+    #[error("invalid policy or input: {0}")]
+    Invalid(String),
+    /// Other evaluation errors
+    #[error("evaluation error: {0}")]
+    Eval(String),
+}
+
+pub type PolicyResult = std::result::Result<PolicyDecision, PolicyError>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyDecision {
@@ -19,8 +36,9 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait PolicyRuntime: Send + Sync {
-    async fn evaluate(&self, input: serde_json::Value) -> Result<PolicyDecision>;
+    async fn evaluate(&self, input: serde_json::Value) -> PolicyResult;
     fn version(&self) -> String;
+    async fn clear_cache(&self) {}
 }
 
 // Replaced with uniform PolicyDecision schema
@@ -31,7 +49,7 @@ pub struct MockPolicyRuntime;
 
 #[async_trait]
 impl PolicyRuntime for MockPolicyRuntime {
-    async fn evaluate(&self, input: serde_json::Value) -> Result<PolicyDecision> {
+    async fn evaluate(&self, input: serde_json::Value) -> PolicyResult {
         // A simple mock matching the SRS Appendix A policy:
         // allow if mcp.method == "tools/call" and mcp.tool_name == "safe.echo"
         let allow = if let Some(mcp) = input.get("mcp") {
@@ -103,8 +121,8 @@ impl WasmtimePolicyRuntime {
 
 #[async_trait]
 impl PolicyRuntime for WasmtimePolicyRuntime {
-    async fn evaluate(&self, input: serde_json::Value) -> Result<PolicyDecision> {
-        let input_str = serde_json::to_string(&input)?;
+    async fn evaluate(&self, input: serde_json::Value) -> PolicyResult {
+        let input_str = serde_json::to_string(&input).map_err(|e| PolicyError::Invalid(e.to_string()))?;
         let stdin = MemoryInputPipe::new(bytes::Bytes::from(input_str.into_bytes()));
         let stdout = MemoryOutputPipe::new(10 * 1024 * 1024); // 10MB capacity
 
@@ -117,8 +135,10 @@ impl PolicyRuntime for WasmtimePolicyRuntime {
         let mut store = Store::new(&self.engine, wasi);
 
         // Run plugin from pre-compiled module (thread-safe, concurrent)
-        let instance = self.instance_pre.instantiate(&mut store)?;
-        let func = instance.get_typed_func::<(), ()>(&mut store, "_start")?;
+        let instance = self.instance_pre.instantiate(&mut store)
+            .map_err(|e| PolicyError::Eval(format!("instantiate: {e}")))?;
+        let func = instance.get_typed_func::<(), ()>(&mut store, "_start")
+            .map_err(|e| PolicyError::Eval(format!("get _start: {e}")))?;
 
         let mut reason = "Executed WASM policy".to_string();
         let mut allow = false;

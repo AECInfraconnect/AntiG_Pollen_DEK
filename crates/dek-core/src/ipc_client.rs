@@ -1,53 +1,68 @@
+//! ipc_client.rs — minimal client for the local DEK IPC endpoint.
+//!
+//! Used by the probation health-probe (and reusable by `dekctl health`).
+//! Speaks the exact wire format of the IPC server in `main.rs`:
+//! newline-delimited JSON of `IpcMessage<IpcRequest>` / `IpcMessage<IpcResponse>`
+//! over `LinesCodec`, version string "1.x".
+
+use anyhow::{Context, Result};
 use dek_ipc::{IpcMessage, IpcRequest, IpcResponse};
 use futures::{SinkExt, StreamExt};
+use std::time::Duration;
 use tokio::net::TcpStream;
-use tokio::time::{timeout, Duration};
+use tokio::time::timeout;
 use tokio_util::codec::{Framed, LinesCodec};
-use tracing::{debug, error};
 
-/// Sends a health check request to the local IPC endpoint using LinesCodec.
-pub async fn ipc_health_ok(addr: &str) -> bool {
-    let connect_timeout = Duration::from_secs(2);
-    let stream = match timeout(connect_timeout, TcpStream::connect(addr)).await {
-        Ok(Ok(s)) => s,
-        _ => {
-            debug!("Failed to connect to IPC endpoint at {}", addr);
-            return false;
+const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
+const IPC_TIMEOUT: Duration = Duration::from_secs(2);
+const IPC_VERSION: &str = "1.0";
+
+/// Liveness + readiness probe: connect, do a HealthCheck roundtrip, and require
+/// the server to report "HEALTHY". Any failure (connect/timeout/parse/non-healthy)
+/// returns `false` — callers treat that as "not yet healthy".
+pub async fn health_ok(addr: &str) -> bool {
+    match health_roundtrip(addr).await {
+        Ok(true) => true,
+        Ok(false) => {
+            tracing::warn!("ipc health probe: server did not report HEALTHY");
+            false
         }
-    };
+        Err(e) => {
+            tracing::warn!("ipc health probe failed: {e}");
+            false
+        }
+    }
+}
 
-    let mut framed = Framed::new(stream, LinesCodec::new_with_max_length(64 * 1024));
+async fn health_roundtrip(addr: &str) -> Result<bool> {
+    let stream = timeout(IPC_TIMEOUT, TcpStream::connect(addr))
+        .await
+        .context("ipc connect timed out")?
+        .context("ipc connect failed")?;
+
+    let mut framed = Framed::new(stream, LinesCodec::new_with_max_length(IPC_MAX_LINE_BYTES));
 
     let req = IpcMessage {
-        version: "1.0".to_string(),
+        version: IPC_VERSION.to_string(),
         payload: IpcRequest::HealthCheck,
     };
+    let line = serde_json::to_string(&req).context("serialize ipc request")?;
+    timeout(IPC_TIMEOUT, framed.send(line))
+        .await
+        .context("ipc send timed out")?
+        .context("ipc send failed")?;
 
-    let req_json = match serde_json::to_string(&req) {
-        Ok(json) => json,
-        Err(e) => {
-            error!("Failed to serialize health check request: {}", e);
-            return false;
-        }
-    };
+    let resp_line = timeout(IPC_TIMEOUT, framed.next())
+        .await
+        .context("ipc read timed out")?
+        .context("ipc connection closed before response")?
+        .context("ipc read error")?;
 
-    if let Err(e) = framed.send(req_json).await {
-        debug!("Failed to send health check to IPC: {}", e);
-        return false;
-    }
+    let resp: IpcMessage<IpcResponse> =
+        serde_json::from_str(&resp_line).context("parse ipc response")?;
 
-    match timeout(Duration::from_secs(3), framed.next()).await {
-        Ok(Some(Ok(line))) => {
-            if let Ok(res_msg) = serde_json::from_str::<IpcMessage<IpcResponse>>(&line) {
-                if let IpcResponse::HealthStatus { status, .. } = res_msg.payload {
-                    return status == "HEALTHY";
-                }
-            }
-        }
-        Ok(Some(Err(e))) => debug!("Error reading IPC response: {}", e),
-        Ok(None) => debug!("IPC stream closed before response"),
-        Err(_) => debug!("IPC response timed out"),
-    }
-
-    false
+    Ok(matches!(
+        resp.payload,
+        IpcResponse::HealthStatus { status, .. } if status == "HEALTHY"
+    ))
 }

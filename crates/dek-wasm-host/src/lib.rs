@@ -1,13 +1,25 @@
-use anyhow::{Context, Result};
+#![warn(clippy::print_stdout, clippy::print_stderr)]
+#![deny(clippy::unwrap_used, clippy::expect_used)]
 use serde_json::Value;
 use std::collections::HashMap;
+use thiserror::Error;
 use wasmtime::*;
 use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
 use wasmtime_wasi::preview1;
 use wasmtime_wasi::WasiCtxBuilder;
 
-pub trait PluginHost {
-    fn invoke(&self, plugin_id: &str, input: Value) -> Result<Value>;
+#[derive(Debug, Error)]
+pub enum PluginError {
+    #[error("Plugin not found: {0}")]
+    NotFound(String),
+    #[error("Execution error: {0}")]
+    Execution(String),
+    #[error("Invalid input or output format: {0}")]
+    InvalidFormat(String),
+}
+
+pub trait PluginHost: Send + Sync {
+    fn invoke(&self, plugin_id: &str, input: Value) -> std::result::Result<Value, PluginError>;
 }
 
 pub struct WasmtimePluginHost {
@@ -18,7 +30,7 @@ pub struct WasmtimePluginHost {
 use sha2::{Sha256, Digest};
 
 impl WasmtimePluginHost {
-    pub fn new(plugin_paths: HashMap<String, String>) -> Result<Self> {
+    pub fn new(plugin_paths: HashMap<String, String>) -> anyhow::Result<Self> {
         let engine = Engine::default();
         let mut instances_pre = HashMap::new();
 
@@ -50,11 +62,11 @@ impl WasmtimePluginHost {
                 }
 
                 let module = Module::from_file(&engine, &path)
-                    .with_context(|| format!("Failed to load plugin WASM module: {}", path))?;
+                    .map_err(|e| anyhow::anyhow!("Failed to load plugin WASM module: {}: {}", path, e))?;
                 let instance_pre = linker.instantiate_pre(&module)?;
                 instances_pre.insert(plugin_id, instance_pre);
             } else {
-                eprintln!("Plugin path not found: {}", path);
+                tracing::warn!("Plugin path not found: {}", path);
             }
         }
 
@@ -66,13 +78,13 @@ impl WasmtimePluginHost {
 }
 
 impl PluginHost for WasmtimePluginHost {
-    fn invoke(&self, plugin_id: &str, input: Value) -> Result<Value> {
+    fn invoke(&self, plugin_id: &str, input: Value) -> std::result::Result<Value, PluginError> {
         let instance_pre = self
             .instances_pre
             .get(plugin_id)
-            .ok_or_else(|| anyhow::anyhow!("Unknown or uninitialized plugin: {}", plugin_id))?;
+            .ok_or_else(|| PluginError::NotFound(plugin_id.to_string()))?;
 
-        let input_str = serde_json::to_string(&input)?;
+        let input_str = serde_json::to_string(&input).map_err(|e| PluginError::InvalidFormat(e.to_string()))?;
         let stdin = MemoryInputPipe::new(bytes::Bytes::from(input_str.into_bytes()));
         let stdout = MemoryOutputPipe::new(10 * 1024 * 1024);
 
@@ -85,15 +97,19 @@ impl PluginHost for WasmtimePluginHost {
         let mut store = Store::new(&self.engine, wasi);
 
         // Instantiate and run _start
-        let instance = instance_pre.instantiate(&mut store)?;
-        let func = instance.get_typed_func::<(), ()>(&mut store, "_start")?;
-        func.call(&mut store, ())?;
+        let instance = instance_pre.instantiate(&mut store)
+            .map_err(|e| PluginError::Execution(format!("Instantiate failed: {}", e)))?;
+        let func = instance.get_typed_func::<(), ()>(&mut store, "_start")
+            .map_err(|e| PluginError::Execution(format!("Missing _start function: {}", e)))?;
+        func.call(&mut store, ())
+            .map_err(|e| PluginError::Execution(format!("Execution failed: {}", e)))?;
 
         // Read output produced by WASI guest via memory pipe
         let out_bytes = stdout.contents();
         let output_str = String::from_utf8_lossy(&out_bytes);
 
-        let output_val: Value = serde_json::from_str(&output_str)?;
+        let output_val: Value = serde_json::from_str(&output_str)
+            .map_err(|e| PluginError::InvalidFormat(format!("Failed to parse output JSON: {}", e)))?;
 
         Ok(output_val)
     }
