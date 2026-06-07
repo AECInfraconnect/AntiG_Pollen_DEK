@@ -20,6 +20,7 @@ pub fn spawn_bundle_sync_task(
     bundle_sync_interval: u64,
     metrics_client: Arc<RwLock<reqwest::Client>>,
     pinned_key: String,
+    reload_coordinator: Arc<crate::reload_coordinator::ReloadCoordinator>,
 ) -> JoinHandle<()> {
     tokio::spawn(
         async move {
@@ -33,8 +34,13 @@ pub fn spawn_bundle_sync_task(
                     _ = sleep(Duration::from_secs(bundle_sync_interval)) => {
                         debug!("Running unified bundle sync pipeline...");
                         match timeout(Duration::from_secs(30), sync_agent.run_pipeline()).await {
-                            Ok(Ok(new_config)) => {
+                            Ok(Ok((new_config, staged_path))) => {
                                 counter!("dek_core_bundle_sync_success_total").increment(1);
+                                if let Err(e) = reload_coordinator.process_staged_bundle(&new_config, &staged_path).await {
+                                    error!("Bundle Activation Failed: {}", e);
+                                    counter!("dek_core_bundle_activation_errors_total").increment(1);
+                                }
+
                                 if let Some(update) = new_config.update_config {
                                     if update.version != current_version {
                                         info!("New binary update found: version {}", update.version);

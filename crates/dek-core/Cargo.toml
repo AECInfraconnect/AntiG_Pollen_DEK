@@ -6,9 +6,14 @@ edition = "2021"
 [dependencies]
 dek-config = { path = "../dek-config" }
 dek-ipc = { path = "../dek-ipc" }
+dek-policy-router = { path = "../dek-policy-router" }
+dek-openfga = { path = "../dek-openfga" }
+dek-cedar = { path = "../dek-cedar" }
+dek-router-builder = { path = "../dek-router-builder" }
 dek-telemetry = { path = "../dek-telemetry" }
 dek-bundle-sync = { path = "../dek-bundle-sync" }
 dek-keystore = { path = "../dek-keystore" }
+dek-agent-connector = { path = "../dek-agent-connector" }
 dek-spire-node = { path = "../dek-spire-node" }
 tokio.workspace = true
 tokio-util = { version = "0.7", features = ["codec"] }

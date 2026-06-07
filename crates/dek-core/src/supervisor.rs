@@ -137,6 +137,8 @@ impl Supervisor {
     }
 
     pub async fn run(mut self) -> Result<()> {
+        let reload_coordinator = Arc::new(crate::reload_coordinator::ReloadCoordinator::new());
+
         // 1) IPC first so probation/dekctl can probe immediately.
         let ipc_handle: JoinHandle<()> = crate::ipc_server::spawn_ipc_server_task(
             self.cancel.clone(),
@@ -145,18 +147,21 @@ impl Supervisor {
             self.bundle_agent.clone(),
             self.metrics_client.clone(),
             self.start_time,
+            reload_coordinator.clone(),
         )
         .await?;
 
         crate::service_integration::notify_ready();
 
         // 2) Bundle sync + auto-update loop.
+
         let bundle_handle = crate::bundle_loop::spawn_bundle_sync_task(
             self.cancel.clone(),
             self.bundle_agent.clone(),
             self.bundle_interval,
             self.metrics_client.clone(),
             self.pinned_key.clone(),
+            reload_coordinator.clone(),
         );
 
         // 3) Probation finalize (only if an update is on trial). After services up.

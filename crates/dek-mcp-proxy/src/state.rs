@@ -10,7 +10,7 @@
 //!     dek-auth = { path = "../dek-auth" }
 //!     # jsonwebtoken can be dropped here once all JWT logic lives in dek-auth
 
-use arc_swap::ArcSwap;
+use arc_swap::{ArcSwap, ArcSwapOption};
 use dek_auth::{Verifier, VerifierConfig};
 use dek_policy_router::PolicyRouter;
 use dek_wasm_host::WasmtimePluginHost;
@@ -49,12 +49,13 @@ impl PolicySnapshot {
         Self { router, metadata, verifier }
     }
 }
-
 pub struct AppState {
     pub plugin_host: WasmtimePluginHost,
     pub http_adapter: HttpTransportAdapter,
     /// Lock-free, atomically swappable policy snapshot.
     pub snapshot: ArcSwap<PolicySnapshot>,
+    /// Shadow snapshot for parallel evaluation.
+    pub shadow_snapshot: ArcSwapOption<PolicySnapshot>,
 }
 
 impl AppState {
@@ -67,12 +68,18 @@ impl AppState {
             plugin_host,
             http_adapter,
             snapshot: ArcSwap::from_pointee(initial),
+            shadow_snapshot: ArcSwapOption::empty(),
         })
     }
 
     /// Atomic hot-reload — called by the bundle file-watcher.
     pub fn reload(&self, snapshot: PolicySnapshot) {
         self.snapshot.store(Arc::new(snapshot));
+    }
+
+    /// Atomic hot-reload of the shadow bundle.
+    pub fn reload_shadow(&self, snapshot: PolicySnapshot) {
+        self.shadow_snapshot.store(Some(Arc::new(snapshot)));
     }
 }
 

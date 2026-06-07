@@ -134,6 +134,23 @@ pub struct UpdateConfig {
     pub version: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ActivationMode {
+    #[default]
+    Full,
+    ObserveOnly,
+    Shadow,
+    Canary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PreflightTest {
+    pub name: String,
+    pub input: serde_json::Value,
+    pub expected_decision: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DekConfig {
     pub device_id: String,
@@ -143,6 +160,10 @@ pub struct DekConfig {
     pub policy_config: Option<PolicyConfig>,
     pub jwt_config: Option<JwtConfig>,
     pub update_config: Option<UpdateConfig>,
+    #[serde(default)]
+    pub activation_mode: ActivationMode,
+    #[serde(default)]
+    pub preflight_tests: Vec<PreflightTest>,
 }
 
 impl DekConfig {
