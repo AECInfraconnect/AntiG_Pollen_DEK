@@ -11,6 +11,7 @@ mod ipc_client;
 mod probation;
 mod supervisor;
 mod metrics_push;
+mod svid_renewal;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

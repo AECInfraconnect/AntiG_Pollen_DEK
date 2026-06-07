@@ -56,7 +56,10 @@ async fn main() -> Result<()> {
                 client_key_path: "certs/client.key".to_string(),
                 root_ca_path: "certs/root_ca.crt".to_string(),
             },
-            pinned_bundle_public_key: "xQyzrpVpR6jeGRNbW+JoX/NIr8Y/w0qDesoSvFwfViU=".to_string(),
+            pinned_bundle_public_key: "".to_string(),
+            cloud_url: String::new(),
+            spiffe_id: None,
+            tenant_id: None,
         });
 
     let mut tenant_id = "default-tenant".to_string();

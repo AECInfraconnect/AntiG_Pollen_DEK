@@ -1,6 +1,7 @@
 use anyhow::Result;
 
 pub mod rollback;
+pub mod enroll;
 
 pub trait ServiceManager {
     fn install(&self) -> Result<()>;

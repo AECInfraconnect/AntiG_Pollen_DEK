@@ -63,18 +63,24 @@ impl Supervisor {
             error!("Failed to initialize eBPF Layer 2 guardrails: {e}");
         }
 
-        let cloud_url = env_var("POLLEN_CLOUD_URL", "https://127.0.0.1:43891");
+        let bootstrap_path = env_var(
+            "DEK_BOOTSTRAP_PATH",
+            &dek_config::paths::get_bootstrap_path().to_string_lossy(),
+        );
+        let bootstrap = BootstrapConfig::load_or_default(&bootstrap_path).context("load bootstrap")?;
+
+        let cloud_url = if !bootstrap.cloud_url.is_empty() {
+            bootstrap.cloud_url.clone()
+        } else {
+            env_var("POLLEN_CLOUD_URL", "https://127.0.0.1:43891")
+        };
+        
         if !cloud_url.starts_with("https://") {
             error!("Fatal: POLLEN_CLOUD_URL must be https:// (downgrade protection).");
             std::process::exit(1);
         }
         let ipc_addr = env_var("DEK_IPC_ADDR", "127.0.0.1:43889");
         let bundle_interval = env_var("DEK_BUNDLE_SYNC_INTERVAL", "10").parse().unwrap_or(10);
-        let bootstrap_path = env_var(
-            "DEK_BOOTSTRAP_PATH",
-            &dek_config::paths::get_bootstrap_path().to_string_lossy(),
-        );
-        let bootstrap = BootstrapConfig::load_or_default(&bootstrap_path).context("load bootstrap")?;
 
         // Keystore migration (fail-open to file). Pull overrides if it succeeded.
         let mut client_key_override: Option<Vec<u8>> = None;
@@ -179,6 +185,12 @@ impl Supervisor {
         // (Telemetry/metrics-push tasks: spawn here as today, using
         //  self.telemetry_sink / self.metrics_client / self.client_key_override.)
         let _ = &self.client_key_override;
+
+        // Spawn SVID Renewal Task
+        let _ = crate::svid_renewal::spawn_svid_renewal_task(
+            self.cancel.clone(),
+            self.bootstrap.clone(),
+        );
 
         // 4) Wait for shutdown signal -> cancel -> bounded drain.
         Self::wait_for_signal().await;
