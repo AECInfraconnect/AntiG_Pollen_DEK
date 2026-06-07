@@ -36,15 +36,16 @@ fn bundle_pubkey_b64() -> String {
     base64::prelude::BASE64_STANDARD.encode(sk.verifying_key().as_bytes())
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 struct DeviceStatus {
     id: String,
+    tenant_id: String,
     profile: String,
     revoked: bool,
     last_health: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 struct LogEntry {
     device_id: String,
     timestamp: String,
@@ -52,7 +53,15 @@ struct LogEntry {
     decision: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
+struct AuditLog {
+    timestamp: String,
+    actor: String,
+    action: String,
+    details: String,
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
 struct PolicyBundle {
     version: String,
     cedar_src: String,
@@ -78,6 +87,10 @@ struct AppState {
     decision_logs: Arc<Mutex<VecDeque<LogEntry>>>,
     /// rollout config
     rollout: Arc<Mutex<RolloutConfig>>,
+    /// admin audit logs
+    audit_logs: Arc<Mutex<Vec<AuditLog>>>,
+    /// Pending policy publications for maker-checker
+    pending_policies: Arc<Mutex<HashMap<String, PolicyBundle>>>,
 }
 
 #[tokio::main]
@@ -108,6 +121,8 @@ async fn main() -> Result<()> {
             canary_bundle: None,
             canary_percentage: 0,
         })),
+        audit_logs: Arc::new(Mutex::new(vec![])),
+        pending_policies: Arc::new(Mutex::new(HashMap::new())),
     };
 
     // ---- mTLS API (post-enrollment): config / bundles / telemetry ----
@@ -121,6 +136,9 @@ async fn main() -> Result<()> {
         .route("/v1/tenants/:tenant_id/devices/:device_id/rotate", post(rotate_device))
         .route("/v1/tenants/:tenant_id/devices/:device_id/revoke", post(revoke_device))
         .route("/v1/tenants/:tenant_id/devices/:device_id/status", get(get_device_status))
+        // Registry Endpoints
+        .route("/v1/tenants/:tenant_id/devices", get(list_devices))
+        .route("/v1/tenants/:tenant_id/devices/:device_id", get(get_device_info).patch(patch_device))
         // TUF-Lite Endpoints
         .route("/v1/tenants/:tenant_id/devices/:device_id/bundles/metadata/:role", get(get_tuf_metadata))
         .route("/v1/tenants/:tenant_id/devices/:device_id/bundles/artifacts/:hash", get(get_tuf_artifact))
@@ -217,6 +235,9 @@ struct DashboardTemplate {
     devices: Vec<DeviceStatus>,
     recent_logs: Vec<LogEntry>,
     telemetry_count: usize,
+    current_version: String,
+    canary_info: String,
+    audits: Vec<AuditLog>,
 }
 
 // =========================== Handlers ===========================
@@ -252,6 +273,7 @@ async fn device_page_post(State(state): State<AppState>, Form(form): Form<Device
     let mut devices = state.devices.lock().unwrap();
     devices.insert("device-001".to_string(), DeviceStatus {
         id: "device-001".to_string(),
+        tenant_id: "tenant-production-1".to_string(),
         profile: form.profile,
         revoked: false,
         last_health: "Pending Enrollment".to_string(),
@@ -270,11 +292,21 @@ async fn dashboard_page(State(state): State<AppState>) -> impl IntoResponse {
     let logs_guard = state.decision_logs.lock().unwrap();
     let recent_logs: Vec<LogEntry> = logs_guard.iter().take(50).cloned().collect();
     let count = logs_guard.len();
+    
+    let rollout_guard = state.rollout.lock().unwrap();
+    let current_version = rollout_guard.latest_bundle.version.clone();
+    let canary_info = rollout_guard.canary_bundle.as_ref().map(|b| format!("{} ({}%)", b.version, rollout_guard.canary_percentage)).unwrap_or_else(|| "None".to_string());
+    
+    let audit_guard = state.audit_logs.lock().unwrap();
+    let audits: Vec<AuditLog> = audit_guard.iter().rev().take(20).cloned().collect();
 
     let tpl = DashboardTemplate {
         devices,
         recent_logs,
         telemetry_count: count,
+        current_version,
+        canary_info,
+        audits,
     };
     Html(tpl.render().unwrap())
 }
@@ -283,6 +315,13 @@ async fn admin_revoke_device(State(state): State<AppState>, Path(device_id): Pat
     let mut devices = state.devices.lock().unwrap();
     if let Some(dev) = devices.get_mut(&device_id) {
         dev.revoked = true;
+        
+        state.audit_logs.lock().unwrap().push(AuditLog {
+            timestamp: Utc::now().to_rfc3339(),
+            actor: "admin".to_string(),
+            action: "REVOKE_DEVICE".to_string(),
+            details: format!("Revoked access for device {}", device_id),
+        });
     }
     Redirect::to("/admin/dashboard")
 }
@@ -290,19 +329,31 @@ async fn admin_revoke_device(State(state): State<AppState>, Path(device_id): Pat
 
 #[derive(Deserialize)]
 struct PublishPolicyReq {
-    version: String,
     cedar_src: String,
     openfga_store: String,
 }
 
 async fn admin_publish_policy(State(state): State<AppState>, Json(req): Json<PublishPolicyReq>) -> impl IntoResponse {
     let mut rollout = state.rollout.lock().unwrap();
+    // Auto increment version
+    let current_v: usize = rollout.latest_bundle.version.parse().unwrap_or(1);
+    let new_v = current_v + 1;
+    let new_version_str = new_v.to_string();
+
     rollout.latest_bundle = PolicyBundle {
-        version: req.version,
+        version: new_version_str.clone(),
         cedar_src: req.cedar_src,
         openfga_store: req.openfga_store,
     };
-    Json(json!({"status": "published"}))
+    
+    state.audit_logs.lock().unwrap().push(AuditLog {
+        timestamp: Utc::now().to_rfc3339(),
+        actor: "admin".to_string(),
+        action: "PUBLISH_POLICY".to_string(),
+        details: format!("Published new policy version {}", new_version_str),
+    });
+
+    Json(json!({"status": "published", "new_version": new_version_str}))
 }
 
 #[derive(Deserialize)]
@@ -317,10 +368,18 @@ async fn admin_set_rollout(State(state): State<AppState>, Json(req): Json<Rollou
     let mut rollout = state.rollout.lock().unwrap();
     rollout.canary_percentage = req.canary_percentage;
     rollout.canary_bundle = Some(PolicyBundle {
-        version: req.canary_bundle_version,
+        version: req.canary_bundle_version.clone(),
         cedar_src: req.canary_cedar_src,
         openfga_store: req.canary_openfga_store,
     });
+    
+    state.audit_logs.lock().unwrap().push(AuditLog {
+        timestamp: Utc::now().to_rfc3339(),
+        actor: "admin".to_string(),
+        action: "UPDATE_ROLLOUT".to_string(),
+        details: format!("Set canary rollout for {} at {}%", req.canary_bundle_version, req.canary_percentage),
+    });
+
     Json(json!({"status": "rollout_updated"}))
 }
 
@@ -419,6 +478,7 @@ async fn enroll_device(
     if !devices.contains_key(device_id) {
         devices.insert(device_id.to_string(), DeviceStatus {
             id: device_id.to_string(),
+            tenant_id: "tenant-production-1".to_string(),
             profile: "Developer".to_string(),
             revoked: false,
             last_health: Utc::now().to_rfc3339(),
@@ -448,14 +508,30 @@ struct JoinAttest {
     csr_pem: String,
 }
 
+fn verify_device_tenant(state: &AppState, tenant_id: &str, device_id: &str) -> Result<(), &'static str> {
+    let devices = state.devices.lock().unwrap();
+    if let Some(dev) = devices.get(device_id) {
+        if dev.tenant_id == tenant_id {
+            return Ok(());
+        }
+        return Err("Tenant mismatch");
+    }
+    Err("Device not found")
+}
+
 async fn attest_csr(State(state): State<AppState>, Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
     // Check revocation
     if is_device_revoked(&state, &req.device_id) {
         return (StatusCode::FORBIDDEN, Json(json!({"error": "device revoked"})));
     }
 
+    let devices = state.devices.lock().unwrap();
+    let tenant_id = devices.get(&req.device_id).map(|d| d.tenant_id.clone()).unwrap_or_else(|| "tenant-production-1".to_string());
+    drop(devices);
+
     let spiffe_id = format!(
-        "spiffe://pollen.cloud/tenant-production-1/device/{}",
+        "spiffe://pollen.cloud/{}/device/{}",
+        tenant_id,
         req.device_id
     );
     match sign_csr(&req.csr_pem, &spiffe_id) {
@@ -480,13 +556,17 @@ async fn attest_csr(State(state): State<AppState>, Json(req): Json<JoinAttest>) 
     }
 }
 
-async fn renew_csr(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
+async fn renew_csr(Path((tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
     if is_device_revoked(&state, &device_id) {
         return (StatusCode::FORBIDDEN, Json(json!({"error": "device revoked"})));
     }
+    if verify_device_tenant(&state, &tenant_id, &device_id).is_err() {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "tenant mismatch"})));
+    }
 
     let spiffe_id = format!(
-        "spiffe://pollen.cloud/tenant-production-1/device/{}",
+        "spiffe://pollen.cloud/{}/device/{}",
+        tenant_id,
         req.device_id
     );
     match sign_csr(&req.csr_pem, &spiffe_id) {
@@ -569,13 +649,19 @@ fn load_private_key(path: &str) -> Result<PrivateKeyDer<'static>> {
     private_key(&mut reader)?.context("No private key found")
 }
 
-async fn ingest_telemetry(Path((_tenant_id, device_id)): Path<(String, String)>, State(_state): State<AppState>, Json(payload): Json<Value>) -> Json<Value> {
-    info!("CLOUD RECEIVED TELEMETRY from {}: {}", device_id, payload);
+async fn ingest_telemetry(Path((tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(payload): Json<Value>) -> Json<Value> {
+    if verify_device_tenant(&state, &tenant_id, &device_id).is_err() {
+        return Json(json!({"error": "tenant mismatch"}));
+    }
+    info!("CLOUD RECEIVED TELEMETRY from {}/{}: {}", tenant_id, device_id, payload);
     Json(json!({ "status": "ingested" }))
 }
 
-async fn ingest_decision_logs(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(payload): Json<Value>) -> Json<Value> {
-    info!("CLOUD RECEIVED DECISION LOGS from {}: {}", device_id, payload);
+async fn ingest_decision_logs(Path((tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(payload): Json<Value>) -> Json<Value> {
+    if verify_device_tenant(&state, &tenant_id, &device_id).is_err() {
+        return Json(json!({"error": "tenant mismatch"}));
+    }
+    info!("CLOUD RECEIVED DECISION LOGS from {}/{}: {}", tenant_id, device_id, payload);
     
     // Parse decision logs
     let mut logs = state.decision_logs.lock().unwrap();
@@ -636,6 +722,40 @@ async fn get_device_status(Path((_tenant_id, device_id)): Path<(String, String)>
     } else {
         (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" })))
     }
+}
+
+async fn list_devices(Path(tenant_id): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
+    let devices = state.devices.lock().unwrap();
+    let tenant_devices: Vec<DeviceStatus> = devices.values().filter(|d| d.tenant_id == tenant_id).cloned().collect();
+    (StatusCode::OK, Json(tenant_devices))
+}
+
+async fn get_device_info(Path((tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>) -> impl IntoResponse {
+    let devices = state.devices.lock().unwrap();
+    if let Some(dev) = devices.get(&device_id) {
+        if dev.tenant_id == tenant_id {
+            return (StatusCode::OK, Json(json!(dev.clone())));
+        }
+    }
+    (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" })))
+}
+
+#[derive(Deserialize)]
+struct PatchDeviceReq {
+    profile: Option<String>,
+}
+
+async fn patch_device(Path((tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(req): Json<PatchDeviceReq>) -> impl IntoResponse {
+    let mut devices = state.devices.lock().unwrap();
+    if let Some(dev) = devices.get_mut(&device_id) {
+        if dev.tenant_id == tenant_id {
+            if let Some(p) = req.profile {
+                dev.profile = p;
+            }
+            return (StatusCode::OK, Json(json!(dev.clone())));
+        }
+    }
+    (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" })))
 }
 
 async fn get_latest_bundle(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>) -> impl IntoResponse {
