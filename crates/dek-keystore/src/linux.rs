@@ -1,42 +1,47 @@
 use crate::Keystore;
 use anyhow::{Context, Result};
-use linux_keyutils::{Key, KeyRing, KeyRingIdentifier};
+use std::fs;
+use std::path::PathBuf;
+use std::os::unix::fs::PermissionsExt;
 
-pub struct KernelKeystore {}
+pub struct KernelKeystore {
+    store_dir: PathBuf,
+}
 
 impl KernelKeystore {
     pub fn new() -> Self {
-        Self {}
+        tracing::warn!("Linux secure Keystore not fully implemented. Falling back to 0600 file-based storage. Hardened key storage will follow in the next Phase.");
+        let mut dir = dirs_next::data_local_dir().unwrap_or_else(|| PathBuf::from("/var/lib"));
+        dir.push("pollen-dek");
+        dir.push("keystore");
+        let _ = fs::create_dir_all(&dir);
+        let _ = fs::set_permissions(&dir, fs::Permissions::from_mode(0o700));
+        Self { store_dir: dir }
     }
 }
 
 impl Keystore for KernelKeystore {
     fn store_key(&self, alias: &str, data: &[u8]) -> Result<()> {
-        tracing::info!("Writing {} to Linux User Keyring", alias);
-        let _key = Key::add(
-            alias,
-            data,
-            KeyRingIdentifier::User,
-            None,
-        ).context("Failed to add key to user keyring")?;
+        let path = self.store_dir.join(alias);
+        fs::write(&path, data).context("Failed to write to keystore file")?;
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).context("Failed to set 0600 permissions")?;
         Ok(())
     }
 
     fn load_key(&self, alias: &str) -> Result<Vec<u8>> {
-        tracing::info!("Reading {} from Linux User Keyring", alias);
-        let keyring = KeyRing::from(KeyRingIdentifier::User);
-        let key = keyring.search::<Key>(alias).context("Failed to search for key")?;
-        let mut data = vec![0u8; 2048]; // Max reasonable size for a key
-        let len = key.read(&mut data).context("Failed to read key data")?;
-        data.truncate(len);
-        Ok(data)
+        let path = self.store_dir.join(alias);
+        if !path.exists() {
+            anyhow::bail!("Key {} not found", alias);
+        }
+        fs::read(&path).context("Failed to read from keystore file")
     }
 
     fn delete_key(&self, alias: &str) -> Result<()> {
-        let keyring = KeyRing::from(KeyRingIdentifier::User);
-        if let Ok(key) = keyring.search::<Key>(alias) {
-            let _ = key.invalidate();
+        let path = self.store_dir.join(alias);
+        if path.exists() {
+            fs::remove_file(&path)?;
         }
         Ok(())
     }
 }
+

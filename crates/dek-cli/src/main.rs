@@ -48,7 +48,10 @@ enum Commands {
     /// Trigger an emergency rollback of the Pollen DEK Core
     Rollback,
     /// Unenroll device (removes local identity and config)
-    Unenroll,
+    Unenroll {
+        #[arg(long, help = "Wipe all local secrets from the platform keystore")]
+        wipe_local_secrets: bool,
+    },
     /// Revoke device identity on Cloud and remove locally
     RevokeLocal {
         #[arg(long)]
@@ -56,6 +59,13 @@ enum Commands {
     },
     /// Check system configuration and permissions
     Doctor,
+    /// Repair bootstrap.json using data from the secure keystore
+    RepairBootstrap,
+    /// Export logs and state for troubleshooting (redacts secrets)
+    ExportDiagnostics {
+        #[arg(long, default_value_t = true)]
+        redact: bool,
+    },
     /// Rotate device identity manually
     RotateIdentity,
     /// Manage the DEK background service lifecycle
@@ -182,8 +192,8 @@ async fn main() -> Result<()> {
                 std::process::exit(1);
             }
         }
-        Commands::Unenroll => {
-            if let Err(e) = service::unenroll::run() {
+        Commands::Unenroll { wipe_local_secrets } => {
+            if let Err(e) = service::unenroll::run(wipe_local_secrets) {
                 error!("Unenroll failed: {}", e);
                 std::process::exit(1);
             }
@@ -197,6 +207,18 @@ async fn main() -> Result<()> {
         Commands::Doctor => {
             if let Err(e) = service::doctor::run() {
                 error!("Doctor check failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::RepairBootstrap => {
+            if let Err(e) = service::doctor::repair_bootstrap() {
+                error!("Repair bootstrap failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::ExportDiagnostics { redact } => {
+            if let Err(e) = service::doctor::export_diagnostics(redact) {
+                error!("Export diagnostics failed: {}", e);
                 std::process::exit(1);
             }
         }

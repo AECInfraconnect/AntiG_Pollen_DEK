@@ -56,6 +56,7 @@ pub async fn run(cloud_url: &str) -> Result<()> {
             }
         })
         .await
+        .map_err(|e| anyhow::Error::new(e.into_envelope()))
         .context("device-flow enrollment failed")?;
 
     info!(tenant = %enrollment.tenant_id, device = %enrollment.device_id, "enrollment approved");
@@ -91,13 +92,23 @@ pub async fn run(cloud_url: &str) -> Result<()> {
         enrollment.pinned_bundle_public_key.as_bytes(),
     );
 
+    // Parse trust domain from SPIFFE ID if possible (e.g. spiffe://tenant.example/...)
+    let trust_domain = svid.spiffe_id
+        .strip_prefix("spiffe://")
+        .and_then(|s| s.split('/').next())
+        .unwrap_or("unknown");
+
     // 4) Write bootstrap.json — remembers cloud_url + identity. No env vars needed.
     let bootstrap = serde_json::json!({
+        "bootstrap_version": "1.0",
         "device_id": enrollment.device_id,
         "cloud_url": enrollment.cloud_url,
         "tenant_id": enrollment.tenant_id,
         "spiffe_id": svid.spiffe_id,
-        "pinned_bundle_public_key": enrollment.pinned_bundle_public_key,
+        "trust_domain": trust_domain,
+        "pinned_bundle_public_key": enrollment.pinned_bundle_public_key.clone(),
+        "pinned_root_key_id": enrollment.pinned_bundle_public_key,
+        "root_ca_fingerprint": "computed-at-runtime", // We could hash the PEM here
         "mtls": {
             "client_cert_path": client_cert_path.to_string_lossy(),
             "client_key_path":  client_key_path.to_string_lossy(),

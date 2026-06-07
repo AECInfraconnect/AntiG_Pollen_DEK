@@ -44,7 +44,7 @@ pub async fn run(reason: &str) -> Result<()> {
         println!("Proceeding to unenroll locally anyway...");
     }
 
-    crate::service::unenroll::run()?;
+    crate::service::unenroll::run(true)?;
 
     Ok(())
 }

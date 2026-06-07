@@ -14,10 +14,10 @@ dirs-next = "2.0"
 winapi = { version = "0.3", features = ["dpapi", "wincrypt", "winbase"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-security-framework = "2.9"
+security-framework = "2.11"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-linux-keyutils = "0.2"
+keyutils = "0.4.0"
 
 [lints]
 workspace = true
