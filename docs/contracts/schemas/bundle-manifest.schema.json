@@ -1,22 +1,61 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Bundle Manifest",
+  "title": "BundleManifestV1",
   "type": "object",
   "properties": {
-    "version": { "type": "string" },
-    "issued_at": { "type": "string", "format": "date-time" },
-    "files": {
+    "manifest_version": { "type": "string" },
+    "bundle_id": { "type": "string" },
+    "bundle_version": { "type": "string" },
+    "bundle_generation": { "type": "integer" },
+    "tenant_id": { "type": "string" },
+    "device_id": { "type": "string" },
+    "spiffe_id": { "type": "string" },
+    "trust_domain": { "type": "string" },
+    "enterprise_profile": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "not_before": { "type": "string", "format": "date-time" },
+    "min_dek_version": { "type": "string" },
+    "max_dek_version": { "type": ["string", "null"] },
+    "activation_mode": { "enum": ["full", "shadow", "canary", "observe_only"] },
+    "artifacts": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "path": { "type": "string" },
-          "sha256": { "type": "string" }
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "sha256": { "type": "string" },
+          "size_bytes": { "type": "integer" },
+          "schema": { "type": "string" }
         },
-        "required": ["path", "sha256"]
+        "required": ["name", "type", "sha256", "size_bytes"]
       }
     },
-    "signature": { "type": "string" }
+    "preflight_tests_sha256": { "type": "string" },
+    "signing_key_id": { "type": "string" },
+    "threshold": {
+      "type": "object",
+      "properties": {
+        "required": { "type": "integer" },
+        "available": { "type": "integer" }
+      }
+    },
+    "signatures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key_id": { "type": "string" },
+          "alg": { "type": "string" },
+          "sig_b64": { "type": "string" }
+        },
+        "required": ["key_id", "alg", "sig_b64"]
+      }
+    }
   },
-  "required": ["version", "issued_at", "files", "signature"]
+  "required": [
+    "manifest_version", "bundle_id", "bundle_version", "bundle_generation",
+    "tenant_id", "created_at", "expires_at", "activation_mode", "artifacts"
+  ]
 }

@@ -1252,15 +1252,18 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
+ "chrono",
  "dek-config",
  "dek-spire-node",
  "ed25519-dalek",
+ "hex",
  "jsonschema",
  "rand 0.10.1",
  "reqwest 0.12.28",
  "serde",
  "serde_jcs",
  "serde_json",
+ "sha2",
  "tokio",
  "tracing",
 ]

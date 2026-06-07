@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Certificate Bundle",
+  "type": "object",
+  "properties": {
+    "certificates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "pem": { "type": "string" },
+          "usage": { "type": "string" },
+          "expires_at": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "pem", "usage"]
+      }
+    }
+  },
+  "required": ["certificates"]
+}
