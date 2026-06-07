@@ -187,9 +187,16 @@ impl Supervisor {
         let _ = &self.client_key_override;
 
         // Spawn SVID Renewal Task
-        let _ = crate::svid_renewal::spawn_svid_renewal_task(
+        let renew_handle = crate::svid_renewal::spawn_svid_renewal_task(
             self.cancel.clone(),
-            self.bootstrap.clone(),
+            crate::svid_renewal::RenewalConfig {
+                renew_url: format!("{}/spire/svid/renew", self.cloud_url.trim_end_matches('/')),
+                device_id: self.bootstrap.device_id.clone(),
+                mtls: self.bootstrap.mtls.clone(),
+            },
+            self.telemetry_sink.clone(),
+            self.bundle_agent.clone(),
+            self.metrics_client.clone(),
         );
 
         // 4) Wait for shutdown signal -> cancel -> bounded drain.
@@ -200,6 +207,7 @@ impl Supervisor {
         let drain = async {
             let _ = ipc_handle.await;
             let _ = bundle_handle.await;
+            let _ = renew_handle.await;
         };
         if tokio::time::timeout(Duration::from_secs(15), drain).await.is_err() {
             error!("Graceful shutdown timed out.");

@@ -1,18 +1,19 @@
-//! dek-enroll — first-run device enrollment for Pollen DEK.
+//! dek-enroll — first-run device enrollment for Pollen DEK (RFC 8628).
 //!
-//! Implements the OAuth 2.0 Device Authorization Grant (RFC 8628): the DEK is a
-//! headless daemon that cannot host a browser callback, so the user authorizes
-//! it on a separate device by entering a short `user_code`. After the user
-//! approves (binding this device to their user/tenant in Pollen Cloud), the DEK
-//! exchanges the resulting access token at `/enroll` for a one-time SPIRE join
-//! token + trust bundle + pinned bundle public key + cloud URLs.
+//! Production hardening: the device flow runs over an unreliable network for up
+//! to `expires_in` seconds. A single dropped packet must NOT abort enrollment.
+//!  - One-shot calls (device_authorization, enroll) retry transient failures
+//!    with exponential backoff + jitter, bounded by a RetryPolicy.
+//!  - The token poll loop tolerates transient send/parse errors: it logs and
+//!    keeps polling until the device-code deadline, only giving up on a terminal
+//!    OAuth error (access_denied / expired_token) or the deadline.
 //!
-//! This crate does NOT touch the filesystem or crypto — it returns an
-//! [`Enrollment`]; the caller (`dekctl enroll`) drives SPIRE attestation and
-//! writes `bootstrap.json`. Keeping it side-effect-free makes it testable.
+//! Side-effect-free: returns an [`Enrollment`]; the caller drives SPIRE + writes
+//! bootstrap.
 
 use serde::Deserialize;
-use std::time::{Duration, Instant};
+use std::future::Future;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 use tracing::{info, warn};
 
@@ -30,23 +31,45 @@ pub enum EnrollError {
     EnrollHttp(u16),
     #[error("malformed response from {0}")]
     BadResponse(String),
+    #[error("gave up after {0} attempts: {1}")]
+    RetriesExhausted(u32, String),
 }
 
-/// What the caller needs to complete enrollment (drive SPIRE + write bootstrap).
+impl EnrollError {
+    /// Transient (worth retrying) vs terminal.
+    fn retryable(&self) -> bool {
+        matches!(self, EnrollError::Network(..) | EnrollError::BadResponse(..))
+    }
+}
+
+/// Backoff configuration for transient failures.
+#[derive(Clone)]
+pub struct RetryPolicy {
+    pub max_attempts: u32,
+    pub base_delay: Duration,
+    pub max_delay: Duration,
+}
+
+impl Default for RetryPolicy {
+    fn default() -> Self {
+        Self {
+            max_attempts: 5,
+            base_delay: Duration::from_millis(500),
+            max_delay: Duration::from_secs(8),
+        }
+    }
+}
+
+/// What the caller needs to complete enrollment.
 #[derive(Debug, Clone)]
 pub struct Enrollment {
     pub join_token: String,
     pub spire_endpoint: String,
-    /// Trust anchor (root CA) for mTLS, PEM.
     pub trust_bundle_pem: String,
-    /// ed25519 public key used to verify signed policy bundles, base64.
     pub pinned_bundle_public_key: String,
     pub tenant_id: String,
     pub device_id: String,
-    /// SPIFFE ID the server intends to assign (informational; the SVID is
-    /// authoritative once issued).
     pub spiffe_id_hint: Option<String>,
-    /// The base URL the DEK should persist and use for all future calls.
     pub cloud_url: String,
 }
 
@@ -55,30 +78,31 @@ pub struct EnrollClient {
     client_id: String,
     scope: String,
     http: reqwest::Client,
+    retry: RetryPolicy,
 }
 
 impl EnrollClient {
-    pub fn new(cloud_url: &str, client_id: &str, scope: &str) -> Self {
-        let cloud_url = cloud_url.trim_end_matches('/').to_string();
-        
-        let mut builder = reqwest::Client::builder()
-            .timeout(Duration::from_secs(15));
-            
-        // For local mock testing, allow invalid certs
-        if cloud_url.contains("127.0.0.1") || cloud_url.contains("localhost") {
-            builder = builder.danger_accept_invalid_certs(true);
+    pub fn new(cloud_url: &str, client_id: &str, scope: &str, ca_pem: Option<&str>) -> Self {
+        let mut builder = reqwest::Client::builder().timeout(Duration::from_secs(15));
+        if let Some(pem) = ca_pem {
+            if let Ok(cert) = reqwest::Certificate::from_pem(pem.as_bytes()) {
+                builder = builder.add_root_certificate(cert);
+            }
         }
-
         Self {
-            cloud_url,
+            cloud_url: cloud_url.trim_end_matches('/').to_string(),
             client_id: client_id.to_string(),
             scope: scope.to_string(),
             http: builder.build().expect("build http client"),
+            retry: RetryPolicy::default(),
         }
     }
 
-    /// Run the full device flow and return the [`Enrollment`].
-    /// `display` is invoked once with the user-facing instructions.
+    pub fn with_retry_policy(mut self, retry: RetryPolicy) -> Self {
+        self.retry = retry;
+        self
+    }
+
     pub async fn run<F: Fn(&UserPrompt)>(&self, display: F) -> Result<Enrollment, EnrollError> {
         let auth = self.request_device_code().await?;
         display(&UserPrompt {
@@ -93,35 +117,45 @@ impl EnrollClient {
 
     async fn request_device_code(&self) -> Result<DeviceAuthResp, EnrollError> {
         let url = format!("{}/oauth/device_authorization", self.cloud_url);
-        let resp = self
-            .http
-            .post(&url)
-            .form(&[("client_id", self.client_id.as_str()), ("scope", self.scope.as_str())])
-            .send()
-            .await
-            .map_err(|e| EnrollError::Network(url.clone(), e.to_string()))?;
-        if !resp.status().is_success() {
-            return Err(EnrollError::DeviceAuth(format!("HTTP {}", resp.status())));
-        }
-        resp.json::<DeviceAuthResp>()
-            .await
-            .map_err(|_| EnrollError::BadResponse("device_authorization".into()))
+        self.with_retry("device_authorization", || async {
+            let resp = self
+                .http
+                .post(&url)
+                .form(&[("client_id", self.client_id.as_str()), ("scope", self.scope.as_str())])
+                .send()
+                .await
+                .map_err(|e| classify(&url, e))?;
+            if !resp.status().is_success() {
+                // 5xx is transient; 4xx is terminal config error.
+                return if resp.status().is_server_error() {
+                    Err(EnrollError::Network(url.clone(), format!("HTTP {}", resp.status())))
+                } else {
+                    Err(EnrollError::DeviceAuth(format!("HTTP {}", resp.status())))
+                };
+            }
+            resp.json::<DeviceAuthResp>()
+                .await
+                .map_err(|_| EnrollError::BadResponse("device_authorization".into()))
+        })
+        .await
     }
 
     async fn poll_for_token(&self, auth: &DeviceAuthResp) -> Result<String, EnrollError> {
         let url = format!("{}/oauth/token", self.cloud_url);
         let deadline = Instant::now() + Duration::from_secs(auth.expires_in);
-        // RFC 8628 §3.5: default minimum polling interval is 5s.
-        let mut interval = Duration::from_secs(auth.interval.unwrap_or(5));
+        let mut interval = Duration::from_secs(auth.interval.unwrap_or(5).max(1));
+        // Tolerate a run of transient blips before giving up early.
+        let mut consecutive_transient = 0u32;
+        const MAX_CONSECUTIVE_TRANSIENT: u32 = 10;
 
-        info!("waiting for user authorization (polling every {}s)...", interval.as_secs());
+        info!("waiting for user authorization (poll every {}s)...", interval.as_secs());
         loop {
             if Instant::now() >= deadline {
                 return Err(EnrollError::Expired);
             }
             tokio::time::sleep(interval).await;
 
-            let resp = self
+            let send = self
                 .http
                 .post(&url)
                 .form(&[
@@ -130,24 +164,42 @@ impl EnrollClient {
                     ("client_id", self.client_id.as_str()),
                 ])
                 .send()
-                .await
-                .map_err(|e| EnrollError::Network(url.clone(), e.to_string()))?;
+                .await;
 
-            // Token endpoint returns 400 with an `error` field while pending.
-            let body: TokenResp = resp
-                .json()
-                .await
-                .map_err(|_| EnrollError::BadResponse("token".into()))?;
+            // Network blip on a single poll => log + keep polling (don't abort).
+            let resp = match send {
+                Ok(r) => r,
+                Err(e) => {
+                    consecutive_transient += 1;
+                    warn!("token poll network error ({}/{}): {}", consecutive_transient, MAX_CONSECUTIVE_TRANSIENT, e);
+                    if consecutive_transient >= MAX_CONSECUTIVE_TRANSIENT {
+                        return Err(EnrollError::Network(url.clone(), e.to_string()));
+                    }
+                    continue;
+                }
+            };
+
+            let body: TokenResp = match resp.json().await {
+                Ok(b) => b,
+                Err(_) => {
+                    consecutive_transient += 1;
+                    warn!("token poll bad response ({}/{})", consecutive_transient, MAX_CONSECUTIVE_TRANSIENT);
+                    if consecutive_transient >= MAX_CONSECUTIVE_TRANSIENT {
+                        return Err(EnrollError::BadResponse("token".into()));
+                    }
+                    continue;
+                }
+            };
+            consecutive_transient = 0; // got a well-formed reply
 
             if let Some(token) = body.access_token {
                 info!("authorization granted");
                 return Ok(token);
             }
             match body.error.as_deref() {
-                Some("authorization_pending") => { /* keep polling */ }
+                Some("authorization_pending") => {}
                 Some("slow_down") => {
-                    // RFC 8628 §3.5: increase the interval by 5s on slow_down.
-                    interval += Duration::from_secs(5);
+                    interval += Duration::from_secs(5); // RFC 8628 §3.5
                     warn!("server asked to slow down; interval now {}s", interval.as_secs());
                 }
                 Some("access_denied") => return Err(EnrollError::AccessDenied),
@@ -160,20 +212,27 @@ impl EnrollClient {
 
     async fn enroll(&self, access_token: &str) -> Result<Enrollment, EnrollError> {
         let url = format!("{}/enroll", self.cloud_url);
-        let resp = self
-            .http
-            .post(&url)
-            .bearer_auth(access_token)
-            .send()
-            .await
-            .map_err(|e| EnrollError::Network(url.clone(), e.to_string()))?;
-        if !resp.status().is_success() {
-            return Err(EnrollError::EnrollHttp(resp.status().as_u16()));
-        }
-        let r: EnrollResp = resp
-            .json()
-            .await
-            .map_err(|_| EnrollError::BadResponse("enroll".into()))?;
+        let r = self
+            .with_retry("enroll", || async {
+                let resp = self
+                    .http
+                    .post(&url)
+                    .bearer_auth(access_token)
+                    .send()
+                    .await
+                    .map_err(|e| classify(&url, e))?;
+                if !resp.status().is_success() {
+                    return if resp.status().is_server_error() {
+                        Err(EnrollError::Network(url.clone(), format!("HTTP {}", resp.status())))
+                    } else {
+                        Err(EnrollError::EnrollHttp(resp.status().as_u16()))
+                    };
+                }
+                resp.json::<EnrollResp>()
+                    .await
+                    .map_err(|_| EnrollError::BadResponse("enroll".into()))
+            })
+            .await?;
         Ok(Enrollment {
             join_token: r.join_token,
             spire_endpoint: r.spire_endpoint,
@@ -185,9 +244,60 @@ impl EnrollClient {
             cloud_url: r.cloud_url.unwrap_or_else(|| self.cloud_url.clone()),
         })
     }
+
+    /// Retry a one-shot op on transient errors with exponential backoff + jitter.
+    async fn with_retry<T, F, Fut>(&self, what: &str, op: F) -> Result<T, EnrollError>
+    where
+        F: Fn() -> Fut,
+        Fut: Future<Output = Result<T, EnrollError>>,
+    {
+        let mut last = String::new();
+        for attempt in 0..self.retry.max_attempts {
+            match op().await {
+                Ok(v) => return Ok(v),
+                Err(e) if e.retryable() => {
+                    last = e.to_string();
+                    let delay = self.backoff(attempt);
+                    warn!("{what} failed (attempt {}/{}): {e}; retrying in {:?}", attempt + 1, self.retry.max_attempts, delay);
+                    tokio::time::sleep(delay).await;
+                }
+                Err(e) => return Err(e), // terminal
+            }
+        }
+        Err(EnrollError::RetriesExhausted(self.retry.max_attempts, last))
+    }
+
+    fn backoff(&self, attempt: u32) -> Duration {
+        let exp = self
+            .retry
+            .base_delay
+            .saturating_mul(2u32.saturating_pow(attempt));
+        let capped = exp.min(self.retry.max_delay);
+        // full jitter in [0, capped]
+        let upper = capped.as_millis() as u64;
+        Duration::from_millis(jitter_ms(upper.max(1)))
+    }
 }
 
-/// User-facing instructions emitted once during the flow.
+/// Map a reqwest transport error to EnrollError. timeouts/connect failures are
+/// transient (Network => retryable); a non-network request error is also wrapped
+/// as Network here since at the send stage there's no HTTP status to act on.
+fn classify(url: &str, e: reqwest::Error) -> EnrollError {
+    EnrollError::Network(url.to_string(), e.to_string())
+}
+
+/// Cheap full-jitter without a rand dependency.
+fn jitter_ms(upper: u64) -> u64 {
+    if upper == 0 {
+        return 0;
+    }
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .subsec_nanos() as u64;
+    nanos % upper
+}
+
 pub struct UserPrompt {
     pub verification_uri: String,
     pub verification_uri_complete: Option<String>,

@@ -1,165 +1,393 @@
 use anyhow::{Context, Result};
 use axum::{
-    extract::Path,
+    extract::{Form, Path, State},
+    http::{HeaderMap, StatusCode},
     routing::{get, post},
     Json, Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
 use axum_server::Handle;
+use base64::Engine;
+use ed25519_dalek::{Signer, SigningKey};
 use rustls::{server::WebPkiClientVerifier, RootCertStore, ServerConfig};
 use rustls_pemfile::{certs, private_key};
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
+use serde::Deserialize;
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::net::SocketAddr;
-use std::sync::Arc;
-use tracing::info;
-
-use axum::extract::State;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
+use tracing::{info, warn};
+
+// Static ed25519 seed used to sign policy bundles. The pinned_bundle_public_key
+// returned at /enroll is derived from this so the enrolled DEK pins the right key.
+const BUNDLE_SEED: [u8; 32] = [
+    0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10,
+    0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10,
+];
+
+fn bundle_pubkey_b64() -> String {
+    let sk = SigningKey::from_bytes(&BUNDLE_SEED);
+    base64::prelude::BASE64_STANDARD.encode(sk.verifying_key().as_bytes())
+}
 
 #[derive(Clone)]
 struct AppState {
     revision: Arc<AtomicUsize>,
     rsa_public_key_pem: String,
+    /// device_code -> poll count (drives the authorization_pending -> granted flow)
+    pending: Arc<Mutex<HashMap<String, u32>>>,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     rustls::crypto::ring::default_provider().install_default().expect("Failed to install rustls crypto provider");
     tracing_subscriber::fmt::init();
-    info!("Starting Mock Pollen Cloud Server with MTLS...");
+    info!("Starting Mock Pollen Cloud (mTLS API :43891 + HTTPS Enrollment :43892)...");
 
     let mut rng = rand_core::OsRng;
-    let rsa_bits = 2048;
-    let priv_key = rsa::RsaPrivateKey::new(&mut rng, rsa_bits).expect("failed to generate a key");
+    let priv_key = rsa::RsaPrivateKey::new(&mut rng, 2048).expect("rsa keygen");
     let pub_key = rsa::RsaPublicKey::from(&priv_key);
     let rsa_public_key_pem =
         rsa::pkcs8::EncodePublicKey::to_public_key_pem(&pub_key, rsa::pkcs8::LineEnding::LF)
-            .expect("failed to encode pub key");
+            .expect("encode pub key");
 
     let state = AppState {
         revision: Arc::new(AtomicUsize::new(1)),
         rsa_public_key_pem,
+        pending: Arc::new(Mutex::new(HashMap::new())),
     };
 
-    let app = Router::new()
+    // ---- mTLS API (post-enrollment): config / bundles / telemetry ----
+    let api = Router::new()
         .route("/telemetry", post(ingest_telemetry))
         .route("/bundles/latest", get(get_latest_bundle))
         .route("/config/:device_id", get(get_config))
+        .route("/spire/svid/renew", post(renew_csr))
+        .with_state(state.clone());
+
+    // ---- Enrollment listener (PRE-identity, NO client cert) ----
+    let enroll = Router::new()
         .route("/oauth/device_authorization", post(device_authorization))
-        .route("/oauth/token", post(oauth_token))
-        .route("/enroll", post(enroll))
-        .route("/spire/node/attest", post(attest_node))
-        .with_state(state);
+        .route("/oauth/token", post(token))
+        .route("/enroll", post(enroll_device))
+        .route("/spire/node/attest", post(attest_csr)) // join-token + CSR -> X.509-SVID
+        .route("/device", get(device_page))
+        .with_state(state.clone());
 
     // Load server certificate and key
-    let certs = load_certs("../../certs/server.crt")?;
-    let key = load_private_key("../../certs/server.key")?;
+    let certs_der = load_certs("../../certs/server.crt")?;
+    let key_der = load_private_key("../../certs/server.key")?;
 
-    // Load root CA for client verification
+    // ---- :43891 mTLS Config ----
     let mut root_cert_store = RootCertStore::empty();
     let ca_certs = load_certs("../../certs/root_ca.crt")?;
     root_cert_store.add_parsable_certificates(ca_certs);
-
-    // Create client verifier requiring client certificate optionally (for enroll)
     let client_verifier = WebPkiClientVerifier::builder(Arc::new(root_cert_store))
-        .allow_unauthenticated()
         .build()
-        .context("Failed to build client verifier")?;
+        .context("build client verifier")?;
 
-    // Create ServerConfig
-    let mut server_config = ServerConfig::builder()
+    let mut server_config_mtls = ServerConfig::builder()
         .with_client_cert_verifier(client_verifier)
-        .with_single_cert(certs, key)
-        .context("Failed to create ServerConfig")?;
-    server_config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+        .with_single_cert(certs_der.clone(), key_der.clone_key())
+        .context("server config mtls")?;
+    server_config_mtls.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+    let rustls_config_mtls = RustlsConfig::from_config(Arc::new(server_config_mtls));
+    let addr_mtls = SocketAddr::from(([127, 0, 0, 1], 43891));
 
-    let rustls_config = RustlsConfig::from_config(Arc::new(server_config));
-    let addr = SocketAddr::from(([127, 0, 0, 1], 43891));
+    // ---- :43892 HTTPS Self-Signed Config ----
+    let mut server_config_https = ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(certs_der, key_der)
+        .context("server config https")?;
+    server_config_https.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+    let rustls_config_https = RustlsConfig::from_config(Arc::new(server_config_https));
+    let addr_https = SocketAddr::from(([127, 0, 0, 1], 43892));
 
-    info!("Mock Cloud listening on https://127.0.0.1:43891");
+    info!("Mock Cloud mTLS API on https://127.0.0.1:43891");
+    info!("Mock Cloud HTTPS Enrollment API on https://127.0.0.1:43892");
 
     let handle = Handle::new();
     let shutdown_handle = handle.clone();
 
     tokio::spawn(async move {
-        let ctrl_c = async {
-            tokio::signal::ctrl_c()
-                .await
-                .expect("Failed to install Ctrl+C handler");
-        };
-
+        let ctrl_c = async { tokio::signal::ctrl_c().await.expect("ctrl-c") };
         #[cfg(unix)]
         let terminate = async {
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                .expect("Failed to install signal handler")
-                .recv()
-                .await;
+                .expect("signal").recv().await;
         };
-
         #[cfg(not(unix))]
         let terminate = std::future::pending::<()>();
-
-        tokio::select! {
-            _ = ctrl_c => {},
-            _ = terminate => {},
-        }
-        info!("Mock Cloud received shutdown signal, shutting down...");
+        tokio::select! { _ = ctrl_c => {}, _ = terminate => {} }
+        info!("shutting down...");
         shutdown_handle.graceful_shutdown(None);
     });
 
-    axum_server::bind_rustls(addr, rustls_config)
-        .handle(handle)
-        .serve(app.into_make_service())
-        .await?;
+    let mtls_server = axum_server::bind_rustls(addr_mtls, rustls_config_mtls)
+        .handle(handle.clone())
+        .serve(api.into_make_service());
 
+    let https_server = axum_server::bind_rustls(addr_https, rustls_config_https)
+        .handle(handle)
+        .serve(enroll.into_make_service());
+
+    let _ = tokio::try_join!(mtls_server, https_server)?;
     info!("Mock Cloud shut down gracefully.");
     Ok(())
 }
 
+// =========================== Enrollment handlers ===========================
+
+#[derive(Deserialize)]
+struct DeviceAuthForm {
+    #[allow(dead_code)]
+    client_id: Option<String>,
+    #[allow(dead_code)]
+    scope: Option<String>,
+}
+
+async fn device_authorization(
+    State(state): State<AppState>,
+    Form(_form): Form<DeviceAuthForm>,
+) -> Json<Value> {
+    let device_code = rand_hex(16);
+    let user_code = rand_user_code();
+    state.pending.lock().unwrap().insert(device_code.clone(), 0);
+    info!("CLOUD: device_authorization -> user_code {}", user_code);
+    Json(json!({
+        "device_code": device_code,
+        "user_code": user_code,
+        "verification_uri": "https://127.0.0.1:43892/device",
+        "verification_uri_complete": format!("https://127.0.0.1:43892/device?code={}", user_code),
+        "expires_in": 300,
+        "interval": 1
+    }))
+}
+
+#[derive(Deserialize)]
+struct TokenForm {
+    #[allow(dead_code)]
+    grant_type: Option<String>,
+    device_code: Option<String>,
+    #[allow(dead_code)]
+    client_id: Option<String>,
+}
+
+async fn token(
+    State(state): State<AppState>,
+    Form(form): Form<TokenForm>,
+) -> (StatusCode, Json<Value>) {
+    let dc = form.device_code.unwrap_or_default();
+    let mut m = state.pending.lock().unwrap();
+    match m.get_mut(&dc) {
+        None => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "expired_token" })),
+        ),
+        Some(count) => {
+            *count += 1;
+            // Simulate the user taking a moment: pending on the first poll,
+            // granted from the second onward.
+            if *count < 2 {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": "authorization_pending" })),
+                )
+            } else {
+                m.remove(&dc);
+                info!("CLOUD: token granted for device_code {}", dc);
+                (
+                    StatusCode::OK,
+                    Json(json!({
+                        "access_token": format!("mock-access-{}", dc),
+                        "token_type": "Bearer",
+                        "expires_in": 3600
+                    })),
+                )
+            }
+        }
+    }
+}
+
+async fn enroll_device(
+    State(_state): State<AppState>,
+    headers: HeaderMap,
+) -> (StatusCode, Json<Value>) {
+    // Mock accepts any Bearer token; real cloud validates it.
+    let has_bearer = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .map(|h| h.starts_with("Bearer "))
+        .unwrap_or(false);
+    if !has_bearer {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "missing bearer token" })),
+        );
+    }
+
+    let trust_bundle = std::fs::read_to_string("../../certs/root_ca.crt").unwrap_or_default();
+    let device_id = "device-001";
+    let join_token = rand_hex(16);
+    info!("CLOUD: enroll -> issuing join_token for {}", device_id);
+
+    (
+        StatusCode::OK,
+        Json(json!({
+            "join_token": join_token,
+            // join-token attestation runs on the same HTTPS listener (pre-identity)
+            "spire_endpoint": "https://127.0.0.1:43892/spire",
+            "trust_bundle_pem": trust_bundle,
+            "pinned_bundle_public_key": bundle_pubkey_b64(),
+            "tenant_id": "tenant-production-1",
+            "device_id": device_id,
+            "spiffe_id": format!("spiffe://pollen.cloud/tenant-production-1/device/{}", device_id),
+            // base URL for the post-enrollment mTLS API
+            "cloud_url": "https://127.0.0.1:43891"
+        })),
+    )
+}
+
+#[derive(Deserialize)]
+struct JoinAttest {
+    #[allow(dead_code)]
+    join_token: String,
+    device_id: String,
+    csr_pem: String,
+}
+
+async fn attest_csr(Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
+    let spiffe_id = format!(
+        "spiffe://pollen.cloud/tenant-production-1/device/{}",
+        req.device_id
+    );
+    match sign_csr(&req.csr_pem, &spiffe_id) {
+        Ok((cert_pem, trust_bundle)) => {
+            info!("CLOUD: signed X.509-SVID for {}", spiffe_id);
+            (
+                StatusCode::OK,
+                Json(json!({
+                    "svid_cert_pem": cert_pem,
+                    "spiffe_id": spiffe_id,
+                    "trust_bundle_pem": trust_bundle
+                })),
+            )
+        }
+        Err(e) => {
+            warn!("CLOUD: CSR signing failed: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("csr signing failed: {e}") })),
+            )
+        }
+    }
+}
+
+async fn renew_csr(Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
+    let spiffe_id = format!(
+        "spiffe://pollen.cloud/tenant-production-1/device/{}",
+        req.device_id
+    );
+    match sign_csr(&req.csr_pem, &spiffe_id) {
+        Ok((cert_pem, trust_bundle)) => {
+            info!("CLOUD: renewed X.509-SVID for {}", spiffe_id);
+            (
+                StatusCode::OK,
+                Json(json!({
+                    "svid_cert_pem": cert_pem,
+                    "spiffe_id": spiffe_id,
+                    "trust_bundle_pem": trust_bundle
+                })),
+            )
+        }
+        Err(e) => {
+            warn!("CLOUD: CSR renewal failed: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("csr renewal failed: {e}") })),
+            )
+        }
+    }
+}
+
+/// Sign the client's CSR with the root CA.
+/// Uses rcgen 0.11 API to match cert-gen.
+fn sign_csr(csr_pem: &str, spiffe_id: &str) -> Result<(String, String)> {
+    use rcgen::{Certificate, CertificateParams, CertificateSigningRequest, KeyPair, SanType};
+
+    let ca_key_pem =
+        std::fs::read_to_string("../../certs/root_ca.key").context("read root_ca.key")?;
+    let ca_cert_pem =
+        std::fs::read_to_string("../../certs/root_ca.crt").context("read root_ca.crt")?;
+
+    let ca_key = KeyPair::from_pem(&ca_key_pem).context("parse CA key")?;
+    let ca_params =
+        CertificateParams::from_ca_cert_pem(&ca_cert_pem, ca_key).context("CA params")?;
+    let ca = Certificate::from_params(ca_params).context("CA cert")?;
+
+    let mut csr = CertificateSigningRequest::from_pem(csr_pem).context("parse CSR")?;
+    // Server controls identity: stamp the SPIFFE ID as a URI SAN.
+    csr.params.subject_alt_names.push(SanType::URI(spiffe_id.to_string()));
+
+    let cert_pem = csr.serialize_pem_with_signer(&ca).context("sign CSR")?;
+
+    Ok((cert_pem, ca_cert_pem))
+}
+
+async fn device_page() -> axum::response::Html<&'static str> {
+    axum::response::Html(
+        "<h2>Pollen Cloud — Device Approval (mock)</h2>\
+         <p>In the real product you'd log in and approve here. \
+         The mock auto-approves on the second token poll.</p>",
+    )
+}
+
+// =============================== helpers ===============================
+
+fn rand_hex(n_bytes: usize) -> String {
+    use rand_core::RngCore;
+    let mut b = vec![0u8; n_bytes];
+    rand_core::OsRng.fill_bytes(&mut b);
+    b.iter().map(|x| format!("{:02x}", x)).collect()
+}
+
+fn rand_user_code() -> String {
+    use rand_core::RngCore;
+    const ALPHA: &[u8] = b"BCDFGHJKLMNPQRSTVWXZ"; // no vowels/ambiguous
+    let mut b = [0u8; 8];
+    rand_core::OsRng.fill_bytes(&mut b);
+    let c: String = b.iter().map(|x| ALPHA[(*x as usize) % ALPHA.len()] as char).collect();
+    format!("{}-{}", &c[0..4], &c[4..8])
+}
+
+// =================== existing handlers (unchanged) ===================
+
 fn load_certs(path: &str) -> Result<Vec<CertificateDer<'static>>> {
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);
-    let certs = certs(&mut reader).collect::<Result<Vec<_>, _>>()?;
-    Ok(certs)
+    Ok(certs(&mut reader).collect::<Result<Vec<_>, _>>()?)
 }
 
 fn load_private_key(path: &str) -> Result<PrivateKeyDer<'static>> {
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);
-    let key = private_key(&mut reader)?.context("No private key found")?;
-    Ok(key)
+    Ok(private_key(&mut reader)?.context("No private key found")?)
 }
 
 async fn ingest_telemetry(Json(payload): Json<Value>) -> Json<Value> {
     info!("CLOUD RECEIVED TELEMETRY: {}", payload);
-    Json(json!({"status": "ingested"}))
+    Json(json!({ "status": "ingested" }))
 }
-
-use ed25519_dalek::{Signer, SigningKey};
 
 async fn get_latest_bundle(State(state): State<AppState>) -> Json<Value> {
     let rev = state.revision.fetch_add(1, Ordering::SeqCst);
-    info!(
-        "CLOUD: Device requested latest bundle. Returning revision {}",
-        rev
-    );
-
-    // Use a static 32-byte seed for deterministic testing identity
-    let seed: [u8; 32] = [
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32,
-        0x10, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54,
-        0x32, 0x10,
-    ];
-    let signing_key = SigningKey::from_bytes(&seed);
+    let signing_key = SigningKey::from_bytes(&BUNDLE_SEED);
     let public_key = signing_key.verifying_key();
 
-    let b64_pubkey = base64::prelude::BASE64_STANDARD.encode(public_key.as_bytes());
-    info!("STATIC ED25519 PUBLIC KEY FOR BUNDLE: {}", b64_pubkey);
-
-    // Dynamically resolve WASM path based on debug vs release
     let wasm_path = if std::path::Path::new("plugins/dummy_policy.wasm").exists() {
         "plugins/dummy_policy.wasm"
     } else if std::path::Path::new("target/wasm32-wasip1/release/dummy_policy.wasm").exists() {
@@ -167,7 +395,6 @@ async fn get_latest_bundle(State(state): State<AppState>) -> Json<Value> {
     } else {
         "target/wasm32-wasip1/debug/dummy_policy.wasm"
     };
-
     let store_id = format!("store_rev_{}", rev);
 
     let payload = json!({
@@ -176,69 +403,33 @@ async fn get_latest_bundle(State(state): State<AppState>) -> Json<Value> {
             "issuer_url": "https://127.0.0.1:43891",
             "audience": ["pollen-dek"]
         },
-        "openfga": {
-            "endpoint": "http://127.0.0.1:8080",
-            "store_id": store_id
-        },
-        "cedar": {
-            "policy_src": format!("permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n); // rev {}", rev)
-        },
-        "opa_wasm": {
-            "policy_path": wasm_path
-        },
+        "openfga": { "endpoint": "http://127.0.0.1:8080", "store_id": store_id },
+        "cedar": { "policy_src": format!("permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n); // rev {}", rev) },
+        "opa_wasm": { "policy_path": wasm_path },
         "routes": [
-            {
-                "id": "route_tools_call",
-                "priority": 100,
-                "match_rule": {
-                    "method": "tools/call",
-                    "tool_category": null
-                },
-                "pdp_required": ["openfga", "opa_wasm"],
-                "pdp_conditional": [
-                    {
-                        "evaluator": "cedar",
-                        "required_payload_key": "*"
-                    }
-                ]
-            },
-            {
-                "id": "route_default",
-                "priority": 10,
-                "match_rule": {
-                    "method": "*",
-                    "tool_category": null
-                },
-                "pdp_required": ["openfga"],
-                "pdp_conditional": []
-            }
+            { "id": "route_tools_call", "priority": 100,
+              "match_rule": { "method": "tools/call", "tool_category": null },
+              "pdp_required": ["openfga", "opa_wasm"],
+              "pdp_conditional": [ { "evaluator": "cedar", "required_payload_key": "*" } ] },
+            { "id": "route_default", "priority": 10,
+              "match_rule": { "method": "*", "tool_category": null },
+              "pdp_required": ["openfga"], "pdp_conditional": [] }
         ]
     });
 
     let payload_string = serde_json::to_string(&payload).unwrap();
     let signature = signing_key.sign(payload_string.as_bytes());
-
-    use base64::Engine;
-    let b64_pubkey = base64::prelude::BASE64_STANDARD.encode(public_key.as_bytes());
-    let b64_sig = base64::prelude::BASE64_STANDARD.encode(signature.to_bytes());
-
     Json(json!({
         "bundle_id": format!("bnd-mcp-authz-{:03}", rev),
         "version": format!("1.0.{}", rev),
-        "signature": b64_sig,
-        "public_key": b64_pubkey,
+        "signature": base64::prelude::BASE64_STANDARD.encode(signature.to_bytes()),
+        "public_key": base64::prelude::BASE64_STANDARD.encode(public_key.as_bytes()),
         "payload": payload
     }))
 }
 
 async fn get_config(Path(device_id): Path<String>, State(state): State<AppState>) -> Json<Value> {
     let rev = state.revision.fetch_add(1, Ordering::SeqCst);
-    info!(
-        "CLOUD: Device {} requested config. Returning revision {}",
-        device_id, rev
-    );
-
-    // Dynamically resolve WASM path based on debug vs release
     let wasm_path = if std::path::Path::new("plugins/dummy_policy.wasm").exists() {
         "plugins/dummy_policy.wasm"
     } else if std::path::Path::new("target/wasm32-wasip1/release/dummy_policy.wasm").exists() {
@@ -246,178 +437,26 @@ async fn get_config(Path(device_id): Path<String>, State(state): State<AppState>
     } else {
         "target/wasm32-wasip1/debug/dummy_policy.wasm"
     };
-
     let store_id = format!("store_rev_{}", rev);
-
     Json(json!({
         "device_id": device_id,
         "tenant_id": "tenant-production-1",
-        "mtls": {
-            "client_cert_path": "certs/client.crt",
-            "client_key_path": "certs/client.key",
-            "root_ca_path": "certs/root_ca.crt"
-        },
-        "spire_server": {
-            "endpoint": "https://127.0.0.1:43891/spire"
-        },
-        "jwt_config": {
-            "public_key_pem": state.rsa_public_key_pem.clone(),
-            "issuer_url": "https://127.0.0.1:43891",
-            "audience": ["pollen-dek"]
-        },
+        "mtls": { "client_cert_path": "certs/client.crt", "client_key_path": "certs/client.key", "root_ca_path": "certs/root_ca.crt" },
+        "spire_server": { "endpoint": "https://127.0.0.1:43891/spire" },
+        "jwt_config": { "public_key_pem": state.rsa_public_key_pem.clone(), "issuer_url": "https://127.0.0.1:43891", "audience": ["pollen-dek"] },
         "policy_config": {
-            "openfga": {
-                "endpoint": "http://127.0.0.1:8080",
-                "store_id": store_id
-            },
-            "cedar": {
-                "policy_src": format!("permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n); // rev {}", rev)
-            },
-            "opa_wasm": {
-                "policy_path": wasm_path
-            },
+            "openfga": { "endpoint": "http://127.0.0.1:8080", "store_id": store_id },
+            "cedar": { "policy_src": format!("permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n); // rev {}", rev) },
+            "opa_wasm": { "policy_path": wasm_path },
             "routes": [
-                {
-                    "id": "route_tools_call",
-                    "priority": 100,
-                    "match_rule": {
-                        "method": "tools/call",
-                        "tool_category": null
-                    },
-                    "pdp_required": ["openfga", "opa_wasm"],
-                    "pdp_conditional": [
-                        {
-                            "evaluator": "cedar",
-                            "required_payload_key": "*"
-                        }
-                    ]
-                },
-                {
-                    "id": "route_default",
-                    "priority": 10,
-                    "match_rule": {
-                        "method": "*",
-                        "tool_category": null
-                    },
-                    "pdp_required": ["openfga"],
-                    "pdp_conditional": []
-                }
+                { "id": "route_tools_call", "priority": 100,
+                  "match_rule": { "method": "tools/call", "tool_category": null },
+                  "pdp_required": ["openfga", "opa_wasm"],
+                  "pdp_conditional": [ { "evaluator": "cedar", "required_payload_key": "*" } ] },
+                { "id": "route_default", "priority": 10,
+                  "match_rule": { "method": "*", "tool_category": null },
+                  "pdp_required": ["openfga"], "pdp_conditional": [] }
             ]
         }
     }))
-}
-
-async fn attest_node(Json(payload): Json<Value>) -> Json<Value> {
-    let device_id = payload
-        .get("device_id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown-device");
-        
-    let csr_pem = payload
-        .get("csr_pem")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-        
-    let spiffe_id = format!(
-        "spiffe://pollen.cloud/tenant-production-1/device/{}",
-        device_id
-    );
-    info!(
-        "CLOUD: Attesting node {}, issuing SPIFFE ID: {}",
-        device_id, spiffe_id
-    );
-    
-    let root_ca_cert = std::fs::read_to_string("../../certs/root_ca.crt").unwrap_or_default();
-    let root_ca_key = std::fs::read_to_string("../../certs/root_ca.key").unwrap_or_default();
-    
-    let (svid_cert_pem, svid_key_pem) = if !root_ca_cert.is_empty() && !root_ca_key.is_empty() {
-        let key_pair = rcgen::KeyPair::from_pem(&root_ca_key).expect("parse ca key");
-        
-        let mut ca_params = rcgen::CertificateParams::new(vec!["Pollen Cloud Root CA".to_string()]).expect("ca params");
-        ca_params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
-        ca_params.distinguished_name.push(rcgen::DnType::OrganizationName, "Pollen DEK Project");
-        ca_params.distinguished_name.push(rcgen::DnType::CommonName, "Pollen Cloud Root CA");
-        
-        let ca_cert = ca_params.self_signed(&key_pair).expect("create ca cert");
-        
-        let mut params = rcgen::CertificateParams::new(Vec::<String>::new()).expect("create params");
-        params.use_authority_key_identifier_extension = true;
-        // Add the SPIFFE ID to the URI SAN
-        params.subject_alt_names = vec![rcgen::SanType::URI(
-            spiffe_id.clone().try_into().unwrap()
-        )];
-        
-        let subject_kp = rcgen::KeyPair::generate().expect("generate subject kp");
-        let cert = params.signed_by(&subject_kp, &ca_cert, &key_pair).expect("create svid cert");
-        
-        (cert.pem(), subject_kp.serialize_pem())
-    } else {
-        ("DUMMY_SVID_CERT".to_string(), "DUMMY_SVID_KEY".to_string())
-    };
-
-    Json(json!({
-        "spiffe_id": spiffe_id,
-        "svid_cert_pem": svid_cert_pem,
-        "svid_key_pem": svid_key_pem,
-        "trust_bundle_pem": root_ca_cert
-    }))
-}
-
-async fn device_authorization() -> Json<Value> {
-    info!("CLOUD: Device Authorization requested");
-    Json(json!({
-        "device_code": "mock-device-code-123",
-        "user_code": "ABCD-WXYZ",
-        "verification_uri": "http://127.0.0.1:43891/device",
-        "verification_uri_complete": "http://127.0.0.1:43891/device?user_code=ABCD-WXYZ",
-        "expires_in": 300,
-        "interval": 5
-    }))
-}
-
-use axum::extract::Form;
-use std::collections::HashMap;
-
-async fn oauth_token(Form(form): Form<HashMap<String, String>>) -> Json<Value> {
-    info!("CLOUD: Token polling requested: {:?}", form);
-    // Simulate user immediately approving for the mock server
-    Json(json!({
-        "access_token": "mock-access-token-456",
-        "token_type": "bearer",
-        "expires_in": 3600
-    }))
-}
-
-async fn enroll() -> Json<Value> {
-    info!("CLOUD: Enrollment requested");
-    let root_ca_cert = std::fs::read_to_string("../../certs/root_ca.crt").unwrap_or_default();
-    Json(json!({
-        "join_token": "mock-join-token-789",
-        "spire_endpoint": "https://127.0.0.1:43891/spire",
-        "trust_bundle_pem": root_ca_cert,
-        "pinned_bundle_public_key": "xQyzrpVpR6jeGRNbW+JoX/NIr8Y/w0qDesoSvFwfViU=",
-        "tenant_id": "tenant-production-1",
-        "device_id": "device-001",
-        "spiffe_id": "spiffe://pollen.cloud/tenant-production-1/device/device-001",
-        "cloud_url": "https://127.0.0.1:43891"
-    }))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_print_pubkey() {
-        use base64::Engine;
-        let seed: [u8; 32] = [
-            0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54,
-            0x32, 0x10, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98,
-            0x76, 0x54, 0x32, 0x10,
-        ];
-        let signing_key = SigningKey::from_bytes(&seed);
-        let public_key = signing_key.verifying_key();
-        let b64_pubkey = base64::prelude::BASE64_STANDARD.encode(public_key.as_bytes());
-        println!("HARDCODED_PUBKEY={}", b64_pubkey);
-    }
 }

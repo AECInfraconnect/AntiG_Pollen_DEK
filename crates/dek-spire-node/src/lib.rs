@@ -88,8 +88,6 @@ struct JoinAttestResponse {
     spiffe_id: String,
     #[serde(default)]
     trust_bundle_pem: Option<String>,
-    #[serde(default)]
-    svid_key_pem: Option<String>,
 }
 
 /// Perform first-run node attestation with a one-time join token.
@@ -136,10 +134,44 @@ pub async fn attest_with_join_token(
     info!("Issued X.509-SVID for {}", resp.spiffe_id);
 
     Ok(IssuedSvid {
-        key_pem: resp.svid_key_pem.unwrap_or(key_pem),
+        key_pem,
         cert_pem: resp.svid_cert_pem,
         spiffe_id: resp.spiffe_id,
         trust_bundle_pem: resp.trust_bundle_pem.unwrap_or_else(|| trust_bundle_pem.to_string()),
+    })
+}
+
+/// Renew the SVID using the CURRENT mTLS identity (the existing SVID
+/// authenticates the request — join tokens are one-time and not reused).
+/// Generates a fresh keypair + CSR and posts it to the renew endpoint over the
+/// provided (already-authenticated) mTLS client.
+pub async fn renew_svid(
+    renew_url: &str,
+    mtls_client: &reqwest::Client,
+    device_id: &str,
+) -> Result<IssuedSvid> {
+    let (key_pem, csr_pem) = generate_keypair_and_csr().context("generate keypair/CSR")?;
+    info!("Renewing SVID via {}", renew_url);
+
+    let res = mtls_client
+        .post(renew_url)
+        .json(&JoinAttestRequest { join_token: "", device_id, csr_pem: &csr_pem })
+        .send()
+        .await
+        .context("send renew request")?;
+
+    if !res.status().is_success() {
+        let status = res.status();
+        let body = res.text().await.unwrap_or_default();
+        anyhow::bail!("SVID renewal failed: HTTP {status} — {body}");
+    }
+
+    let resp: JoinAttestResponse = res.json().await.context("parse renew response")?;
+    Ok(IssuedSvid {
+        key_pem,
+        cert_pem: resp.svid_cert_pem,
+        spiffe_id: resp.spiffe_id,
+        trust_bundle_pem: resp.trust_bundle_pem.unwrap_or_default(),
     })
 }
 
@@ -150,10 +182,11 @@ pub async fn attest_with_join_token(
 /// `rcgen = "0.11"` to dek-spire-node/Cargo.toml. If you bump rcgen to 0.13,
 /// use: `KeyPair::generate()` + `params.serialize_request(&kp)?.pem()`.
 fn generate_keypair_and_csr() -> Result<(String, String)> {
-    use rcgen::{CertificateParams, KeyPair};
-    let kp = KeyPair::generate()?;
-    let params = CertificateParams::new(Vec::<String>::new())?;
-    let csr_pem = params.serialize_request(&kp)?.pem()?;
-    let key_pem = kp.serialize_pem();
+    use rcgen::{Certificate, CertificateParams};
+    // Empty subject/SANs: the server stamps the SPIFFE URI SAN when signing.
+    let params = CertificateParams::new(Vec::<String>::new());
+    let cert = Certificate::from_params(params).context("build CSR params")?;
+    let csr_pem = cert.serialize_request_pem().context("serialize CSR")?;
+    let key_pem = cert.serialize_private_key_pem();
     Ok((key_pem, csr_pem))
 }
