@@ -4,7 +4,6 @@ use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fs;
-use std::path::PathBuf;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
@@ -44,6 +43,7 @@ use dek_config::DekConfig;
 
 pub struct BundleSyncAgent {
     cloud_url: String,
+    tenant_id: String,
     device_id: String,
     pinned_public_key: String,
     client: RwLock<reqwest::Client>,
@@ -52,6 +52,7 @@ pub struct BundleSyncAgent {
 impl BundleSyncAgent {
     pub fn new(
         cloud_url: &str,
+        tenant_id: &str,
         device_id: &str,
         mtls: &MtlsConfig,
         pinned_public_key: &str,
@@ -60,6 +61,7 @@ impl BundleSyncAgent {
         let client = mtls.build_client(client_key_override)?;
         Ok(Self {
             cloud_url: cloud_url.to_string(),
+            tenant_id: tenant_id.to_string(),
             device_id: device_id.to_string(),
             pinned_public_key: pinned_public_key.to_string(),
             client: RwLock::new(client),
@@ -80,7 +82,7 @@ impl BundleSyncAgent {
         info!("[BundleSync] Starting Unified Sync Pipeline...");
 
         // 1. Fetch Device Config
-        let config_url = format!("{}/config/{}", self.cloud_url, self.device_id);
+        let config_url = format!("{}/v1/tenants/{}/devices/{}/config", self.cloud_url, self.tenant_id, self.device_id);
         let res = client.get(&config_url).send().await?;
         if !res.status().is_success() {
             error!(
@@ -96,7 +98,7 @@ impl BundleSyncAgent {
         );
 
         // 2. Fetch Latest Bundle
-        let bundle_url = format!("{}/bundles/latest", self.cloud_url);
+        let bundle_url = format!("{}/v1/tenants/{}/devices/{}/bundles/latest", self.cloud_url, self.tenant_id, self.device_id);
         let res = client.get(&bundle_url).send().await?;
         let bundle_payload = if res.status().is_success() {
             let bundle_info: BundleInfo =
@@ -135,7 +137,7 @@ impl BundleSyncAgent {
                     .context("Invalid signature length")?,
             );
 
-            let payload_string = serde_json::to_string(&bundle_info.payload)?;
+            let payload_string = serde_jcs::to_string(&bundle_info.payload)?;
 
             if verifying_key
                 .verify(payload_string.as_bytes(), &signature)
@@ -171,7 +173,7 @@ impl BundleSyncAgent {
         }
 
         // Override with bundle
-        if let Some(bundle) = bundle_payload {
+        if let Some(bundle) = &bundle_payload {
             if let Some(obj) = bundle.as_object() {
                 for (k, v) in obj {
                     merged_payload[k] = v.clone();
@@ -199,33 +201,75 @@ impl BundleSyncAgent {
             }
         }
 
-        // 4. Staging
-        let target_dir = PathBuf::from("target");
+        // 4. Schema Validation Before Staging
+        let mut final_state = ArtifactState::SchemaValidated;
+        let schema_str = include_str!("../../../docs/contracts/schemas/dek-config.schema.json");
+        if let Ok(schema_json) = serde_json::from_str::<serde_json::Value>(schema_str) {
+            if let Ok(validator) = jsonschema::validator_for(&schema_json) {
+                if let Err(errors) = validator.validate(&merged_payload) {
+                    error!("[BundleSync] Schema validation error: {}", errors);
+                    return Err(anyhow::anyhow!("Combined configuration failed schema validation"));
+                }
+                info!("[BundleSync] State: {:?} - Configuration schema is valid.", final_state);
+            }
+        } else {
+            warn!("[BundleSync] Could not parse built-in schema for validation");
+        }
+
+        // 5. Atomic Versioned Staging
+        let target_dir = dek_config::paths::get_data_dir().join("state").join("bundles");
         fs::create_dir_all(&target_dir)?;
-        let active_bundle_path = target_dir.join("active_bundle.json");
+        
+        let bundle_version = bundle_payload.as_ref()
+            .and_then(|b| b.get("version").and_then(|v| v.as_str()))
+            .unwrap_or("config-only");
+
+        let bundle_dir = target_dir.join(format!("bundle_{}", bundle_version));
+        fs::create_dir_all(&bundle_dir)?;
 
         let payload_string = serde_json::to_string_pretty(&merged_payload)?;
 
-        // Write to temporary file and rename for atomic update
+        // Write to bundle specific path
+        let bundle_path = bundle_dir.join("manifest.json");
+        fs::write(&bundle_path, &payload_string)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&bundle_path, fs::Permissions::from_mode(0o600));
+        }
+
+        // Atomically update active pointer (using file rename for cross-platform compatibility)
+        let active_path = dek_config::paths::get_active_bundle_path();
+        let lkg_path = dek_config::paths::get_data_dir().join("active_bundle_lkg.json");
         let tmp_path = target_dir.join("active_bundle.tmp.json");
+
         fs::write(&tmp_path, payload_string)?;
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
             let _ = fs::set_permissions(&tmp_path, fs::Permissions::from_mode(0o600));
         }
-        fs::rename(&tmp_path, &active_bundle_path)?;
 
+        // Backup to LKG
+        if active_path.exists() {
+            let _ = fs::copy(&active_path, &lkg_path);
+        }
+
+        // Atomic rename
+        fs::rename(&tmp_path, &active_path)?;
+
+        final_state = ArtifactState::Staged;
         info!(
             "[BundleSync] State: {:?} - Staged combined config atomically to {:?}",
-            ArtifactState::Staged,
-            active_bundle_path
+            final_state,
+            active_path
         );
 
         // Activation is implicit via dek-mcp-proxy's notify watcher
+        final_state = ArtifactState::Active;
         info!(
             "[BundleSync] State: {:?} - Pipeline complete. Proxy will activate implicitly.",
-            ArtifactState::Active
+            final_state
         );
 
         Ok(dek_config)

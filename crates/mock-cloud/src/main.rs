@@ -63,12 +63,12 @@ async fn main() -> Result<()> {
 
     // ---- mTLS API (post-enrollment): config / bundles / telemetry ----
     let api = Router::new()
-        .route("/telemetry", post(ingest_telemetry))
-        .route("/bundles/latest", get(get_latest_bundle))
-        .route("/config/:device_id", get(get_config))
-        .route("/spire/svid/renew", post(renew_csr))
-        .route("/decision-logs", post(ingest_decision_logs))
-        .route("/health", post(report_health))
+        .route("/v1/tenants/:tenant_id/devices/:device_id/telemetry", post(ingest_telemetry))
+        .route("/v1/tenants/:tenant_id/devices/:device_id/bundles/latest", get(get_latest_bundle))
+        .route("/v1/tenants/:tenant_id/devices/:device_id/config", get(get_config))
+        .route("/v1/tenants/:tenant_id/devices/:device_id/spire/svid/renew", post(renew_csr))
+        .route("/v1/tenants/:tenant_id/devices/:device_id/decision-logs", post(ingest_decision_logs))
+        .route("/v1/tenants/:tenant_id/devices/:device_id/health", post(report_health))
         .with_state(state.clone());
 
     // ---- Enrollment listener (PRE-identity, NO client cert) ----
@@ -289,7 +289,7 @@ async fn attest_csr(Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
     }
 }
 
-async fn renew_csr(Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
+async fn renew_csr(Path((_tenant_id, _device_id)): Path<(String, String)>, Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
     let spiffe_id = format!(
         "spiffe://pollen.cloud/tenant-production-1/device/{}",
         req.device_id
@@ -380,22 +380,22 @@ fn load_private_key(path: &str) -> Result<PrivateKeyDer<'static>> {
     Ok(private_key(&mut reader)?.context("No private key found")?)
 }
 
-async fn ingest_telemetry(Json(payload): Json<Value>) -> Json<Value> {
+async fn ingest_telemetry(Path((_tenant_id, _device_id)): Path<(String, String)>, Json(payload): Json<Value>) -> Json<Value> {
     info!("CLOUD RECEIVED TELEMETRY: {}", payload);
     Json(json!({ "status": "ingested" }))
 }
 
-async fn ingest_decision_logs(Json(payload): Json<Value>) -> Json<Value> {
+async fn ingest_decision_logs(Path((_tenant_id, _device_id)): Path<(String, String)>, Json(payload): Json<Value>) -> Json<Value> {
     info!("CLOUD RECEIVED DECISION LOGS: {}", payload);
     Json(json!({ "status": "ingested" }))
 }
 
-async fn report_health(Json(payload): Json<Value>) -> Json<Value> {
+async fn report_health(Path((_tenant_id, _device_id)): Path<(String, String)>, Json(payload): Json<Value>) -> Json<Value> {
     info!("CLOUD RECEIVED HEALTH REPORT: {}", payload);
     Json(json!({ "status": "ok" }))
 }
 
-async fn get_latest_bundle(State(state): State<AppState>) -> Json<Value> {
+async fn get_latest_bundle(Path((_tenant_id, _device_id)): Path<(String, String)>, State(state): State<AppState>) -> Json<Value> {
     let rev = state.revision.fetch_add(1, Ordering::SeqCst);
     let signing_key = SigningKey::from_bytes(&BUNDLE_SEED);
     let public_key = signing_key.verifying_key();
@@ -429,7 +429,7 @@ async fn get_latest_bundle(State(state): State<AppState>) -> Json<Value> {
         ]
     });
 
-    let payload_string = serde_json::to_string(&payload).unwrap();
+    let payload_string = serde_jcs::to_string(&payload).unwrap();
     let signature = signing_key.sign(payload_string.as_bytes());
     Json(json!({
         "bundle_id": format!("bnd-mcp-authz-{:03}", rev),
@@ -440,7 +440,7 @@ async fn get_latest_bundle(State(state): State<AppState>) -> Json<Value> {
     }))
 }
 
-async fn get_config(Path(device_id): Path<String>, State(state): State<AppState>) -> Json<Value> {
+async fn get_config(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>) -> Json<Value> {
     let rev = state.revision.fetch_add(1, Ordering::SeqCst);
     let wasm_path = if std::path::Path::new("plugins/dummy_policy.wasm").exists() {
         "plugins/dummy_policy.wasm"
