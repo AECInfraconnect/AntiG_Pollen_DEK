@@ -199,7 +199,7 @@ mod tests {
     struct DummyRuntime;
     #[async_trait]
     impl PolicyRuntime for DummyRuntime {
-        async fn evaluate(&self, _input: serde_json::Value) -> Result<PolicyDecision> {
+        async fn evaluate(&self, _input: serde_json::Value) -> std::result::Result<PolicyDecision, dek_policy_runtime::PolicyError> {
             Ok(PolicyDecision {
                 evaluator_id: "dummy".into(),
                 evaluator_type: "dummy".into(),
