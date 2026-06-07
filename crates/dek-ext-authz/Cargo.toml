@@ -1,17 +1,20 @@
 [package]
 name = "dek-ext-authz"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
 tonic = "0.12"
-tokio = { version = "1.0", features = ["full"] }
+tokio = { workspace = true, features = ["full"] }
 prost = "0.13"
-serde_json = "1.0"
+serde_json.workspace = true
 dek-policy-router = { path = "../dek-policy-router" }
 dek-policy-runtime = { path = "../dek-policy-runtime" }
 dek-config = { path = "../dek-config" }
 dek-router-builder = { path = "../dek-router-builder" }
+dek-activation = { path = "../dek-activation" }
+dek-decision = { path = "../dek-decision" }
+uuid = { version = "1.10", features = ["v4"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 

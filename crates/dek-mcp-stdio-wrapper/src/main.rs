@@ -217,10 +217,32 @@ async fn main() -> Result<()> {
                 policy_input["principal"] = json!(agent_id.clone());
                 policy_input["resource"] = json!(server_id.clone());
 
+                let decision_req = dek_decision::DecisionRequest {
+                    request_id: Uuid::new_v4().to_string(),
+                    trace_id: None,
+                    tenant_id: tenant_id.clone(),
+                    device_id: bootstrap.device_id.clone(),
+                    principal: dek_decision::Principal {
+                        id: agent_id.clone(),
+                        roles: vec![],
+                    },
+                    agent: None,
+                    action: normalized.tool_name.clone().unwrap_or(normalized.request_type.clone()),
+                    resource: dek_decision::ResourceRef {
+                        kind: "mcp_tool".into(),
+                        id: server_id.clone(),
+                    },
+                    context: policy_input.clone(),
+                    input_hash: "mock_hash".into(),
+                };
+
+                let decision_input = serde_json::to_value(&decision_req).unwrap_or(policy_input);
+
+                let start_time = std::time::Instant::now();
                 let decision = router
                     .read()
                     .await
-                    .authorize(policy_input)
+                    .authorize(decision_input)
                     .await
                     .unwrap_or_else(|_| dek_policy_runtime::PolicyDecision {
                         evaluator_id: "wrapper".into(),
@@ -248,7 +270,7 @@ async fn main() -> Result<()> {
                             "method": normalized.request_type.clone(),
                             "verdict": if decision.allow { "allow" } else { "deny" },
                             "reason": decision.reason.clone(),
-                            "request_id": Uuid::new_v4().to_string(),
+                            "request_id": decision_req.request_id.clone(),
                         }
                     });
                     telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);

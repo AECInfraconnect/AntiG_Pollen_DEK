@@ -35,34 +35,61 @@ impl Authorization for ExtAuthzService {
         let req = request.into_inner();
         
         // Extract HTTP attributes from envoy request
-        let mut policy_input = json!({
-            "pep_mode": "envoy_ext_authz",
-            "context": {
-                "tenant_id": self.tenant_id,
-                "device_id": self.device_id,
-            }
-        });
+        let mut action = "unknown".to_string();
+        let mut resource_id = "unknown".to_string();
+        let mut principal_id = "anonymous".to_string();
+        let mut headers_val = json!({});
 
         if let Some(attrs) = req.attributes {
             if let Some(http) = attrs.request {
-                policy_input["action"] = json!(http.method);
-                policy_input["resource"] = json!({
-                    "type": "url",
-                    "id": format!("{}://{}{}", http.scheme, http.host, http.path),
-                    "attributes": {
-                        "headers": http.headers
-                    }
-                });
+                action = http.method;
+                resource_id = format!("{}://{}{}", http.scheme, http.host, http.path);
+                headers_val = json!(http.headers);
             }
             if let Some(source) = attrs.source {
-                policy_input["principal"] = json!({
-                    "id": source.principal
-                });
+                principal_id = source.principal;
             }
         }
 
+        let mut policy_input = json!({
+            "pep_mode": "envoy_ext_authz",
+            "context": {
+                "tenant_id": &self.tenant_id,
+                "device_id": &self.device_id,
+            },
+            "attributes": {
+                "headers": headers_val
+            }
+        });
+
+        // Provide legacy field compatibility
+        policy_input["action"] = json!(action);
+        policy_input["principal"] = json!(principal_id);
+        policy_input["resource"] = json!(resource_id);
+
+        let decision_req = dek_decision::DecisionRequest {
+            request_id: uuid::Uuid::new_v4().to_string(),
+            trace_id: None,
+            tenant_id: self.tenant_id.clone(),
+            device_id: self.device_id.clone(),
+            principal: dek_decision::Principal {
+                id: principal_id,
+                roles: vec![],
+            },
+            agent: None,
+            action,
+            resource: dek_decision::ResourceRef {
+                kind: "url".into(),
+                id: resource_id,
+            },
+            context: policy_input.clone(),
+            input_hash: "ext_authz_hash".into(),
+        };
+
+        let decision_input = serde_json::to_value(&decision_req).unwrap_or(policy_input);
+
         // Evaluate Policy
-        let decision = self.router.read().await.authorize(policy_input).await.unwrap_or_else(|e| {
+        let decision = self.router.read().await.authorize(decision_input).await.unwrap_or_else(|e| {
             error!("Policy routing failed: {}", e);
             dek_policy_runtime::PolicyDecision {
                 evaluator_id: "ext_authz".into(),
@@ -138,12 +165,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut router = PolicyRouter::new();
     let bundle_path_buf = dek_config::paths::get_active_bundle_path();
     let staged_path = std::path::Path::new(&bundle_path_buf);
-    if staged_path.exists()
-        && let Ok(content) = std::fs::read_to_string(staged_path)
-            && let Ok(payload) = serde_json::from_str::<Value>(&content) {
+    if staged_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(staged_path) {
+            if let Ok(payload) = serde_json::from_str::<Value>(&content) {
                 info!("Loading dynamic policy evaluator configuration from active_bundle.json");
                 dek_router_builder::load_router_config(&mut router, &payload);
             }
+        }
+    }
 
     let addr = "[::1]:50051".parse()?;
     let service = ExtAuthzService {

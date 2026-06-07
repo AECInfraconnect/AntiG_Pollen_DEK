@@ -168,6 +168,13 @@ impl Supervisor {
 
         crate::service_integration::notify_ready();
 
+        let snapshot_ref = reload_coordinator.activation.snapshot.clone();
+        tokio::spawn(async move {
+            if let Err(e) = crate::api::start_sidecar_api(snapshot_ref, 43892).await {
+                error!("Sidecar API failed: {}", e);
+            }
+        });
+
         // 2) Bundle sync + auto-update loop.
 
         let bundle_handle = crate::bundle_loop::spawn_bundle_sync_task(
