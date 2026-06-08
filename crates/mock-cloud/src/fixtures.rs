@@ -1,8 +1,65 @@
 use std::fs;
 use std::path::Path;
 
-pub fn load_fixture() {
-    tracing::info!("Loaded fixture");
+use crate::state::AppState;
+use dek_domain_schema::*;
+
+pub fn load_seed_data(state: &AppState, _profile: &str) {
+    tracing::info!("Loading fixtures...");
+    let fixtures_dir = Path::new("fixtures");
+
+    let mut reg = state.registry.lock().unwrap();
+
+    if let Ok(content) = fs::read_to_string(fixtures_dir.join("tenant.json")) {
+        if let Ok(tenant) = serde_json::from_str::<Tenant>(&content) {
+            reg.tenants.insert(tenant.tenant_id.clone(), tenant);
+        }
+    }
+    if let Ok(content) = fs::read_to_string(fixtures_dir.join("principal.json")) {
+        if let Ok(p) = serde_json::from_str::<Principal>(&content) {
+            reg.principals.insert(p.principal_id.clone(), p);
+        }
+    }
+    if let Ok(content) = fs::read_to_string(fixtures_dir.join("dek-device.json")) {
+        if let Ok(d) = serde_json::from_str::<DekDevice>(&content) {
+            reg.devices.insert(d.device_id.clone(), d);
+        }
+    }
+    if let Ok(content) = fs::read_to_string(fixtures_dir.join("ai-agent.json")) {
+        if let Ok(a) = serde_json::from_str::<AiAgent>(&content) {
+            reg.agents.insert(a.agent_id.clone(), a);
+        }
+    }
+    if let Ok(content) = fs::read_to_string(fixtures_dir.join("mcp-server.json")) {
+        if let Ok(m) = serde_json::from_str::<McpServer>(&content) {
+            reg.mcp_servers.insert(m.server_id.clone(), m);
+        }
+    }
+    if let Ok(content) = fs::read_to_string(fixtures_dir.join("tool.json")) {
+        if let Ok(t) = serde_json::from_str::<Tool>(&content) {
+            reg.tools.insert(t.tool_id.clone(), t);
+        }
+    }
+    if let Ok(content) = fs::read_to_string(fixtures_dir.join("resource.json")) {
+        if let Ok(r) = serde_json::from_str::<Resource>(&content) {
+            reg.resources.insert(r.resource_id.clone(), r);
+        }
+    }
+    if let Ok(content) = fs::read_to_string(fixtures_dir.join("relationship.json")) {
+        if let Ok(rel) = serde_json::from_str::<Relationship>(&content) {
+            reg.relationships.push(rel);
+        }
+    }
+    if let Ok(content) = fs::read_to_string(fixtures_dir.join("policy.json")) {
+        if let Ok(pol) = serde_json::from_str::<Policy>(&content) {
+            reg.policies.insert(pol.policy_id.clone(), pol);
+        }
+    }
+    if let Ok(content) = fs::read_to_string(fixtures_dir.join("pep-deployment.json")) {
+        if let Ok(pep) = serde_json::from_str::<PepDeployment>(&content) {
+            reg.pep_deployments.insert(pep.pep_deployment_id.clone(), pep);
+        }
+    }
 }
 
 #[cfg(test)]

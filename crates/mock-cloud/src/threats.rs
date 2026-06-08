@@ -1,100 +1,74 @@
 use crate::state::AppState;
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
-use serde_json::json;
+use axum::{
+    extract::{State, Request},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::post,
+    Json, Router, middleware::Next,
+};
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/v1/scenarios/poisoned-bundle", post(poisoned_bundle))
-        .route("/v1/scenarios/replay-old-bundle", post(replay_old_bundle))
-        .route(
-            "/v1/scenarios/wrong-tenant-bundle",
-            post(wrong_tenant_bundle),
-        )
-        .route("/v1/scenarios/expired-bundle", post(expired_bundle))
-        .route("/v1/scenarios/mitm-config", post(mitm_config))
-        .route(
-            "/v1/scenarios/telemetry-backpressure",
-            post(telemetry_backpressure),
-        )
-        .route("/v1/scenarios/ebpf-map-poisoning", post(ebpf_map_poisoning))
-        .route(
-            "/v1/scenarios/ebpf-map-exhaustion",
-            post(ebpf_map_exhaustion),
-        )
-        .route(
-            "/v1/scenarios/spiffe-bundle-rotation",
-            post(spiffe_bundle_rotation),
-        )
-        .route("/v1/scenarios/device-revoked", post(device_revoked))
+        .route("/admin/chaos/outage", post(toggle_outage))
+        .route("/admin/chaos/latency", post(set_latency))
 }
 
-async fn poisoned_bundle(State(_state): State<AppState>) -> impl IntoResponse {
-    // This endpoint triggers mock-cloud to start serving a bundle with a bad signature
-    (
-        StatusCode::OK,
-        Json(json!({"status": "scenario_activated", "scenario": "poisoned-bundle"})),
-    )
+#[derive(serde::Deserialize)]
+pub struct OutageReq {
+    pub enabled: bool,
 }
 
-async fn replay_old_bundle(State(_state): State<AppState>) -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        Json(json!({"status": "scenario_activated", "scenario": "replay-old-bundle"})),
-    )
+async fn toggle_outage(
+    State(state): State<AppState>,
+    Json(req): Json<OutageReq>,
+) -> impl IntoResponse {
+    {
+        let mut cfg = state.chaos_config.lock().unwrap();
+        cfg.outage_enabled = req.enabled;
+    }
+    Json(serde_json::json!({"status": "outage_updated", "enabled": req.enabled}))
 }
 
-async fn wrong_tenant_bundle(State(_state): State<AppState>) -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        Json(json!({"status": "scenario_activated", "scenario": "wrong-tenant-bundle"})),
-    )
+#[derive(serde::Deserialize)]
+pub struct LatencyReq {
+    pub delay_ms: u64,
 }
 
-async fn expired_bundle(State(_state): State<AppState>) -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        Json(json!({"status": "scenario_activated", "scenario": "expired-bundle"})),
-    )
+async fn set_latency(
+    State(state): State<AppState>,
+    Json(req): Json<LatencyReq>,
+) -> impl IntoResponse {
+    {
+        let mut cfg = state.chaos_config.lock().unwrap();
+        cfg.global_latency_ms = req.delay_ms;
+    }
+    Json(serde_json::json!({"status": "latency_updated", "delay_ms": req.delay_ms}))
 }
 
-async fn mitm_config(State(_state): State<AppState>) -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        Json(json!({"status": "scenario_activated", "scenario": "mitm-config"})),
-    )
-}
+pub async fn chaos_middleware(
+    State(state): State<AppState>,
+    req: Request,
+    next: Next,
+) -> Response {
+    let (outage, latency) = {
+        let cfg = state.chaos_config.lock().unwrap();
+        (cfg.outage_enabled, cfg.global_latency_ms)
+    };
 
-async fn telemetry_backpressure(State(_state): State<AppState>) -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        Json(json!({"status": "scenario_activated", "scenario": "telemetry-backpressure"})),
-    )
-}
+    if outage {
+        // Only affect /v1 routes to allow admin routes to still function to toggle it off
+        if req.uri().path().starts_with("/v1/") {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Simulated Cloud Outage",
+            )
+                .into_response();
+        }
+    }
 
-async fn ebpf_map_poisoning(State(_state): State<AppState>) -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        Json(json!({"status": "scenario_activated", "scenario": "ebpf-map-poisoning"})),
-    )
-}
+    if latency > 0 && req.uri().path().starts_with("/v1/") {
+        tokio::time::sleep(std::time::Duration::from_millis(latency)).await;
+    }
 
-async fn ebpf_map_exhaustion(State(_state): State<AppState>) -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        Json(json!({"status": "scenario_activated", "scenario": "ebpf-map-exhaustion"})),
-    )
-}
-
-async fn spiffe_bundle_rotation(State(_state): State<AppState>) -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        Json(json!({"status": "scenario_activated", "scenario": "spiffe-bundle-rotation"})),
-    )
-}
-
-async fn device_revoked(State(_state): State<AppState>) -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        Json(json!({"status": "scenario_activated", "scenario": "device-revoked"})),
-    )
+    next.run(req).await
 }

@@ -1,8 +1,10 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+pub mod admin;
 pub mod assertions;
 pub mod bundles;
+pub mod compiler;
 pub mod fixtures;
 pub mod keys;
+pub mod pdp;
 pub mod registry;
 pub mod scenarios;
 pub mod spire;
@@ -20,6 +22,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use clap::Parser;
 use axum_server::tls_rustls::RustlsConfig;
 use axum_server::Handle;
 use chrono::Utc;
@@ -36,7 +39,8 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
-use crate::state::{AppState, AuditLog, DeviceStatus, LogEntry, PolicyBundle, RolloutConfig};
+use crate::state::{AppState, AuditLog, DeviceStatus, PolicyBundle, RolloutConfig, RegistryState};
+use dek_domain_schema::TelemetryEvent;
 
 // Static ed25519 seed used to sign policy bundles.
 pub const BUNDLE_SEED: [u8; 32] = [
@@ -50,8 +54,16 @@ pub fn bundle_pubkey_b64() -> String {
     base64::prelude::BASE64_STANDARD.encode(sk.verifying_key().as_bytes())
 }
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(long)]
+    seed: Option<String>,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
+    let args = Args::parse();
     rustls::crypto::ring::default_provider()
         .install_default()
         .expect("Failed to install rustls crypto provider");
@@ -72,7 +84,7 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
         rsa_public_key_pem,
         pending: Arc::new(Mutex::new(HashMap::new())),
         devices: Arc::new(Mutex::new(HashMap::new())),
-        decision_logs: Arc::new(Mutex::new(VecDeque::with_capacity(100))),
+        telemetry_events: Arc::new(Mutex::new(VecDeque::with_capacity(1000))),
         rollout: Arc::new(Mutex::new(RolloutConfig {
             latest_bundle: PolicyBundle {
                 version: "1.0.0".to_string(),
@@ -82,13 +94,8 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
             canary_bundle: None,
             canary_percentage: 0,
         })),
-        audit_logs: Arc::new(Mutex::new(vec![])),
+        audit_logs: Arc::new(Mutex::new(Vec::new())),
         pending_policies: Arc::new(Mutex::new(HashMap::new())),
-        tenants: Arc::new(Mutex::new(HashMap::new())),
-        agents: Arc::new(Mutex::new(HashMap::new())),
-        entities: Arc::new(Mutex::new(HashMap::new())),
-        resources: Arc::new(Mutex::new(HashMap::new())),
-        relationships: Arc::new(Mutex::new(Vec::new())),
         trusted_keys: Arc::new(Mutex::new(vec![
             serde_json::json!({
                 "key_id": "bootstrap",
@@ -98,38 +105,38 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
                 "not_after_unix": 0
             })
         ])),
+        registry: Arc::new(Mutex::new(RegistryState::default())),
+        chaos_config: Arc::new(Mutex::new(crate::state::ChaosConfig {
+            outage_enabled: false,
+            global_latency_ms: 0,
+        })),
     };
 
-    // Populate default tenant
-    {
-        let mut tenants = state.tenants.lock().unwrap();
-        tenants.insert(
-            "tenant-production-1".to_string(),
-            serde_json::json!({
-                "tenant_id": "tenant-production-1",
-                "schema_version": "pollen.tenant.v1",
-                "tenant_type": "enterprise",
-                "display_name": "Pollen Prod",
-                "trust_domain_strategy": "shared",
-                "data_region": "us-east",
-                "policy_mode": "enforce",
-                "created_at": Utc::now().to_rfc3339()
-            }),
-        );
+    if let Some(profile) = args.seed {
+        info!("Loading seed fixtures for profile: {}", profile);
+        crate::fixtures::load_seed_data(&state, &profile);
     }
 
     // ---- mTLS API (post-enrollment): config / bundles / telemetry ----
     let api = Router::new()
-        .merge(registry::router())
+        .merge(crate::registry::router())
+        .merge(crate::compiler::router())
+        .merge(crate::pdp::router())
+        .merge(crate::scenarios::router())
+        .route("/admin/registry", get(crate::admin::admin_dashboard))
         .merge(bundles::router())
         .merge(tuf::router())
-        .merge(telemetry::router())
-        .merge(threats::router())
         .merge(keys::router())
         .route(
             "/v1/tenants/:tenant_id/devices/:device_id/config",
             get(get_config),
         )
+        // Order matters for middleware. Chaos middleware should wrap the v1 endpoints.
+        // And telemetry / threats routes are merged before the layer so they are wrapped, BUT
+        // the middleware internally explicitly filters to only act on `/v1/` routes.
+        .merge(crate::telemetry::router())
+        .merge(crate::threats::router())
+        .layer(axum::middleware::from_fn_with_state(state.clone(), crate::threats::chaos_middleware))
         .with_state(state.clone());
 
     // ---- Enrollment listener (PRE-identity, NO client cert) ----
@@ -230,11 +237,18 @@ struct DeviceApprovalTemplate {
     success: Option<String>,
 }
 
+pub struct LogEntryView {
+    pub timestamp: String,
+    pub device_id: String,
+    pub event_type: String,
+    pub details: String,
+}
+
 #[derive(Template)]
 #[template(path = "dashboard.html")]
 struct DashboardTemplate {
     devices: Vec<DeviceStatus>,
-    recent_logs: Vec<LogEntry>,
+    recent_logs: Vec<LogEntryView>,
     telemetry_count: usize,
     current_version: String,
     canary_info: String,
@@ -287,8 +301,51 @@ async fn device_page_post(
 
 async fn dashboard_page(State(state): State<AppState>) -> impl IntoResponse {
     let devices: Vec<DeviceStatus> = state.devices.lock().unwrap().values().cloned().collect();
-    let logs_guard = state.decision_logs.lock().unwrap();
-    let recent_logs: Vec<LogEntry> = logs_guard.iter().take(50).cloned().collect();
+    let logs_guard = state.telemetry_events.lock().unwrap();
+    let recent_logs: Vec<LogEntryView> = logs_guard.iter().take(50).map(|e| {
+        match e {
+            TelemetryEvent::Decision { timestamp, device_id, action, decision, .. } => {
+                LogEntryView {
+                    timestamp: timestamp.clone(),
+                    device_id: device_id.clone(),
+                    event_type: "Decision".to_string(),
+                    details: format!("{} -> {}", action, decision),
+                }
+            },
+            TelemetryEvent::Security { timestamp, device_id, severity, category, .. } => {
+                LogEntryView {
+                    timestamp: timestamp.clone(),
+                    device_id: device_id.clone(),
+                    event_type: "Security".to_string(),
+                    details: format!("[{}] {}", severity, category),
+                }
+            },
+            TelemetryEvent::Trace { trace_id, device_id, .. } => {
+                LogEntryView {
+                    timestamp: "N/A".to_string(), // Traces might not have top-level timestamp
+                    device_id: device_id.clone(),
+                    event_type: "Trace".to_string(),
+                    details: format!("TraceID: {}", trace_id),
+                }
+            },
+            TelemetryEvent::Metric { timestamp, device_id, .. } => {
+                LogEntryView {
+                    timestamp: timestamp.clone(),
+                    device_id: device_id.clone(),
+                    event_type: "Metric".to_string(),
+                    details: "Metrics payload".to_string(),
+                }
+            },
+            TelemetryEvent::EbpfGuardrail { timestamp, device_id, process_name, verdict, .. } => {
+                LogEntryView {
+                    timestamp: timestamp.clone(),
+                    device_id: device_id.clone(),
+                    event_type: "eBPF".to_string(),
+                    details: format!("{} -> {}", process_name, verdict),
+                }
+            }
+        }
+    }).collect();
     let count = logs_guard.len();
 
     let rollout_guard = state.rollout.lock().unwrap();

@@ -155,8 +155,8 @@
                     <tr>
                         <th>Timestamp</th>
                         <th>Device ID</th>
-                        <th>Action</th>
-                        <th>Decision</th>
+                        <th>Event Type</th>
+                        <th>Details</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -164,14 +164,14 @@
                     <tr class="log-row">
                         <td style="color: var(--text-muted);">{{ l.timestamp }}</td>
                         <td>{{ l.device_id }}</td>
-                        <td>{{ l.action }}</td>
+                        <td><span class="badge bg-primary">{{ l.event_type }}</span></td>
                         <td>
-                            {% if l.decision == "Permit" %}
-                                <span style="color: var(--success);">PERMIT</span>
-                            {% else if l.decision == "Deny" %}
-                                <span style="color: var(--danger);">DENY</span>
+                            {% if l.details.contains("Permit") || l.details.contains("Allow") || l.details.contains("success") %}
+                                <span style="color: var(--success);">{{ l.details }}</span>
+                            {% else if l.details.contains("Deny") || l.details.contains("fail") || l.details.contains("block") %}
+                                <span style="color: var(--danger);">{{ l.details }}</span>
                             {% else %}
-                                <span style="color: var(--warning);">{{ l.decision }}</span>
+                                <span>{{ l.details }}</span>
                             {% endif %}
                         </td>
                     </tr>

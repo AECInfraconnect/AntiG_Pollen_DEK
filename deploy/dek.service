@@ -1,0 +1,48 @@
+[Unit]
+Description=Pollen DEK (Distributed Enforcement Kernel)
+Documentation=https://github.com/pollen-cloud/pollen-dek
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# DEK execution config
+ExecStart=/usr/local/bin/pollen-dek start --config /etc/pollen/dek.yml
+Restart=always
+RestartSec=3
+
+# Hardening / Sandbox Configuration
+User=pollen
+Group=pollen
+DynamicUser=yes
+StateDirectory=pollen
+ConfigurationDirectory=pollen
+LogsDirectory=pollen
+CacheDirectory=pollen
+
+# System restrictions
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+NoNewPrivileges=yes
+MemoryDenyWriteExecute=yes
+
+# Network restrictions
+# Allow AF_INET/AF_INET6 for mTLS to Mock-Cloud.
+# AF_UNIX for local IPC / MCP communication.
+# AF_NETLINK if eBPF daemon communication is required later.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+# Limit system calls (basic filtering)
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target
