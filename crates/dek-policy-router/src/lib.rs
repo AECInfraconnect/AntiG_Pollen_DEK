@@ -5,19 +5,32 @@ use dek_policy_runtime::{PolicyDecision, PolicyRuntime};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum EnforcementMode {
+    #[default]
+    Standard,     // Standard evaluation
+    FailClosed,   // If evaluator error or missing, deny
+    BreakGlass,   // Bypass evaluation for emergency, always allow
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Route {
     pub id: String,
     pub priority: i32,
-    pub match_rule: MatchRule,
+    #[serde(default)]
+    pub enforcement_mode: EnforcementMode,
+    pub match_rule: EnterpriseMatchRule,
     pub pdp_required: Vec<String>,
     pub pdp_conditional: Vec<ConditionalPdp>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MatchRule {
+pub struct EnterpriseMatchRule {
     pub method: Option<String>,
     pub tool_category: Option<String>,
+    pub resource_type: Option<String>,
+    pub severity_level: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,13 +80,39 @@ impl PolicyRouter {
             })
             .unwrap_or("");
 
+        // Extract optional matching context from payload
+        let tool_category = payload.get("mcp").and_then(|mcp| mcp.get("category")).and_then(|v| v.as_str());
+        let resource_type = payload.get("resource").and_then(|v| v.as_str());
+        let severity_level = payload.get("severity").and_then(|v| v.as_str());
+
         let mut matched_route = None;
         for route in &self.routes {
+            let mut matches = true;
+
             if let Some(ref m) = route.match_rule.method {
-                if m == method || m == "*" {
-                    matched_route = Some(route);
-                    break;
+                if m != "*" && m != method {
+                    matches = false;
                 }
+            }
+            if let Some(ref cat) = route.match_rule.tool_category {
+                if Some(cat.as_str()) != tool_category && cat != "*" {
+                    matches = false;
+                }
+            }
+            if let Some(ref res) = route.match_rule.resource_type {
+                if Some(res.as_str()) != resource_type && res != "*" {
+                    matches = false;
+                }
+            }
+            if let Some(ref sev) = route.match_rule.severity_level {
+                if Some(sev.as_str()) != severity_level && sev != "*" {
+                    matches = false;
+                }
+            }
+
+            if matches {
+                matched_route = Some(route);
+                break;
             }
         }
 
@@ -95,7 +134,23 @@ impl PolicyRouter {
             }
         };
 
-        tracing::info!("== Adaptive Routing: Matched Route '{}' ==", route.id);
+        tracing::info!("== Adaptive Routing: Matched Route '{}' (Mode: {:?}) ==", route.id, route.enforcement_mode);
+
+        if route.enforcement_mode == EnforcementMode::BreakGlass {
+            tracing::warn!("BREAK-GLASS MODE ACTIVATED for route {}: bypassing all evaluations", route.id);
+            return Ok(PolicyDecision {
+                evaluator_id: "router_breakglass".into(),
+                evaluator_type: "router".into(),
+                required: false,
+                status: "success".into(),
+                decision: "allow".into(),
+                allow: true,
+                reason: "Break-glass mode activated".into(),
+                effects: serde_json::json!({}),
+                obligations: vec![],
+                metadata: serde_json::json!({}),
+            });
+        }
 
         let mut combined_decision = PolicyDecision {
             evaluator_id: "router_combiner".into(),
@@ -157,31 +212,31 @@ impl PolicyRouter {
                     Err(dek_policy_runtime::PolicyError::Unavailable(msg)) => {
                         metrics::counter!("dek_pdp_unavailable_total", "evaluator" => ev_id.clone()).increment(1);
 
-                        tracing::warn!("required PDP unavailable: {msg}; failing closed");
+                        tracing::warn!("required PDP unavailable: {msg}; mode: {:?}", route.enforcement_mode);
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
-                        combined_decision.reason = format!("required PDP unavailable: {}", msg);
+                        combined_decision.reason = format!("required PDP unavailable: {} (Mode: {:?})", msg, route.enforcement_mode);
                         break;
                     }
                     Err(e) => {
                         metrics::counter!("dek_pdp_error_total", "evaluator" => ev_id.clone()).increment(1);
-                        tracing::warn!("PDP error: {e}; failing closed");
+                        tracing::warn!("PDP error: {e}; mode: {:?}", route.enforcement_mode);
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
-                        combined_decision.reason = format!("PDP error: {}", e);
+                        combined_decision.reason = format!("PDP error: {} (Mode: {:?})", e, route.enforcement_mode);
                         break;
                     }
                 }
             } else {
                 tracing::warn!(
-                    "Error: Required evaluator {} not found. Failing closed.",
-                    ev_id
+                    "Error: Required evaluator {} not found. Mode: {:?}",
+                    ev_id, route.enforcement_mode
                 );
                 combined_decision.allow = false;
                 combined_decision.decision = "deny".into();
                 combined_decision.reason = format!(
-                    "Required evaluator {} not configured or failed to load",
-                    ev_id
+                    "Required evaluator {} not configured or failed to load (Mode: {:?})",
+                    ev_id, route.enforcement_mode
                 );
                 break;
             }
@@ -241,9 +296,12 @@ mod tests {
         router.set_routes(vec![Route {
             id: "route1".into(),
             priority: 10,
-            match_rule: MatchRule {
+            enforcement_mode: EnforcementMode::Standard,
+            match_rule: EnterpriseMatchRule {
                 method: Some("test".into()),
                 tool_category: None,
+                resource_type: None,
+                severity_level: None,
             },
             pdp_required: vec!["dummy".into()],
             pdp_conditional: vec![],
@@ -252,5 +310,28 @@ mod tests {
         let payload = serde_json::json!({ "request_type": "test" });
         let res = router.authorize(payload).await.unwrap();
         assert_eq!(res.decision, "allow");
+    }
+
+    #[tokio::test]
+    async fn test_breakglass_mode() {
+        let mut router = PolicyRouter::new();
+        router.set_routes(vec![Route {
+            id: "route_emergency".into(),
+            priority: 100,
+            enforcement_mode: EnforcementMode::BreakGlass,
+            match_rule: EnterpriseMatchRule {
+                method: Some("*".into()),
+                tool_category: None,
+                resource_type: None,
+                severity_level: None,
+            },
+            pdp_required: vec!["missing_pdp".into()], // would normally fail
+            pdp_conditional: vec![],
+        }]);
+
+        let payload = serde_json::json!({ "request_type": "emergency_action" });
+        let res = router.authorize(payload).await.unwrap();
+        assert_eq!(res.decision, "allow");
+        assert_eq!(res.reason, "Break-glass mode activated");
     }
 }
