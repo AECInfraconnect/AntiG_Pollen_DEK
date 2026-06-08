@@ -1,18 +1,14 @@
 [Unit]
-Description=Pollen DEK Policy Enforcement Service
+Description=Pollen Distributed Enforcement Kernel Core
 After=network.target
 
 [Service]
-Type=simple
-User=pollen-dek
-Group=pollen-dek
-ExecStart=/usr/bin/dekd
-Restart=on-failure
+ExecStart=/usr/local/bin/dek-core
+Restart=always
 RestartSec=5
-# Allow memlock for eBPF maps if enabled
-LimitMEMLOCK=infinity
-CapabilityBoundingSet=CAP_BPF CAP_NET_ADMIN CAP_SYS_ADMIN
-AmbientCapabilities=CAP_BPF CAP_NET_ADMIN CAP_SYS_ADMIN
+User=root
+Environment=DEK_BOOTSTRAP_PATH=/opt/pollen/bootstrap.json
+LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target

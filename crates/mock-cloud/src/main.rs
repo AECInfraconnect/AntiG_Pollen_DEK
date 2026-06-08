@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod admin;
 pub mod assertions;
 pub mod bundles;
@@ -125,8 +126,6 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
         .merge(crate::compiler::router())
         .merge(crate::pdp::router())
         .merge(crate::scenarios::router())
-        .route("/admin/registry", get(crate::admin::admin_dashboard))
-        .route("/mock/admin/bundles/:bundle_id/poison", post(crate::admin::admin_bundle_poison))
         .merge(bundles::router())
         .merge(update_server::router())
         .merge(ui::router())
@@ -150,6 +149,15 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
         .merge(spire::router())
         .route("/device", get(device_page_get).post(device_page_post))
         .route("/admin/dashboard", get(dashboard_page))
+        .route("/admin/registry", get(crate::admin::admin_dashboard))
+        .route("/mock/admin/bundles/:bundle_id/poison", post(crate::admin::admin_bundle_poison))
+        .route("/mock/admin/audits", get(crate::admin::get_audits))
+        .route("/mock/admin/telemetry", get(crate::admin::get_telemetry))
+        .route("/mock/admin/chaos/outage", post(crate::admin::admin_chaos_outage))
+        .route("/mock/admin/keys/rotate", post(crate::admin::admin_keys_rotate))
+        .route("/mock/admin/policies/publish", post(crate::admin::admin_policies_publish))
+        .route("/mock/admin/policies/publish-tampered", post(crate::admin::admin_policies_publish_tampered))
+        .route("/mock/admin/policies/rollback", post(crate::admin::admin_policies_rollback))
         .route(
             "/admin/devices/:device_id/revoke",
             post(admin_revoke_device),
@@ -164,7 +172,7 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
     let mut root_cert_store = RootCertStore::empty();
     let ca_certs = load_certs("certs/root_ca.crt")?;
     root_cert_store.add_parsable_certificates(ca_certs);
-    let client_verifier = WebPkiClientVerifier::builder(Arc::new(root_cert_store))
+    let _client_verifier = WebPkiClientVerifier::builder(Arc::new(root_cert_store))
         .allow_unauthenticated()
         .build()
         .context("build client verifier")?;

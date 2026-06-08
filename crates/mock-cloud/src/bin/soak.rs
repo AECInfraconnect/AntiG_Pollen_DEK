@@ -1,7 +1,7 @@
 use clap::Parser;
 use reqwest::Client;
 use std::time::{Duration, Instant};
-use tracing::{info, warn};
+use tracing::info;
 use tracing_subscriber;
 use serde_json::json;
 

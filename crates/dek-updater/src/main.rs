@@ -1,89 +1,119 @@
-use std::env;
+use anyhow::{Context, Result};
+use chrono::{DateTime, Utc};
+use clap::{Parser, Subcommand};
+use sha2::{Digest, Sha256};
 use std::fs;
+use std::io::Read;
 use std::path::PathBuf;
 
-pub mod metadata;
-
-fn main() {
-    println!("Pollen DEK Auto-Updater");
-
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 3 {
-        eprintln!("Usage: dek-updater <target_exe> <new_exe>");
-        std::process::exit(1);
-    }
-
-    let target_exe = PathBuf::from(&args[1]);
-    let new_exe = PathBuf::from(&args[2]);
-
-    if !new_exe.exists() {
-        eprintln!("New executable not found: {:?}", new_exe);
-        std::process::exit(1);
-    }
-
-    // Task 6.2: TUF Verification
-    // In a full implementation, this uses tough or rust-tuf to query the root role, targets role, and map the target path to its hash/size.
-    if let Some(tuf_metadata) = args.get(3) {
-        println!(
-            "Performing TUF verification using metadata: {}",
-            tuf_metadata
-        );
-        if let Err(e) = verify_tuf_signature(&new_exe, tuf_metadata) {
-            eprintln!("TUF Verification Failed: {e}");
-            std::process::exit(1);
-        }
-        println!("TUF Verification Successful.");
-    } else {
-        println!("Warning: Running without TUF verification metadata.");
-    }
-
-    // On Windows, you can rename an executing file, but you can't delete or overwrite it directly.
-    let backup_exe = target_exe.with_extension("exe.bak");
-
-    // Remove old backup if it exists
-    if backup_exe.exists()
-        && let Err(e) = fs::remove_file(&backup_exe)
-    {
-        eprintln!("Failed to remove old backup: {e}");
-    }
-
-    // Rename current running executable to backup
-    if target_exe.exists()
-        && let Err(e) = fs::rename(&target_exe, &backup_exe)
-    {
-        eprintln!("Failed to rename active executable: {e}");
-        std::process::exit(1);
-    }
-
-    // Rename the new downloaded executable to the target name
-    if let Err(e) = fs::rename(&new_exe, &target_exe) {
-        eprintln!("Failed to move new executable into place: {e}");
-        // Rollback
-        if backup_exe.exists() {
-            let _ = fs::rename(&backup_exe, &target_exe);
-        }
-        std::process::exit(1);
-    }
-
-    println!("Update successful. Please restart the service.");
+#[derive(Parser)]
+#[command(name = "dek-updater", about = "Pollen DEK Auto-Updater")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
 }
 
-// Task 6.2: TUF Verification
-fn verify_tuf_signature(new_exe: &PathBuf, metadata_path: &str) -> anyhow::Result<()> {
-    use sha2::{Digest, Sha256};
-    use std::io::Read;
+#[derive(Subcommand)]
+enum Commands {
+    /// Check for updates
+    Check {
+        #[arg(long, default_value = "stable")]
+        channel: String,
+    },
+    /// Verify an executable against TUF metadata
+    Verify {
+        target_exe: PathBuf,
+        metadata_path: PathBuf,
+    },
+    /// Perform the update by replacing the current executable
+    Update {
+        target_exe: PathBuf,
+        new_exe: PathBuf,
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
 
-    // 1. Read the provided mock TUF targets metadata
-    let metadata_content = fs::read_to_string(metadata_path)?;
-    let metadata: serde_json::Value = serde_json::from_str(&metadata_content)?;
+fn main() -> Result<()> {
+    let cli = Cli::parse();
 
-    // Expected format: { "targets": { "dek-core.exe": { "hashes": { "sha256": "..." }, "length": ... } } }
+    match cli.command {
+        Commands::Check { channel } => {
+            println!("Checking for updates on channel: {}", channel);
+            // In a real implementation, this would fetch from the TUF repository.
+            println!("Mock: No updates available on channel '{}'.", channel);
+        }
+        Commands::Verify {
+            target_exe,
+            metadata_path,
+        } => {
+            verify_tuf_signature(&target_exe, &metadata_path)?;
+            println!("TUF Verification Successful.");
+        }
+        Commands::Update {
+            target_exe,
+            new_exe,
+            dry_run,
+        } => {
+            if !new_exe.exists() {
+                anyhow::bail!("New executable not found: {:?}", new_exe);
+            }
+            if dry_run {
+                println!(
+                    "DRY RUN: Would replace {:?} with {:?}",
+                    target_exe, new_exe
+                );
+                return Ok(());
+            }
+
+            let backup_exe = target_exe.with_extension("exe.bak");
+            if backup_exe.exists() {
+                let _ = fs::remove_file(&backup_exe);
+            }
+            if target_exe.exists() {
+                fs::rename(&target_exe, &backup_exe)
+                    .context("Failed to rename active executable")?;
+            }
+            if let Err(e) = fs::rename(&new_exe, &target_exe) {
+                eprintln!("Failed to move new executable into place: {e}");
+                if backup_exe.exists() {
+                    let _ = fs::rename(&backup_exe, &target_exe);
+                }
+                anyhow::bail!("Update failed and rolled back");
+            }
+            println!("Update successful. Please restart the service.");
+        }
+    }
+    Ok(())
+}
+
+fn verify_tuf_signature(new_exe: &PathBuf, metadata_path: &PathBuf) -> Result<()> {
+    let content = fs::read_to_string(metadata_path).context("Failed to read TUF metadata")?;
+    let metadata: serde_json::Value = serde_json::from_str(&content)?;
+
+    // Handle full TUF format { "signed": { "targets": ... } } or raw payload
+    let signed = if metadata.get("signed").is_some() {
+        &metadata["signed"]
+    } else {
+        &metadata
+    };
+
+    // 1. Check expiration
+    if let Some(expires_str) = signed["expires"].as_str() {
+        if let Ok(expires_dt) = expires_str.parse::<DateTime<Utc>>() {
+            if Utc::now() > expires_dt {
+                anyhow::bail!("TUF metadata has expired on {}", expires_dt);
+            }
+        }
+    }
+
     let target_name = new_exe
         .file_name()
         .unwrap_or_default()
         .to_string_lossy()
         .to_string();
-    let target_info = metadata["targets"][&target_name]
+
+    let target_info = signed["targets"][&target_name]
         .as_object()
         .ok_or_else(|| anyhow::anyhow!("Target {} not found in TUF metadata", target_name))?;
 
@@ -94,15 +124,11 @@ fn verify_tuf_signature(new_exe: &PathBuf, metadata_path: &str) -> anyhow::Resul
         .as_u64()
         .ok_or_else(|| anyhow::anyhow!("Missing length in metadata for target"))?;
 
-    // 2. Hash the executable
+    // 2. Hash and Size check
     let mut file = fs::File::open(new_exe)?;
     let meta = file.metadata()?;
     if meta.len() != expected_size {
-        anyhow::bail!(
-            "File size mismatch. Expected {}, got {}",
-            expected_size,
-            meta.len()
-        );
+        anyhow::bail!("File size mismatch: expected {}, got {}", expected_size, meta.len());
     }
 
     let mut hasher = Sha256::new();
@@ -114,15 +140,18 @@ fn verify_tuf_signature(new_exe: &PathBuf, metadata_path: &str) -> anyhow::Resul
         }
         hasher.update(&buffer[..n]);
     }
-    let result = hasher.finalize();
-    let actual_hash = hex::encode(result);
+    let actual_hash = hex::encode(hasher.finalize());
 
     if actual_hash != expected_hash {
-        anyhow::bail!(
-            "Hash mismatch. Expected {}, got {}",
-            expected_hash,
-            actual_hash
-        );
+        anyhow::bail!("Hash mismatch: expected {}, got {}", expected_hash, actual_hash);
+    }
+
+    // 3. Platform checking (mock constraint)
+    if let Some(platform) = target_info.get("custom").and_then(|c| c.get("platform")).and_then(|p| p.as_str()) {
+        let current_platform = if cfg!(windows) { "windows" } else if cfg!(target_os = "macos") { "macos" } else { "linux" };
+        if !platform.contains(current_platform) {
+            anyhow::bail!("Platform mismatch: target is for {}, but we are on {}", platform, current_platform);
+        }
     }
 
     Ok(())

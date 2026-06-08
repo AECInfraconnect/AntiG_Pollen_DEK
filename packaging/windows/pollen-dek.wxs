@@ -1,37 +1,35 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-    <Product Id="*" Name="Pollen DEK" Language="1033" Version="1.0.0.0" Manufacturer="AECInfraconnect" UpgradeCode="78b871c8-2e06-444a-8f55-1f6cc97b3708">
+    <Product Id="*" Name="Pollen DEK" Language="1033" Version="1.0.0.0" Manufacturer="Pollen" UpgradeCode="a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d">
         <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
-
-        <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+        <MajorUpgrade DowngradeErrorMessage="A newer version of Pollen DEK is already installed." />
         <MediaTemplate EmbedCab="yes" />
 
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="ProgramFilesFolder">
-                <Directory Id="INSTALLFOLDER" Name="PollenDEK">
-                    <Component Id="cmp_dekd_exe" Guid="*">
-                        <File Id="file_dekd_exe" Source="..\..\target\release\dekd.exe" KeyPath="yes" />
-                        <!-- Start DEK as a Windows Service -->
-                        <ServiceInstall Id="ServiceInstaller"
-                                        Type="ownProcess"
-                                        Name="PollenDEK"
-                                        DisplayName="Pollen DEK Service"
-                                        Description="Local Policy Enforcement Node for Pollen Cloud"
-                                        Start="auto"
-                                        Account="LocalSystem"
-                                        ErrorControl="normal" />
-                        <ServiceControl Id="StartService" Stop="both" Remove="uninstall" Name="PollenDEK" Wait="yes" />
-                    </Component>
-                    <Component Id="cmp_dekctl_exe" Guid="*">
-                        <File Id="file_dekctl_exe" Source="..\..\target\release\dekctl.exe" KeyPath="yes" />
-                    </Component>
-                </Directory>
+                <Directory Id="INSTALLFOLDER" Name="PollenDEK" />
+            </Directory>
+            <Directory Id="CommonAppDataFolder">
+                <Directory Id="DATAFOLDER" Name="PollenDEK" />
             </Directory>
         </Directory>
 
-        <Feature Id="ProductFeature" Title="PollenDEK" Level="1">
-            <ComponentRef Id="cmp_dekd_exe" />
-            <ComponentRef Id="cmp_dekctl_exe" />
+        <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+            <Component Id="DekCoreExe" Guid="*">
+                <File Id="dek_core_exe" Source="target\release\dek-core.exe" KeyPath="yes" />
+                <ServiceInstall Id="ServiceInstaller" Type="ownProcess" Name="PollenDEKCore" DisplayName="Pollen DEK Core Service" Description="Pollen Distributed Enforcement Kernel" Start="auto" Account="LocalSystem" ErrorControl="normal" />
+                <ServiceControl Id="StartService" Stop="both" Remove="uninstall" Name="PollenDEKCore" Wait="yes" />
+            </Component>
+            <Component Id="DekMcpProxyExe" Guid="*">
+                <File Id="dek_mcp_proxy_exe" Source="target\release\dek-mcp-proxy.exe" KeyPath="yes" />
+            </Component>
+            <Component Id="DekUpdaterExe" Guid="*">
+                <File Id="dek_updater_exe" Source="target\release\dek-updater.exe" KeyPath="yes" />
+            </Component>
+        </ComponentGroup>
+
+        <Feature Id="ProductFeature" Title="Pollen DEK Core" Level="1">
+            <ComponentGroupRef Id="ProductComponents" />
         </Feature>
     </Product>
 </Wix>

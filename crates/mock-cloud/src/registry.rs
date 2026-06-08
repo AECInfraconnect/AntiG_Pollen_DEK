@@ -3,7 +3,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post, patch},
+    routing::{get, post},
     Json, Router,
 };
 use dek_domain_schema::*;

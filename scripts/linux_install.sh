@@ -2,7 +2,7 @@
 set -e
 
 INSTALL_DIR="/usr/local/bin"
-DATA_DIR="/etc/pollen-dek"
+DATA_DIR="/opt/pollen"
 SYSTEMD_DIR="/etc/systemd/system"
 
 if [ "$EUID" -ne 0 ]; then
@@ -12,7 +12,14 @@ fi
 
 echo "Installing Pollen DEK..."
 
+# Create system user
+if ! id "pollendek" &>/dev/null; then
+  useradd -r -s /usr/sbin/nologin pollendek
+fi
+
 mkdir -p "$DATA_DIR"
+chown -R pollendek:pollendek "$DATA_DIR"
+chmod 700 "$DATA_DIR"
 
 # Copy binaries
 cp dek-core "$INSTALL_DIR/"
@@ -33,7 +40,7 @@ Restart=always
 RestartSec=5
 User=root
 # We run as root to support eBPF and firewall manipulation
-Environment=DEK_BOOTSTRAP_PATH=/etc/pollen-dek/bootstrap.json
+Environment=DEK_BOOTSTRAP_PATH=/opt/pollen/bootstrap.json
 LimitNOFILE=65536
 
 [Install]

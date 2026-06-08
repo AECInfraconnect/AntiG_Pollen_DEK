@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.pollen.dek</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/dek-core</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>DEK_BOOTSTRAP_PATH</key>
+        <string>/Library/Application Support/PollenDEK/bootstrap.json</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+</dict>
+</plist>
