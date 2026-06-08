@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::len_without_is_empty)]
 use regex::Regex;
 use serde_json::Value;
 
@@ -39,7 +40,10 @@ impl Redactor {
             Value::Object(obj) => {
                 for (k, v) in obj.iter_mut() {
                     // Check if the key indicates a secret and mask entire value
-                    if k.to_lowercase().contains("token") || k.to_lowercase().contains("password") || k.to_lowercase().contains("secret") {
+                    if k.to_lowercase().contains("token")
+                        || k.to_lowercase().contains("password")
+                        || k.to_lowercase().contains("secret")
+                    {
                         if let Value::String(_) = v {
                             *v = Value::String("[REDACTED_SECRET]".to_string());
                             continue;

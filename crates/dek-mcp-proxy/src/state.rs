@@ -11,11 +11,10 @@
 //!     # jsonwebtoken can be dropped here once all JWT logic lives in dek-auth
 
 use arc_swap::{ArcSwap, ArcSwapOption};
-use dek_activation::snapshot::{RuntimeSnapshot, DekMetadata};
-use dek_wasm_host::WasmtimePluginHost;
+use dek_activation::snapshot::RuntimeSnapshot;
 use dek_mcp_normalizer::http::HttpTransportAdapter;
-use std::sync::Arc;
 use dek_telemetry::CloudTelemetrySink;
+use std::sync::Arc;
 
 pub struct AppState {
     pub http_adapter: HttpTransportAdapter,

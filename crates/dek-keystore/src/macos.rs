@@ -1,8 +1,8 @@
 use crate::Keystore;
 use anyhow::{Context, Result};
 use std::fs;
-use std::path::PathBuf;
 use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
 
 pub struct KeychainKeystore {
     store_dir: PathBuf,
@@ -11,7 +11,8 @@ pub struct KeychainKeystore {
 impl KeychainKeystore {
     pub fn new() -> Self {
         tracing::warn!("macOS secure Keystore not fully implemented. Falling back to 0600 file-based storage. Hardened key storage will follow in the next Phase.");
-        let mut dir = dirs_next::data_local_dir().unwrap_or_else(|| PathBuf::from("/Library/Application Support"));
+        let mut dir = dirs_next::data_local_dir()
+            .unwrap_or_else(|| PathBuf::from("/Library/Application Support"));
         dir.push("pollen-dek");
         dir.push("keystore");
         let _ = fs::create_dir_all(&dir);
@@ -24,7 +25,8 @@ impl Keystore for KeychainKeystore {
     fn store_key(&self, alias: &str, data: &[u8]) -> Result<()> {
         let path = self.store_dir.join(alias);
         fs::write(&path, data).context("Failed to write to keystore file")?;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).context("Failed to set 0600 permissions")?;
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600))
+            .context("Failed to set 0600 permissions")?;
         Ok(())
     }
 

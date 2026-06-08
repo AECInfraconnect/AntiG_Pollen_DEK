@@ -1,3 +1,4 @@
+use arc_swap::ArcSwap;
 use axum::{
     extract::State,
     http::StatusCode,
@@ -8,16 +9,18 @@ use axum::{
 use dek_activation::snapshot::RuntimeSnapshot;
 use dek_decision::{DecisionRequest, DecisionResponse};
 use std::sync::Arc;
-use arc_swap::ArcSwap;
-use tracing::{error, info};
 use tokio::net::TcpListener;
+use tracing::{error, info};
 
 #[derive(Clone)]
 struct ApiState {
     snapshot: Arc<ArcSwap<RuntimeSnapshot>>,
 }
 
-pub async fn start_sidecar_api(snapshot: Arc<ArcSwap<RuntimeSnapshot>>, port: u16) -> anyhow::Result<()> {
+pub async fn start_sidecar_api(
+    snapshot: Arc<ArcSwap<RuntimeSnapshot>>,
+    port: u16,
+) -> anyhow::Result<()> {
     let state = ApiState { snapshot };
 
     let app = Router::new()
@@ -31,7 +34,7 @@ pub async fn start_sidecar_api(snapshot: Arc<ArcSwap<RuntimeSnapshot>>, port: u1
     let addr = format!("127.0.0.1:{}", port);
     info!("Starting Sidecar API on {}", addr);
     let listener = TcpListener::bind(&addr).await?;
-    
+
     tokio::spawn(async move {
         if let Err(e) = axum::serve(listener, app).await {
             error!("Sidecar API server failed: {}", e);
@@ -63,28 +66,34 @@ async fn check(
 ) -> impl IntoResponse {
     let snap = state.snapshot.load();
     let val = serde_json::to_value(&req).unwrap_or(serde_json::json!({}));
-    
+
     let start = std::time::Instant::now();
-    let res = snap.router.authorize(val).await.unwrap_or_else(|_| {
-        dek_policy_runtime::PolicyDecision {
-            evaluator_id: "core_api".into(),
-            evaluator_type: "router".into(),
-            required: true,
-            status: "error".into(),
-            decision: "deny".into(),
-            allow: false,
-            reason: "Policy evaluation failed".into(),
-            effects: serde_json::json!({}),
-            obligations: vec![],
-            metadata: serde_json::json!({}),
-        }
-    });
+    let res =
+        snap.router
+            .authorize(val)
+            .await
+            .unwrap_or_else(|_| dek_policy_runtime::PolicyDecision {
+                evaluator_id: "core_api".into(),
+                evaluator_type: "router".into(),
+                required: true,
+                status: "error".into(),
+                decision: "deny".into(),
+                allow: false,
+                reason: "Policy evaluation failed".into(),
+                effects: serde_json::json!({}),
+                obligations: vec![],
+                metadata: serde_json::json!({}),
+            });
     let latency = start.elapsed().as_millis() as u64;
 
     let response = DecisionResponse {
         decision_id: uuid::Uuid::new_v4().to_string(),
         allow: res.allow,
-        reason_code: if res.allow { "OK".into() } else { "DENIED_BY_POLICY".into() },
+        reason_code: if res.allow {
+            "OK".into()
+        } else {
+            "DENIED_BY_POLICY".into()
+        },
         reason: res.reason,
         obligations: vec![],
         effects: res.effects,
@@ -127,7 +136,11 @@ async fn batch_check(
         responses.push(DecisionResponse {
             decision_id: uuid::Uuid::new_v4().to_string(),
             allow: res.allow,
-            reason_code: if res.allow { "OK".into() } else { "DENIED_BY_POLICY".into() },
+            reason_code: if res.allow {
+                "OK".into()
+            } else {
+                "DENIED_BY_POLICY".into()
+            },
             reason: res.reason,
             obligations: vec![],
             effects: res.effects,

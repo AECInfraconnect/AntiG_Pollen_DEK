@@ -25,14 +25,14 @@ pub fn probe_ebpf_support() -> bool {
     // 2. Check for BTF support
     let has_caps = has_bpf_caps();
     let has_btf = std::path::Path::new("/sys/kernel/btf/vmlinux").exists();
-    
+
     if !has_caps {
         warn!("Missing CAP_BPF or CAP_SYS_ADMIN. Falling back to App-Layer-Only.");
     }
     if !has_btf {
         warn!("Kernel BTF (/sys/kernel/btf/vmlinux) not found. Falling back to App-Layer-Only.");
     }
-    
+
     has_caps && has_btf
 }
 
@@ -46,8 +46,14 @@ pub async fn load_and_attach(
     }
     let cgroup = "/sys/fs/cgroup/pollen-dek-supervised";
     match dek_ebpfd::start_ebpfd_supervisor(cgroup, obs_tx).await {
-        Ok(handle) => { info!("eBPF Control Point active."); Some(handle) }
-        Err(e) => { tracing::error!("eBPFD failed: {e}"); None }
+        Ok(handle) => {
+            info!("eBPF Control Point active.");
+            Some(handle)
+        }
+        Err(e) => {
+            tracing::error!("eBPFD failed: {e}");
+            None
+        }
     }
 }
 

@@ -50,7 +50,7 @@ pub async fn run(cloud_url: &str) -> Result<()> {
             println!("  Enter code: {}", p.user_code);
             println!("  (expires in {}s)", p.expires_in);
             println!("──────────────────────────────────────────────\n");
-            
+
             if webbrowser::open(url).is_ok() {
                 println!("(Opened browser automatically. If it didn't open, please click the link above.)");
             }
@@ -93,7 +93,8 @@ pub async fn run(cloud_url: &str) -> Result<()> {
     );
 
     // Parse trust domain from SPIFFE ID if possible (e.g. spiffe://tenant.example/...)
-    let trust_domain = svid.spiffe_id
+    let trust_domain = svid
+        .spiffe_id
         .strip_prefix("spiffe://")
         .and_then(|s| s.split('/').next())
         .unwrap_or("unknown");

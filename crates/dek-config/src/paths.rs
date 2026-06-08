@@ -4,14 +4,15 @@ pub fn get_config_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("DEK_CONFIG_DIR") {
         return PathBuf::from(dir);
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         PathBuf::from("/etc/pollen-dek")
     }
     #[cfg(target_os = "windows")]
     {
-        let program_data = std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
+        let program_data =
+            std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
         PathBuf::from(program_data).join("PollenDEK").join("config")
     }
     #[cfg(target_os = "macos")]
@@ -39,7 +40,8 @@ pub fn get_data_dir() -> PathBuf {
     }
     #[cfg(target_os = "windows")]
     {
-        let program_data = std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
+        let program_data =
+            std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
         PathBuf::from(program_data).join("PollenDEK").join("state")
     }
     #[cfg(target_os = "macos")]
@@ -63,7 +65,8 @@ pub fn get_log_dir() -> PathBuf {
     }
     #[cfg(target_os = "windows")]
     {
-        let program_data = std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
+        let program_data =
+            std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
         PathBuf::from(program_data).join("PollenDEK").join("logs")
     }
     #[cfg(target_os = "macos")]
@@ -89,7 +92,8 @@ pub fn get_runtime_dir() -> PathBuf {
     {
         // On Windows, runtime paths for named pipes are usually \\.\pipe\...
         // But for consistent path usage, we might just use a runtime directory.
-        let program_data = std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
+        let program_data =
+            std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
         PathBuf::from(program_data).join("PollenDEK").join("run")
     }
     #[cfg(target_os = "macos")]

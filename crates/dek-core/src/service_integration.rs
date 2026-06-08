@@ -13,15 +13,15 @@ pub fn run_as_service_if_needed<F>(main_logic: F) -> anyhow::Result<()>
 where
     F: std::future::Future<Output = anyhow::Result<()>> + Send + 'static,
 {
+    use std::ffi::OsString;
+    use std::sync::mpsc;
+    use std::sync::Mutex;
+    use std::thread;
     use windows_service::{
         define_windows_service,
         service_control_handler::{self, ServiceControlHandlerResult},
         service_dispatcher,
     };
-    use std::sync::mpsc;
-    use std::ffi::OsString;
-    use std::sync::Mutex;
-    use std::thread;
 
     use std::sync::OnceLock;
 
@@ -40,15 +40,21 @@ where
     fn run_service(_arguments: Vec<OsString>) -> anyhow::Result<()> {
         let (tx, rx) = mpsc::channel();
         let shutdown_tx_mutex = SHUTDOWN_TX.get_or_init(|| Mutex::new(None));
-        *shutdown_tx_mutex.lock().unwrap() = Some(tx);
+        if let Ok(mut lock) = shutdown_tx_mutex.lock() {
+            *lock = Some(tx);
+        }
 
         let event_handler = move |control_event| -> ServiceControlHandlerResult {
             match control_event {
-                windows_service::service::ServiceControl::Interrogate => ServiceControlHandlerResult::NoError,
+                windows_service::service::ServiceControl::Interrogate => {
+                    ServiceControlHandlerResult::NoError
+                }
                 windows_service::service::ServiceControl::Stop => {
                     if let Some(mutex) = SHUTDOWN_TX.get() {
-                        if let Some(tx) = mutex.lock().unwrap().take() {
-                            let _ = tx.send(());
+                        if let Ok(mut lock) = mutex.lock() {
+                            if let Some(tx) = lock.take() {
+                                let _ = tx.send(());
+                            }
                         }
                     }
                     ServiceControlHandlerResult::NoError
@@ -58,7 +64,7 @@ where
         };
 
         let status_handle = service_control_handler::register("PollenDEK", event_handler)?;
-        
+
         let next_status = windows_service::service::ServiceStatus {
             service_type: windows_service::service::ServiceType::OWN_PROCESS,
             current_state: windows_service::service::ServiceState::Running,
@@ -72,11 +78,12 @@ where
 
         // Extract the logic and spawn it
         if let Some(mutex) = LOGIC_WRAPPER.get() {
-            if let Some(logic) = mutex.lock().unwrap().take() {
-                thread::spawn(move || {
-                    logic();
-                    // When logic completes, we could send a signal to stop the service
-                });
+            if let Ok(mut lock) = mutex.lock() {
+                if let Some(logic) = lock.take() {
+                    thread::spawn(move || {
+                        logic();
+                    });
+                }
             }
         }
 
@@ -101,31 +108,39 @@ where
     // However, the macro requires `ffi_service_main` and we can't easily pass state.
     // That's why we use the global LOGIC_WRAPPER.
     let rt = tokio::runtime::Runtime::new()?;
-    
-    let logic = Box::new(move || {
-        match rt.block_on(main_logic) {
-            Err(e) => {
-                let _ = std::fs::write("C:\\ProgramData\\PollenDEK\\error.log", format!("Fatal error in core logic: {:?}", e));
-            }
-            Ok(()) => {
-                let _ = std::fs::write("C:\\ProgramData\\PollenDEK\\error.log", "Core logic returned Ok(())");
-            }
+
+    let logic = Box::new(move || match rt.block_on(main_logic) {
+        Err(e) => {
+            let _ = std::fs::write(
+                "C:\\ProgramData\\PollenDEK\\error.log",
+                format!("Fatal error in core logic: {:?}", e),
+            );
+        }
+        Ok(()) => {
+            let _ = std::fs::write(
+                "C:\\ProgramData\\PollenDEK\\error.log",
+                "Core logic returned Ok(())",
+            );
         }
     });
 
     let logic_mutex = LOGIC_WRAPPER.get_or_init(|| Mutex::new(None));
-    *logic_mutex.lock().unwrap() = Some(logic);
+    if let Ok(mut lock) = logic_mutex.lock() {
+        *lock = Some(logic);
+    }
 
     match service_dispatcher::start("PollenDEK", ffi_service_main) {
         Ok(_) => Ok(()),
         Err(_e) => {
             // Error 1063 means we are not running as a service.
             // If it's a different error, we should probably log it, but let's just run normally.
-            
+
             // Re-extract the logic and run it in the current thread instead.
             if let Some(mutex) = LOGIC_WRAPPER.get() {
-                if let Some(logic) = mutex.lock().unwrap().take() {
-                    logic();
+                if let Ok(mut lock) = mutex.lock() {
+                    if let Some(logic) = lock.take() {
+                        logic();
+                    }
                 }
             }
             Ok(())

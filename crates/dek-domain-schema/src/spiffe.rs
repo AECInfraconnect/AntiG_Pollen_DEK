@@ -10,14 +10,14 @@ pub struct SpiffeId {
 impl SpiffeId {
     pub fn parse(uri: &str) -> Result<Self, &'static str> {
         let parsed = Url::parse(uri).map_err(|_| "Invalid URI format")?;
-        
+
         if parsed.scheme() != "spiffe" {
             return Err("Must use spiffe:// scheme");
         }
-        
+
         let trust_domain = parsed.host_str().ok_or("Missing trust domain")?.to_string();
         let path = parsed.path().to_string();
-        
+
         if path.is_empty() || path == "/" {
             return Err("Missing SPIFFE ID path");
         }
@@ -37,58 +37,59 @@ pub struct SpiffeBuilder {
 }
 
 impl SpiffeBuilder {
-    pub fn new(strategy: TrustDomainStrategy, tenant_id: String, global_trust_domain: String) -> Self {
-        Self { strategy, tenant_id, global_trust_domain }
+    pub fn new(
+        strategy: TrustDomainStrategy,
+        tenant_id: String,
+        global_trust_domain: String,
+    ) -> Self {
+        Self {
+            strategy,
+            tenant_id,
+            global_trust_domain,
+        }
     }
 
     pub fn build_agent_id(&self, agent_id: &str) -> SpiffeId {
         match &self.strategy {
-            TrustDomainStrategy::Shared => {
-                SpiffeId {
-                    trust_domain: self.global_trust_domain.clone(),
-                    path: format!("/tenant/{}/agent/{}", self.tenant_id, agent_id),
-                }
-            }
-            TrustDomainStrategy::Dedicated => {
-                SpiffeId {
-                    trust_domain: format!("{}.{}", self.tenant_id, self.global_trust_domain),
-                    path: format!("/agent/{}", agent_id),
-                }
-            }
-            TrustDomainStrategy::Custom(domain) => {
-                SpiffeId {
-                    trust_domain: domain.clone(),
-                    path: format!("/agent/{}", agent_id),
-                }
-            }
+            TrustDomainStrategy::Shared => SpiffeId {
+                trust_domain: self.global_trust_domain.clone(),
+                path: format!("/tenant/{}/agent/{}", self.tenant_id, agent_id),
+            },
+            TrustDomainStrategy::Dedicated => SpiffeId {
+                trust_domain: format!("{}.{}", self.tenant_id, self.global_trust_domain),
+                path: format!("/agent/{}", agent_id),
+            },
+            TrustDomainStrategy::Custom(domain) => SpiffeId {
+                trust_domain: domain.clone(),
+                path: format!("/agent/{}", agent_id),
+            },
         }
     }
 
     pub fn build_device_id(&self, device_id: &str) -> SpiffeId {
         match &self.strategy {
-            TrustDomainStrategy::Shared => {
-                SpiffeId {
-                    trust_domain: self.global_trust_domain.clone(),
-                    path: format!("/tenant/{}/device/{}", self.tenant_id, device_id),
-                }
-            }
-            TrustDomainStrategy::Dedicated => {
-                SpiffeId {
-                    trust_domain: format!("{}.{}", self.tenant_id, self.global_trust_domain),
-                    path: format!("/device/{}", device_id),
-                }
-            }
-            TrustDomainStrategy::Custom(domain) => {
-                SpiffeId {
-                    trust_domain: domain.clone(),
-                    path: format!("/device/{}", device_id),
-                }
-            }
+            TrustDomainStrategy::Shared => SpiffeId {
+                trust_domain: self.global_trust_domain.clone(),
+                path: format!("/tenant/{}/device/{}", self.tenant_id, device_id),
+            },
+            TrustDomainStrategy::Dedicated => SpiffeId {
+                trust_domain: format!("{}.{}", self.tenant_id, self.global_trust_domain),
+                path: format!("/device/{}", device_id),
+            },
+            TrustDomainStrategy::Custom(domain) => SpiffeId {
+                trust_domain: domain.clone(),
+                path: format!("/device/{}", device_id),
+            },
         }
     }
 }
 
-pub fn validate_tenant_isolation(spiffe: &SpiffeId, strategy: &TrustDomainStrategy, expected_tenant: &str, global_trust_domain: &str) -> Result<(), &'static str> {
+pub fn validate_tenant_isolation(
+    spiffe: &SpiffeId,
+    strategy: &TrustDomainStrategy,
+    expected_tenant: &str,
+    global_trust_domain: &str,
+) -> Result<(), &'static str> {
     match strategy {
         TrustDomainStrategy::Shared => {
             if spiffe.trust_domain != global_trust_domain {

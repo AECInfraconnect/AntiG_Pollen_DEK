@@ -1,3 +1,7 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+use crate::spire::is_device_revoked;
+use crate::state::AppState;
+use crate::{bundle_pubkey_b64, BUNDLE_SEED};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -8,29 +12,38 @@ use axum::{
 use chrono::Utc;
 use ed25519_dalek::Signer;
 use serde_json::json;
-use crate::state::AppState;
-use crate::{BUNDLE_SEED, bundle_pubkey_b64};
-use crate::spire::is_device_revoked;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/v1/tenants/:tenant_id/devices/:device_id/bundles/metadata/:role", get(get_tuf_metadata))
-        .route("/v1/tenants/:tenant_id/devices/:device_id/bundles/artifacts/:hash", get(get_tuf_artifact))
+        .route(
+            "/v1/tenants/:tenant_id/devices/:device_id/bundles/metadata/:role",
+            get(get_tuf_metadata),
+        )
+        .route(
+            "/v1/tenants/:tenant_id/devices/:device_id/bundles/artifacts/:hash",
+            get(get_tuf_artifact),
+        )
 }
 
-async fn get_tuf_metadata(Path((_tenant_id, device_id, role)): Path<(String, String, String)>, State(state): State<AppState>) -> impl IntoResponse {
+async fn get_tuf_metadata(
+    Path((_tenant_id, device_id, role)): Path<(String, String, String)>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     if is_device_revoked(&state, &device_id) {
-        return (StatusCode::FORBIDDEN, Json(json!({"error": "device revoked"})));
+        return (
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "device revoked"})),
+        );
     }
 
     let signing_key = ed25519_dalek::SigningKey::from_bytes(&BUNDLE_SEED);
-    
+
     let now = Utc::now();
     let expires = now + chrono::Duration::days(7);
 
     let (payload, _role_name) = match role.as_str() {
-        "root.json" => {
-            (json!({
+        "root.json" => (
+            json!({
                 "signed": {
                     "_type": "root",
                     "spec_version": "1.0",
@@ -53,10 +66,11 @@ async fn get_tuf_metadata(Path((_tenant_id, device_id, role)): Path<(String, Str
                     }
                 },
                 "signatures": []
-            }), "root")
-        },
-        "targets.json" => {
-            (json!({
+            }),
+            "root",
+        ),
+        "targets.json" => (
+            json!({
                 "signed": {
                     "_type": "targets",
                     "spec_version": "1.0",
@@ -78,10 +92,11 @@ async fn get_tuf_metadata(Path((_tenant_id, device_id, role)): Path<(String, Str
                     }
                 },
                 "signatures": []
-            }), "targets")
-        },
-        "snapshot.json" => {
-            (json!({
+            }),
+            "targets",
+        ),
+        "snapshot.json" => (
+            json!({
                 "signed": {
                     "_type": "snapshot",
                     "spec_version": "1.0",
@@ -94,10 +109,11 @@ async fn get_tuf_metadata(Path((_tenant_id, device_id, role)): Path<(String, Str
                     }
                 },
                 "signatures": []
-            }), "snapshot")
-        },
-        "timestamp.json" => {
-            (json!({
+            }),
+            "snapshot",
+        ),
+        "timestamp.json" => (
+            json!({
                 "signed": {
                     "_type": "timestamp",
                     "spec_version": "1.0",
@@ -110,9 +126,15 @@ async fn get_tuf_metadata(Path((_tenant_id, device_id, role)): Path<(String, Str
                     }
                 },
                 "signatures": []
-            }), "timestamp")
-        },
-        _ => return (StatusCode::NOT_FOUND, Json(json!({"error": "role not found"}))),
+            }),
+            "timestamp",
+        ),
+        _ => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "role not found"})),
+            )
+        }
     };
 
     let signed_bytes = serde_json::to_vec(&payload["signed"]).unwrap();
@@ -128,15 +150,20 @@ async fn get_tuf_metadata(Path((_tenant_id, device_id, role)): Path<(String, Str
     (StatusCode::OK, Json(response))
 }
 
-async fn get_tuf_artifact(Path((_tenant_id, _device_id, hash)): Path<(String, String, String)>, State(_state): State<AppState>) -> impl IntoResponse {
+async fn get_tuf_artifact(
+    Path((_tenant_id, _device_id, hash)): Path<(String, String, String)>,
+    State(_state): State<AppState>,
+) -> impl IntoResponse {
     match hash.as_str() {
-        "mock_hash_routes" => {
-            (StatusCode::OK, Json(json!([
+        "mock_hash_routes" => (
+            StatusCode::OK,
+            Json(json!([
                 { "id": "route_tools_call", "priority": 100, "match_rule": { "method": "tools/call", "tool_category": null }, "pdp_required": ["openfga"] }
-            ])))
-        },
-        "mock_hash_manifest" => {
-            (StatusCode::OK, Json(json!({
+            ])),
+        ),
+        "mock_hash_manifest" => (
+            StatusCode::OK,
+            Json(json!({
                 "manifest_version": "1.0",
                 "bundle_id": "bnd-123",
                 "bundle_version": "1.0.0",
@@ -146,8 +173,11 @@ async fn get_tuf_artifact(Path((_tenant_id, _device_id, hash)): Path<(String, St
                 "expires_at": (Utc::now() + chrono::Duration::days(7)).to_rfc3339(),
                 "activation_mode": "full",
                 "artifacts": []
-            })))
-        },
-        _ => (StatusCode::NOT_FOUND, Json(json!({"error": "artifact not found"})))
+            })),
+        ),
+        _ => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": "artifact not found"})),
+        ),
     }
 }

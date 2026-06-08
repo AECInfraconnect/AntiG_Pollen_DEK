@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::identity_op)]
 use dek_policy_runtime::{PolicyRuntime, WasmProfile, WasmtimePolicyRuntime};
 use serde_json::json;
 use std::fs;

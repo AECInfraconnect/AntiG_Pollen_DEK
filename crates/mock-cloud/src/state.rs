@@ -1,6 +1,6 @@
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicUsize;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct DeviceStatus {

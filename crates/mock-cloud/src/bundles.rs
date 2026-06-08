@@ -1,3 +1,6 @@
+use crate::spire::is_device_revoked;
+use crate::state::{AppState, AuditLog, PolicyBundle};
+use crate::BUNDLE_SEED;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -8,15 +11,15 @@ use axum::{
 use chrono::Utc;
 use ed25519_dalek::{Signer, SigningKey};
 use serde_json::json;
-use crate::state::{AppState, AuditLog, PolicyBundle};
-use crate::BUNDLE_SEED;
-use crate::spire::is_device_revoked;
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/admin/policies/publish", post(admin_publish_policy))
         .route("/admin/policies/rollout", post(admin_set_rollout))
-        .route("/v1/tenants/:tenant_id/devices/:device_id/bundles/latest", get(get_latest_bundle))
+        .route(
+            "/v1/tenants/:tenant_id/devices/:device_id/bundles/latest",
+            get(get_latest_bundle),
+        )
 }
 
 #[derive(serde::Deserialize)]
@@ -25,7 +28,10 @@ struct PublishPolicyReq {
     openfga_store: String,
 }
 
-async fn admin_publish_policy(State(state): State<AppState>, Json(req): Json<PublishPolicyReq>) -> impl IntoResponse {
+async fn admin_publish_policy(
+    State(state): State<AppState>,
+    Json(req): Json<PublishPolicyReq>,
+) -> impl IntoResponse {
     let mut rollout = state.rollout.lock().unwrap();
     let current_v: usize = rollout.latest_bundle.version.parse().unwrap_or(1);
     let new_v = current_v + 1;
@@ -36,7 +42,7 @@ async fn admin_publish_policy(State(state): State<AppState>, Json(req): Json<Pub
         cedar_src: req.cedar_src,
         openfga_store: req.openfga_store,
     };
-    
+
     state.audit_logs.lock().unwrap().push(AuditLog {
         timestamp: Utc::now().to_rfc3339(),
         actor: "admin".to_string(),
@@ -55,7 +61,10 @@ struct RolloutReq {
     canary_openfga_store: String,
 }
 
-async fn admin_set_rollout(State(state): State<AppState>, Json(req): Json<RolloutReq>) -> impl IntoResponse {
+async fn admin_set_rollout(
+    State(state): State<AppState>,
+    Json(req): Json<RolloutReq>,
+) -> impl IntoResponse {
     let mut rollout = state.rollout.lock().unwrap();
     rollout.canary_percentage = req.canary_percentage;
     rollout.canary_bundle = Some(PolicyBundle {
@@ -63,25 +72,34 @@ async fn admin_set_rollout(State(state): State<AppState>, Json(req): Json<Rollou
         cedar_src: req.canary_cedar_src,
         openfga_store: req.canary_openfga_store,
     });
-    
+
     state.audit_logs.lock().unwrap().push(AuditLog {
         timestamp: Utc::now().to_rfc3339(),
         actor: "admin".to_string(),
         action: "UPDATE_ROLLOUT".to_string(),
-        details: format!("Set canary rollout for {} at {}%", req.canary_bundle_version, req.canary_percentage),
+        details: format!(
+            "Set canary rollout for {} at {}%",
+            req.canary_bundle_version, req.canary_percentage
+        ),
     });
 
     Json(json!({"status": "rollout_updated"}))
 }
 
-async fn get_latest_bundle(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>) -> impl IntoResponse {
+async fn get_latest_bundle(
+    Path((_tenant_id, device_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     if is_device_revoked(&state, &device_id) {
-        return (StatusCode::FORBIDDEN, Json(json!({"error": "device revoked"})));
+        return (
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "device revoked"})),
+        );
     }
 
     let bundle = {
         let rollout = state.rollout.lock().unwrap();
-        
+
         let mut hash_val: usize = 0;
         for b in device_id.bytes() {
             hash_val = hash_val.wrapping_add(b as usize);
@@ -133,11 +151,14 @@ async fn get_latest_bundle(Path((_tenant_id, device_id)): Path<(String, String)>
 
     let payload_string = serde_json::to_string(&payload).unwrap();
     let signature = signing_key.sign(payload_string.as_bytes());
-    (StatusCode::OK, Json(json!({
-        "bundle_id": format!("bnd-mcp-authz-{}", bundle.version),
-        "version": bundle.version,
-        "signature": base64::prelude::BASE64_STANDARD.encode(signature.to_bytes()),
-        "public_key": base64::prelude::BASE64_STANDARD.encode(public_key.as_bytes()),
-        "payload": payload
-    })))
+    (
+        StatusCode::OK,
+        Json(json!({
+            "bundle_id": format!("bnd-mcp-authz-{}", bundle.version),
+            "version": bundle.version,
+            "signature": base64::prelude::BASE64_STANDARD.encode(signature.to_bytes()),
+            "public_key": base64::prelude::BASE64_STANDARD.encode(public_key.as_bytes()),
+            "payload": payload
+        })),
+    )
 }

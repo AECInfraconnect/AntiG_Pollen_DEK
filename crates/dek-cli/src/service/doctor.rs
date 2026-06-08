@@ -66,7 +66,7 @@ pub fn export_diagnostics(redact: bool) -> Result<()> {
     println!("Exporting diagnostics (redact={})...", redact);
     let log_dir = dek_config::paths::get_log_dir();
     let dest = std::env::current_dir()?.join("dek-diagnostics.zip");
-    
+
     // In a real implementation we would zip the logs and scrub them.
     println!("✓ Collected logs from {}", log_dir.display());
     if redact {

@@ -44,25 +44,43 @@ impl PolicyRuntime for CedarAdapter {
         tracing::info!("Evaluating Cedar Policy:\n{}", self.policy_src);
 
         let context = match input.get("context") {
-            Some(ctx_val) => {
-                Context::from_json_value(ctx_val.clone(), None).map_err(|e| dek_policy_runtime::PolicyError::Invalid(format!("Context parse error: {}", e)))?
-            }
+            Some(ctx_val) => Context::from_json_value(ctx_val.clone(), None).map_err(|e| {
+                dek_policy_runtime::PolicyError::Invalid(format!("Context parse error: {}", e))
+            })?,
             None => Context::empty(),
         };
 
         let entities = match input.get("entities") {
-            Some(ent_val) => Entities::from_json_value(ent_val.clone(), None)
-                .map_err(|e| dek_policy_runtime::PolicyError::Invalid(format!("Entities parse error: {}", e)))?,
+            Some(ent_val) => Entities::from_json_value(ent_val.clone(), None).map_err(|e| {
+                dek_policy_runtime::PolicyError::Invalid(format!("Entities parse error: {}", e))
+            })?,
             None => Entities::empty(),
         };
 
-        let make_uid = |type_name: &str, id: &str| -> std::result::Result<EntityUid, dek_policy_runtime::PolicyError> {
+        let make_uid = |type_name: &str,
+                        id: &str|
+         -> std::result::Result<EntityUid, dek_policy_runtime::PolicyError> {
             if id.contains("::") {
-                EntityUid::from_str(id).map_err(|e| dek_policy_runtime::PolicyError::Invalid(format!("EntityUid parse error: {}", e)))
+                EntityUid::from_str(id).map_err(|e| {
+                    dek_policy_runtime::PolicyError::Invalid(format!(
+                        "EntityUid parse error: {}",
+                        e
+                    ))
+                })
             } else {
                 Ok(EntityUid::from_type_name_and_id(
-                    EntityTypeName::from_str(type_name).map_err(|e| dek_policy_runtime::PolicyError::Invalid(format!("EntityTypeName parse error: {}", e)))?,
-                    EntityId::from_str(id).map_err(|e| dek_policy_runtime::PolicyError::Invalid(format!("EntityId parse error: {}", e)))?,
+                    EntityTypeName::from_str(type_name).map_err(|e| {
+                        dek_policy_runtime::PolicyError::Invalid(format!(
+                            "EntityTypeName parse error: {}",
+                            e
+                        ))
+                    })?,
+                    EntityId::from_str(id).map_err(|e| {
+                        dek_policy_runtime::PolicyError::Invalid(format!(
+                            "EntityId parse error: {}",
+                            e
+                        ))
+                    })?,
                 ))
             }
         };
@@ -72,7 +90,9 @@ impl PolicyRuntime for CedarAdapter {
         let resource_uid = make_uid("Resource", resource)?;
 
         let request = Request::new(principal_uid, action_uid, resource_uid, context, None)
-            .map_err(|e| dek_policy_runtime::PolicyError::Eval(format!("Cedar Request Error: {}", e)))?;
+            .map_err(|e| {
+                dek_policy_runtime::PolicyError::Eval(format!("Cedar Request Error: {}", e))
+            })?;
 
         let authorizer = Authorizer::new();
         let answer = authorizer.is_authorized(&request, &self.policy_set, &entities);
@@ -118,7 +138,7 @@ mod tests {
 
         let ent_val = serde_json::json!([]);
         let _ents = Entities::from_json_value(ent_val, None)?;
-        
+
         Ok(())
     }
 }

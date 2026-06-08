@@ -72,8 +72,7 @@ pub fn run() -> Result<()> {
         use std::os::unix::fs::PermissionsExt;
         let _ = std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755));
     }
-    std::fs::rename(&tmp, &target)
-        .with_context(|| format!("rename {:?} -> {:?}", tmp, target))?;
+    std::fs::rename(&tmp, &target).with_context(|| format!("rename {:?} -> {:?}", tmp, target))?;
 
     // Cleanup: drop backup + marker so the restored binary boots normally.
     let _ = std::fs::remove_file(&backup);
@@ -111,7 +110,9 @@ fn restart_service() -> Result<()> {
 #[cfg(target_os = "windows")]
 fn restart_service() -> Result<()> {
     // sc.exe is in System32 (on PATH for services); use explicit verb sequence.
-    let _ = std::process::Command::new("sc").args(["start", "PollenDEK"]).status();
+    let _ = std::process::Command::new("sc")
+        .args(["start", "PollenDEK"])
+        .status();
     Ok(())
 }
 

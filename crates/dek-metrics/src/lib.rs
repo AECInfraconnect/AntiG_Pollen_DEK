@@ -37,14 +37,8 @@ pub fn install_recorder(service: &str) -> Result<PrometheusHandle> {
         "dek_policy_eval_latency_ms",
         "Latency of PDP policy evaluation in milliseconds."
     );
-    metrics::describe_counter!(
-        "dek_svid_renew_total",
-        "Total successful SVID renewals."
-    );
-    metrics::describe_counter!(
-        "dek_svid_renew_errors_total",
-        "Total failed SVID renewals."
-    );
+    metrics::describe_counter!("dek_svid_renew_total", "Total successful SVID renewals.");
+    metrics::describe_counter!("dek_svid_renew_errors_total", "Total failed SVID renewals.");
     metrics::describe_gauge!(
         "dek_svid_expiry_seconds",
         "Remaining seconds until the current SVID expires."
@@ -72,7 +66,7 @@ pub fn spawn_push(
     tokio::spawn(async move {
         info!("Started Prometheus metrics push loop to {}", push_url);
         let mut interval_timer = tokio::time::interval(interval);
-        
+
         loop {
             tokio::select! {
                 _ = shutdown.notified() => {
@@ -81,7 +75,7 @@ pub fn spawn_push(
                 }
                 _ = interval_timer.tick() => {
                     let snapshot = handle.render();
-                    
+
                     let mut backoff = Duration::from_millis(500);
                     let mut success = false;
 

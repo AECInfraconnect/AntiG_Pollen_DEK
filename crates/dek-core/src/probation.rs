@@ -67,16 +67,18 @@ pub fn detect(config_dir: &Path) -> Option<ProbationMarker> {
         return None;
     }
     match std::fs::read_to_string(&p) {
-        Ok(s) => match serde_json::from_str::<ProbationMarker>(&s) {
-            Ok(m) => Some(m),
-            Err(e) => {
-                // Marker exists but is corrupt: still treat as pending so we don't
-                // accidentally "commit" a possibly-broken binary, but we have no
-                // backup path to roll back to. Surface loudly.
-                warn!("probation marker present but unparsable ({e}); cannot roll back automatically");
-                Some(ProbationMarker::default_corrupt())
+        Ok(s) => {
+            match serde_json::from_str::<ProbationMarker>(&s) {
+                Ok(m) => Some(m),
+                Err(e) => {
+                    // Marker exists but is corrupt: still treat as pending so we don't
+                    // accidentally "commit" a possibly-broken binary, but we have no
+                    // backup path to roll back to. Surface loudly.
+                    warn!("probation marker present but unparsable ({e}); cannot roll back automatically");
+                    Some(ProbationMarker::default_corrupt())
+                }
             }
-        },
+        }
         Err(e) => {
             warn!("probation marker present but unreadable ({e})");
             Some(ProbationMarker::default_corrupt())
@@ -86,7 +88,11 @@ pub fn detect(config_dir: &Path) -> Option<ProbationMarker> {
 
 impl ProbationMarker {
     fn default_corrupt() -> Self {
-        Self { backup_path: String::new(), target_version: "unknown".into(), timestamp: 0 }
+        Self {
+            backup_path: String::new(),
+            target_version: "unknown".into(),
+            timestamp: 0,
+        }
     }
 }
 
@@ -137,7 +143,10 @@ pub async fn finalize<H, Fut>(
 
         if health && mtls && bundle {
             streak += 1;
-            info!(streak, "probation check passed ({}/{})", streak, settings.required_successes);
+            info!(
+                streak,
+                "probation check passed ({}/{})", streak, settings.required_successes
+            );
             if streak >= settings.required_successes {
                 commit(&config_dir, &marker);
                 info!("probation PASSED — update committed");
@@ -200,7 +209,10 @@ fn commit(config_dir: &Path, marker: &ProbationMarker) {
     }
     if !marker.backup_path.is_empty() {
         if let Err(e) = std::fs::remove_file(&marker.backup_path) {
-            warn!("probation: failed to remove backup {}: {e}", marker.backup_path);
+            warn!(
+                "probation: failed to remove backup {}: {e}",
+                marker.backup_path
+            );
         }
     }
 }
@@ -220,7 +232,10 @@ fn abort_and_rollback(config_dir: &Path, marker: &ProbationMarker) -> ! {
 
     let backup = PathBuf::from(&marker.backup_path);
     if !backup.exists() {
-        error!("probation: backup {} is missing — cannot roll back. Exiting non-zero.", marker.backup_path);
+        error!(
+            "probation: backup {} is missing — cannot roll back. Exiting non-zero.",
+            marker.backup_path
+        );
         std::process::exit(1);
     }
 

@@ -9,9 +9,9 @@ use std::collections::HashMap;
 #[serde(rename_all = "snake_case")]
 pub enum EnforcementMode {
     #[default]
-    Standard,     // Standard evaluation
-    FailClosed,   // If evaluator error or missing, deny
-    BreakGlass,   // Bypass evaluation for emergency, always allow
+    Standard, // Standard evaluation
+    FailClosed, // If evaluator error or missing, deny
+    BreakGlass, // Bypass evaluation for emergency, always allow
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,7 +81,10 @@ impl PolicyRouter {
             .unwrap_or("");
 
         // Extract optional matching context from payload
-        let tool_category = payload.get("mcp").and_then(|mcp| mcp.get("category")).and_then(|v| v.as_str());
+        let tool_category = payload
+            .get("mcp")
+            .and_then(|mcp| mcp.get("category"))
+            .and_then(|v| v.as_str());
         let resource_type = payload.get("resource").and_then(|v| v.as_str());
         let severity_level = payload.get("severity").and_then(|v| v.as_str());
 
@@ -134,10 +137,17 @@ impl PolicyRouter {
             }
         };
 
-        tracing::info!("== Adaptive Routing: Matched Route '{}' (Mode: {:?}) ==", route.id, route.enforcement_mode);
+        tracing::info!(
+            "== Adaptive Routing: Matched Route '{}' (Mode: {:?}) ==",
+            route.id,
+            route.enforcement_mode
+        );
 
         if route.enforcement_mode == EnforcementMode::BreakGlass {
-            tracing::warn!("BREAK-GLASS MODE ACTIVATED for route {}: bypassing all evaluations", route.id);
+            tracing::warn!(
+                "BREAK-GLASS MODE ACTIVATED for route {}: bypassing all evaluations",
+                route.id
+            );
             return Ok(PolicyDecision {
                 evaluator_id: "router_breakglass".into(),
                 evaluator_type: "router".into(),
@@ -212,25 +222,34 @@ impl PolicyRouter {
                     Err(dek_policy_runtime::PolicyError::Unavailable(msg)) => {
                         metrics::counter!("dek_pdp_unavailable_total", "evaluator" => ev_id.clone()).increment(1);
 
-                        tracing::warn!("required PDP unavailable: {msg}; mode: {:?}", route.enforcement_mode);
+                        tracing::warn!(
+                            "required PDP unavailable: {msg}; mode: {:?}",
+                            route.enforcement_mode
+                        );
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
-                        combined_decision.reason = format!("required PDP unavailable: {} (Mode: {:?})", msg, route.enforcement_mode);
+                        combined_decision.reason = format!(
+                            "required PDP unavailable: {} (Mode: {:?})",
+                            msg, route.enforcement_mode
+                        );
                         break;
                     }
                     Err(e) => {
-                        metrics::counter!("dek_pdp_error_total", "evaluator" => ev_id.clone()).increment(1);
+                        metrics::counter!("dek_pdp_error_total", "evaluator" => ev_id.clone())
+                            .increment(1);
                         tracing::warn!("PDP error: {e}; mode: {:?}", route.enforcement_mode);
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
-                        combined_decision.reason = format!("PDP error: {} (Mode: {:?})", e, route.enforcement_mode);
+                        combined_decision.reason =
+                            format!("PDP error: {} (Mode: {:?})", e, route.enforcement_mode);
                         break;
                     }
                 }
             } else {
                 tracing::warn!(
                     "Error: Required evaluator {} not found. Mode: {:?}",
-                    ev_id, route.enforcement_mode
+                    ev_id,
+                    route.enforcement_mode
                 );
                 combined_decision.allow = false;
                 combined_decision.decision = "deny".into();
@@ -254,6 +273,7 @@ impl Default for PolicyRouter {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
     use async_trait::async_trait;
     use dek_policy_runtime::PolicyDecision;
@@ -261,7 +281,10 @@ mod tests {
     struct DummyRuntime;
     #[async_trait]
     impl PolicyRuntime for DummyRuntime {
-        async fn evaluate(&self, _input: serde_json::Value) -> std::result::Result<PolicyDecision, dek_policy_runtime::PolicyError> {
+        async fn evaluate(
+            &self,
+            _input: serde_json::Value,
+        ) -> std::result::Result<PolicyDecision, dek_policy_runtime::PolicyError> {
             Ok(PolicyDecision {
                 evaluator_id: "dummy".into(),
                 evaluator_type: "dummy".into(),

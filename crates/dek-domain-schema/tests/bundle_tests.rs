@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use chrono::{Duration, Utc};
 use dek_domain_schema::bundle::{ActivationMode, BundleArtifact, BundleManifest, LkgState};
 use sha2::{Digest, Sha256};
@@ -11,7 +12,10 @@ fn create_test_manifest(
     let mut hasher = Sha256::new();
     hasher.update(artifact_content);
     let hash_bytes = hasher.finalize();
-    let hash = hash_bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+    let hash = hash_bytes
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>();
 
     BundleManifest {
         schema_version: "pollen.bundle.v1".to_string(),
@@ -60,13 +64,25 @@ fn test_bundle_artifact_hash() {
     let manifest = create_test_manifest(1, Duration::days(1), "policy.cedar", content);
 
     // Valid hash
-    assert!(manifest.validate_artifact_hash("policy.cedar", content).is_ok());
+    assert!(
+        manifest
+            .validate_artifact_hash("policy.cedar", content)
+            .is_ok()
+    );
 
     // Invalid hash
-    assert!(manifest.validate_artifact_hash("policy.cedar", b"deny();").is_err());
+    assert!(
+        manifest
+            .validate_artifact_hash("policy.cedar", b"deny();")
+            .is_err()
+    );
 
     // Artifact not found
-    assert!(manifest.validate_artifact_hash("missing.cedar", content).is_err());
+    assert!(
+        manifest
+            .validate_artifact_hash("missing.cedar", content)
+            .is_err()
+    );
 }
 
 #[test]
@@ -77,16 +93,25 @@ fn test_lkg_fallback() {
     let v1 = create_test_manifest(1, Duration::days(1), "1", b"1");
     let v2 = create_test_manifest(2, Duration::days(1), "2", b"2");
 
-    state.apply_new_manifest(v1.clone());
-    assert!(state.fallback_manifest.is_none());
+    state.accept_manifest(v1.clone());
+    assert_eq!(state.current_manifest.as_ref().unwrap().bundle_version, "v1");
 
-    state.apply_new_manifest(v2.clone());
-    assert_eq!(state.current_manifest.as_ref().unwrap().bundle_generation, 2);
-    assert_eq!(state.fallback_manifest.as_ref().unwrap().bundle_generation, 1);
+    state.accept_manifest(v2.clone());
+    assert_eq!(
+        state.current_manifest.as_ref().unwrap().bundle_generation,
+        2
+    );
+    assert_eq!(
+        state.fallback_manifest.as_ref().unwrap().bundle_generation,
+        1
+    );
 
     // Simulated failure requires rollback
     let rolled_back = state.rollback().unwrap();
     assert_eq!(rolled_back.bundle_generation, 1);
-    assert_eq!(state.current_manifest.as_ref().unwrap().bundle_generation, 1);
+    assert_eq!(
+        state.current_manifest.as_ref().unwrap().bundle_generation,
+        1
+    );
     assert!(state.fallback_manifest.is_none());
 }

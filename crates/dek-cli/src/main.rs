@@ -5,7 +5,7 @@ use dek_ipc::{IpcRequest, IpcResponse};
 use std::path::PathBuf;
 
 mod service;
-use service::{ServiceManager, OsServiceManager};
+use service::{OsServiceManager, ServiceManager};
 
 mod proxy;
 
@@ -166,7 +166,12 @@ async fn main() -> Result<()> {
                     info!("Core Version: {}", status.core_version);
                     info!("Uptime (seconds): {}", status.uptime_seconds);
                     info!("eBPF Active: {}", status.ebpf_active);
-                    info!("Active Bundle: {}", status.active_bundle_version.unwrap_or_else(|| "None".to_string()));
+                    info!(
+                        "Active Bundle: {}",
+                        status
+                            .active_bundle_version
+                            .unwrap_or_else(|| "None".to_string())
+                    );
                     info!("Update State: {}", status.update_state);
                     info!("-------------------------------");
                 }
@@ -301,36 +306,35 @@ async fn main() -> Result<()> {
                     manager.stop()?;
                     info!("Service stopped.");
                 }
-                "status" => {
-                    match manager.status() {
-                        Ok(s) => info!("Service Status:\n{}", s),
-                        Err(e) => error!("Failed to get status: {}", e),
-                    }
-                }
+                "status" => match manager.status() {
+                    Ok(s) => info!("Service Status:\n{}", s),
+                    Err(e) => error!("Failed to get status: {}", e),
+                },
                 _ => {
                     error!("Unknown service action: {}. Valid actions: install, uninstall, start, stop, status", action);
                     std::process::exit(1);
                 }
             }
         }
-        Commands::Proxy { action } => {
-            match action.as_str() {
-                "enable" => {
-                    info!("Enabling Layer 2 System Proxy Redirect...");
-                    proxy::enable_system_proxy()?;
-                    info!("System proxy enabled. Traffic redirected to DEK MCP Proxy.");
-                }
-                "disable" => {
-                    info!("Disabling Layer 2 System Proxy Redirect...");
-                    proxy::disable_system_proxy()?;
-                    info!("System proxy disabled.");
-                }
-                _ => {
-                    error!("Unknown proxy action: {}. Valid actions: enable, disable", action);
-                    std::process::exit(1);
-                }
+        Commands::Proxy { action } => match action.as_str() {
+            "enable" => {
+                info!("Enabling Layer 2 System Proxy Redirect...");
+                proxy::enable_system_proxy()?;
+                info!("System proxy enabled. Traffic redirected to DEK MCP Proxy.");
             }
-        }
+            "disable" => {
+                info!("Disabling Layer 2 System Proxy Redirect...");
+                proxy::disable_system_proxy()?;
+                info!("System proxy disabled.");
+            }
+            _ => {
+                error!(
+                    "Unknown proxy action: {}. Valid actions: enable, disable",
+                    action
+                );
+                std::process::exit(1);
+            }
+        },
         Commands::Capabilities => {
             let caps = serde_json::json!({
                 "mcp_http_pep": { "linux": true, "windows": true, "macos": true },

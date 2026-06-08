@@ -19,7 +19,10 @@ pub async fn run_migration(bootstrap: &BootstrapConfig, pollen_cloud_url: &str) 
             info!("client.key not in Keystore. Importing...");
             if let Ok(key_data) = fs::read(client_key_path) {
                 if let Err(e) = keystore.store_key(client_key_alias, &key_data) {
-                    error!("Failed to import client.key to keystore: {}. Falling back to file.", e);
+                    error!(
+                        "Failed to import client.key to keystore: {}. Falling back to file.",
+                        e
+                    );
                     return false;
                 }
                 key_in_keystore = Some(key_data);
@@ -36,7 +39,7 @@ pub async fn run_migration(bootstrap: &BootstrapConfig, pollen_cloud_url: &str) 
     // 2. Check/Import Pinned Bundle Public Key
     let bundle_key_alias = "pinned_bundle_public_key";
     let bundle_key_in_keystore = keystore.load_key(bundle_key_alias).ok();
-    
+
     if bundle_key_in_keystore.is_none() {
         info!("pinned_bundle_public_key not in Keystore. Importing from bootstrap.json...");
         let pk_data = bootstrap.pinned_bundle_public_key.as_bytes();
@@ -49,11 +52,14 @@ pub async fn run_migration(bootstrap: &BootstrapConfig, pollen_cloud_url: &str) 
 
     // 3. Verify by Use (mTLS Handshake)
     if let Some(key_data) = key_in_keystore {
-        info!("Verifying keystore material with mTLS handshake to {}...", pollen_cloud_url);
-        
+        info!(
+            "Verifying keystore material with mTLS handshake to {}...",
+            pollen_cloud_url
+        );
+
         let root_ca_der = fs::read(&bootstrap.mtls.root_ca_path).unwrap_or_default();
         let client_cert = fs::read(&bootstrap.mtls.client_cert_path).unwrap_or_default();
-        
+
         if root_ca_der.is_empty() || client_cert.is_empty() {
             error!("Root CA or Client Cert missing. Cannot verify.");
             return false;
@@ -97,11 +103,11 @@ pub async fn run_migration(bootstrap: &BootstrapConfig, pollen_cloud_url: &str) 
         match client.get(&test_url).send().await {
             Ok(resp) => {
                 info!("Verify-by-use successful! (Status: {})", resp.status());
-                
+
                 // 4. Delete the original file to close plaintext-on-disk window
                 if client_key_path.exists() {
                     info!("Deleting original client.key at {:?}", client_key_path);
-                    
+
                     if let Err(e) = fs::remove_file(client_key_path) {
                         warn!("Failed to delete client.key: {}", e);
                     }

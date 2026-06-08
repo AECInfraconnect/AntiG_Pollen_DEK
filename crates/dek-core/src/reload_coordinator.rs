@@ -3,10 +3,10 @@ use std::path::Path;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
-use dek_config::DekConfig;
 use dek_activation::coordinator::ActivationCoordinator;
-use dek_activation::{ActivationRequest, ActivationSource, ActivationDecision, ActivationError};
 use dek_activation::snapshot::RuntimeSnapshot;
+use dek_activation::{ActivationDecision, ActivationRequest, ActivationSource};
+use dek_config::DekConfig;
 
 pub struct ReloadCoordinator {
     pub activation: Arc<ActivationCoordinator>,
@@ -15,21 +15,34 @@ pub struct ReloadCoordinator {
 impl ReloadCoordinator {
     pub fn new() -> Self {
         let initial_router = std::sync::Arc::new(dek_policy_router::PolicyRouter::new());
-        let initial_plugin_host = std::sync::Arc::new(dek_wasm_host::WasmtimePluginHost::new(std::collections::HashMap::new()).unwrap());
-        let initial_snapshot = RuntimeSnapshot::new(0, "initial".into(), 0, initial_router, dek_activation::snapshot::DekMetadata::default(), initial_plugin_host);
+        let initial_plugin_host = std::sync::Arc::new(
+            dek_wasm_host::WasmtimePluginHost::new(std::collections::HashMap::new()).unwrap_or_else(|_| panic!("Failed to init dummy WasmtimePluginHost")),
+        );
+        let initial_snapshot = RuntimeSnapshot::new(
+            0,
+            "initial".into(),
+            0,
+            initial_router,
+            dek_activation::snapshot::DekMetadata::default(),
+            initial_plugin_host,
+        );
         Self {
             activation: Arc::new(ActivationCoordinator::new(initial_snapshot)),
         }
     }
 
-    pub async fn process_staged_bundle(&self, config: &DekConfig, staged_path: &Path) -> Result<()> {
+    pub async fn process_staged_bundle(
+        &self,
+        config: &DekConfig,
+        staged_path: &Path,
+    ) -> Result<()> {
         info!("ReloadCoordinator: Delegating activation to dek-activation crate");
 
         let req = ActivationRequest {
             manifest_path: staged_path.to_path_buf(),
             source: ActivationSource::PollSync, // Hardcoded for now until we have CloudPush
-            tenant_id: "system".into(), // We could parse from config or bundle
-            device_id: "system".into(), // Could be populated from actual bootstrap
+            tenant_id: "system".into(),         // We could parse from config or bundle
+            device_id: "system".into(),         // Could be populated from actual bootstrap
         };
 
         match self.activation.process_activation(req, config).await? {

@@ -11,7 +11,9 @@
 //! - Key resolution prefers JWKS-by-`kid` (delivered in the signed bundle),
 //!   falling back to a static PEM. Both come from the bundle's `jwt_config`.
 
-use jsonwebtoken::{decode, decode_header, jwk::JwkSet, Algorithm, DecodingKey, Header, Validation};
+use jsonwebtoken::{
+    decode, decode_header, jwk::JwkSet, Algorithm, DecodingKey, Header, Validation,
+};
 use serde_json::Value;
 use thiserror::Error;
 
@@ -119,7 +121,7 @@ impl Verifier {
             _ => {
                 // Audience bypass is now closed: MUST be configured in bundle.
                 return Err(AuthError::Validation(
-                    "no audience configured in jwt_config; 'aud' enforcement is mandatory".into()
+                    "no audience configured in jwt_config; 'aud' enforcement is mandatory".into(),
                 ));
             }
         }
@@ -139,14 +141,20 @@ impl Verifier {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        Ok(Identity { principal, tenant_id, claims })
+        Ok(Identity {
+            principal,
+            tenant_id,
+            claims,
+        })
     }
 
     fn select_key(&self, header: &Header, alg: Algorithm) -> Result<DecodingKey, AuthError> {
         // 1) Primary: JWKS by kid (bundle-delivered)
         if let Some(jwks) = &self.cfg.jwks {
             let kid = header.kid.clone().ok_or(AuthError::MissingKid)?;
-            let jwk = jwks.find(&kid).ok_or_else(|| AuthError::UnknownKid(kid.clone()))?;
+            let jwk = jwks
+                .find(&kid)
+                .ok_or_else(|| AuthError::UnknownKid(kid.clone()))?;
             return DecodingKey::from_jwk(jwk).map_err(|e| AuthError::InvalidKey(e.to_string()));
         }
         // 2) Fallback: static PEM, chosen by algorithm family
@@ -178,20 +186,27 @@ pub fn extract_bearer(auth_header: Option<&str>) -> Result<&str, AuthError> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
     use jsonwebtoken::{encode, EncodingKey};
     use serde_json::json;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn now() -> u64 {
-        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs()
     }
 
     #[test]
     fn rejects_missing_bearer() {
         assert!(matches!(extract_bearer(None), Err(AuthError::MissingToken)));
-        assert!(matches!(extract_bearer(Some("Basic abc")), Err(AuthError::MissingToken)));
-        assert_eq!(extract_bearer(Some("Bearer xyz")).unwrap(), "xyz");
+        assert!(matches!(
+            extract_bearer(Some("Basic abc")),
+            Err(AuthError::MissingToken)
+        ));
+        assert_eq!(extract_bearer(Some("Bearer xyz")).expect("Should extract"), "xyz");
     }
 
     #[test]
@@ -203,12 +218,15 @@ mod tests {
             &json!({"sub": "attacker", "exp": now() + 3600}),
             &EncodingKey::from_secret(b"public-key-as-secret"),
         )
-        .unwrap();
+        .expect("Encoding failed");
         let v = Verifier::new(VerifierConfig {
             public_key_pem: Some("-----BEGIN PUBLIC KEY-----\n...".into()),
             ..Default::default()
         });
-        assert!(matches!(v.verify(&token), Err(AuthError::UnsupportedAlg(Algorithm::HS256))));
+        assert!(matches!(
+            v.verify(&token),
+            Err(AuthError::UnsupportedAlg(Algorithm::HS256))
+        ));
     }
 
     #[test]

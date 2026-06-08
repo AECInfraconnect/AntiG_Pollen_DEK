@@ -16,10 +16,11 @@
 //!   serde_json = { workspace = true }
 //!   x509-parser = "0.16"
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use axum::{
     extract::{Form, State},
     http::{HeaderMap, StatusCode},
-    routing::{post, get},
+    routing::{get, post},
     Json, Router,
 };
 use serde_json::{json, Value};
@@ -59,7 +60,9 @@ async fn enroll_then_attest_yields_x509_svid() {
         .with_state(mock);
 
     tokio::spawn(async move {
-        axum::serve(listener, app.into_make_service()).await.unwrap();
+        axum::serve(listener, app.into_make_service())
+            .await
+            .unwrap();
     });
 
     // --- 1) device flow ---
@@ -107,8 +110,14 @@ async fn enroll_then_attest_yields_x509_svid() {
         })
         .unwrap_or(false);
     assert!(spiffe_in_san, "SVID must carry a spiffe:// URI SAN");
-    assert!(svid.spiffe_id.starts_with("spiffe://"), "spiffe id returned");
-    assert!(svid.spiffe_id.contains(&enrollment.device_id), "svid bound to device");
+    assert!(
+        svid.spiffe_id.starts_with("spiffe://"),
+        "spiffe id returned"
+    );
+    assert!(
+        svid.spiffe_id.contains(&enrollment.device_id),
+        "svid bound to device"
+    );
 }
 
 // ----------------------------- mock handlers -----------------------------
@@ -138,14 +147,23 @@ async fn token(State(m): State<Mock>, Form(f): Form<AnyForm>) -> (StatusCode, Js
     let c = map.entry(dc).or_insert(0);
     *c += 1;
     if *c < 2 {
-        (StatusCode::BAD_REQUEST, Json(json!({ "error": "authorization_pending" })))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "authorization_pending" })),
+        )
     } else {
-        (StatusCode::OK, Json(json!({ "access_token": "test-token", "token_type": "Bearer" })))
+        (
+            StatusCode::OK,
+            Json(json!({ "access_token": "test-token", "token_type": "Bearer" })),
+        )
     }
 }
 
 async fn enroll(State(m): State<Mock>, headers: HeaderMap) -> (StatusCode, Json<Value>) {
-    assert!(headers.get("authorization").is_some(), "enroll must be authenticated");
+    assert!(
+        headers.get("authorization").is_some(),
+        "enroll must be authenticated"
+    );
     (
         StatusCode::OK,
         Json(json!({
@@ -172,7 +190,9 @@ async fn attest_csr(State(m): State<Mock>, Json(req): Json<Attest>) -> (StatusCo
     let cert = sign_csr(&m.ca_cert_pem, &m.ca_key_pem, &req.csr_pem, &spiffe_id);
     (
         StatusCode::OK,
-        Json(json!({ "svid_cert_pem": cert, "spiffe_id": spiffe_id, "trust_bundle_pem": m.ca_cert_pem })),
+        Json(
+            json!({ "svid_cert_pem": cert, "spiffe_id": spiffe_id, "trust_bundle_pem": m.ca_cert_pem }),
+        ),
     )
 }
 
@@ -193,6 +213,8 @@ fn sign_csr(ca_cert_pem: &str, ca_key_pem: &str, csr_pem: &str, spiffe_id: &str)
     let ca_params = CertificateParams::from_ca_cert_pem(ca_cert_pem, ca_key).unwrap();
     let ca = Certificate::from_params(ca_params).unwrap();
     let mut csr = CertificateSigningRequest::from_pem(csr_pem).unwrap();
-    csr.params.subject_alt_names.push(SanType::URI(spiffe_id.to_string()));
+    csr.params
+        .subject_alt_names
+        .push(SanType::URI(spiffe_id.to_string()));
     csr.serialize_pem_with_signer(&ca).unwrap()
 }

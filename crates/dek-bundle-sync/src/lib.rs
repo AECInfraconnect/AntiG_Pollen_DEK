@@ -7,11 +7,11 @@ use std::fs;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
-pub mod rollback;
 pub mod merge;
+pub mod rollback;
 
+use crate::merge::{merge_safe, PrecedenceLevel};
 use crate::rollback::RollbackManager;
-use crate::merge::{PrecedenceLevel, merge_safe};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ArtifactState {
@@ -52,7 +52,7 @@ impl BundleSyncAgent {
         device_id: &str,
         mtls: &MtlsConfig,
         pinned_public_key: &str,
-        client_key_override: Option<&[u8]>
+        client_key_override: Option<&[u8]>,
     ) -> Result<Self> {
         let client = mtls.build_client(client_key_override)?;
         Ok(Self {
@@ -67,10 +67,12 @@ impl BundleSyncAgent {
     /// Safely parses the pinned public key, ensuring it exactly matches the expected length for an Ed25519 key (32 bytes).
     fn parse_pinned_key(&self) -> Result<VerifyingKey> {
         use base64::Engine;
-        let public_key_bytes = base64::prelude::BASE64_STANDARD.decode(&self.pinned_public_key)
+        let public_key_bytes = base64::prelude::BASE64_STANDARD
+            .decode(&self.pinned_public_key)
             .context("Failed to base64-decode pinned public key")?;
-        let key_array: [u8; 32] = public_key_bytes.as_slice().try_into()
-            .map_err(|_| anyhow::anyhow!("Pinned public key has incorrect length (expected 32 bytes)"))?;
+        let key_array: [u8; 32] = public_key_bytes.as_slice().try_into().map_err(|_| {
+            anyhow::anyhow!("Pinned public key has incorrect length (expected 32 bytes)")
+        })?;
         VerifyingKey::from_bytes(&key_array).context("Invalid Ed25519 public key structure")
     }
 
@@ -97,20 +99,30 @@ impl BundleSyncAgent {
         let mut targets_metadata = json!({});
 
         for role in &["root", "timestamp", "snapshot", "targets"] {
-            let url = format!("{}/v1/tenants/{}/devices/{}/bundles/metadata/{}.json", self.cloud_url, self.tenant_id, self.device_id, role);
+            let url = format!(
+                "{}/v1/tenants/{}/devices/{}/bundles/metadata/{}.json",
+                self.cloud_url, self.tenant_id, self.device_id, role
+            );
             let res = client.get(&url).send().await?;
             if !res.status().is_success() {
-                error!("[BundleSync] Failed to fetch {}.json: HTTP {}", role, res.status());
+                error!(
+                    "[BundleSync] Failed to fetch {}.json: HTTP {}",
+                    role,
+                    res.status()
+                );
                 return Err(anyhow::anyhow!("TUF fetch failed for {}", role));
             }
-            
+
             let metadata: serde_json::Value = res.json().await?;
-            
+
             // Parse pinned key once per file safely
             let verifying_key = self.parse_pinned_key()?;
 
             // Verify signature using pinned public key (simplified for TUF-lite)
-            let signatures = metadata.get("signatures").and_then(|s| s.as_array()).context("Missing signatures")?;
+            let signatures = metadata
+                .get("signatures")
+                .and_then(|s| s.as_array())
+                .context("Missing signatures")?;
             let mut valid_sig = false;
             for sig in signatures {
                 let sig_b64 = match sig.get("sig").and_then(|s| s.as_str()) {
@@ -120,7 +132,7 @@ impl BundleSyncAgent {
                         continue;
                     }
                 };
-                
+
                 use base64::Engine;
                 let signature_bytes = match base64::prelude::BASE64_STANDARD.decode(sig_b64) {
                     Ok(b) => b,
@@ -133,13 +145,15 @@ impl BundleSyncAgent {
                 let signature_array: [u8; 64] = match signature_bytes.as_slice().try_into() {
                     Ok(arr) => arr,
                     Err(_) => {
-                        warn!("[BundleSync] Signature length invalid (expected 64 bytes), skipping");
+                        warn!(
+                            "[BundleSync] Signature length invalid (expected 64 bytes), skipping"
+                        );
                         continue;
                     }
                 };
                 let signature = Signature::from_bytes(&signature_array);
-                
-                // Note on canonicalization: 
+
+                // Note on canonicalization:
                 // `serde_json::Value` uses a BTreeMap to hold objects if not compiled with `preserve_order`.
                 // This means the keys are deterministically sorted. The Pollen Cloud must sign the
                 // exact same canonical representation (sorted keys, no spaces) for the signature to match.
@@ -177,14 +191,24 @@ impl BundleSyncAgent {
         info!("[BundleSync] Anti-Rollback check passed");
 
         // 3. Download Artifacts defined in targets.json
-        let targets = targets_metadata.get("targets").and_then(|t| t.as_object()).context("Missing targets map")?;
-        
+        let targets = targets_metadata
+            .get("targets")
+            .and_then(|t| t.as_object())
+            .context("Missing targets map")?;
+
         let mut merged_payload = json!({});
 
         for (filename, target_info) in targets {
-            let hash = target_info.get("hashes").and_then(|h| h.get("sha256")).and_then(|s| s.as_str()).context("Missing sha256")?;
-            
-            let url = format!("{}/v1/tenants/{}/devices/{}/bundles/artifacts/{}", self.cloud_url, self.tenant_id, self.device_id, hash);
+            let hash = target_info
+                .get("hashes")
+                .and_then(|h| h.get("sha256"))
+                .and_then(|s| s.as_str())
+                .context("Missing sha256")?;
+
+            let url = format!(
+                "{}/v1/tenants/{}/devices/{}/bundles/artifacts/{}",
+                self.cloud_url, self.tenant_id, self.device_id, hash
+            );
             let res = client.get(&url).send().await?;
             if !res.status().is_success() {
                 return Err(anyhow::anyhow!("Artifact fetch failed for hash {}", hash));
@@ -216,7 +240,10 @@ impl BundleSyncAgent {
         }
 
         // Fetch basic device config (tenant baseline)
-        let config_url = format!("{}/v1/tenants/{}/devices/{}/config", self.cloud_url, self.tenant_id, self.device_id);
+        let config_url = format!(
+            "{}/v1/tenants/{}/devices/{}/config",
+            self.cloud_url, self.tenant_id, self.device_id
+        );
         let res = client.get(&config_url).send().await?;
         let dek_config: DekConfig = res.json().await.context("Failed to parse DekConfig")?;
 
@@ -228,7 +255,7 @@ impl BundleSyncAgent {
         // 4. Safe Config Merge (Tenant config vs Bundle)
         let final_merged = merge_safe(vec![
             (PrecedenceLevel::Tenant, config_val),
-            (PrecedenceLevel::DeviceGroup, merged_payload)
+            (PrecedenceLevel::DeviceGroup, merged_payload),
         ])?;
 
         // 5. Schema Validation
@@ -238,9 +265,14 @@ impl BundleSyncAgent {
             if let Ok(validator) = jsonschema::validator_for(&schema_json) {
                 if let Err(errors) = validator.validate(&final_merged) {
                     error!("[BundleSync] Schema validation error: {}", errors);
-                    return Err(anyhow::anyhow!("Combined configuration failed schema validation"));
+                    return Err(anyhow::anyhow!(
+                        "Combined configuration failed schema validation"
+                    ));
                 }
-                info!("[BundleSync] State: {:?} - Configuration schema is valid.", final_state);
+                info!(
+                    "[BundleSync] State: {:?} - Configuration schema is valid.",
+                    final_state
+                );
             }
         } else {
             warn!("[BundleSync] Could not parse built-in schema for validation");
@@ -249,8 +281,11 @@ impl BundleSyncAgent {
         // 6. Atomic Staging
         let target_dir = data_dir.join("state").join("bundles");
         fs::create_dir_all(&target_dir)?;
-        
-        let bundle_version = format!("{}_{}_{}", root_version, snapshot_version, timestamp_version);
+
+        let bundle_version = format!(
+            "{}_{}_{}",
+            root_version, snapshot_version, timestamp_version
+        );
         let bundle_dir = target_dir.join(format!("bundle_{}", bundle_version));
         fs::create_dir_all(&bundle_dir)?;
 
@@ -266,8 +301,7 @@ impl BundleSyncAgent {
         final_state = ArtifactState::Staged;
         info!(
             "[BundleSync] State: {:?} - Staged combined config at {:?}",
-            final_state,
-            bundle_path
+            final_state, bundle_path
         );
 
         Ok((dek_config, bundle_path))
@@ -276,6 +310,7 @@ impl BundleSyncAgent {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
     use base64::Engine;
     use tokio::sync::RwLock;
@@ -296,7 +331,7 @@ mod tests {
 
         let signing_key = SigningKey::from_bytes(&[1; 32]);
         let verifying_key = signing_key.verifying_key();
-        
+
         let b64_key = base64::prelude::BASE64_STANDARD.encode(verifying_key.as_bytes());
         let agent = dummy_agent(&b64_key);
 
@@ -309,7 +344,10 @@ mod tests {
         let agent = dummy_agent(&b64_key);
 
         let res = agent.parse_pinned_key();
-        assert!(res.is_err(), "Malformed key should fail-close without panicking");
+        assert!(
+            res.is_err(),
+            "Malformed key should fail-close without panicking"
+        );
         assert!(res.unwrap_err().to_string().contains("incorrect length"));
     }
 
@@ -317,6 +355,9 @@ mod tests {
     fn test_parse_pinned_key_invalid_base64() {
         let agent = dummy_agent("NOT_BASE_64_&&&!!");
         let res = agent.parse_pinned_key();
-        assert!(res.is_err(), "Invalid base64 should fail-close without panicking");
+        assert!(
+            res.is_err(),
+            "Invalid base64 should fail-close without panicking"
+        );
     }
 }

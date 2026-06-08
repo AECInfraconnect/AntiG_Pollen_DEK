@@ -13,7 +13,7 @@ pub enum PrecedenceLevel {
 /// Merge configuration safely enforcing precedence
 pub fn merge_safe(configs: Vec<(PrecedenceLevel, Value)>) -> Result<Value> {
     let mut merged = serde_json::json!({});
-    
+
     // Sort by precedence level, ascending
     let mut sorted_configs = configs;
     sorted_configs.sort_by_key(|(level, _)| *level as u8);
@@ -38,15 +38,25 @@ pub fn merge_safe(configs: Vec<(PrecedenceLevel, Value)>) -> Result<Value> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
 
     #[test]
     fn test_merge_precedence() {
         let configs = vec![
-            (PrecedenceLevel::Baseline, serde_json::json!({"a": 1, "b": 1})),
+            (
+                PrecedenceLevel::Baseline,
+                serde_json::json!({"a": 1, "b": 1}),
+            ),
             (PrecedenceLevel::Tenant, serde_json::json!({"b": 2, "c": 2})),
-            (PrecedenceLevel::EmergencyDeny, serde_json::json!({"a": 5, "d": 5})),
-            (PrecedenceLevel::DeviceGroup, serde_json::json!({"c": 3, "d": 3})),
+            (
+                PrecedenceLevel::EmergencyDeny,
+                serde_json::json!({"a": 5, "d": 5}),
+            ),
+            (
+                PrecedenceLevel::DeviceGroup,
+                serde_json::json!({"c": 3, "d": 3}),
+            ),
         ];
 
         let merged = merge_safe(configs).unwrap();

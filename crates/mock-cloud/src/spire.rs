@@ -1,3 +1,4 @@
+use crate::state::{rand_hex, AppState, DeviceStatus};
 use anyhow::{Context, Result};
 use axum::{
     extract::{Form, Path, State},
@@ -9,7 +10,6 @@ use axum::{
 use chrono::Utc;
 use serde_json::{json, Value};
 use tracing::{info, warn};
-use crate::state::{AppState, DeviceStatus, rand_hex};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -17,10 +17,22 @@ pub fn router() -> Router<AppState> {
         .route("/oauth/token", post(token))
         .route("/enroll", post(enroll_device))
         .route("/spire/node/attest", post(attest_csr))
-        .route("/v1/tenants/:tenant_id/devices/:device_id/spire/svid/renew", post(renew_csr))
-        .route("/v1/tenants/:tenant_id/devices/:device_id/rotate", post(rotate_device))
-        .route("/v1/tenants/:tenant_id/devices/:device_id/revoke", post(revoke_device))
-        .route("/v1/tenants/:tenant_id/devices/:device_id/status", get(get_device_status))
+        .route(
+            "/v1/tenants/:tenant_id/devices/:device_id/spire/svid/renew",
+            post(renew_csr),
+        )
+        .route(
+            "/v1/tenants/:tenant_id/devices/:device_id/rotate",
+            post(rotate_device),
+        )
+        .route(
+            "/v1/tenants/:tenant_id/devices/:device_id/revoke",
+            post(revoke_device),
+        )
+        .route(
+            "/v1/tenants/:tenant_id/devices/:device_id/status",
+            get(get_device_status),
+        )
 }
 
 #[derive(serde::Deserialize)]
@@ -33,10 +45,13 @@ struct DeviceAuthForm {
 
 fn rand_user_code() -> String {
     use rand_core::RngCore;
-    const ALPHA: &[u8] = b"BCDFGHJKLMNPQRSTVWXZ"; 
+    const ALPHA: &[u8] = b"BCDFGHJKLMNPQRSTVWXZ";
     let mut b = [0u8; 8];
     rand_core::OsRng.fill_bytes(&mut b);
-    let c: String = b.iter().map(|x| ALPHA[(*x as usize) % ALPHA.len()] as char).collect();
+    let c: String = b
+        .iter()
+        .map(|x| ALPHA[(*x as usize) % ALPHA.len()] as char)
+        .collect();
     format!("{}-{}", &c[0..4], &c[4..8])
 }
 
@@ -117,20 +132,23 @@ async fn enroll_device(
         );
     }
 
-    let trust_bundle = std::fs::read_to_string("../../certs/root_ca.crt").unwrap_or_default();
+    let trust_bundle = std::fs::read_to_string("certs/root_ca.crt").unwrap_or_default();
     let device_id = "device-001";
     let join_token = rand_hex(16);
     info!("CLOUD: enroll -> issuing join_token for {}", device_id);
 
     let mut devices = state.devices.lock().unwrap();
     if !devices.contains_key(device_id) {
-        devices.insert(device_id.to_string(), DeviceStatus {
-            id: device_id.to_string(),
-            tenant_id: "tenant-production-1".to_string(),
-            profile: "Developer".to_string(),
-            revoked: false,
-            last_health: Utc::now().to_rfc3339(),
-        });
+        devices.insert(
+            device_id.to_string(),
+            DeviceStatus {
+                id: device_id.to_string(),
+                tenant_id: "tenant-production-1".to_string(),
+                profile: "Developer".to_string(),
+                revoked: false,
+                last_health: Utc::now().to_rfc3339(),
+            },
+        );
     }
 
     (
@@ -164,7 +182,11 @@ pub fn is_device_revoked(state: &AppState, device_id: &str) -> bool {
     false
 }
 
-pub fn verify_device_tenant(state: &AppState, tenant_id: &str, device_id: &str) -> Result<(), &'static str> {
+pub fn verify_device_tenant(
+    state: &AppState,
+    tenant_id: &str,
+    device_id: &str,
+) -> Result<(), &'static str> {
     let devices = state.devices.lock().unwrap();
     if let Some(dev) = devices.get(device_id) {
         if dev.tenant_id == tenant_id {
@@ -175,19 +197,27 @@ pub fn verify_device_tenant(state: &AppState, tenant_id: &str, device_id: &str) 
     Err("Device not found")
 }
 
-async fn attest_csr(State(state): State<AppState>, Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
+async fn attest_csr(
+    State(state): State<AppState>,
+    Json(req): Json<JoinAttest>,
+) -> (StatusCode, Json<Value>) {
     if is_device_revoked(&state, &req.device_id) {
-        return (StatusCode::FORBIDDEN, Json(json!({"error": "device revoked"})));
+        return (
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "device revoked"})),
+        );
     }
 
     let devices = state.devices.lock().unwrap();
-    let tenant_id = devices.get(&req.device_id).map(|d| d.tenant_id.clone()).unwrap_or_else(|| "tenant-production-1".to_string());
+    let tenant_id = devices
+        .get(&req.device_id)
+        .map(|d| d.tenant_id.clone())
+        .unwrap_or_else(|| "tenant-production-1".to_string());
     drop(devices);
 
     let spiffe_id = format!(
         "spiffe://pollen.cloud/{}/device/{}",
-        tenant_id,
-        req.device_id
+        tenant_id, req.device_id
     );
     match sign_csr(&req.csr_pem, &spiffe_id) {
         Ok((cert_pem, trust_bundle)) => {
@@ -211,18 +241,27 @@ async fn attest_csr(State(state): State<AppState>, Json(req): Json<JoinAttest>) 
     }
 }
 
-async fn renew_csr(Path((tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
+async fn renew_csr(
+    Path((tenant_id, device_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+    Json(req): Json<JoinAttest>,
+) -> (StatusCode, Json<Value>) {
     if is_device_revoked(&state, &device_id) {
-        return (StatusCode::FORBIDDEN, Json(json!({"error": "device revoked"})));
+        return (
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "device revoked"})),
+        );
     }
     if verify_device_tenant(&state, &tenant_id, &device_id).is_err() {
-        return (StatusCode::FORBIDDEN, Json(json!({"error": "tenant mismatch"})));
+        return (
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "tenant mismatch"})),
+        );
     }
 
     let spiffe_id = format!(
         "spiffe://pollen.cloud/{}/device/{}",
-        tenant_id,
-        req.device_id
+        tenant_id, req.device_id
     );
     match sign_csr(&req.csr_pem, &spiffe_id) {
         Ok((cert_pem, trust_bundle)) => {
@@ -250,9 +289,9 @@ fn sign_csr(csr_pem: &str, spiffe_id: &str) -> Result<(String, String)> {
     use rcgen::{Certificate, CertificateParams, CertificateSigningRequest, KeyPair, SanType};
 
     let ca_key_pem =
-        std::fs::read_to_string("../../certs/root_ca.key").context("read root_ca.key")?;
+        std::fs::read_to_string("certs/root_ca.key").context("read root_ca.key")?;
     let ca_cert_pem =
-        std::fs::read_to_string("../../certs/root_ca.crt").context("read root_ca.crt")?;
+        std::fs::read_to_string("certs/root_ca.crt").context("read root_ca.crt")?;
 
     let ca_key = KeyPair::from_pem(&ca_key_pem).context("parse CA key")?;
     let ca_params =
@@ -260,24 +299,43 @@ fn sign_csr(csr_pem: &str, spiffe_id: &str) -> Result<(String, String)> {
     let ca = Certificate::from_params(ca_params).context("CA cert")?;
 
     let mut csr = CertificateSigningRequest::from_pem(csr_pem).context("parse CSR")?;
-    csr.params.subject_alt_names.push(SanType::URI(spiffe_id.to_string()));
+    csr.params
+        .subject_alt_names
+        .push(SanType::URI(spiffe_id.to_string()));
 
     let cert_pem = csr.serialize_pem_with_signer(&ca).context("sign CSR")?;
 
     Ok((cert_pem, ca_cert_pem))
 }
 
-async fn rotate_device(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(payload): Json<Value>) -> impl IntoResponse {
-    info!("CLOUD RECEIVED ROTATE REQUEST from {}: {}", device_id, payload);
+async fn rotate_device(
+    Path((_tenant_id, device_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+    Json(payload): Json<Value>,
+) -> impl IntoResponse {
+    info!(
+        "CLOUD RECEIVED ROTATE REQUEST from {}: {}",
+        device_id, payload
+    );
     if is_device_revoked(&state, &device_id) {
-        return (StatusCode::FORBIDDEN, Json(json!({"error": "device revoked"})));
+        return (
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "device revoked"})),
+        );
     }
     let join_token = rand_hex(16);
     (StatusCode::OK, Json(json!({ "join_token": join_token })))
 }
 
-async fn revoke_device(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(payload): Json<Value>) -> impl IntoResponse {
-    info!("CLOUD RECEIVED REVOKE REQUEST from {}: {}", device_id, payload);
+async fn revoke_device(
+    Path((_tenant_id, device_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+    Json(payload): Json<Value>,
+) -> impl IntoResponse {
+    info!(
+        "CLOUD RECEIVED REVOKE REQUEST from {}: {}",
+        device_id, payload
+    );
     let mut devices = state.devices.lock().unwrap();
     if let Some(dev) = devices.get_mut(&device_id) {
         dev.revoked = true;
@@ -285,10 +343,16 @@ async fn revoke_device(Path((_tenant_id, device_id)): Path<(String, String)>, St
     (StatusCode::OK, Json(json!({ "status": "revoked" })))
 }
 
-async fn get_device_status(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>) -> impl IntoResponse {
+async fn get_device_status(
+    Path((_tenant_id, device_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     let devices = state.devices.lock().unwrap();
     if let Some(dev) = devices.get(&device_id) {
-        (StatusCode::OK, Json(json!({ "status": if dev.revoked { "revoked" } else { "active" } })))
+        (
+            StatusCode::OK,
+            Json(json!({ "status": if dev.revoked { "revoked" } else { "active" } })),
+        )
     } else {
         (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" })))
     }

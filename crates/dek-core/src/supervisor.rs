@@ -52,8 +52,11 @@ pub struct Supervisor {
 impl Supervisor {
     /// Ordered, one-time startup. Mirrors core_main() up to task spawning.
     pub async fn bootstrap() -> Result<Self> {
-        dek_config::logging::init_logging("dek-core")
-            .unwrap_or_else(|e| eprintln!("Failed to initialize logging: {e}"));
+        #[allow(clippy::print_stderr)]
+        {
+            dek_config::logging::init_logging("dek-core")
+                .unwrap_or_else(|e| eprintln!("Failed to initialize logging: {e}"));
+        }
         info!("Starting Pollen DEK Core Supervisor...");
 
         let config_dir = dek_config::paths::get_config_dir();
@@ -63,20 +66,23 @@ impl Supervisor {
             "DEK_BOOTSTRAP_PATH",
             &dek_config::paths::get_bootstrap_path().to_string_lossy(),
         );
-        let bootstrap = BootstrapConfig::load_or_default(&bootstrap_path).context("load bootstrap")?;
+        let bootstrap =
+            BootstrapConfig::load_or_default(&bootstrap_path).context("load bootstrap")?;
 
         let cloud_url = if !bootstrap.cloud_url.is_empty() {
             bootstrap.cloud_url.clone()
         } else {
             env_var("POLLEN_CLOUD_URL", "https://127.0.0.1:43891")
         };
-        
+
         if !cloud_url.starts_with("https://") {
             error!("Fatal: POLLEN_CLOUD_URL must be https:// (downgrade protection).");
             std::process::exit(1);
         }
         let ipc_addr = env_var("DEK_IPC_ADDR", "127.0.0.1:43889");
-        let bundle_interval = env_var("DEK_BUNDLE_SYNC_INTERVAL", "10").parse().unwrap_or(10);
+        let bundle_interval = env_var("DEK_BUNDLE_SYNC_INTERVAL", "10")
+            .parse()
+            .unwrap_or(10);
 
         // Keystore migration (fail-open to file). Pull overrides if it succeeded.
         let mut client_key_override: Option<Vec<u8>> = None;
@@ -104,7 +110,12 @@ impl Supervisor {
             &pinned_key,
             client_key_override.as_deref(),
         )?);
-        let telemetry_url = format!("{}/v1/tenants/{}/devices/{}/telemetry", cloud_url.trim_end_matches('/'), tenant_id, bootstrap.device_id);
+        let telemetry_url = format!(
+            "{}/v1/tenants/{}/devices/{}/telemetry",
+            cloud_url.trim_end_matches('/'),
+            tenant_id,
+            bootstrap.device_id
+        );
         let data_dir = dek_config::paths::get_data_dir();
         let telemetry_sink = CloudTelemetrySink::new(
             &telemetry_url,
@@ -123,16 +134,19 @@ impl Supervisor {
         let sink = telemetry_sink.clone();
         tokio::spawn(async move {
             while let Some(obs) = dns_rx.recv().await {
-                sink.emit_async(serde_json::json!({
-                    "event_type": "pollen.dek.dns_observe",
-                    "cgroup_id": obs.cgroup_id,
-                    "qname": obs.qname,
-                    "answers": obs.answers,
-                    "is_response": obs.is_response,
-                }), dek_telemetry::Priority::Low);
+                sink.emit_async(
+                    serde_json::json!({
+                        "event_type": "pollen.dek.dns_observe",
+                        "cgroup_id": obs.cgroup_id,
+                        "qname": obs.qname,
+                        "answers": obs.answers,
+                        "is_response": obs.is_response,
+                    }),
+                    dek_telemetry::Priority::Low,
+                );
             }
         });
-        
+
         let _ebpf = crate::ebpf::load_and_attach(Some(dns_tx)).await;
 
         Ok(Self {
@@ -220,7 +234,15 @@ impl Supervisor {
         let renew_handle = crate::svid_renewal::spawn_svid_renewal_task(
             self.cancel.clone(),
             crate::svid_renewal::RenewalConfig {
-                renew_url: format!("{}/v1/tenants/{}/devices/{}/spire/svid/renew", self.cloud_url.trim_end_matches('/'), self.bootstrap.tenant_id.as_deref().unwrap_or("unknown_tenant"), self.bootstrap.device_id),
+                renew_url: format!(
+                    "{}/v1/tenants/{}/devices/{}/spire/svid/renew",
+                    self.cloud_url.trim_end_matches('/'),
+                    self.bootstrap
+                        .tenant_id
+                        .as_deref()
+                        .unwrap_or("unknown_tenant"),
+                    self.bootstrap.device_id
+                ),
                 device_id: self.bootstrap.device_id.clone(),
                 mtls: self.bootstrap.mtls.clone(),
             },
@@ -239,7 +261,10 @@ impl Supervisor {
             let _ = bundle_handle.await;
             let _ = renew_handle.await;
         };
-        if tokio::time::timeout(Duration::from_secs(15), drain).await.is_err() {
+        if tokio::time::timeout(Duration::from_secs(15), drain)
+            .await
+            .is_err()
+        {
             error!("Graceful shutdown timed out.");
         }
         info!("dek-core stopped cleanly.");

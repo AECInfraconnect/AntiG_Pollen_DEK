@@ -85,7 +85,10 @@ mod linux {
         info!("Starting eBPFD Supervisor (network Control Point)...");
 
         if let Err(e) = fs::create_dir_all(BPFFS_PATH) {
-            warn!("Could not create BPFFS path {} ({}); is /sys/fs/bpf mounted?", BPFFS_PATH, e);
+            warn!(
+                "Could not create BPFFS path {} ({}); is /sys/fs/bpf mounted?",
+                BPFFS_PATH, e
+            );
         }
         if let Err(e) = fs::create_dir_all(cgroup_path) {
             warn!("Could not create supervised cgroup {} ({})", cgroup_path, e);
@@ -95,7 +98,8 @@ mod linux {
 
         // Bytecode embedded at compile time (replace dummy.o with the real
         // artifact in CI: cargo build -p dek-ebpf-prog --target bpfel-unknown-none).
-        let bpf_bytes: &[u8] = aya::include_bytes_aligned!(concat!(env!("OUT_DIR"), "/dek-ebpf-prog"));
+        let bpf_bytes: &[u8] =
+            aya::include_bytes_aligned!(concat!(env!("OUT_DIR"), "/dek-ebpf-prog"));
         if bpf_bytes.is_empty() {
             warn!("eBPF bytecode is empty (placeholder). Returning an inert handle.");
             // Still return a handle (with an empty Ebpf) is not possible; bail soft.
@@ -122,7 +126,8 @@ mod linux {
             let cg = fs::File::open(cgroup_path).context("open cgroup (connect4)")?;
             // NOTE: attach signature is aya-version-sensitive; mirror the repo's
             // existing connect4 call so this stays consistent.
-            p.attach(cg, SockAddrAttachType::IPv4).context("attach connect4")?;
+            p.attach(cg, SockAddrAttachType::IPv4)
+                .context("attach connect4")?;
             info!("Attached cgroup/connect4 to {}", cgroup_path);
         }
 
@@ -131,10 +136,15 @@ mod linux {
             let p: &mut CgroupSkb = prog.try_into().context("dns_capture program")?;
             p.load().context("load dns_capture")?;
             let cg_e = fs::File::open(cgroup_path).context("open cgroup (egress)")?;
-            p.attach(cg_e, CgroupSkbAttachType::Egress).context("attach egress")?;
+            p.attach(cg_e, CgroupSkbAttachType::Egress)
+                .context("attach egress")?;
             let cg_i = fs::File::open(cgroup_path).context("open cgroup (ingress)")?;
-            p.attach(cg_i, CgroupSkbAttachType::Ingress).context("attach ingress")?;
-            info!("Attached cgroup/skb DNS capture (egress+ingress) to {}", cgroup_path);
+            p.attach(cg_i, CgroupSkbAttachType::Ingress)
+                .context("attach ingress")?;
+            info!(
+                "Attached cgroup/skb DNS capture (egress+ingress) to {}",
+                cgroup_path
+            );
         } else {
             warn!("dek_dns_capture program not found in object");
         }
@@ -158,8 +168,9 @@ mod linux {
                                     {
                                         continue;
                                     }
-                                    let ev: dek_ebpf_common::DnsCaptureEvent =
-                                        unsafe { std::ptr::read_unaligned(bytes.as_ptr() as *const _) };
+                                    let ev: dek_ebpf_common::DnsCaptureEvent = unsafe {
+                                        std::ptr::read_unaligned(bytes.as_ptr() as *const _)
+                                    };
                                     let dlen = (ev.len as usize).min(ev.data.len());
                                     if let Some(obs) = parse_dns(ev.cgroup_id, &ev.data[..dlen]) {
                                         log_observation(&obs);
@@ -195,8 +206,14 @@ mod linux {
         for rec in msg.answers() {
             let ttl = rec.ttl().max(MIN_TTL_FLOOR_SECS);
             match rec.data() {
-                Some(RData::A(a)) => answers.push(ResolvedRecord { ip: IpAddr::V4(a.0), ttl_secs: ttl }),
-                Some(RData::AAAA(a)) => answers.push(ResolvedRecord { ip: IpAddr::V6(a.0), ttl_secs: ttl }),
+                Some(RData::A(a)) => answers.push(ResolvedRecord {
+                    ip: IpAddr::V4(a.0),
+                    ttl_secs: ttl,
+                }),
+                Some(RData::AAAA(a)) => answers.push(ResolvedRecord {
+                    ip: IpAddr::V6(a.0),
+                    ttl_secs: ttl,
+                }),
                 _ => {}
             }
         }
@@ -214,8 +231,11 @@ mod linux {
         if obs.answers.is_empty() {
             info!(cgroup = obs.cgroup_id, qname = %obs.qname, qtype = %obs.qtype, "DNS query");
         } else {
-            let ips: Vec<String> =
-                obs.answers.iter().map(|r| format!("{}({}s)", r.ip, r.ttl_secs)).collect();
+            let ips: Vec<String> = obs
+                .answers
+                .iter()
+                .map(|r| format!("{}({}s)", r.ip, r.ttl_secs))
+                .collect();
             info!(cgroup = obs.cgroup_id, qname = %obs.qname, resolved = %ips.join(","), "DNS resolved");
         }
     }

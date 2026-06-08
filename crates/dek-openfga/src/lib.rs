@@ -73,16 +73,26 @@ impl OpenFgaAdapter {
 #[async_trait]
 impl PolicyRuntime for OpenFgaAdapter {
     async fn evaluate(&self, input: serde_json::Value) -> PolicyResult {
-        let principal = input.get("principal").and_then(|v| v.as_str()).unwrap_or("unknown");
+        let principal = input
+            .get("principal")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
         let action = input.get("action").and_then(|v| v.as_str()).unwrap_or("");
-        let resource = input.get("resource").and_then(|v| v.as_str()).unwrap_or("unknown");
+        let resource = input
+            .get("resource")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
 
         let cache_key = format!("{principal}|{action}|{resource}");
 
         // 1) Cache hit -> no network round-trip.
         if let Some(allow) = self.cache.get(&cache_key).await {
             debug!(%principal, %action, %resource, allow, "openfga cache hit");
-            let reason = if allow { "OpenFGA (cached) allowed" } else { "OpenFGA (cached) denied" };
+            let reason = if allow {
+                "OpenFGA (cached) allowed"
+            } else {
+                "OpenFGA (cached) denied"
+            };
             return Ok(self.decision(allow, reason));
         }
 
@@ -113,12 +123,19 @@ impl PolicyRuntime for OpenFgaAdapter {
             .await
             .map_err(|e| PolicyError::Eval(format!("parse OpenFGA response: {e}")))?;
 
-        let allow = body.get("allowed").and_then(|v| v.as_bool()).unwrap_or(false);
+        let allow = body
+            .get("allowed")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
 
         // 3) Cache the verdict (both allow and deny).
         self.cache.insert(cache_key, allow).await;
 
-        let reason = if allow { "OpenFGA remote check allowed" } else { "OpenFGA remote check denied" };
+        let reason = if allow {
+            "OpenFGA remote check allowed"
+        } else {
+            "OpenFGA remote check denied"
+        };
         Ok(self.decision(allow, reason))
     }
 
@@ -133,6 +150,7 @@ impl PolicyRuntime for OpenFgaAdapter {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
 
     #[test]
