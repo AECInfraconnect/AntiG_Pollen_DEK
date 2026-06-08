@@ -47,3 +47,24 @@ pub async fn admin_dashboard(State(state): State<AppState>) -> impl IntoResponse
             .into_response(),
     }
 }
+
+pub async fn admin_bundle_poison(
+    axum::extract::Path(bundle_id): axum::extract::Path<String>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    // In a real mock, we might mark this specific bundle ID as poisoned
+    // For now we'll just log an audit event that it was poisoned.
+    state.audit_logs.lock().unwrap().push(crate::state::AuditLog {
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        actor: "test-harness".to_string(),
+        action: "POISON_BUNDLE".to_string(),
+        details: format!("Poisoned bundle {}", bundle_id),
+    });
+    
+    (
+        axum::http::StatusCode::OK,
+        axum::Json(serde_json::json!({"status": "poisoned", "bundle_id": bundle_id})),
+    )
+}
+

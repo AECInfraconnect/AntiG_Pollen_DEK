@@ -12,6 +12,8 @@ pub mod state;
 pub mod telemetry;
 pub mod threats;
 pub mod tuf;
+pub mod update_server;
+pub mod ui;
 
 use anyhow::{Context, Result};
 use askama::Template;
@@ -124,7 +126,10 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
         .merge(crate::pdp::router())
         .merge(crate::scenarios::router())
         .route("/admin/registry", get(crate::admin::admin_dashboard))
+        .route("/mock/admin/bundles/:bundle_id/poison", post(crate::admin::admin_bundle_poison))
         .merge(bundles::router())
+        .merge(update_server::router())
+        .merge(ui::router())
         .merge(tuf::router())
         .merge(keys::router())
         .route(
