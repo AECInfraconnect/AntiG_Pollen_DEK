@@ -94,27 +94,57 @@ use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
 use wasmtime_wasi::preview1;
 use wasmtime_wasi::WasiCtxBuilder;
 
+/// WASM execution profile defining resource limits
+#[derive(Debug, Clone)]
+pub struct WasmProfile {
+    pub max_memory_bytes: usize,
+    pub max_fuel: u64,
+}
+
+impl Default for WasmProfile {
+    fn default() -> Self {
+        Self {
+            max_memory_bytes: 10 * 1024 * 1024, // 10 MB default
+            max_fuel: 1_000_000,                // 1M instructions default
+        }
+    }
+}
+
+struct RuntimeState {
+    wasi: wasmtime_wasi::preview1::WasiP1Ctx,
+    limits: StoreLimits,
+}
+
 /// The actual WASM runtime host
 pub struct WasmtimePolicyRuntime {
     engine: Engine,
-    instance_pre: InstancePre<wasmtime_wasi::preview1::WasiP1Ctx>,
+    instance_pre: InstancePre<RuntimeState>,
     wasm_path: String,
+    profile: WasmProfile,
 }
 
 impl WasmtimePolicyRuntime {
-    pub fn new(wasm_path: &str) -> Result<Self> {
-        let engine = Engine::default();
+    pub fn new(wasm_path: &str, profile: Option<WasmProfile>) -> Result<Self> {
+        let profile = profile.unwrap_or_default();
+        
+        let mut config = Config::new();
+        config.consume_fuel(true);
+        config.max_wasm_stack(1024 * 1024); // 1 MB stack limit
+
+        let engine = Engine::new(&config).map_err(|e| anyhow::anyhow!("Failed to init Engine: {}", e))?;
         let module = Module::from_file(&engine, wasm_path)
             .map_err(|e| anyhow::anyhow!("Failed to load WASM module: {}", e))?;
 
         let mut linker = Linker::new(&engine);
-        preview1::add_to_linker_sync(&mut linker, |s| s)?;
+        // Link WASI preview 1 functions to our custom state
+        preview1::add_to_linker_sync(&mut linker, |s: &mut RuntimeState| &mut s.wasi)?;
         let instance_pre = linker.instantiate_pre(&module)?;
 
         Ok(Self {
             engine,
             instance_pre,
             wasm_path: wasm_path.to_string(),
+            profile,
         })
     }
 }
@@ -124,7 +154,7 @@ impl PolicyRuntime for WasmtimePolicyRuntime {
     async fn evaluate(&self, input: serde_json::Value) -> PolicyResult {
         let input_str = serde_json::to_string(&input).map_err(|e| PolicyError::Invalid(e.to_string()))?;
         let stdin = MemoryInputPipe::new(bytes::Bytes::from(input_str.into_bytes()));
-        let stdout = MemoryOutputPipe::new(10 * 1024 * 1024); // 10MB capacity
+        let stdout = MemoryOutputPipe::new(self.profile.max_memory_bytes);
 
         let mut builder = WasiCtxBuilder::new();
         builder.stdin(stdin.clone());
@@ -132,7 +162,17 @@ impl PolicyRuntime for WasmtimePolicyRuntime {
         builder.inherit_stderr(); // For debugging
         let wasi = builder.build_p1();
 
-        let mut store = Store::new(&self.engine, wasi);
+        let limits = StoreLimitsBuilder::new()
+            .memory_size(self.profile.max_memory_bytes)
+            .build();
+
+        let state = RuntimeState { wasi, limits };
+        let mut store = Store::new(&self.engine, state);
+        
+        store.limiter(|state| &mut state.limits);
+
+        store.set_fuel(self.profile.max_fuel)
+            .map_err(|e| PolicyError::Eval(format!("failed to set fuel: {e}")))?;
 
         // Run plugin from pre-compiled module (thread-safe, concurrent)
         let instance = self.instance_pre.instantiate(&mut store)

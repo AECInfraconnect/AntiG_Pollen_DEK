@@ -66,3 +66,41 @@ impl std::fmt::Display for ErrorEnvelope {
 }
 
 impl std::error::Error for ErrorEnvelope {}
+
+impl ErrorEnvelope {
+    /// Maps the internal domain and safety action to a standard HTTP status code.
+    pub fn to_http_status(&self) -> u16 {
+        match self.domain {
+            ErrorDomain::Identity | ErrorDomain::Mtls => 401, // Unauthorized
+            ErrorDomain::Pep | ErrorDomain::Pdp | ErrorDomain::Policy => {
+                if self.safety_action == SafetyAction::DenyRequest {
+                    403 // Forbidden
+                } else {
+                    400 // Bad Request (e.g. invalid policy input)
+                }
+            }
+            ErrorDomain::Enrollment | ErrorDomain::Config | ErrorDomain::Bundle => 400, // Bad Request
+            ErrorDomain::Activation | ErrorDomain::Update => 409, // Conflict / Unprocessable
+            ErrorDomain::Wasm | ErrorDomain::Ebpf | ErrorDomain::Platform | ErrorDomain::Storage => 500, // Internal Server Error
+            ErrorDomain::Telemetry => 503, // Service Unavailable (queue full etc)
+        }
+    }
+
+    /// Maps the internal domain and safety action to a standard gRPC Code.
+    pub fn to_grpc_status(&self) -> tonic::Code {
+        match self.domain {
+            ErrorDomain::Identity | ErrorDomain::Mtls => tonic::Code::Unauthenticated,
+            ErrorDomain::Pep | ErrorDomain::Pdp | ErrorDomain::Policy => {
+                if self.safety_action == SafetyAction::DenyRequest {
+                    tonic::Code::PermissionDenied
+                } else {
+                    tonic::Code::InvalidArgument
+                }
+            }
+            ErrorDomain::Enrollment | ErrorDomain::Config | ErrorDomain::Bundle => tonic::Code::InvalidArgument,
+            ErrorDomain::Activation | ErrorDomain::Update => tonic::Code::FailedPrecondition,
+            ErrorDomain::Wasm | ErrorDomain::Ebpf | ErrorDomain::Platform | ErrorDomain::Storage => tonic::Code::Internal,
+            ErrorDomain::Telemetry => tonic::Code::Unavailable,
+        }
+    }
+}
