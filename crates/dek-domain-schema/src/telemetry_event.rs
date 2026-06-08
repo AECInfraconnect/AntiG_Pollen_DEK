@@ -80,4 +80,31 @@ pub enum TelemetryEvent {
         rule_id: String,
         timestamp: String,
     },
+    #[serde(rename = "os_guardrail")]
+    OsGuardrail {
+        schema_version: String,
+        tenant_id: String,
+        device_id: String,
+        os_platform: String, // "windows" or "macos"
+        pid: Option<u32>,
+        process_name: Option<String>,
+        dest_ip: Option<String>,
+        dest_port: Option<u16>,
+        fqdn: Option<String>,
+        protocol: Option<String>,
+        verdict: String, // "allow" or "deny"
+        rule_id: Option<String>,
+        timestamp: String,
+    },
+    #[serde(rename = "os_lifecycle")]
+    OsLifecycle {
+        schema_version: String,
+        tenant_id: String,
+        device_id: String,
+        os_platform: String, // "windows" or "macos"
+        component: String,   // "wfp_filter", "nefilter", "wfp_callout"
+        event: String,       // "started", "stopped", "install.completed", "install.failed", etc.
+        details: Option<String>,
+        timestamp: String,
+    },
 }

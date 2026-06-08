@@ -39,6 +39,10 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant_id/bundles/invalid/malformed",
             get(get_malformed_bundle),
         )
+        .route(
+            "/v1/tenants/:tenant_id/bundles/artifacts/network_guardrails.json",
+            get(get_network_guardrails_artifact),
+        )
 }
 
 fn generate_bundle(tenant_id: &str, generation: u64, is_canary: bool) -> BundleManifest {
@@ -71,6 +75,12 @@ fn generate_bundle(tenant_id: &str, generation: u64, is_canary: bool) -> BundleM
                 artifact_type: "json".to_string(),
                 sha256: "dummy_hash_for_registry".to_string(),
                 url: Some(format!("https://mock-cloud/v1/tenants/{}/bundles/artifacts/registry.json", tenant_id)),
+            },
+            BundleArtifact {
+                name: "network_guardrails.json".to_string(),
+                artifact_type: "json".to_string(),
+                sha256: "dummy_hash_for_network_guardrails".to_string(),
+                url: Some(format!("https://mock-cloud/v1/tenants/{}/bundles/artifacts/network_guardrails.json", tenant_id)),
             },
         ],
     }
@@ -170,4 +180,34 @@ async fn get_malformed_bundle(
         // Missing payload and public_key
     });
     (StatusCode::OK, Json(malformed))
+}
+
+async fn get_network_guardrails_artifact(
+    Path(_tenant_id): Path<String>,
+    State(_state): State<AppState>,
+) -> impl IntoResponse {
+    let mock_policy = json!({
+        "policy_id": "pol-net-001",
+        "policy_type": "NETWORK_EGRESS_GUARDRAIL",
+        "version": 1,
+        "risk_tier": "high",
+        "targets": {
+            "devices": ["*"]
+        },
+        "conditions": {
+            "destinations": [
+                {
+                    "type": "domain",
+                    "value": "malicious.example.com"
+                }
+            ]
+        },
+        "effect": "DENY",
+        "fallback": {
+            "cloud_unavailable": "FAIL_CLOSED",
+            "policy_stale": "FAIL_CLOSED"
+        }
+    });
+
+    (StatusCode::OK, Json(json!([mock_policy])))
 }

@@ -288,6 +288,7 @@ async fn device_page_post(
             profile: form.profile,
             revoked: false,
             last_health: "Pending Enrollment".to_string(),
+            capabilities: dek_domain_schema::EnforcementCapabilities::default(),
         },
     );
 
@@ -342,6 +343,24 @@ async fn dashboard_page(State(state): State<AppState>) -> impl IntoResponse {
                     device_id: device_id.clone(),
                     event_type: "eBPF".to_string(),
                     details: format!("{} -> {}", process_name, verdict),
+                }
+            },
+            TelemetryEvent::OsGuardrail { timestamp, device_id, os_platform, process_name, verdict, fqdn, .. } => {
+                let proc = process_name.clone().unwrap_or_else(|| "unknown_proc".to_string());
+                let dest = fqdn.clone().unwrap_or_else(|| "unknown_dest".to_string());
+                LogEntryView {
+                    timestamp: timestamp.clone(),
+                    device_id: device_id.clone(),
+                    event_type: format!("OS Guardrail ({})", os_platform),
+                    details: format!("{} -> {} : {}", proc, dest, verdict),
+                }
+            },
+            TelemetryEvent::OsLifecycle { timestamp, device_id, os_platform, component, event, .. } => {
+                LogEntryView {
+                    timestamp: timestamp.clone(),
+                    device_id: device_id.clone(),
+                    event_type: format!("OS Lifecycle ({})", os_platform),
+                    details: format!("{} : {}", component, event),
                 }
             }
         }
