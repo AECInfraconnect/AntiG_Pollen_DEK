@@ -13,6 +13,7 @@ metrics = "0.22"
 dek-cedar = { path = "../dek-cedar" }
 dek-openfga = { path = "../dek-openfga" }
 dek-mcp-normalizer = { path = "../dek-mcp-normalizer" }
+dek-resilience = { path = "../dek-resilience" }
 dek-wasm-host = { path = "../dek-wasm-host" }
 dek-activation = { path = "../dek-activation" }
 dek-decision = { path = "../dek-decision" }

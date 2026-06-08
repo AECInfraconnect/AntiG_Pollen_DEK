@@ -16,6 +16,7 @@ Pollen DEK provides a centralized governance, telemetry, and metrics gathering s
 - **dek-policy-runtime**: WASI-based runtime embedded via Wasmtime for executing isolated, dynamic WebAssembly modules (with strict CPU/Memory resource constraints).
 - **dek-telemetry**: Streams telemetry and Prometheus metrics back to Pollen Cloud.
 - **dek-metrics**: Shared metrics bootstrap crate offering global Prometheus recording and resilient pushing.
+- **dek-resilience**: Core resilience primitives (CircuitBreaker, AdmissionControl) for SaaS-scale reliability and per-tenant resource isolation.
 - **dek-keystore**: Cross-platform secure enclave abstraction leveraging OS-native keychain APIs (Windows DPAPI, macOS Keychain, Linux Secret Service).
 - **dek-openfga** and **dek-cedar**: Integrations for fine-grained authorization with external stores (OpenFGA) and Cedar policy engine.
 - **mock-cloud**: A deterministic, mock Pollen Cloud for development and integration testing.

@@ -67,6 +67,7 @@ async fn main() -> Result<()> {
         enterprise_profile: dek_config::EnterpriseProfile::default(),
     };
 
+    let mut scale_config = dek_config::ScaleConfig::default();
     // Attempt to load from staged bundle first
     let bundle_path_buf = dek_config::paths::get_active_bundle_path();
     let staged_path = std::path::Path::new(&bundle_path_buf);
@@ -104,6 +105,11 @@ async fn main() -> Result<()> {
                         initial_metadata.enterprise_profile = prof;
                     }
                 }
+                if let Some(scale_val) = payload.get("scale") {
+                    if let Ok(scale) = serde_json::from_value(scale_val.clone()) {
+                        scale_config = scale;
+                    }
+                }
             }
         }
     } else {
@@ -112,6 +118,11 @@ async fn main() -> Result<()> {
             router.register_evaluator("openfga", Box::new(adapter));
         }
     }
+
+    let admission = dek_resilience::admission::AdmissionControl::new(
+        scale_config.max_concurrent,
+        scale_config.max_concurrent_per_tenant,
+    );
 
     // Determine plugin paths
     let mut plugin_paths = std::collections::HashMap::new();
@@ -158,7 +169,7 @@ async fn main() -> Result<()> {
         tel.set_enterprise_profile(initial_prof);
     }
 
-    let state = AppState::new(HttpTransportAdapter, initial_snapshot, telemetry);
+    let state = AppState::new(HttpTransportAdapter, initial_snapshot, telemetry, admission);
 
     // Start background file watcher for hot-reloading
     let state_clone = state.clone();
@@ -431,6 +442,19 @@ async fn handle_mcp_request(
     let jwt_tenant_id = identity.tenant_id;
 
     let final_tenant_id = jwt_tenant_id.unwrap_or(metadata.tenant_id.clone());
+
+    // Phase 4: Admission Control (Backpressure)
+    let _permit = match state.admission.try_admit(&final_tenant_id) {
+        Some(p) => p,
+        None => {
+            metrics::counter!("dek_proxy_requests_total", "decision" => "deny", "reason" => "overloaded").increment(1);
+            tracing::warn!(tenant = %final_tenant_id, "request denied by admission control (overloaded)");
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({ "allow": false, "decision": "deny", "reason": "overloaded_backpressure" }))
+            ).into_response();
+        }
+    };
 
     // Normalize Event
     let normalized = match state.http_adapter.normalize_request(

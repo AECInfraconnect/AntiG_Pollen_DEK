@@ -6,6 +6,8 @@ members = [
     "crates/dek-router-builder",
     "crates/dek-updater",
     "crates/dek-domain-schema",
+    "crates/dek-metrics",
+    "crates/dek-resilience",
     "crates/dek-policy-syncer"
 ]
 exclude = [
