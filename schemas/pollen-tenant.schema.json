@@ -35,7 +35,32 @@
       "type": "string"
     },
     "trust_domain_strategy": {
-      "type": "string"
+      "$ref": "#/definitions/TrustDomainStrategy"
+    }
+  },
+  "definitions": {
+    "TrustDomainStrategy": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "shared",
+            "dedicated"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "custom"
+          ],
+          "properties": {
+            "custom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   }
 }
