@@ -93,7 +93,7 @@ mod linux {
 
         // Bytecode embedded at compile time (replace dummy.o with the real
         // artifact in CI: cargo build -p dek-ebpf-prog --target bpfel-unknown-none).
-        let bpf_bytes: &[u8] = include_bytes!("../dummy.o");
+        let bpf_bytes: &[u8] = aya::include_bytes_aligned!(concat!(env!("OUT_DIR"), "/dek-ebpf-prog"));
         if bpf_bytes.is_empty() {
             warn!("eBPF bytecode is empty (placeholder). Returning an inert handle.");
             // Still return a handle (with an empty Ebpf) is not possible; bail soft.

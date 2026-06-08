@@ -50,8 +50,8 @@ jobs:
         components: rust-src
     - name: Install bpf-linker
       run: cargo install bpf-linker
-    - name: Build eBPF
-      run: cargo build --manifest-path crates/dek-ebpf-prog/Cargo.toml
+    - name: Build eBPF Daemon
+      run: cargo build -p dek-ebpfd --release
 
   wasm_build:
     name: WASM Plugin Build
