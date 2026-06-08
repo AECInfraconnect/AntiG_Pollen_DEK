@@ -1,48 +1,159 @@
-name: Release and SBOM
+name: Release Supply Chain
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  id-token: write # Required for cosign keyless (OIDC) signing
 
 jobs:
-  build-and-release:
-    name: Build, SBOM, and Release
+  build:
+    name: Build Binaries (Auditable)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: pollen-dek-linux-amd64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: pollen-dek-windows-amd64.exe
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: pollen-dek-macos-amd64
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cargo-auditable
+        run: cargo install cargo-auditable
+
+      - name: Build Auditable Binaries
+        run: cargo auditable build --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --release --target ${{ matrix.target }}
+
+      - name: Stage Artifacts
+        shell: bash
+        run: |
+          mkdir staging
+          cp target/${{ matrix.target }}/release/dek-core staging/dek-core || cp target/${{ matrix.target }}/release/dek-core.exe staging/dek-core.exe
+          cp target/${{ matrix.target }}/release/dek-mcp-proxy staging/dek-mcp-proxy || cp target/${{ matrix.target }}/release/dek-mcp-proxy.exe staging/dek-mcp-proxy.exe
+          cp target/${{ matrix.target }}/release/dek-ext-authz staging/dek-ext-authz || cp target/${{ matrix.target }}/release/dek-ext-authz.exe staging/dek-ext-authz.exe
+          
+          # Compress for release
+          cd staging
+          tar -czvf ../${{ matrix.artifact_name }}.tar.gz *
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.tar.gz
+
+  ebpf:
+    name: Build eBPF Bytecode
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust Nightly
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src
+
+      - name: Install bpf-linker
+        run: cargo install bpf-linker
+
+      - name: Build eBPF Object
+        run: cargo build -p dek-ebpf-prog --target bpfel-unknown-none -Z build-std=core --release
+
+      - name: Extract eBPF Artifact
+        run: |
+          cp target/bpfel-unknown-none/release/dek-ebpf-prog dek-ebpf-prog.bpf.o
+
+      - name: Upload eBPF Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dek-ebpf-prog.bpf.o
+          path: dek-ebpf-prog.bpf.o
+
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cargo-cyclonedx
+        run: cargo install cargo-cyclonedx
+
+      - name: Generate CycloneDX SBOM
+        run: cargo cyclonedx --all --format json --output-pattern pollen-dek-sbom
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: pollen-dek-sbom.json
+          path: pollen-dek-sbom.json
+
+  release:
+    name: Publish Release
+    needs: [build, ebpf, sbom]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
         with:
-          targets: x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc, aarch64-apple-darwin
+          path: release_artifacts
+          merge-multiple: true
 
-      - name: Install cargo-sbom
-        run: cargo install cargo-sbom
+      - name: Generate SHA256SUMS
+        working-directory: release_artifacts
+        run: sha256sum * > SHA256SUMS
 
-      - name: Build Workspace
-        run: cargo build --release --workspace
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.5.0
 
-      - name: Generate SBOM
-        run: cargo sbom > sbom.json
-
-      - name: Generate TUF Hashes
+      - name: Sign Artifacts (Keyless)
+        working-directory: release_artifacts
         run: |
-          sha256sum target/release/dek-core > dek-core.sha256
-          sha256sum target/release/dek-updater > dek-updater.sha256
-          sha256sum target/release/dek-mcp-proxy > dek-mcp-proxy.sha256
+          # Keyless signing creates .sig and .pem files per artifact bound to the GitHub runner OIDC token
+          for file in *; do
+            if [ -f "$file" ]; then
+              cosign sign-blob --yes --output-signature "$file.sig" --output-certificate "$file.pem" "$file"
+            fi
+          done
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/release/dek-core
-            target/release/dek-updater
-            target/release/dek-mcp-proxy
-            sbom.json
-            dek-core.sha256
-            dek-updater.sha256
-            dek-mcp-proxy.sha256
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            release_artifacts/*
+          generate_release_notes: true
+
+# Verification Instructions for End-Users:
+# 
+# 1. Verify Checksums:
+#    sha256sum -c SHA256SUMS
+#
+# 2. Verify Cosign Keyless Signatures (Assuming github.com/YourOrg/PollenDEK):
+#    cosign verify-blob \
+#      --certificate pollen-dek-linux-amd64.tar.gz.pem \
+#      --signature pollen-dek-linux-amd64.tar.gz.sig \
+#      --certificate-identity-regexp "https://github.com/.*/PollenDEK/.*" \
+#      --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+#      pollen-dek-linux-amd64.tar.gz
+#
+# 3. Audit Binaries for Vulnerabilities (Since they are built with cargo-auditable):
+#    cargo audit bin dek-mcp-proxy

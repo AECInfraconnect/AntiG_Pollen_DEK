@@ -105,6 +105,7 @@ impl Spooler {
             params![self.max_rows],
         )?;
         if evicted > 0 {
+            metrics::counter!("dek_telemetry_spool_evicted_total").increment(evicted as u64);
             warn!(evicted, cap = self.max_rows, "telemetry spool full; evicted oldest/low-priority events");
         }
         Ok(())
@@ -153,6 +154,7 @@ impl Spooler {
     pub fn len(&self) -> Result<usize> {
         let conn = self.conn.lock().unwrap();
         let count: i64 = conn.query_row("SELECT COUNT(*) FROM events", [], |row| row.get(0))?;
+        metrics::gauge!("dek_telemetry_spool_rows").set(count as f64);
         Ok(count as usize)
     }
 }

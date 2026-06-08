@@ -28,6 +28,8 @@ base64 = "0.22"
 uuid = { version = "1.8", features = ["v4"] }
 chrono = "0.4"
 dek-telemetry = { path = "../dek-telemetry" }
+metrics = "0.22"
+metrics-exporter-prometheus = "0.13"
 
 dek-router-builder = { path = "../dek-router-builder" }
 jsonwebtoken = "9.3.1"

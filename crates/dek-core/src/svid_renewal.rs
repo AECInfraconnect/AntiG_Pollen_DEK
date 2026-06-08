@@ -60,8 +60,12 @@ pub fn spawn_svid_renewal_task(
 
             // 2) Renew. Fail-open with backoff.
             match renew_once(&cfg, &telemetry_sink, &bundle_agent, &metrics_client).await {
-                Ok(spiffe) => info!("SVID renewed successfully: {}", spiffe),
+                Ok(spiffe) => {
+                    metrics::counter!("dek_svid_renew_total").increment(1);
+                    info!("SVID renewed successfully: {}", spiffe);
+                }
                 Err(e) => {
+                    metrics::counter!("dek_svid_renew_errors_total").increment(1);
                     error!("SVID renewal failed: {e}; keeping current SVID, retry in {:?}", RETRY_BACKOFF);
                     tokio::select! {
                         _ = cancel.cancelled() => break,
@@ -86,6 +90,7 @@ fn seconds_until_renewal(cert_path: &str) -> Result<Duration> {
     let cert = p.parse_x509().context("parse X.509")?;
     let not_after = cert.validity().not_after.timestamp();
     let remaining = not_after - now_secs();
+    metrics::gauge!("dek_svid_expiry_seconds").set(remaining as f64);
     if remaining <= 0 {
         return Ok(MIN_SLEEP); // already expired — renew promptly
     }

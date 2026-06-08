@@ -8,7 +8,7 @@ fn main() {
         return;
     }
 
-    if let Err(e) = aya_build::build_ebpf() {
+    if let Err(e) = aya_build::build_ebpf(std::iter::empty::<cargo_metadata::Package>()) {
         println!("cargo:warning=Failed to build eBPF programs: {}", e);
     }
 }

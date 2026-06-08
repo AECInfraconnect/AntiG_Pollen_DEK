@@ -31,13 +31,13 @@ jobs:
       run: cargo fmt --all -- --check
       
     - name: Clippy
-      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      run: cargo clippy --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --all-targets --all-features -- -D warnings
       
     - name: Run Tests
-      run: cargo test --workspace --all-features
+      run: cargo test --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --all-features
       
     - name: Build Release
-      run: cargo build --workspace --release
+      run: cargo build --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --release
 
   ebpf_build:
     name: eBPF Build (Linux Only)
@@ -50,6 +50,8 @@ jobs:
         components: rust-src
     - name: Install bpf-linker
       run: cargo install bpf-linker
+    - name: Build eBPF Prog
+      run: cargo build -p dek-ebpf-prog --target bpfel-unknown-none -Z build-std=core
     - name: Build eBPF Daemon
       run: cargo build -p dek-ebpfd --release
 
@@ -63,8 +65,7 @@ jobs:
       with:
         targets: wasm32-wasip1
     - name: Build WASM Plugins
-      run: cargo build --target wasm32-wasip1 --workspace --exclude dek-ebpfd --exclude dek-core
-      # In practice, limit this to plugin crates
+      run: cargo build --target wasm32-wasip1 --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude dek-core
 
   security_audit:
     name: Security & Dependencies
