@@ -13,6 +13,9 @@ use flate2::read::GzDecoder;
 
 mod github;
 
+use std::time::Duration;
+use std::process::Command;
+
 #[derive(Parser)]
 #[command(name = "dek-updater", about = "Pollen DEK Auto-Updater")]
 struct Cli {
@@ -45,6 +48,16 @@ enum Commands {
         channel: String,
         target_exe: PathBuf,
     },
+    /// Fully automated manifest-driven update with rollback
+    AutoUpdate {
+        #[arg(long, default_value = "https://127.0.0.1:43891/v1/updater")]
+        update_url: String,
+        #[arg(long)]
+        service_name: Option<String>,
+        #[arg(long, default_value_t = 43890)]
+        health_port: u16,
+        target_exe: PathBuf,
+    },
 }
 
 fn main() -> Result<()> {
@@ -71,7 +84,9 @@ fn main() -> Result<()> {
             target_exe,
             metadata_path,
         } => {
-            verify_tuf_signature(&target_exe, &metadata_path)?;
+            let content = fs::read_to_string(&metadata_path).context("Failed to read TUF metadata")?;
+            let metadata: serde_json::Value = serde_json::from_str(&content)?;
+            verify_tuf_signature(&target_exe, &metadata)?;
             println!("TUF Verification Successful.");
         }
         Commands::Update {
@@ -119,6 +134,137 @@ fn main() -> Result<()> {
             
             println!("Upgrade successful to {}! Please restart the service.", release.tag_name);
         }
+        Commands::AutoUpdate { update_url, service_name, health_port, target_exe } => {
+            println!("Starting manifest-driven Auto-Update from {}", update_url);
+            
+            // 1. Fetch TUF targets.json
+            let metadata_url = format!("{}/metadata/targets.json", update_url.trim_end_matches('/'));
+            let resp = ureq::get(&metadata_url).call().context("Failed to fetch TUF metadata")?;
+            let metadata: serde_json::Value = resp.into_json()?;
+            
+            // Handle full TUF format { "signed": { "targets": ... } } or raw payload
+            let signed = if metadata.get("signed").is_some() {
+                &metadata["signed"]
+            } else {
+                &metadata
+            };
+            
+            // Expected executable name
+            let target_name = if cfg!(windows) { "dek-core.exe" } else { "dek-core" };
+            
+            let target_info = signed["targets"][target_name]
+                .as_object()
+                .ok_or_else(|| anyhow::anyhow!("Target {} not found in TUF metadata", target_name))?;
+                
+            let expected_hash = target_info["hashes"]["sha256"]
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("Missing sha256 hash in metadata for target"))?;
+                
+            println!("Update available for {}. Hash: {}", target_name, expected_hash);
+            
+            // 2. Download executable
+            let artifact_url = format!("{}/artifacts/{}", update_url.trim_end_matches('/'), expected_hash);
+            let temp_dir = tempfile::tempdir()?;
+            let downloaded_exe = temp_dir.path().join(target_name);
+            
+            println!("Downloading update payload...");
+            let resp = ureq::get(&artifact_url).call().context("Failed to download payload")?;
+            let mut reader = resp.into_reader();
+            let mut file = fs::File::create(&downloaded_exe)?;
+            std::io::copy(&mut reader, &mut file)?;
+            
+            // 3. Verify Hash
+            verify_tuf_signature(&downloaded_exe, &metadata)?;
+            println!("Payload verified successfully.");
+            
+            // 4. Service Stop
+            if let Some(ref svc) = service_name {
+                println!("Stopping service: {}", svc);
+                manage_service(svc, "stop")?;
+                std::thread::sleep(Duration::from_secs(2)); // wait for complete stop
+            }
+            
+            // 5. Atomic Swap
+            println!("Swapping executable...");
+            if let Err(e) = apply_with_rollback(&target_exe, &downloaded_exe) {
+                eprintln!("Swap failed: {}", e);
+                if let Some(ref svc) = service_name {
+                    let _ = manage_service(svc, "start");
+                }
+                anyhow::bail!("Swap failed.");
+            }
+            
+            // 6. Service Start
+            if let Some(ref svc) = service_name {
+                println!("Starting service: {}", svc);
+                manage_service(svc, "start")?;
+            } else {
+                println!("No service_name provided. Assuming manual restart.");
+                return Ok(());
+            }
+            
+            // 7. Health Check
+            println!("Waiting for health check on port {}...", health_port);
+            let health_url = format!("http://127.0.0.1:{}/v1/healthz", health_port);
+            
+            let mut is_healthy = false;
+            for _ in 0..15 {
+                std::thread::sleep(Duration::from_secs(2));
+                match ureq::get(&health_url).call() {
+                    Ok(res) if res.status() == 200 => {
+                        is_healthy = true;
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+            
+            // 8. Rollback if unhealthy
+            if !is_healthy {
+                eprintln!("Health check failed! Rolling back...");
+                if let Some(ref svc) = service_name {
+                    let _ = manage_service(svc, "stop");
+                    std::thread::sleep(Duration::from_secs(2));
+                }
+                
+                let backup_exe = target_exe.with_extension("exe.bak");
+                if backup_exe.exists() {
+                    let _ = fs::rename(&backup_exe, &target_exe);
+                }
+                
+                if let Some(ref svc) = service_name {
+                    let _ = manage_service(svc, "start");
+                }
+                anyhow::bail!("Update aborted due to health check failure.");
+            }
+            
+            println!("Auto-Update complete and healthy!");
+        }
+    }
+    Ok(())
+}
+
+fn manage_service(name: &str, action: &str) -> Result<()> {
+    #[cfg(windows)]
+    {
+        let status = Command::new("sc")
+            .arg(action)
+            .arg(name)
+            .status()?;
+        if !status.success() {
+            eprintln!("Warning: sc {} {} returned non-zero status", action, name);
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        // Simple fallback for linux using systemctl
+        let status = Command::new("systemctl")
+            .arg(action)
+            .arg(name)
+            .status()?;
+        if !status.success() {
+            eprintln!("Warning: systemctl {} {} returned non-zero status", action, name);
+        }
     }
     Ok(())
 }
@@ -162,10 +308,7 @@ fn extract_binary(archive_path: &Path, out_dir: &Path) -> Result<PathBuf> {
     Ok(exe_path)
 }
 
-fn verify_tuf_signature(new_exe: &PathBuf, metadata_path: &PathBuf) -> Result<()> {
-    let content = fs::read_to_string(metadata_path).context("Failed to read TUF metadata")?;
-    let metadata: serde_json::Value = serde_json::from_str(&content)?;
-
+fn verify_tuf_signature(new_exe: &PathBuf, metadata: &serde_json::Value) -> Result<()> {
     // Handle full TUF format { "signed": { "targets": ... } } or raw payload
     let signed = if metadata.get("signed").is_some() {
         &metadata["signed"]
