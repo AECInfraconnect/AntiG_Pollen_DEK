@@ -118,7 +118,7 @@ async fn main() -> Result<()> {
     } else {
         // Fallback defaults if no policy config
         if let Ok(adapter) = OpenFgaAdapter::new("http://localhost:8080", "store_123", None) {
-            router.register_evaluator("openfga", Box::new(adapter));
+            router.register_evaluator("openfga", Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))));
         }
     }
 
