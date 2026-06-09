@@ -3,6 +3,7 @@
 
 use anyhow::Result;
 use dek_domain_schema::CompiledNetworkRules;
+use dek_enforcement_api::NetworkEnforcer;
 use tracing::{info, warn};
 
 // Stub implementation for cross-compilation testing.
@@ -17,20 +18,22 @@ impl NeFilterClient {
     pub fn new() -> Self {
         Self { connected: false }
     }
+}
 
-    pub fn connect(&mut self) -> Result<()> {
-        info!("Connecting to PollenDEKNetworkExtension via IPC");
+impl NetworkEnforcer for NeFilterClient {
+    fn start(&mut self) -> Result<()> {
+        info!("Connecting to PollenDEKNetworkExtension via IPC (observe-only prototype)");
         self.connected = true;
         Ok(())
     }
 
-    pub fn disconnect(&mut self) -> Result<()> {
+    fn stop(&mut self) -> Result<()> {
         info!("Disconnecting from PollenDEKNetworkExtension");
         self.connected = false;
         Ok(())
     }
 
-    pub fn push_rules(&self, rules: &CompiledNetworkRules) -> Result<()> {
+    fn apply_rules(&self, rules: &CompiledNetworkRules) -> Result<()> {
         if !self.connected {
             warn!("Cannot push rules; NEFilterClient is not connected.");
             return Ok(());
@@ -44,7 +47,7 @@ impl NeFilterClient {
         Ok(())
     }
 
-    pub fn clear_rules(&self) -> Result<()> {
+    fn clear_rules(&self) -> Result<()> {
         info!("Clearing rules in macOS Network Extension");
         Ok(())
     }

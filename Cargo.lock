@@ -1812,11 +1812,13 @@ dependencies = [
  "dek-domain-schema",
  "dek-ebpf-common",
  "dek-ebpfd",
+ "dek-enforcement-api",
  "dek-ipc",
  "dek-keystore",
  "dek-macos-nefilter",
  "dek-metrics",
  "dek-openfga",
+ "dek-pdp-sdk",
  "dek-policy-router",
  "dek-policy-runtime",
  "dek-policy-syncer",
@@ -1892,6 +1894,15 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "dek-enforcement-api"
+version = "1.0.0-beta.1"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "dek-domain-schema",
 ]
 
 [[package]]
@@ -1987,7 +1998,9 @@ name = "dek-macos-nefilter"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "dek-domain-schema",
+ "dek-enforcement-api",
  "serde",
  "serde_json",
  "tracing",
@@ -2315,7 +2328,9 @@ name = "dek-windows-wfp"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "dek-domain-schema",
+ "dek-enforcement-api",
  "serde",
  "serde_json",
  "tracing",

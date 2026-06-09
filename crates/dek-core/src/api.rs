@@ -12,7 +12,7 @@ use axum::{
 use dek_activation::snapshot::RuntimeSnapshot;
 use dek_decision::{DecisionRequest, DecisionResponse};
 use std::sync::Arc;
-use tokio::net::TcpListener;
+use tokio::sync::oneshot;
 use tracing::{error, info};
 
 use dek_policy_syncer::EnforcementState;

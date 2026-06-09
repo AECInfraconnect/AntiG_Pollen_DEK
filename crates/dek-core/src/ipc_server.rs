@@ -16,7 +16,6 @@ use metrics::counter;
 use serde_json::json;
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::net::TcpListener;
 use tokio::sync::{RwLock, Semaphore};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, timeout, Duration};
