@@ -215,64 +215,13 @@ impl Supervisor {
             Some(sync_tx),
         );
 
-        let syncer_ref = syncer.clone();
-        let cancel_net = self.cancel.clone();
-        tokio::spawn(async move {
-            #[cfg(windows)]
-            let mut wfp_watchdog = dek_windows_wfp::watchdog::WfpWatchdog::new();
-            
-            loop {
-                tokio::select! {
-                    _ = cancel_net.cancelled() => break,
-                    outcome = sync_rx.recv() => {
-                        match outcome {
-                            Some(dek_policy_syncer::SyncOutcome::Updated { network_rules: Some(rules), .. }) => {
-                                #[cfg(windows)]
-                                {
-                                    for rule_set in rules {
-                                        let _ = wfp_watchdog.apply_with_fallback(rule_set, |r| {
-                                            // Mock apply function since WfpFilterManager might not be fully initialized here.
-                                            // In a real scenario, we'd invoke the WFP filter manager here.
-                                            Ok(())
-                                        });
-                                        metrics::counter!("dek_network_rule_enforced_total", "type" => "wfp").increment(1);
-                                    }
-                                }
-                                #[cfg(target_os = "macos")]
-                                {
-                                    // macOS network filtering logic placeholder
-                                }
-                                #[cfg(target_os = "linux")]
-                                {
-                                    // Linux eBPF network filtering logic placeholder
-                                }
-                            }
-                            Some(dek_policy_syncer::SyncOutcome::Failed { .. }) => {
-                                // Fallback logic would trigger from Watchdog periodically or via EnforcementState
-                            }
-                            Some(dek_policy_syncer::SyncOutcome::StateTransition(state)) => {
-                                if state.is_strict_deny() {
-                                    tracing::warn!("Supervisor: EnforcementState is StrictDeny. Triggering fail-closed.");
-                                    #[cfg(windows)]
-                                    {
-                                        wfp_watchdog.trigger_fail_closed_mode();
-                                    }
-                                    #[cfg(target_os = "macos")]
-                                    {
-                                        // Trigger macOS fail-closed
-                                    }
-                                    #[cfg(target_os = "linux")]
-                                    {
-                                        // Trigger eBPF fail-closed
-                                    }
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            }
-        });
+        // Network egress guardrail plane (Phase A) — trait-based, all 3 OS, fail-closed.
+        let _net_handle = crate::network_loop::spawn(
+            sync_rx,
+            tenant_id.clone(),
+            self.bootstrap.device_id.clone(),
+            self.cancel.clone(),
+        );
 
         // 3) Probation finalize (only if an update is on trial). After services up.
         if let Some(marker) = self.pending_update.take() {
@@ -333,6 +282,7 @@ impl Supervisor {
             let _ = ipc_handle.await;
             let _ = bundle_handle;
             let _ = renew_handle.await;
+            let _ = _net_handle.await;
         };
         if tokio::time::timeout(Duration::from_secs(15), drain)
             .await

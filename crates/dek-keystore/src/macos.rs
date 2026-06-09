@@ -10,6 +10,8 @@ pub struct KeychainKeystore {
 
 impl KeychainKeystore {
     pub fn new() -> Self {
+        // TODO: Integrate with security-framework Keychain.
+        // For beta, fallback to 0600 file-based storage.
         tracing::warn!("macOS secure Keystore not fully implemented. Falling back to 0600 file-based storage. Hardened key storage will follow in the next Phase.");
         let mut dir = dirs_next::data_local_dir()
             .unwrap_or_else(|| PathBuf::from("/Library/Application Support"));

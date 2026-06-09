@@ -8,6 +8,7 @@ mod ipc_client;
 mod ipc_server;
 mod keystore_migration;
 mod metrics_push;
+mod network_loop;
 mod probation;
 mod reload_coordinator;
 mod service_integration;

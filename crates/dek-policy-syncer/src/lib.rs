@@ -228,6 +228,7 @@ impl PolicySyncer {
         // Polling loop: pull+verify+activate.
         let s1 = self.clone();
         let c1 = cancel.clone();
+        let sync_tx_poll = sync_tx.clone();
         let poll = tokio::spawn(async move {
             let mut tick = tokio::time::interval(poll_interval.max(Duration::from_secs(1)));
             loop {
@@ -235,7 +236,7 @@ impl PolicySyncer {
                     _ = c1.cancelled() => break,
                     _ = tick.tick() => { 
                         let outcome = s1.sync_once().await; 
-                        if let Some(tx) = &sync_tx {
+                        if let Some(tx) = &sync_tx_poll {
                             let _ = tx.send(outcome).await;
                         }
                     }

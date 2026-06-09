@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub mod lock_ext;
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorDomain {

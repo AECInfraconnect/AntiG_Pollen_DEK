@@ -1,0 +1,47 @@
+name: Release Gate
+
+on:
+  push:
+    tags:
+      - 'v*-beta*'
+
+jobs:
+  release-gate:
+    name: v1.0.0-beta Release Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Clippy (Enforce unwrap/expect gate)
+        run: cargo clippy --workspace -- -D warnings -D clippy::unwrap_used -D clippy::expect_used
+
+      - name: Unit and Contract Tests
+        run: cargo test --workspace
+
+      - name: Benchmark Baseline Check
+        run: cargo bench -p dek-cedar
+
+      - name: Install Security Tools
+        run: |
+          cargo install cargo-audit
+          cargo install cargo-deny
+
+      - name: Security Audit (cargo audit)
+        run: cargo audit
+
+      - name: Security Deny (cargo deny)
+        run: cargo deny check
+
+      - name: Gitleaks (Detect secrets)
+        uses: gitleaks/gitleaks-action@v2
+
+      - name: Build Binaries (Acceptance Matrix A-J)
+        run: cargo build --release --workspace

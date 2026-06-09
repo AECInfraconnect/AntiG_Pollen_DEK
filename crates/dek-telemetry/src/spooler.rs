@@ -23,6 +23,7 @@ use rusqlite::{params, Connection};
 use serde_json::Value;
 use std::sync::Mutex;
 use tracing::{info, warn};
+use dek_errors::lock_ext::LockExt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Priority {
@@ -43,7 +44,7 @@ impl Priority {
     }
 }
 
-pub const DEFAULT_MAX_ROWS: i64 = 50_000;
+pub const DEFAULT_MAX_ROWS: i64 = 10_000;
 
 pub struct Spooler {
     conn: Mutex<Connection>,
@@ -119,7 +120,7 @@ impl Spooler {
             .encrypt(&nonce, payload_str.as_bytes())
             .map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;
 
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock_safe();
         conn.execute(
             "INSERT INTO events (priority, payload, nonce) VALUES (?1, ?2, ?3)",
             params![priority as i32, ciphertext, nonce.as_slice()],
@@ -146,7 +147,7 @@ impl Spooler {
     }
 
     pub fn pop_batch(&self, limit: usize) -> Result<Vec<(i64, Value)>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock_safe();
         let mut stmt = conn.prepare(
             "SELECT id, payload, nonce FROM events ORDER BY priority DESC, id ASC LIMIT ?1",
         )?;
@@ -186,7 +187,7 @@ impl Spooler {
         if ids.is_empty() {
             return Ok(());
         }
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock_safe();
         let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
         let query = format!("DELETE FROM events WHERE id IN ({})", placeholders);
         let mut stmt = conn.prepare(&query)?;
@@ -195,13 +196,13 @@ impl Spooler {
     }
 
     pub fn vacuum(&self) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock_safe();
         conn.execute_batch("PRAGMA incremental_vacuum;")?;
         Ok(())
     }
 
     pub fn len(&self) -> Result<usize> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock_safe();
         let count: i64 = conn.query_row("SELECT COUNT(*) FROM events", [], |row| row.get(0))?;
         metrics::gauge!("dek_telemetry_spool_rows").set(count as f64);
         Ok(count as usize)

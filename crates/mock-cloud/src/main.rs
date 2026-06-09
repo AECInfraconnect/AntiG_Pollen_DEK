@@ -15,6 +15,8 @@ pub mod threats;
 pub mod tuf;
 pub mod update_server;
 pub mod ui;
+pub mod approvals;
+pub mod decision_logs;
 
 use anyhow::{Context, Result};
 use askama::Template;
@@ -108,11 +110,23 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
                 "not_after_unix": 0
             })
         ])),
+        active_seed: Arc::new(Mutex::new(BUNDLE_SEED.to_vec())),
+        revocation_list: Arc::new(Mutex::new(Vec::new())),
         registry: Arc::new(Mutex::new(RegistryState::default())),
+        network_rules: Arc::new(Mutex::new(vec![serde_json::json!({
+            "policy_id": "pol-net-001", "policy_type": "NETWORK_EGRESS_GUARDRAIL",
+            "version": 1, "risk_tier": "high",
+            "targets": { "agents": [], "processes": [], "users": [], "devices": ["*"] },
+            "conditions": { "destinations": [{ "type": "domain", "value": "malicious.example.com" }],
+                            "protocols": [], "time_window": serde_json::Value::Null },
+            "effect": "DENY", "obligations": [],
+            "fallback": { "cloud_unavailable": "FAIL_CLOSED", "policy_stale": "FAIL_CLOSED" }
+        })])),
         chaos_config: Arc::new(Mutex::new(crate::state::ChaosConfig {
             outage_enabled: false,
             global_latency_ms: 0,
         })),
+        approvals: Arc::new(Mutex::new(HashMap::new())),
     };
 
     if let Some(profile) = args.seed {
@@ -129,8 +143,10 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
         .merge(bundles::router())
         .merge(update_server::router())
         .merge(ui::router())
-        .merge(tuf::router())
-        .merge(keys::router())
+        .merge(crate::tuf::router())
+        .merge(crate::keys::router())
+        .merge(crate::approvals::router())
+        .merge(crate::decision_logs::router())
         .route(
             "/v1/tenants/:tenant_id/devices/:device_id/config",
             get(get_config),
@@ -157,6 +173,7 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
         .route("/mock/admin/keys/rotate", post(crate::admin::admin_keys_rotate))
         .route("/mock/admin/policies/publish", post(crate::admin::admin_policies_publish))
         .route("/mock/admin/policies/publish-tampered", post(crate::admin::admin_policies_publish_tampered))
+        .route("/mock/admin/network/publish", post(crate::admin::admin_network_publish))
         .route("/mock/admin/policies/rollback", post(crate::admin::admin_policies_rollback))
         .route(
             "/admin/devices/:device_id/revoke",

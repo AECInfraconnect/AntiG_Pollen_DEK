@@ -11,6 +11,7 @@ edition = "2021"
 dek-bundle-sync = { path = "../dek-bundle-sync" }
 dek-config = { path = "../dek-config" }
 dek-telemetry = { path = "../dek-telemetry" }
+dek-domain-schema = { path = "../dek-domain-schema" }
 arc-swap = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

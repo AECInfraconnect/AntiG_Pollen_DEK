@@ -23,6 +23,18 @@ pub struct AuditLog {
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
+pub struct ApprovalRequest {
+    pub ref_id: String,
+    pub tenant_id: String,
+    pub device_id: String,
+    pub principal: String,
+    pub action: String,
+    pub resource: String,
+    pub status: String,
+    pub timestamp: String,
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct PolicyBundle {
     pub version: String,
     pub cedar_src: String,
@@ -56,6 +68,9 @@ pub struct AppState {
     pub rollout: Arc<Mutex<RolloutConfig>>,
     /// admin audit logs
     pub audit_logs: Arc<Mutex<Vec<AuditLog>>>,
+    pub revocation_list: Arc<Mutex<Vec<String>>>,
+    pub active_seed: Arc<Mutex<Vec<u8>>>,
+    pub network_rules: Arc<Mutex<Vec<serde_json::Value>>>,
     /// Pending policy publications for maker-checker
     pub pending_policies: Arc<Mutex<HashMap<String, PolicyBundle>>>,
     pub trusted_keys: Arc<Mutex<Vec<serde_json::Value>>>,
@@ -63,6 +78,8 @@ pub struct AppState {
     pub chaos_config: Arc<Mutex<ChaosConfig>>,
     // Registry state for Phase 1
     pub registry: Arc<Mutex<RegistryState>>,
+    /// Human-in-the-loop approvals (ref_id -> ApprovalRequest)
+    pub approvals: Arc<Mutex<HashMap<String, ApprovalRequest>>>,
 }
 
 #[derive(Clone, Default)]

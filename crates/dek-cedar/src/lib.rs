@@ -7,20 +7,28 @@ use cedar_policy::{
     Request,
 };
 use dek_policy_runtime::{PolicyDecision, PolicyRuntime};
+use moka::sync::Cache;
 use std::str::FromStr;
+use std::time::Duration;
 
 pub struct CedarAdapter {
     policy_src: String,
     policy_set: PolicySet,
+    cache: Cache<String, PolicyDecision>,
 }
 
 impl CedarAdapter {
     pub fn new(policy_src: &str) -> Result<Self> {
         let policy_set = PolicySet::from_str(policy_src)
             .map_err(|e| anyhow::anyhow!("Cedar Parse Error: {}", e))?;
+        let cache = Cache::builder()
+            .max_capacity(10_000)
+            .time_to_live(Duration::from_secs(60))
+            .build();
         Ok(Self {
             policy_src: policy_src.to_string(),
             policy_set,
+            cache,
         })
     }
 }
@@ -28,6 +36,13 @@ impl CedarAdapter {
 #[async_trait]
 impl PolicyRuntime for CedarAdapter {
     async fn evaluate(&self, input: serde_json::Value) -> dek_policy_runtime::PolicyResult {
+        let cache_key = serde_json::to_string(&input).unwrap_or_default();
+        if !cache_key.is_empty() {
+            if let Some(decision) = self.cache.get(&cache_key) {
+                return Ok(decision);
+            }
+        }
+
         let principal = input
             .get("principal")
             .and_then(|v| v.as_str())
@@ -99,7 +114,7 @@ impl PolicyRuntime for CedarAdapter {
 
         let allowed = answer.decision() == Decision::Allow;
 
-        Ok(PolicyDecision {
+        let decision_res = PolicyDecision {
             evaluator_id: "cedar_native".to_string(),
             evaluator_type: "local_pdp".to_string(),
             required: true,
@@ -118,7 +133,17 @@ impl PolicyRuntime for CedarAdapter {
             effects: serde_json::json!({}),
             obligations: vec![],
             metadata: serde_json::json!({ "policy_version": "1.0", "diagnostics": format!("{:?}", answer.diagnostics()) }),
-        })
+        };
+
+        if !cache_key.is_empty() {
+            self.cache.insert(cache_key, decision_res.clone());
+        }
+
+        Ok(decision_res)
+    }
+
+    async fn clear_cache(&self) {
+        self.cache.invalidate_all();
     }
 
     fn version(&self) -> String {
