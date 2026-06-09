@@ -167,9 +167,10 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
 
     // ---- Enrollment listener (PRE-identity, NO client cert) ----
     let enroll = Router::new()
+        .nest_service("/admin/dashboard", tower_http::services::ServeDir::new("ui/mock-cloud/dist"))
+        .route("/api/admin/dashboard/data", get(dashboard_data_api))
         .merge(spire::router())
         .route("/device", get(device_page_get).post(device_page_post))
-        .route("/admin/dashboard", get(dashboard_page))
         .route("/admin/registry", get(crate::admin::admin_dashboard))
         .route("/mock/admin/bundles/:bundle_id/poison", post(crate::admin::admin_bundle_poison))
         .route("/mock/admin/audits", get(crate::admin::get_audits))
@@ -303,6 +304,24 @@ async fn device_page_post(
         success: Some("Device approved and profile assigned.".to_string()),
     };
     Html(tpl.render().unwrap())
+}
+
+async fn dashboard_data_api(State(state): State<AppState>) -> impl IntoResponse {
+    let devices: Vec<DeviceStatus> = state.devices.lock().unwrap().values().cloned().collect();
+    let count = state.telemetry_events.lock().unwrap().len();
+
+    let rollout_guard = state.rollout.lock().unwrap();
+    let current_version = rollout_guard.latest_bundle.version.clone();
+    
+    let audit_guard = state.audit_logs.lock().unwrap();
+    let audits: Vec<AuditLog> = audit_guard.iter().rev().take(20).cloned().collect();
+
+    Json(serde_json::json!({
+        "devices": devices,
+        "telemetry_count": count,
+        "current_version": current_version,
+        "audits": audits,
+    }))
 }
 
 async fn dashboard_page(State(state): State<AppState>) -> impl IntoResponse {
