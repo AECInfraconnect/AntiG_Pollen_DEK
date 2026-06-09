@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use rcgen::{CertificateParams, KeyPair, SanType};
 use std::fs;
 
@@ -8,3 +11,4 @@ fn main() {
     // In rcgen 0.13, does CertificateSigningRequest exist? Let's check:
     // let csr = rcgen::CertificateSigningRequest::from_pem("...");
 }
+

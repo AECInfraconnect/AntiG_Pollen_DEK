@@ -1,14 +1,20 @@
-# AI Assistant Instructions
+# AI Agent Contribution Instructions
 
-**CRITICAL RULE FOR ALL AI ASSISTANTS WORKING ON THIS REPOSITORY:**
+AI agents must not push directly to `main` unless a human maintainer explicitly requests it for that task.
 
-Whenever you complete a major task, phase, or milestone, you **MUST** automatically commit and push the changes to GitHub.
+Default workflow:
 
-Use the following sequence of commands (in PowerShell):
-```powershell
-& "C:\Program Files\Git\cmd\git.exe" add .
-& "C:\Program Files\Git\cmd\git.exe" commit -m "feat: <description of your work>"
-& "C:\Program Files\Git\cmd\git.exe" push origin main
-```
+1. Create a feature branch.
+2. Make focused changes.
+3. Run required checks.
+4. Commit with Conventional Commit format.
+5. Open a pull request.
+6. Include test evidence and risk notes.
 
-Do not wait for the user to remind you. Proactively ask for confirmation to push or simply push if the user has given blanket approval for the task.
+Required checks before PR:
+
+- cargo fmt --all -- --check
+- cargo clippy --workspace -- -D warnings
+- cargo test --workspace
+- cargo deny check
+- cargo audit
