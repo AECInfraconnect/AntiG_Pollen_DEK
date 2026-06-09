@@ -1,0 +1,19 @@
+[package]
+name = "dek-plugin-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+dek-plugin-sdk = { path = "../dek-plugin-sdk" }
+dek-policy-router = { path = "../dek-policy-router" }
+dek-policy-runtime = { path = "../dek-policy-runtime" }
+serde.workspace = true
+serde_json.workspace = true
+async-trait.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tokio = { workspace = true, features = ["full"] }

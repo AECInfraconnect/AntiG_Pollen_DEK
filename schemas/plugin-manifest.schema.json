@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Pollen DEK Plugin Manifest",
+  "type": "object",
+  "properties": {
+    "api_version": {
+      "type": "string",
+      "const": "v1alpha1"
+    },
+    "plugin": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["policy_evaluator", "transform", "telemetry_sink", "enforcement_provider"]
+        },
+        "entrypoint": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["wasm", "grpc", "native_dylib"] },
+            "path": { "type": "string" }
+          },
+          "required": ["type", "path"]
+        }
+      },
+      "required": ["id", "name", "version", "type", "entrypoint"]
+    }
+  },
+  "required": ["api_version", "plugin"]
+}

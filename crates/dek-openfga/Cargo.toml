@@ -5,7 +5,7 @@ edition = "2021"
 license.workspace = true
 
 [dependencies]
-dek-policy-runtime = { path = "../dek-policy-runtime" }
+dek-plugin-sdk = { path = "../dek-plugin-sdk" }
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
@@ -13,7 +13,6 @@ tracing.workspace = true
 async-trait = "0.1.89"
 reqwest = { workspace = true, features = ["json"] }
 dek-config = { path = "../dek-config" }
-
 moka = { version = "0.12", features = ["future"] }
 
 [dev-dependencies]
@@ -21,4 +20,3 @@ tokio = { workspace = true, features = ["full", "test-util"] }
 
 [lints]
 workspace = true
-

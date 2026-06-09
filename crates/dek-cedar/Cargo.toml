@@ -5,7 +5,7 @@ edition = "2021"
 license.workspace = true
 
 [dependencies]
-dek-policy-runtime = { path = "../dek-policy-runtime" }
+dek-plugin-sdk = { path = "../dek-plugin-sdk" }
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
@@ -25,4 +25,3 @@ serde_json = { workspace = true }
 [[bench]]
 name = "authorize_bench"
 harness = false
-
