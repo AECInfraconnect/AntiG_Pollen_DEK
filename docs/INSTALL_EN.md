@@ -21,4 +21,4 @@
 3. The launchd agent will load automatically.
 
 ## Verification
-Run `dek-core --version` to verify installation.
+Run `pollen-dekctl status` to verify installation and service health.

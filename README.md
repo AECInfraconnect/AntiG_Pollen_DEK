@@ -1,5 +1,7 @@
 # Pollen DEK - Desktop Enforcement Kit
 
+> Pollen DEK v1.0.0-beta is a cross-platform local enforcement and observability kit for testing AI Agent/MCP policy enforcement with Mock Pollen Cloud. It supports sandbox enrollment, signed policy bundle sync, MCP HTTP/stdio enforcement, telemetry upload, hot reload scenarios, local fallback behavior, and GitHub release distribution. Linux includes experimental eBPF guardrail support. Windows/macOS network guardrails remain opt-in redirect only in beta.
+
 Pollen DEK is an extensible, highly concurrent and robust edge computing proxy node written in Rust. It serves as a secure, local interception point for traffic and events routing between applications and the Pollen Cloud.
 
 ## AI Central Control and Observability Plane for Enterprise
@@ -41,6 +43,16 @@ Pollen DEK shifts from a purely cooperative policy enforcement to a machine-leve
 
 > [!WARNING]
 > **Enforcement Ceiling:** It is critical to understand that Windows and macOS currently have a lower enforcement ceiling than Linux. While Linux guarantees network-level egress enforcement via eBPF regardless of application behavior, Windows and macOS rely strictly on Layer 1 App-layer MCP proxies and cooperative opt-in network redirects.
+
+## Known Beta Limitations
+
+1. Pollen Cloud production integration is not final; beta uses Mock-Cloud.
+2. Windows/macOS network egress enforcement is opt-in redirect only.
+3. Linux eBPF guardrail is experimental.
+4. Auto-update is beta/opt-in.
+5. High availability and enterprise multi-tenant scale are not validated.
+6. Kernel-level Windows/macOS enforcement is future roadmap.
+7. Pollen Cloud repo `pollenwithclaw` was not publicly accessible during this review, so final contract alignment must be validated when available.
 
 ## License
 

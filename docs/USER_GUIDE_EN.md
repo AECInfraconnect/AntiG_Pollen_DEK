@@ -4,12 +4,13 @@
 Pollen DEK (Distributed Enforcement Kernel) is an endpoint security and policy enforcement tool.
 
 ## Key Components
-- **DEK Core**: The background service that manages identity, downloads policies, and controls enforcement.
-- **DEK MCP Proxy**: A local proxy for Model Context Protocol (MCP) tool usage, authorizing requests before they reach the tools.
-- **DEK Updater**: Auto-updater that verifies TUF metadata and cryptographic signatures before applying updates.
+- **Pollen DEK Core (`pollen-dek`)**: The background service that manages identity, downloads policies, and controls enforcement.
+- **Pollen DEK CLI (`pollen-dekctl`)**: Command-line tool to enroll, manage, and troubleshoot the DEK.
+- **Pollen MCP Proxy (`pollen-mcp-proxy`)**: A local proxy for Model Context Protocol (MCP) tool usage, authorizing requests before they reach the tools.
+- **Mock Cloud (`pollen-mock-cloud`)**: Local simulation of Pollen Cloud for development and beta testing.
 
 ## Configuration
-Configuration is located at `/opt/pollen` (Linux), `/Library/Application Support/PollenDEK` (macOS), or `C:\ProgramData\PollenDEK` (Windows).
+Configuration is located at `~/.pollen/dek/` by default during the beta phase, utilizing `bootstrap.json`.
 
 ## Logs
-Logs can be found in the `logs` subdirectory within the configuration folder.
+Logs can be viewed using the `pollen-dekctl logs` command, or found in the `~/.pollen/dek/logs/` directory.
