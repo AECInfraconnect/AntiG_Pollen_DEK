@@ -21,6 +21,7 @@ pub mod ui;
 pub mod approvals;
 pub mod decision_logs;
 pub mod mtls;
+pub mod sidecar;
 
 #[cfg(test)]
 mod contract_test;
@@ -48,7 +49,7 @@ use std::sync::{Arc, Mutex};
 use tracing::info;
 
 use crate::state::{AppState, AuditLog, DeviceStatus, PolicyBundle, RolloutConfig, RegistryState};
-use dek_domain_schema::TelemetryEvent;
+
 
 // Static ed25519 seed used to sign policy bundles.
 pub const BUNDLE_SEED: [u8; 32] = [
@@ -152,6 +153,7 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
         .merge(crate::keys::router())
         .merge(crate::approvals::router())
         .merge(crate::decision_logs::router())
+        .merge(crate::sidecar::router())
         .route(
             "/v1/tenants/:tenant_id/devices/:device_id/config",
             get(get_config),
@@ -243,23 +245,6 @@ struct DeviceApprovalTemplate {
     success: Option<String>,
 }
 
-pub struct LogEntryView {
-    pub timestamp: String,
-    pub device_id: String,
-    pub event_type: String,
-    pub details: String,
-}
-
-#[derive(Template)]
-#[template(path = "dashboard.html")]
-struct DashboardTemplate {
-    devices: Vec<DeviceStatus>,
-    recent_logs: Vec<LogEntryView>,
-    telemetry_count: usize,
-    current_version: String,
-    canary_info: String,
-    audits: Vec<AuditLog>,
-}
 
 #[derive(Deserialize)]
 struct DevicePageQuery {
@@ -324,102 +309,6 @@ async fn dashboard_data_api(State(state): State<AppState>) -> impl IntoResponse 
     }))
 }
 
-async fn dashboard_page(State(state): State<AppState>) -> impl IntoResponse {
-    let devices: Vec<DeviceStatus> = state.devices.lock().unwrap().values().cloned().collect();
-    let logs_guard = state.telemetry_events.lock().unwrap();
-    let recent_logs: Vec<LogEntryView> = logs_guard.iter().take(50).map(|e| {
-        match e {
-            TelemetryEvent::Decision { timestamp, device_id, action, decision, .. } => {
-                LogEntryView {
-                    timestamp: timestamp.clone(),
-                    device_id: device_id.clone(),
-                    event_type: "Decision".to_string(),
-                    details: format!("{} -> {}", action, decision),
-                }
-            },
-            TelemetryEvent::Security { timestamp, device_id, severity, category, .. } => {
-                LogEntryView {
-                    timestamp: timestamp.clone(),
-                    device_id: device_id.clone(),
-                    event_type: "Security".to_string(),
-                    details: format!("[{}] {}", severity, category),
-                }
-            },
-            TelemetryEvent::Trace { trace_id, device_id, .. } => {
-                LogEntryView {
-                    timestamp: "N/A".to_string(), // Traces might not have top-level timestamp
-                    device_id: device_id.clone(),
-                    event_type: "Trace".to_string(),
-                    details: format!("TraceID: {}", trace_id),
-                }
-            },
-            TelemetryEvent::Metric { timestamp, device_id, .. } => {
-                LogEntryView {
-                    timestamp: timestamp.clone(),
-                    device_id: device_id.clone(),
-                    event_type: "Metric".to_string(),
-                    details: "Metrics payload".to_string(),
-                }
-            },
-            TelemetryEvent::EbpfGuardrail { timestamp, device_id, process_name, verdict, .. } => {
-                LogEntryView {
-                    timestamp: timestamp.clone(),
-                    device_id: device_id.clone(),
-                    event_type: "eBPF".to_string(),
-                    details: format!("{} -> {}", process_name, verdict),
-                }
-            },
-            TelemetryEvent::OsGuardrail { timestamp, device_id, os_platform, process_name, verdict, fqdn, .. } => {
-                let proc = process_name.clone().unwrap_or_else(|| "unknown_proc".to_string());
-                let dest = fqdn.clone().unwrap_or_else(|| "unknown_dest".to_string());
-                LogEntryView {
-                    timestamp: timestamp.clone(),
-                    device_id: device_id.clone(),
-                    event_type: format!("OS Guardrail ({})", os_platform),
-                    details: format!("{} -> {} : {}", proc, dest, verdict),
-                }
-            },
-            TelemetryEvent::OsLifecycle { timestamp, device_id, os_platform, component, event, .. } => {
-                LogEntryView {
-                    timestamp: timestamp.clone(),
-                    device_id: device_id.clone(),
-                    event_type: format!("OS Lifecycle ({})", os_platform),
-                    details: format!("{} : {}", component, event),
-                }
-            },
-            TelemetryEvent::Audit { timestamp, device_id, action, .. } => {
-                LogEntryView {
-                    timestamp: timestamp.clone(),
-                    device_id: device_id.clone(),
-                    event_type: "Audit".to_string(),
-                    details: action.clone(),
-                }
-            }
-        }
-    }).collect();
-    let count = logs_guard.len();
-
-    let rollout_guard = state.rollout.lock().unwrap();
-    let current_version = rollout_guard.latest_bundle.version.clone();
-    let canary_info = rollout_guard
-        .canary_bundle
-        .as_ref()
-        .map(|b| format!("{} ({}%)", b.version, rollout_guard.canary_percentage))
-        .unwrap_or_else(|| "None".to_string());
-
-    let audit_guard = state.audit_logs.lock().unwrap();
-    let audits: Vec<AuditLog> = audit_guard.iter().rev().take(20).cloned().collect();
-
-    let tpl = DashboardTemplate {
-        devices,
-        recent_logs,
-        telemetry_count: count,
-        current_version,
-        canary_info,
-        audits,
-    };
-    Html(tpl.render().unwrap())
-}
 
 async fn admin_revoke_device(
     State(state): State<AppState>,

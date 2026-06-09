@@ -110,17 +110,26 @@ mod tests {
     
     #[async_trait]
     impl PolicyRuntime for DummyRuntime {
-        async fn evaluate(&self, _request: &serde_json::Value) -> Result<PolicyDecision, PolicyError> {
+        async fn evaluate(&self, _input: serde_json::Value) -> Result<PolicyDecision, PolicyError> {
             Ok(PolicyDecision {
-                allowed: false,
-                reason: Some("fail-closed".into()),
-                metrics: Default::default(),
+                evaluator_id: "dummy".to_string(),
+                evaluator_type: "dummy".to_string(),
+                required: true,
+                status: "success".to_string(),
+                decision: "deny".to_string(),
+                allow: false,
+                reason: "fail-closed".to_string(),
+                effects: json!({}),
+                obligations: vec![],
+                metadata: json!({}),
             })
         }
 
-        fn update_policy(&mut self, _policy_data: &[u8]) -> Result<(), PolicyError> {
-            Ok(())
+        fn version(&self) -> String {
+            "dummy-v1".to_string()
         }
+
+        async fn clear_cache(&self) {}
     }
 
     struct DummyFactory;

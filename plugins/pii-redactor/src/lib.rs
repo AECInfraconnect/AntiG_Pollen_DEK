@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
+#![allow(clippy::unwrap_used)]
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -19,13 +20,57 @@ pub struct DetectedEntity {
 }
 
 /// Interface for integrating remote NER models
-/// Future implementations could use WASI HTTP or IPC to call out to:
-/// - GLiNER (Zero-shot)
-/// - Multilingual NER
-/// - Domain-specific NER
-/// - LLM Verification
 pub trait NerProvider {
     fn detect_entities(&self, text: &str) -> Result<Vec<DetectedEntity>, String>;
+}
+
+/// Provider for flexible custom entity types (Zero-shot NER)
+pub struct GlinerProvider {
+    pub endpoint: String,
+}
+
+impl NerProvider for GlinerProvider {
+    fn detect_entities(&self, _text: &str) -> Result<Vec<DetectedEntity>, String> {
+        // TODO: Implement HTTP call to GLiNER service
+        Ok(vec![])
+    }
+}
+
+/// Provider for Thai / multilingual PII
+pub struct MultilingualNerProvider {
+    pub endpoint: String,
+}
+
+impl NerProvider for MultilingualNerProvider {
+    fn detect_entities(&self, _text: &str) -> Result<Vec<DetectedEntity>, String> {
+        // TODO: Implement HTTP call to Multilingual NER model
+        Ok(vec![])
+    }
+}
+
+/// Provider for Healthcare / legal / government (Domain-specific NER)
+pub struct DomainNerProvider {
+    pub endpoint: String,
+}
+
+impl NerProvider for DomainNerProvider {
+    fn detect_entities(&self, _text: &str) -> Result<Vec<DetectedEntity>, String> {
+        // TODO: Implement HTTP call to Domain-specific NER model
+        Ok(vec![])
+    }
+}
+
+/// Provider for High-accuracy enterprise mode (NER + rules + LLM verification)
+pub struct HighAccuracyEnterpriseProvider {
+    pub ner_endpoint: String,
+    pub llm_endpoint: String,
+}
+
+impl NerProvider for HighAccuracyEnterpriseProvider {
+    fn detect_entities(&self, _text: &str) -> Result<Vec<DetectedEntity>, String> {
+        // TODO: Implement multi-step NER and LLM verification workflow
+        Ok(vec![])
+    }
 }
 
 /// A deterministic PII detector based on Regex and rules
@@ -191,7 +236,7 @@ impl DeterministicDetector {
         let mut entities = self.detect(text);
         
         // Sort in reverse order to replace without disrupting earlier indices
-        entities.sort_by(|a, b| b.start.cmp(&a.start));
+        entities.sort_by_key(|b| std::cmp::Reverse(b.start));
         
         for entity in entities {
             let replacement = format!("[REDACTED_{}]", entity.entity_type);
@@ -199,6 +244,12 @@ impl DeterministicDetector {
         }
 
         result
+    }
+}
+
+impl Default for DeterministicDetector {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
