@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
+use crate::state::AppState;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -9,12 +10,17 @@ use axum::{
     Json, Router,
 };
 use serde_json::json;
-use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/api/dek/v1/updates/:channel/metadata", get(get_update_metadata))
-        .route("/api/dek/v1/updates/artifacts/:artifact_id", get(get_update_artifact))
+        .route(
+            "/api/dek/v1/updates/:channel/metadata",
+            get(get_update_metadata),
+        )
+        .route(
+            "/api/dek/v1/updates/artifacts/:artifact_id",
+            get(get_update_artifact),
+        )
 }
 
 async fn get_update_metadata(
@@ -73,4 +79,3 @@ async fn get_update_artifact(
     // For tests, we just return dummy content.
     (StatusCode::OK, "DUMMY_ARTIFACT_DATA")
 }
-

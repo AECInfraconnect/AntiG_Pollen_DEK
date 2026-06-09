@@ -20,13 +20,13 @@ use aes_gcm::{
     Aes256Gcm, Key, Nonce,
 };
 use anyhow::{Context, Result};
+use dek_errors::lock_ext::LockExt;
 use keyring::Entry;
 use rand::RngCore;
 use rusqlite::{params, Connection};
 use serde_json::Value;
 use std::sync::Mutex;
 use tracing::{info, warn};
-use dek_errors::lock_ext::LockExt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Priority {
@@ -247,4 +247,3 @@ mod tests {
         assert_eq!(batch.len(), 2);
     }
 }
-

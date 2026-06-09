@@ -113,9 +113,18 @@ async fn main() -> Result<()> {
 
     let mut child = cmd.spawn()?;
 
-    let mut child_stdin = child.stdin.take().ok_or_else(|| anyhow::anyhow!("Failed to open child stdin"))?;
-    let child_stdout = child.stdout.take().ok_or_else(|| anyhow::anyhow!("Failed to open child stdout"))?;
-    let child_stderr = child.stderr.take().ok_or_else(|| anyhow::anyhow!("Failed to open child stderr"))?;
+    let mut child_stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| anyhow::anyhow!("Failed to open child stdin"))?;
+    let child_stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| anyhow::anyhow!("Failed to open child stdout"))?;
+    let child_stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| anyhow::anyhow!("Failed to open child stderr"))?;
 
     // Parent streams
     let mut parent_stdin = BufReader::new(tokio::io::stdin()).lines();
@@ -151,7 +160,8 @@ async fn main() -> Result<()> {
     let plugin_host_res = dek_wasm_host::WasmtimePluginHost::new(plugin_paths);
     let plugin_host = Arc::new(plugin_host_res.unwrap_or_else(|_| {
         warn!("Failed to load WasmtimePluginHost. Redaction may be unavailable.");
-        dek_wasm_host::WasmtimePluginHost::new(std::collections::HashMap::new()).unwrap_or_else(|_| panic!("Failed to create dummy WasmtimePluginHost"))
+        dek_wasm_host::WasmtimePluginHost::new(std::collections::HashMap::new())
+            .unwrap_or_else(|_| panic!("Failed to create dummy WasmtimePluginHost"))
     }));
 
     // Task 2: Read child stdout and pipe to our stdout
@@ -327,4 +337,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

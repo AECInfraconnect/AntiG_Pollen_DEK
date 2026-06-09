@@ -58,10 +58,10 @@ pub struct ConditionalPdp {
     pub required_payload_key: String, // Mock condition evaluation
 }
 
-use dek_resilience::breaker::{CircuitBreaker, CircuitConfig, Admit};
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use dek_errors::lock_ext::LockExt;
+use dek_resilience::breaker::{Admit, CircuitBreaker, CircuitConfig};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 
 pub struct PdpStats {
     pub ewma_latency: f64,
@@ -83,7 +83,7 @@ impl PdpStats {
             failures: 0,
         }
     }
-    
+
     pub fn record_latency(&mut self, latency: f64, alpha: f64) {
         if self.ewma_latency == 0.0 {
             self.ewma_latency = latency;
@@ -124,7 +124,12 @@ impl PolicyRouter {
         }
     }
 
-    pub fn set_scale_config(&mut self, pdp_timeout_ms: u64, failure_threshold: u32, cooldown_secs: u64) {
+    pub fn set_scale_config(
+        &mut self,
+        pdp_timeout_ms: u64,
+        failure_threshold: u32,
+        cooldown_secs: u64,
+    ) {
         self.pdp_timeout_ms = pdp_timeout_ms;
         self.circuit_config = CircuitConfig {
             failure_threshold,
@@ -139,7 +144,8 @@ impl PolicyRouter {
             id.to_string(),
             Arc::new(CircuitBreaker::new(id, self.circuit_config.clone())),
         );
-        self.stats.insert(id.to_string(), Arc::new(Mutex::new(PdpStats::new())));
+        self.stats
+            .insert(id.to_string(), Arc::new(Mutex::new(PdpStats::new())));
     }
 
     pub fn set_routes(&mut self, mut routes: Vec<Route>) {
@@ -157,14 +163,16 @@ impl PolicyRouter {
         if pool.is_empty() {
             return None;
         }
-        let available: Vec<&String> = pool.iter()
+        let available: Vec<&String> = pool
+            .iter()
             .filter(|p| {
                 if let Some(b) = self.breakers.get(*p) {
                     matches!(b.permitted(), Admit::Allow)
                 } else {
                     false
                 }
-            }).collect();
+            })
+            .collect();
 
         if available.is_empty() {
             return Some(pool[0].clone());
@@ -221,11 +229,7 @@ impl PolicyRouter {
                     .and_then(|mcp| mcp.get("method"))
                     .and_then(|v| v.as_str())
             })
-            .or_else(|| {
-                payload
-                    .get("action")
-                    .and_then(|v| v.as_str())
-            })
+            .or_else(|| payload.get("action").and_then(|v| v.as_str()))
             .unwrap_or("");
 
         // Extract optional matching context from payload
@@ -337,7 +341,8 @@ impl PolicyRouter {
             }
         }
         if !route.pdp_pool.is_empty() {
-            if let Some(pdp) = self.select_pdp_from_pool(&route.pdp_pool, &route.failover_strategy) {
+            if let Some(pdp) = self.select_pdp_from_pool(&route.pdp_pool, &route.failover_strategy)
+            {
                 to_evaluate.push(pdp);
             }
         }
@@ -345,7 +350,7 @@ impl PolicyRouter {
         for ev_id in to_evaluate {
             if let Some(evaluator) = self.evaluators.get(&ev_id) {
                 let breaker = self.breakers.get(&ev_id).cloned();
-                
+
                 // Check circuit breaker before hitting PDP
                 if let Some(ref b) = breaker {
                     if let Admit::Reject = b.permitted() {
@@ -353,7 +358,8 @@ impl PolicyRouter {
                         tracing::warn!(%ev_id, "request rejected (circuit breaker open)");
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
-                        combined_decision.reason = format!("Blocked by Circuit Breaker for {}", ev_id);
+                        combined_decision.reason =
+                            format!("Blocked by Circuit Breaker for {}", ev_id);
                         break;
                     }
                 }
@@ -361,14 +367,14 @@ impl PolicyRouter {
                 let start_time = std::time::Instant::now();
                 let eval_fut = evaluator.evaluate(payload.clone());
                 let timeout_dur = std::time::Duration::from_millis(self.pdp_timeout_ms);
-                
+
                 match tokio::time::timeout(timeout_dur, eval_fut).await {
                     Ok(Ok(res)) => {
                         let latency = start_time.elapsed().as_millis() as f64;
                         metrics::histogram!("dek_policy_eval_latency_ms", "evaluator" => ev_id.clone()).record(latency);
 
                         tracing::info!("Evaluator {} returned: {}", ev_id, res.decision);
-                        
+
                         if let Some(ref b) = breaker {
                             b.on_success();
                         }
@@ -406,32 +412,55 @@ impl PolicyRouter {
                     }
                     Ok(Err(dek_policy_runtime::PolicyError::Unavailable(msg))) => {
                         metrics::counter!("dek_pdp_unavailable_total", "evaluator" => ev_id.clone()).increment(1);
-                        tracing::warn!("required PDP unavailable: {msg}; mode: {:?}", route.enforcement_mode);
-                        if let Some(ref b) = breaker { b.on_failure(); }
-                        if let Some(stats) = self.stats.get(&ev_id) { stats.lock_safe().failures += 1; }
+                        tracing::warn!(
+                            "required PDP unavailable: {msg}; mode: {:?}",
+                            route.enforcement_mode
+                        );
+                        if let Some(ref b) = breaker {
+                            b.on_failure();
+                        }
+                        if let Some(stats) = self.stats.get(&ev_id) {
+                            stats.lock_safe().failures += 1;
+                        }
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
-                        combined_decision.reason = format!("required PDP unavailable: {} (Mode: {:?})", msg, route.enforcement_mode);
+                        combined_decision.reason = format!(
+                            "required PDP unavailable: {} (Mode: {:?})",
+                            msg, route.enforcement_mode
+                        );
                         break;
                     }
                     Ok(Err(e)) => {
-                        metrics::counter!("dek_pdp_error_total", "evaluator" => ev_id.clone()).increment(1);
+                        metrics::counter!("dek_pdp_error_total", "evaluator" => ev_id.clone())
+                            .increment(1);
                         tracing::warn!("PDP error: {e}; mode: {:?}", route.enforcement_mode);
-                        if let Some(ref b) = breaker { b.on_failure(); }
-                        if let Some(stats) = self.stats.get(&ev_id) { stats.lock_safe().failures += 1; }
+                        if let Some(ref b) = breaker {
+                            b.on_failure();
+                        }
+                        if let Some(stats) = self.stats.get(&ev_id) {
+                            stats.lock_safe().failures += 1;
+                        }
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
-                        combined_decision.reason = format!("PDP error: {} (Mode: {:?})", e, route.enforcement_mode);
+                        combined_decision.reason =
+                            format!("PDP error: {} (Mode: {:?})", e, route.enforcement_mode);
                         break;
                     }
-                    Err(_) => { // Timeout elapsed
-                        metrics::counter!("dek_pdp_timeout_total", "evaluator" => ev_id.clone()).increment(1);
+                    Err(_) => {
+                        // Timeout elapsed
+                        metrics::counter!("dek_pdp_timeout_total", "evaluator" => ev_id.clone())
+                            .increment(1);
                         tracing::warn!("PDP timeout for evaluator: {}", ev_id);
-                        if let Some(ref b) = breaker { b.on_failure(); }
-                        if let Some(stats) = self.stats.get(&ev_id) { stats.lock_safe().failures += 1; }
+                        if let Some(ref b) = breaker {
+                            b.on_failure();
+                        }
+                        if let Some(stats) = self.stats.get(&ev_id) {
+                            stats.lock_safe().failures += 1;
+                        }
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
-                        combined_decision.reason = format!("PDP timeout ({} ms) for {}", self.pdp_timeout_ms, ev_id);
+                        combined_decision.reason =
+                            format!("PDP timeout ({} ms) for {}", self.pdp_timeout_ms, ev_id);
                         break;
                     }
                 }
@@ -552,4 +581,3 @@ mod tests {
         assert_eq!(res.reason, "Break-glass mode activated");
     }
 }
-

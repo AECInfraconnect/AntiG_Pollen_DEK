@@ -26,13 +26,41 @@ impl EvaluatorAdapter {
 #[async_trait::async_trait]
 impl PolicyRuntime for EvaluatorAdapter {
     async fn evaluate(&self, input: serde_json::Value) -> Result<OldPolicyDecision, PolicyError> {
+        let request_id = input
+            .get("request_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("auto-req")
+            .to_string();
+        let tenant_id = input
+            .get("tenant_id")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let subject = input
+            .get("principal")
+            .and_then(|v| v.get("id").or(Some(v)))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let action = input
+            .get("action")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let resource = input.get("resource").and_then(|v| {
+            if v.is_object() {
+                v.get("id")
+                    .and_then(|id| id.as_str())
+                    .map(|s| s.to_string())
+            } else {
+                v.as_str().map(|s| s.to_string())
+            }
+        });
+
         let req = EvalRequest {
-            request_id: "auto-req".into(),
-            tenant_id: None,
-            subject: None,
-            action: None,
-            resource: None,
-            payload: input,
+            request_id,
+            tenant_id,
+            subject,
+            action,
+            resource,
+            payload: input.clone(),
             context: Default::default(),
         };
 

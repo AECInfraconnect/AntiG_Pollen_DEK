@@ -2,7 +2,7 @@
 // Copyright (c) 2026 AEC Infraconnect
 
 //! R4 Soak Test Harness
-//! Runs a continuous load against mock-cloud and dek-core, 
+//! Runs a continuous load against mock-cloud and dek-core,
 //! injecting chaos and monitoring RSS memory growth to detect leaks.
 //! Run with: cargo test --test soak -- --ignored --nocapture
 
@@ -15,7 +15,13 @@ use tokio::process::{Child, Command};
 use tokio::time::sleep;
 
 fn workspace_dir() -> PathBuf {
-    std::env::current_dir().unwrap().parent().unwrap().parent().unwrap().to_path_buf()
+    std::env::current_dir()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf()
 }
 
 fn bin(name: &str) -> PathBuf {
@@ -57,10 +63,17 @@ async fn wait_https(url: &str, tries: u32) -> Result<()> {
 
 async fn setup_mock_cloud() -> Result<Proc> {
     assert!(
-        Command::new("cargo").args(["build", "--workspace"]).status().await?.success(),
+        Command::new("cargo")
+            .args(["build", "--workspace"])
+            .status()
+            .await?
+            .success(),
         "workspace build failed"
     );
-    let _ = Command::new(bin("cert-gen")).current_dir(workspace_dir()).status().await;
+    let _ = Command::new(bin("cert-gen"))
+        .current_dir(workspace_dir())
+        .status()
+        .await;
 
     let mut mock = Command::new(bin("mock-cloud"))
         .current_dir(workspace_dir())
@@ -103,7 +116,11 @@ async fn enroll_and_start_core() -> Result<Proc> {
 }
 
 async fn authorize(pep: &reqwest::Client, req: &serde_json::Value) -> Result<(u16, bool)> {
-    let resp = pep.post("http://127.0.0.1:43890/v1/decision/check").json(req).send().await?;
+    let resp = pep
+        .post("http://127.0.0.1:43890/v1/decision/check")
+        .json(req)
+        .send()
+        .await?;
     let status = resp.status().as_u16();
     let body: serde_json::Value = resp.json().await.unwrap_or(serde_json::json!({}));
     let allow = body.get("decision").and_then(|v| v.as_str()) == Some("allow");
@@ -122,11 +139,14 @@ async fn soak_harness() -> Result<()> {
     println!("Starting soak test for {} seconds", soak_secs);
     let _mock = setup_mock_cloud().await?;
     let core = enroll_and_start_core().await?;
-    
+
     let core_pid = core.1.expect("dek-core pid not found");
     let mut sys = System::new_all();
     sys.refresh_processes();
-    let initial_rss = sys.process(Pid::from_u32(core_pid)).map(|p| p.memory()).unwrap_or(0);
+    let initial_rss = sys
+        .process(Pid::from_u32(core_pid))
+        .map(|p| p.memory())
+        .unwrap_or(0);
     println!("Initial dek-core RSS: {} KB", initial_rss);
 
     let pep = insecure_client();
@@ -144,10 +164,10 @@ async fn soak_harness() -> Result<()> {
     let start = Instant::now();
     let mut total_reqs = 0;
     let mut err_reqs = 0;
-    
+
     let mut last_chaos = Instant::now();
     let chaos_interval = Duration::from_secs(15);
-    
+
     while start.elapsed() < Duration::from_secs(soak_secs) {
         total_reqs += 1;
         match authorize(&pep, &allow_req).await {
@@ -160,36 +180,57 @@ async fn soak_harness() -> Result<()> {
                 err_reqs += 1;
             }
         }
-        
+
         // Inject chaos periodically
         if last_chaos.elapsed() > chaos_interval {
             println!("Injecting chaos (network outage)...");
-            let _ = pep.post("https://127.0.0.1:43892/mock/admin/chaos/outage").json(&serde_json::json!({"enabled": true})).send().await;
+            let _ = pep
+                .post("https://127.0.0.1:43892/mock/admin/chaos/outage")
+                .json(&serde_json::json!({"enabled": true}))
+                .send()
+                .await;
             sleep(Duration::from_secs(3)).await;
-            let _ = pep.post("https://127.0.0.1:43892/mock/admin/chaos/outage").json(&serde_json::json!({"enabled": false})).send().await;
-            
+            let _ = pep
+                .post("https://127.0.0.1:43892/mock/admin/chaos/outage")
+                .json(&serde_json::json!({"enabled": false}))
+                .send()
+                .await;
+
             println!("Rotating keys...");
-            let _ = pep.post("https://127.0.0.1:43892/mock/admin/keys/rotate").send().await;
-            
+            let _ = pep
+                .post("https://127.0.0.1:43892/mock/admin/keys/rotate")
+                .send()
+                .await;
+
             last_chaos = Instant::now();
         }
-        
+
         sleep(Duration::from_millis(50)).await;
     }
-    
+
     let err_rate = (err_reqs as f64) / (total_reqs as f64);
-    println!("Soak completed. Total requests: {}, Errors: {}, Error rate: {:.2}%", total_reqs, err_reqs, err_rate * 100.0);
+    println!(
+        "Soak completed. Total requests: {}, Errors: {}, Error rate: {:.2}%",
+        total_reqs,
+        err_reqs,
+        err_rate * 100.0
+    );
     assert!(err_rate < 0.10, "Error rate must be < 10%");
-    
+
     sys.refresh_processes();
-    let final_rss = sys.process(Pid::from_u32(core_pid)).map(|p| p.memory()).unwrap_or(0);
+    let final_rss = sys
+        .process(Pid::from_u32(core_pid))
+        .map(|p| p.memory())
+        .unwrap_or(0);
     println!("Final dek-core RSS: {} KB", final_rss);
-    
+
     // Check for leak: RSS growth > 1.5x (and significantly > 10MB to avoid base noise)
     if initial_rss > 10_000 && final_rss > (initial_rss as f64 * 1.5) as u64 {
-        panic!("Potential memory leak detected! RSS grew from {} KB to {} KB", initial_rss, final_rss);
+        panic!(
+            "Potential memory leak detected! RSS grew from {} KB to {} KB",
+            initial_rss, final_rss
+        );
     }
-    
+
     Ok(())
 }
-

@@ -131,4 +131,3 @@ fn restart_service() -> Result<()> {
 fn restart_service() -> Result<()> {
     Ok(())
 }
-

@@ -69,4 +69,3 @@ async fn health_roundtrip(addr: &str) -> Result<bool> {
         IpcResponse::HealthStatus { status, .. } if status == "HEALTHY"
     ))
 }
-

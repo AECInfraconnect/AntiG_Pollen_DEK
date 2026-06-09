@@ -275,4 +275,3 @@ mod tests {
         assert_eq!(decision.reason, "tool is not allowed");
     }
 }
-

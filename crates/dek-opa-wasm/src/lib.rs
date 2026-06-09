@@ -137,7 +137,11 @@ impl PolicyEvaluator for OpaWasmAdapter {
             evaluator_type: "wasm_pdp".into(),
             required: true,
             status: DecisionStatus::Success,
-            decision: if allow { DecisionEffect::Allow } else { DecisionEffect::Deny },
+            decision: if allow {
+                DecisionEffect::Allow
+            } else {
+                DecisionEffect::Deny
+            },
             reason,
             effects: serde_json::json!({}),
             obligations: vec![],

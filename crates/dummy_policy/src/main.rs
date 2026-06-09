@@ -14,4 +14,3 @@ fn main() {
     let output = format!(r#"{{"allow": {}, "reason": "{}"}}"#, allow, reason);
     print!("{}", output);
 }
-

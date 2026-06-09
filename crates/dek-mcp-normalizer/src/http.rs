@@ -21,16 +21,22 @@ impl TransportAdapter for HttpTransportAdapter {
         spiffe_id: Option<&str>,
         user_id: Option<&str>,
     ) -> Result<NormalizedMcpEvent> {
-        let method = raw.get("method").and_then(|v| v.as_str()).unwrap_or("unknown");
-        
+        let method = raw
+            .get("method")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
+
         let mut tool_name = None;
         let _server_id: Option<String> = None;
 
         // If it's tools/call, the tool name is in params.name
         if method == "tools/call" {
             if let Some(params) = raw.get("params") {
-                tool_name = params.get("name").and_then(|v| v.as_str()).map(|s| s.to_string());
-                // For proxy scenario, server_id might be provided in headers or query, 
+                tool_name = params
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                // For proxy scenario, server_id might be provided in headers or query,
                 // but if it's in params, extract it (though MCP spec doesn't natively have server_id in tools/call).
             }
         }
@@ -88,4 +94,3 @@ impl TransportAdapter for HttpTransportAdapter {
         })
     }
 }
-

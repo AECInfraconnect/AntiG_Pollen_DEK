@@ -18,4 +18,3 @@ pub async fn run(host: &str, port: u16) -> Result<()> {
     }
     Ok(())
 }
-

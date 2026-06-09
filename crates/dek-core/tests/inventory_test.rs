@@ -40,4 +40,3 @@ fn test_no_unwrap_or_expect_in_production_code() {
         }
     }
 }
-

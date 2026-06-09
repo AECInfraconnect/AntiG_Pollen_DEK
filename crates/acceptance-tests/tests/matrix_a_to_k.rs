@@ -24,7 +24,13 @@ use tokio::time::sleep;
 
 fn workspace_dir() -> PathBuf {
     // crates/acceptance-tests -> repo root
-    std::env::current_dir().unwrap().parent().unwrap().parent().unwrap().to_path_buf()
+    std::env::current_dir()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf()
 }
 fn bin(name: &str) -> PathBuf {
     std::env::current_exe()
@@ -37,7 +43,10 @@ fn bin(name: &str) -> PathBuf {
         .with_extension(std::env::consts::EXE_EXTENSION)
 }
 fn insecure_client() -> reqwest::Client {
-    reqwest::Client::builder().danger_accept_invalid_certs(true).build().unwrap()
+    reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap()
 }
 
 /// Kill-on-drop guard for spawned children.
@@ -62,11 +71,18 @@ async fn wait_https(url: &str, tries: u32) -> Result<()> {
 /// Build workspace + generate certs + start mock-cloud. Returns the running proc.
 async fn setup() -> Result<Proc> {
     assert!(
-        Command::new("cargo").args(["build", "--workspace"]).status().await?.success(),
+        Command::new("cargo")
+            .args(["build", "--workspace"])
+            .status()
+            .await?
+            .success(),
         "workspace build failed"
     );
     // certs for mTLS (cert-gen writes ./certs)
-    let _ = Command::new(bin("cert-gen")).current_dir(workspace_dir()).status().await;
+    let _ = Command::new(bin("cert-gen"))
+        .current_dir(workspace_dir())
+        .status()
+        .await;
 
     let mock = Command::new(bin("mock-cloud"))
         .current_dir(workspace_dir())
@@ -114,7 +130,10 @@ async fn enroll_and_start_core() -> Result<Proc> {
 /// Pull the mock-cloud audit log (DEK-side audit events land here).
 async fn fetch_audits() -> Result<serde_json::Value> {
     let c = insecure_client();
-    let res = c.get("https://127.0.0.1:43892/mock/admin/audits").send().await?;
+    let res = c
+        .get("https://127.0.0.1:43892/mock/admin/audits")
+        .send()
+        .await?;
     Ok(res.json().await.unwrap_or(serde_json::json!([])))
 }
 
@@ -123,13 +142,23 @@ async fn fetch_audits() -> Result<serde_json::Value> {
 // Gated behind one #[ignore] entry-point that sets up shared infra once.
 // ===========================================================================
 
-async fn authorize(pep: &reqwest::Client, req: &serde_json::Value) -> Result<(u16, bool, Option<i64>)> {
-    let resp = pep.post("http://127.0.0.1:43890/v1/decision/check").json(req).send().await?;
+async fn authorize(
+    pep: &reqwest::Client,
+    req: &serde_json::Value,
+) -> Result<(u16, bool, Option<i64>)> {
+    let resp = pep
+        .post("http://127.0.0.1:43890/v1/decision/check")
+        .json(req)
+        .send()
+        .await?;
     let status = resp.status().as_u16();
     let body: serde_json::Value = resp.json().await.unwrap_or(serde_json::json!({}));
     println!("AUTHORIZE RESPONSE STATUS: {} BODY: {}", status, body);
     let allow = body.get("allow").and_then(|v| v.as_bool()).unwrap_or(false);
-    let err_code = body.get("error").and_then(|e| e.get("code")).and_then(|c| c.as_i64());
+    let err_code = body
+        .get("error")
+        .and_then(|e| e.get("code"))
+        .and_then(|c| c.as_i64());
     Ok((status, allow, err_code))
 }
 
@@ -159,10 +188,16 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
     // audit trail received policy.sync.success
     let audits = fetch_audits().await?;
     let txt = audits.to_string();
-    assert!(txt.contains("policy.sync") || txt.contains("bundle"), "A: sync audit present");
+    assert!(
+        txt.contains("policy.sync") || txt.contains("bundle"),
+        "A: sync audit present"
+    );
 
     // ---- B: Unsigned/forged push -> reject + critical audit ----
-    let _ = pep.post("https://127.0.0.1:43892/mock/admin/bundles/bad123/poison").send().await;
+    let _ = pep
+        .post("https://127.0.0.1:43892/mock/admin/bundles/bad123/poison")
+        .send()
+        .await;
     sleep(Duration::from_secs(4)).await;
     let audits = fetch_audits().await?;
     assert!(
@@ -171,28 +206,51 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
     );
 
     // ---- C: Network partition -> LKG -> strict-deny ----
-    let _ = pep.post("https://127.0.0.1:43892/mock/admin/chaos/outage").json(&serde_json::json!({"enabled": true})).send().await;
+    let _ = pep
+        .post("https://127.0.0.1:43892/mock/admin/chaos/outage")
+        .json(&serde_json::json!({"enabled": true}))
+        .send()
+        .await;
     // DEK_BUNDLE_SYNC_INTERVAL is 2s, wait a bit so it triggers fallback
     sleep(Duration::from_secs(5)).await;
     let (status, allow, _) = authorize(&pep, &allow_req).await?;
     // Note: strict-deny when stale exceeds max grace period or network fails
     // We just verify it enforces strict-deny (allow == false) and doesn't crash
-    assert!(!allow, "C: PEP must enforce strict-deny during partition (fail-closed)");
+    assert!(
+        !allow,
+        "C: PEP must enforce strict-deny during partition (fail-closed)"
+    );
 
     // ---- D: Recovery -> active ----
-    let _ = pep.post("https://127.0.0.1:43892/mock/admin/chaos/outage").json(&serde_json::json!({"enabled": false})).send().await;
+    let _ = pep
+        .post("https://127.0.0.1:43892/mock/admin/chaos/outage")
+        .json(&serde_json::json!({"enabled": false}))
+        .send()
+        .await;
     sleep(Duration::from_secs(4)).await;
     let (status, allow, _) = authorize(&pep, &allow_req).await?;
-    assert!(allow, "D: PEP should recover to active state and allow requests");
+    assert!(
+        allow,
+        "D: PEP should recover to active state and allow requests"
+    );
 
     // ---- E: Key rotation ----
-    let _ = pep.post("https://127.0.0.1:43892/mock/admin/keys/rotate").send().await;
+    let _ = pep
+        .post("https://127.0.0.1:43892/mock/admin/keys/rotate")
+        .send()
+        .await;
     sleep(Duration::from_secs(4)).await;
     let audits = fetch_audits().await?;
-    assert!(audits.to_string().contains("KEY_ROTATE"), "E: Key rotation audit present");
+    assert!(
+        audits.to_string().contains("KEY_ROTATE"),
+        "E: Key rotation audit present"
+    );
 
     // ---- F: Hot-reload no interrupt ----
-    let _ = pep.post("https://127.0.0.1:43892/mock/admin/policies/publish").send().await;
+    let _ = pep
+        .post("https://127.0.0.1:43892/mock/admin/policies/publish")
+        .send()
+        .await;
     let mut tasks = vec![];
     for _ in 0..10 {
         let pep_clone = pep.clone();
@@ -222,11 +280,22 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
 
     // ---- H: PDP circuit breaker ----
     // Tested implicitly if backpressure or latency triggers it
-    let _ = pep.post("https://127.0.0.1:43892/mock/admin/chaos/outage").json(&serde_json::json!({"enabled": true})).send().await;
+    let _ = pep
+        .post("https://127.0.0.1:43892/mock/admin/chaos/outage")
+        .json(&serde_json::json!({"enabled": true}))
+        .send()
+        .await;
     sleep(Duration::from_secs(5)).await;
     let (status, allow, _) = authorize(&pep, &allow_req).await?;
-    assert!(!allow, "H: PDP circuit breaker handles outage gracefully and fails-closed");
-    let _ = pep.post("https://127.0.0.1:43892/mock/admin/chaos/outage").json(&serde_json::json!({"enabled": false})).send().await;
+    assert!(
+        !allow,
+        "H: PDP circuit breaker handles outage gracefully and fails-closed"
+    );
+    let _ = pep
+        .post("https://127.0.0.1:43892/mock/admin/chaos/outage")
+        .json(&serde_json::json!({"enabled": false}))
+        .send()
+        .await;
     sleep(Duration::from_secs(5)).await;
 
     // ---- I: Network enforce ----
@@ -242,16 +311,31 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
             "fallback": { "cloud_unavailable": "FAIL_CLOSED", "policy_stale": "FAIL_CLOSED" }
         }]
     });
-    let _ = pep.post("https://127.0.0.1:43892/mock/admin/network/publish").json(&mock_policy).send().await;
+    let _ = pep
+        .post("https://127.0.0.1:43892/mock/admin/network/publish")
+        .json(&mock_policy)
+        .send()
+        .await;
     sleep(Duration::from_secs(4)).await;
     let audits = fetch_audits().await?;
-    assert!(audits.to_string().contains("network-publish"), "I: Network rule publish audit present");
+    assert!(
+        audits.to_string().contains("network-publish"),
+        "I: Network rule publish audit present"
+    );
 
     // ---- J: Network fail-closed ----
     // Trigger an outage to test fail-closed behavior via metrics or at least ensure stability
-    let _ = pep.post("https://127.0.0.1:43892/mock/admin/chaos/outage").json(&serde_json::json!({"enabled": true})).send().await;
+    let _ = pep
+        .post("https://127.0.0.1:43892/mock/admin/chaos/outage")
+        .json(&serde_json::json!({"enabled": true}))
+        .send()
+        .await;
     sleep(Duration::from_secs(4)).await;
-    let _ = pep.post("https://127.0.0.1:43892/mock/admin/chaos/outage").json(&serde_json::json!({"enabled": false})).send().await;
+    let _ = pep
+        .post("https://127.0.0.1:43892/mock/admin/chaos/outage")
+        .json(&serde_json::json!({"enabled": false}))
+        .send()
+        .await;
 
     // ---- K: Obligation / Pending Approval ----
     let mock_obligation_policy = serde_json::json!({
@@ -265,15 +349,26 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
             "obligations": ["require_approval"]
         }]
     });
-    let _ = pep.post("https://127.0.0.1:43892/mock/admin/policies/publish").json(&mock_obligation_policy).send().await;
+    let _ = pep
+        .post("https://127.0.0.1:43892/mock/admin/policies/publish")
+        .json(&mock_obligation_policy)
+        .send()
+        .await;
     sleep(Duration::from_secs(4)).await;
 
     let (status, allow, err_code) = authorize(&pep, &allow_req).await?;
     assert!(!allow, "K: Request should not be allowed directly");
-    assert_eq!(err_code, Some(-32002), "K: Must return pending_approval code");
+    assert_eq!(
+        err_code,
+        Some(-32002),
+        "K: Must return pending_approval code"
+    );
 
     // Operator approves the pending request
-    let _ = pep.post("https://127.0.0.1:43892/admin/approvals/approve").send().await;
+    let _ = pep
+        .post("https://127.0.0.1:43892/admin/approvals/approve")
+        .send()
+        .await;
     sleep(Duration::from_secs(4)).await;
 
     let (status, allow, _) = authorize(&pep, &allow_req).await?;
@@ -281,4 +376,3 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
 
     Ok(())
 }
-

@@ -25,4 +25,3 @@ pub struct EbpfMapUpdate {
     pub value: Value,
     pub signature: Option<String>,
 }
-

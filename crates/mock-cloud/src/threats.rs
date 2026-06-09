@@ -3,11 +3,12 @@
 
 use crate::state::AppState;
 use axum::{
-    extract::{State, Request},
+    extract::{Request, State},
     http::StatusCode,
+    middleware::Next,
     response::{IntoResponse, Response},
     routing::post,
-    Json, Router, middleware::Next,
+    Json, Router,
 };
 
 pub fn router() -> Router<AppState> {
@@ -48,11 +49,7 @@ async fn set_latency(
     Json(serde_json::json!({"status": "latency_updated", "delay_ms": req.delay_ms}))
 }
 
-pub async fn chaos_middleware(
-    State(state): State<AppState>,
-    req: Request,
-    next: Next,
-) -> Response {
+pub async fn chaos_middleware(State(state): State<AppState>, req: Request, next: Next) -> Response {
     let (outage, latency) = {
         let cfg = state.chaos_config.lock().unwrap();
         (cfg.outage_enabled, cfg.global_latency_ms)
@@ -61,11 +58,7 @@ pub async fn chaos_middleware(
     if outage {
         // Only affect /v1 routes to allow admin routes to still function to toggle it off
         if req.uri().path().starts_with("/v1/") {
-            return (
-                StatusCode::SERVICE_UNAVAILABLE,
-                "Simulated Cloud Outage",
-            )
-                .into_response();
+            return (StatusCode::SERVICE_UNAVAILABLE, "Simulated Cloud Outage").into_response();
         }
     }
 
@@ -75,4 +68,3 @@ pub async fn chaos_middleware(
 
     next.run(req).await
 }
-

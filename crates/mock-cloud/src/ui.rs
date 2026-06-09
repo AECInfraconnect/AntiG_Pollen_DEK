@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
+use crate::state::AppState;
 use axum::{
     response::{Html, IntoResponse},
     routing::get,
     Router,
 };
-use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -15,7 +15,8 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn ui_index() -> impl IntoResponse {
-    Html(r#"
+    Html(
+        r#"
         <!DOCTYPE html>
         <html>
         <head>
@@ -78,6 +79,6 @@ async fn ui_index() -> impl IntoResponse {
             </div>
         </body>
         </html>
-    "#)
+    "#,
+    )
 }
-

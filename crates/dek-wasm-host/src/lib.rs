@@ -129,4 +129,3 @@ impl PluginHost for WasmtimePluginHost {
         Ok(output_val)
     }
 }
-

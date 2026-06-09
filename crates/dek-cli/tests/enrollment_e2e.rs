@@ -221,4 +221,3 @@ fn sign_csr(ca_cert_pem: &str, ca_key_pem: &str, csr_pem: &str, spiffe_id: &str)
         .push(SanType::URI(spiffe_id.to_string()));
     csr.serialize_pem_with_signer(&ca).unwrap()
 }
-

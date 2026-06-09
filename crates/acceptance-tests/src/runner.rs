@@ -14,10 +14,16 @@ impl Runner {
     }
 
     pub async fn run(&self) -> Result<()> {
-        println!("Running scenario: {} ({})", self.scenario.name, self.scenario.id);
-        
+        println!(
+            "Running scenario: {} ({})",
+            self.scenario.name, self.scenario.id
+        );
+
         // 1. Setup Given state
-        println!("Setting up mock cloud profile: {:?}", self.scenario.given.mock_cloud_profile);
+        println!(
+            "Setting up mock cloud profile: {:?}",
+            self.scenario.given.mock_cloud_profile
+        );
 
         // 2. Execute actions
         for action in &self.scenario.when {
@@ -33,4 +39,3 @@ impl Runner {
         Ok(())
     }
 }
-

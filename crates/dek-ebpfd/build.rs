@@ -15,4 +15,3 @@ fn main() {
         println!("cargo:warning=Failed to build eBPF programs: {}", e);
     }
 }
-

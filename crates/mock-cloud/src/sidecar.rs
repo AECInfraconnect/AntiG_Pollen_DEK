@@ -1,15 +1,14 @@
+use crate::state::AppState;
 use axum::{
-    extract::{State, Json},
+    extract::{Json, State},
     response::IntoResponse,
     routing::post,
     Router,
 };
-use dek_plugin_sdk::{EvalRequest, PolicyDecision, DecisionEffect, DecisionStatus};
-use crate::state::AppState;
+use dek_plugin_sdk::{DecisionEffect, DecisionStatus, EvalRequest, PolicyDecision};
 
 pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/v1/sidecar/eval", post(eval_policy))
+    Router::new().route("/v1/sidecar/eval", post(eval_policy))
 }
 
 async fn eval_policy(
@@ -29,6 +28,6 @@ async fn eval_policy(
         effects: serde_json::json!({}),
         metadata: serde_json::json!({}),
     };
-    
+
     axum::Json(decision)
 }

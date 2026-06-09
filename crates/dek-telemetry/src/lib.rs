@@ -190,8 +190,11 @@ impl CloudTelemetrySink {
             }
 
             let grouped = routing::group_by_endpoint(batch);
-            let base = self.endpoint_url.trim_end_matches("/v1/telemetry/events")
-                .trim_end_matches('/').to_string();
+            let base = self
+                .endpoint_url
+                .trim_end_matches("/v1/telemetry/events")
+                .trim_end_matches('/')
+                .to_string();
 
             let mut all_ok_ids: Vec<i64> = Vec::new();
 
@@ -210,15 +213,26 @@ impl CloudTelemetrySink {
                     match c.post(&url).json(&payload).send().await {
                         Ok(res) if res.status().is_success() => Ok(()),
                         Ok(res) if res.status().is_client_error() => {
-                            warn!("[Telemetry] Cloud rejected batch to {} (4xx). Status: {}", suffix, res.status());
+                            warn!(
+                                "[Telemetry] Cloud rejected batch to {} (4xx). Status: {}",
+                                suffix,
+                                res.status()
+                            );
                             Err(anyhow::anyhow!("Non-retryable {}", res.status()))
                         }
                         Ok(res) => {
-                            warn!("[Telemetry] Cloud rejected batch to {} (5xx). Status: {}", suffix, res.status());
+                            warn!(
+                                "[Telemetry] Cloud rejected batch to {} (5xx). Status: {}",
+                                suffix,
+                                res.status()
+                            );
                             Err(anyhow::anyhow!("Retryable {}", res.status()))
                         }
                         Err(e) => {
-                            warn!("[Telemetry] Network error sending batch to {}: {}", suffix, e);
+                            warn!(
+                                "[Telemetry] Network error sending batch to {}: {}",
+                                suffix, e
+                            );
                             Err(e.into())
                         }
                     }
@@ -229,10 +243,16 @@ impl CloudTelemetrySink {
                     Ok(()) => all_ok_ids.extend(ids),
                     Err(e) => {
                         if e.to_string().contains("Non-retryable") {
-                            warn!("[Telemetry] Dropping non-retryable batch for endpoint {}", suffix);
+                            warn!(
+                                "[Telemetry] Dropping non-retryable batch for endpoint {}",
+                                suffix
+                            );
                             all_ok_ids.extend(ids);
                         } else {
-                            warn!("[Telemetry] endpoint {} failed: {}; will retry next flush", suffix, e);
+                            warn!(
+                                "[Telemetry] endpoint {} failed: {}; will retry next flush",
+                                suffix, e
+                            );
                         }
                     }
                 }
@@ -264,4 +284,3 @@ impl CloudTelemetrySink {
         }
     }
 }
-

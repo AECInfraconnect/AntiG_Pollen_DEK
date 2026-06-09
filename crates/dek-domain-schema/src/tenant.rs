@@ -27,4 +27,3 @@ pub struct Tenant {
     pub default_fail_mode: String,
     pub created_at: String,
 }
-

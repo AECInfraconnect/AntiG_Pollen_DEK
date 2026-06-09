@@ -26,4 +26,3 @@ pub struct AiAgent {
     pub tags: Vec<String>,
     pub status: String,
 }
-

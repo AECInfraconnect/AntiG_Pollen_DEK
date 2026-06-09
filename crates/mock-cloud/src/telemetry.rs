@@ -25,12 +25,18 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/v1/telemetry/events", post(ingest_events))
         .route("/v1/telemetry/decision-logs", post(ingest_decision_logs))
-        .route("/v1/telemetry/security-events", post(ingest_security_events))
+        .route(
+            "/v1/telemetry/security-events",
+            post(ingest_security_events),
+        )
         .route("/v1/telemetry/traces", post(ingest_traces))
         .route("/v1/telemetry/ebpf-events", post(ingest_ebpf_events))
         .route("/v1/metrics", post(ingest_metrics))
         // legacy/tenant-scoped alias kept for back-compat
-        .route("/v1/tenants/:tenant_id/telemetry/events", post(ingest_events_tenant))
+        .route(
+            "/v1/tenants/:tenant_id/telemetry/events",
+            post(ingest_events_tenant),
+        )
 }
 
 #[derive(serde::Deserialize)]
@@ -51,8 +57,15 @@ fn ingest(state: &AppState, events: Vec<TelemetryEvent>, kind: &str) -> Result<u
                 return Err("Unredacted secrets detected in telemetry payload".into());
             }
         }
-        if let TelemetryEvent::Audit { action, details, .. } = &event {
-            state.audit_push("dek", action, &serde_json::to_string(details).unwrap_or_default());
+        if let TelemetryEvent::Audit {
+            action, details, ..
+        } = &event
+        {
+            state.audit_push(
+                "dek",
+                action,
+                &serde_json::to_string(details).unwrap_or_default(),
+            );
         }
         logs.push_front(event);
         if logs.len() > 2000 {
@@ -61,33 +74,65 @@ fn ingest(state: &AppState, events: Vec<TelemetryEvent>, kind: &str) -> Result<u
         n += 1;
     }
     drop(logs);
-    state.audit_push("dek", &format!("telemetry:{kind}"), &format!("{n} event(s)"));
+    state.audit_push(
+        "dek",
+        &format!("telemetry:{kind}"),
+        &format!("{n} event(s)"),
+    );
     Ok(n)
 }
 
-async fn handle(state: AppState, payload: TelemetryPayload, kind: &'static str) -> impl IntoResponse {
+async fn handle(
+    state: AppState,
+    payload: TelemetryPayload,
+    kind: &'static str,
+) -> impl IntoResponse {
     match ingest(&state, payload.events, kind) {
-        Ok(n) => (StatusCode::OK, Json(serde_json::json!({ "status": "ingested", "kind": kind, "count": n }))),
-        Err(e) => (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": e }))),
+        Ok(n) => (
+            StatusCode::OK,
+            Json(serde_json::json!({ "status": "ingested", "kind": kind, "count": n })),
+        ),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": e })),
+        ),
     }
 }
 
-async fn ingest_events(State(s): State<AppState>, Json(p): Json<TelemetryPayload>) -> impl IntoResponse {
+async fn ingest_events(
+    State(s): State<AppState>,
+    Json(p): Json<TelemetryPayload>,
+) -> impl IntoResponse {
     handle(s, p, "events").await
 }
-async fn ingest_decision_logs(State(s): State<AppState>, Json(p): Json<TelemetryPayload>) -> impl IntoResponse {
+async fn ingest_decision_logs(
+    State(s): State<AppState>,
+    Json(p): Json<TelemetryPayload>,
+) -> impl IntoResponse {
     handle(s, p, "decision-logs").await
 }
-async fn ingest_security_events(State(s): State<AppState>, Json(p): Json<TelemetryPayload>) -> impl IntoResponse {
+async fn ingest_security_events(
+    State(s): State<AppState>,
+    Json(p): Json<TelemetryPayload>,
+) -> impl IntoResponse {
     handle(s, p, "security-events").await
 }
-async fn ingest_traces(State(s): State<AppState>, Json(p): Json<TelemetryPayload>) -> impl IntoResponse {
+async fn ingest_traces(
+    State(s): State<AppState>,
+    Json(p): Json<TelemetryPayload>,
+) -> impl IntoResponse {
     handle(s, p, "traces").await
 }
-async fn ingest_ebpf_events(State(s): State<AppState>, Json(p): Json<TelemetryPayload>) -> impl IntoResponse {
+async fn ingest_ebpf_events(
+    State(s): State<AppState>,
+    Json(p): Json<TelemetryPayload>,
+) -> impl IntoResponse {
     handle(s, p, "ebpf-events").await
 }
-async fn ingest_metrics(State(s): State<AppState>, Json(p): Json<TelemetryPayload>) -> impl IntoResponse {
+async fn ingest_metrics(
+    State(s): State<AppState>,
+    Json(p): Json<TelemetryPayload>,
+) -> impl IntoResponse {
     handle(s, p, "metrics").await
 }
 async fn ingest_events_tenant(
@@ -97,4 +142,3 @@ async fn ingest_events_tenant(
 ) -> impl IntoResponse {
     handle(s, p, "events").await
 }
-

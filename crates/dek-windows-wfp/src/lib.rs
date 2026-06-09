@@ -54,4 +54,3 @@ impl NetworkEnforcer for WfpFilterManager {
         Ok(())
     }
 }
-

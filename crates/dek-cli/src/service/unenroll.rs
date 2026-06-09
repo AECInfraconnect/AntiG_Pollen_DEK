@@ -42,4 +42,3 @@ pub fn run(wipe_local_secrets: bool) -> Result<()> {
 
     Ok(())
 }
-

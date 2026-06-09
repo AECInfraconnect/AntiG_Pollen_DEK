@@ -13,7 +13,11 @@ use std::time::{Duration, Instant};
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Target URL to test
-    #[arg(short, long, default_value = "http://127.0.0.1:43890/v1/decision/check")]
+    #[arg(
+        short,
+        long,
+        default_value = "http://127.0.0.1:43890/v1/decision/check"
+    )]
     target: String,
 
     /// Number of concurrent requests
@@ -87,7 +91,7 @@ async fn main() -> Result<()> {
                 while start_time.elapsed() < duration {
                     let req_start = Instant::now();
                     let req = client.request(Method::POST, &target).json(&payload);
-                    
+
                     match req.send().await {
                         Ok(resp) if resp.status().is_success() => {
                             let latency = req_start.elapsed().as_micros() as u64;
@@ -111,8 +115,9 @@ async fn main() -> Result<()> {
     // Drop the original sender so the receiver will close when tasks finish
     drop(tx);
 
-    let mut hist = Histogram::<u64>::new(3).map_err(|e| anyhow::anyhow!("Histogram error: {}", e))?;
-    
+    let mut hist =
+        Histogram::<u64>::new(3).map_err(|e| anyhow::anyhow!("Histogram error: {}", e))?;
+
     // Collect all latencies
     while let Some(latency) = rx.recv().await {
         hist.record(latency).unwrap_or_else(|e| {
@@ -135,20 +140,34 @@ async fn main() -> Result<()> {
     println!("Successful:     {}", successes);
     println!("Errors:         {}", errors);
     if total > 0 {
-        println!("Success rate:   {:.2}%", (successes as f64 / total as f64) * 100.0);
+        println!(
+            "Success rate:   {:.2}%",
+            (successes as f64 / total as f64) * 100.0
+        );
         println!("Req/sec:        {:.2}", total as f64 / elapsed);
     }
 
     if successes > 0 {
         println!("\n--- Latency Distribution ---");
-        println!("P50:  {:.2} ms", hist.value_at_quantile(0.5) as f64 / 1000.0);
-        println!("P90:  {:.2} ms", hist.value_at_quantile(0.9) as f64 / 1000.0);
-        println!("P95:  {:.2} ms", hist.value_at_quantile(0.95) as f64 / 1000.0);
-        println!("P99:  {:.2} ms", hist.value_at_quantile(0.99) as f64 / 1000.0);
+        println!(
+            "P50:  {:.2} ms",
+            hist.value_at_quantile(0.5) as f64 / 1000.0
+        );
+        println!(
+            "P90:  {:.2} ms",
+            hist.value_at_quantile(0.9) as f64 / 1000.0
+        );
+        println!(
+            "P95:  {:.2} ms",
+            hist.value_at_quantile(0.95) as f64 / 1000.0
+        );
+        println!(
+            "P99:  {:.2} ms",
+            hist.value_at_quantile(0.99) as f64 / 1000.0
+        );
         println!("Max:  {:.2} ms", hist.max() as f64 / 1000.0);
         println!("Mean: {:.2} ms", hist.mean() / 1000.0);
     }
 
     Ok(())
 }
-

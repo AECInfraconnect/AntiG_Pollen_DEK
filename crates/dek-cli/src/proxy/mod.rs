@@ -37,4 +37,3 @@ pub fn disable_system_proxy() -> Result<()> {
     #[allow(unreachable_code)]
     Ok(())
 }
-

@@ -58,7 +58,9 @@ impl Authorization for ExtAuthzService {
     ) -> Result<Response<CheckResponse>, Status> {
         if let Some(reason) = dek_policy_syncer::strict_deny_reason() {
             metrics::counter!("dek_proxy_requests_total", "decision" => "deny", "service" => "ext-authz").increment(1);
-            return Ok(tonic::Response::new(denied_check_response(&format!("policy_stale_failsafe: {reason}"))));
+            return Ok(tonic::Response::new(denied_check_response(&format!(
+                "policy_stale_failsafe: {reason}"
+            ))));
         }
 
         let req = request.into_inner();
@@ -230,4 +232,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-

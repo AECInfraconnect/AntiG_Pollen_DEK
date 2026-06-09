@@ -41,7 +41,10 @@ pub fn strict_deny_reason() -> Option<String> {
             // No status file => syncer hasn't proven freshness => fail closed.
             None => Some("enforcement_status_unavailable".into()),
         };
-        *guard = Some(Cache { fetched_at: Instant::now(), deny_reason });
+        *guard = Some(Cache {
+            fetched_at: Instant::now(),
+            deny_reason,
+        });
     }
     guard.as_ref().and_then(|c| c.deny_reason.clone())
 }
@@ -52,4 +55,3 @@ pub fn invalidate_cache() {
         *g = None;
     }
 }
-

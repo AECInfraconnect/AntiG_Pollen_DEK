@@ -30,4 +30,3 @@ fn main() -> anyhow::Result<()> {
 async fn run() -> anyhow::Result<()> {
     supervisor::Supervisor::bootstrap().await?.run().await
 }
-

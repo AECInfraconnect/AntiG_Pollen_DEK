@@ -26,4 +26,3 @@ pub fn disable() -> Result<()> {
         .output();
     Ok(())
 }
-

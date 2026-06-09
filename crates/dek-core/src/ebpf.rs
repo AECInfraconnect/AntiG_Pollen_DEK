@@ -68,4 +68,3 @@ pub async fn load_and_attach(
     warn!("Platform relies solely on App-layer MCP and opt-in proxy redirect.");
     Some(dek_ebpfd::EbpfHandle)
 }
-

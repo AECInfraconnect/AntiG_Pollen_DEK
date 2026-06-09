@@ -184,8 +184,6 @@ pub enum EnterpriseProfile {
     Regulated,
 }
 
-
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DekConfig {
     pub device_id: String,
@@ -230,4 +228,3 @@ impl DekConfig {
         Ok(config)
     }
 }
-

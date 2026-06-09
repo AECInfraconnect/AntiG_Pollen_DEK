@@ -34,4 +34,3 @@ pub enum LogicalOperator {
     And,
     Or,
 }
-

@@ -13,10 +13,10 @@
 //!     dek-auth = { path = "../dek-auth" }
 //!     # jsonwebtoken can be dropped here once all JWT logic lives in dek-auth
 
-use dek_resilience::admission::AdmissionControl;
 use arc_swap::{ArcSwap, ArcSwapOption};
 use dek_activation::snapshot::RuntimeSnapshot;
 use dek_mcp_normalizer::http::HttpTransportAdapter;
+use dek_resilience::admission::AdmissionControl;
 use dek_telemetry::CloudTelemetrySink;
 use std::sync::Arc;
 
@@ -108,4 +108,3 @@ impl AppState {
 //
 // stdio-wrapper: use the same dek_auth::Verifier + PolicySnapshot pattern so the
 // two PEPs enforce identically (kills the duplicated JWT/bundle-load logic, B3).
-

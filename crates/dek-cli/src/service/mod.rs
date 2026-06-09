@@ -66,4 +66,3 @@ mod unsupported {
 }
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
 pub use unsupported::OsServiceManager;
-

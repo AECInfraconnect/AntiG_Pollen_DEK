@@ -26,14 +26,8 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant_id/devices/:device_id/bundles/artifacts/:hash",
             get(get_tuf_artifact),
         )
-        .route(
-            "/v1/updater/metadata/:role",
-            get(get_updater_tuf_metadata),
-        )
-        .route(
-            "/v1/updater/artifacts/:hash",
-            get(get_updater_tuf_artifact),
-        )
+        .route("/v1/updater/metadata/:role", get(get_updater_tuf_metadata))
+        .route("/v1/updater/artifacts/:hash", get(get_updater_tuf_artifact))
 }
 
 async fn get_tuf_metadata(
@@ -96,40 +90,42 @@ async fn get_tuf_metadata(
                 "artifacts": []
             });
 
-            use sha2::{Sha256, Digest};
-            let mut h1 = Sha256::new(); h1.update(serde_json::to_vec(&routes_json).unwrap());
+            use sha2::{Digest, Sha256};
+            let mut h1 = Sha256::new();
+            h1.update(serde_json::to_vec(&routes_json).unwrap());
             let routes_hash = hex::encode(h1.finalize());
 
-            let mut h2 = Sha256::new(); h2.update(serde_json::to_vec(&manifest_json).unwrap());
+            let mut h2 = Sha256::new();
+            h2.update(serde_json::to_vec(&manifest_json).unwrap());
             let manifest_hash = hex::encode(h2.finalize());
 
             (
-            json!({
-                "signed": {
-                    "_type": "targets",
-                    "spec_version": "1.0",
-                    "version": 1,
-                    "expires": expires.to_rfc3339(),
-                    "targets": {
-                        "routes.json": {
-                            "hashes": {
-                                "sha256": routes_hash
+                json!({
+                    "signed": {
+                        "_type": "targets",
+                        "spec_version": "1.0",
+                        "version": 1,
+                        "expires": expires.to_rfc3339(),
+                        "targets": {
+                            "routes.json": {
+                                "hashes": {
+                                    "sha256": routes_hash
+                                },
+                                "length": 1234
                             },
-                            "length": 1234
-                        },
-                        "bundle_manifest.json": {
-                            "hashes": {
-                                "sha256": manifest_hash
-                            },
-                            "length": 5678
+                            "bundle_manifest.json": {
+                                "hashes": {
+                                    "sha256": manifest_hash
+                                },
+                                "length": 5678
+                            }
                         }
-                    }
-                },
-                "signatures": []
-            }),
-            "targets",
+                    },
+                    "signatures": []
+                }),
+                "targets",
             )
-        },
+        }
         "snapshot.json" => (
             json!({
                 "signed": {
@@ -204,11 +200,13 @@ async fn get_tuf_artifact(
         "artifacts": []
     });
 
-    use sha2::{Sha256, Digest};
-    let mut h1 = Sha256::new(); h1.update(serde_json::to_vec(&routes_json).unwrap());
+    use sha2::{Digest, Sha256};
+    let mut h1 = Sha256::new();
+    h1.update(serde_json::to_vec(&routes_json).unwrap());
     let routes_hash = hex::encode(h1.finalize());
 
-    let mut h2 = Sha256::new(); h2.update(serde_json::to_vec(&manifest_json).unwrap());
+    let mut h2 = Sha256::new();
+    h2.update(serde_json::to_vec(&manifest_json).unwrap());
     let manifest_hash = hex::encode(h2.finalize());
 
     if hash == routes_hash {
@@ -223,16 +221,15 @@ async fn get_tuf_artifact(
     }
 }
 
-async fn get_updater_tuf_metadata(
-    Path(role): Path<String>,
-) -> impl IntoResponse {
+async fn get_updater_tuf_metadata(Path(role): Path<String>) -> impl IntoResponse {
     let now = Utc::now();
     let expires = now + chrono::Duration::days(7);
 
     // Mock an executable that is exactly the string "MOCK_EXE_CONTENT"
     let mock_exe_content = b"MOCK_EXE_CONTENT";
-    use sha2::{Sha256, Digest};
-    let mut h = Sha256::new(); h.update(mock_exe_content);
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(mock_exe_content);
     let exe_hash = hex::encode(h.finalize());
     let exe_length = mock_exe_content.len();
 
@@ -258,23 +255,30 @@ async fn get_updater_tuf_metadata(
                 },
                 "signatures": []
             })
-        },
-        _ => return (StatusCode::NOT_FOUND, Json(json!({"error": "role not found"}))),
+        }
+        _ => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "role not found"})),
+            )
+        }
     };
 
     (StatusCode::OK, Json(payload))
 }
 
-async fn get_updater_tuf_artifact(
-    Path(hash): Path<String>,
-) -> impl IntoResponse {
+async fn get_updater_tuf_artifact(Path(hash): Path<String>) -> impl IntoResponse {
     let mock_exe_content = b"MOCK_EXE_CONTENT";
-    use sha2::{Sha256, Digest};
-    let mut h = Sha256::new(); h.update(mock_exe_content);
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(mock_exe_content);
     let exe_hash = hex::encode(h.finalize());
 
     if hash == exe_hash {
-        (StatusCode::OK, axum::body::Bytes::from_static(mock_exe_content).into_response())
+        (
+            StatusCode::OK,
+            axum::body::Bytes::from_static(mock_exe_content).into_response(),
+        )
     } else {
         (
             StatusCode::NOT_FOUND,
@@ -282,4 +286,3 @@ async fn get_updater_tuf_artifact(
         )
     }
 }
-

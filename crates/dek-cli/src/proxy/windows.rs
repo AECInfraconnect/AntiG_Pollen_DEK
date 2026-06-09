@@ -57,4 +57,3 @@ pub fn disable() -> Result<()> {
 
     Ok(())
 }
-

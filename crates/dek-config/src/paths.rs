@@ -130,4 +130,3 @@ pub fn get_active_bundle_path() -> PathBuf {
     }
     get_data_dir().join("active_bundle.json")
 }
-

@@ -31,7 +31,10 @@ pub async fn hydrate_runtime(
                     "Loaded OpenFGA adapter at endpoint: {}",
                     openfga_cfg.endpoint
                 );
-                router.register_evaluator("openfga", Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))));
+                router.register_evaluator(
+                    "openfga",
+                    Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))),
+                );
             }
             Err(e) => {
                 return Err(ActivationError::RuntimeHydrationFailed(format!(
@@ -47,7 +50,10 @@ pub async fn hydrate_runtime(
         match dek_cedar::CedarAdapter::new(&cedar_cfg.policy_src) {
             Ok(adapter) => {
                 info!("Loaded Cedar adapter from src: {:?}", cedar_cfg.policy_src);
-                router.register_evaluator("cedar", Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))));
+                router.register_evaluator(
+                    "cedar",
+                    Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))),
+                );
             }
             Err(e) => {
                 return Err(ActivationError::RuntimeHydrationFailed(format!(
@@ -61,4 +67,3 @@ pub async fn hydrate_runtime(
     info!("Runtime hydration complete.");
     Ok(Arc::new(router))
 }
-

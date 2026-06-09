@@ -126,4 +126,3 @@ pub async fn run_migration(bootstrap: &BootstrapConfig, pollen_cloud_url: &str) 
 
     false
 }
-

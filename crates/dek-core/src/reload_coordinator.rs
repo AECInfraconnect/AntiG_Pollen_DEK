@@ -19,7 +19,8 @@ impl ReloadCoordinator {
     pub fn new() -> Self {
         let initial_router = std::sync::Arc::new(dek_policy_router::PolicyRouter::new());
         let initial_plugin_host = std::sync::Arc::new(
-            dek_wasm_host::WasmtimePluginHost::new(std::collections::HashMap::new()).unwrap_or_else(|_| panic!("Failed to init dummy WasmtimePluginHost")),
+            dek_wasm_host::WasmtimePluginHost::new(std::collections::HashMap::new())
+                .unwrap_or_else(|_| panic!("Failed to init dummy WasmtimePluginHost")),
         );
         let initial_snapshot = RuntimeSnapshot::new(
             0,
@@ -64,4 +65,3 @@ impl ReloadCoordinator {
         }
     }
 }
-

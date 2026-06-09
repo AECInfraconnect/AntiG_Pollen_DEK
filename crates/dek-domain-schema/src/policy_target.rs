@@ -64,4 +64,3 @@ pub struct PolicyTarget {
     pub evaluators: Evaluators,
     pub obligations: Vec<String>,
 }
-

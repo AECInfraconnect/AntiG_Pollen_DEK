@@ -78,4 +78,3 @@ pub fn export_diagnostics(redact: bool) -> Result<()> {
     println!("✓ Diagnostics exported to {}", dest.display());
     Ok(())
 }
-

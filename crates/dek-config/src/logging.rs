@@ -83,4 +83,3 @@ fn spawn_log_sweeper(log_dir: std::path::PathBuf) {
         }
     });
 }
-

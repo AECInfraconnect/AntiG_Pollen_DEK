@@ -255,4 +255,3 @@ pub async fn start_ebpfd_supervisor(
     tracing::warn!("eBPFD supervisor is Linux-only; app-layer enforcement remains active.");
     Ok(EbpfHandle)
 }
-

@@ -49,4 +49,3 @@ pub fn parse_scenario(content: &str) -> anyhow::Result<AcceptanceScenario> {
     let scenario: AcceptanceScenario = serde_yaml::from_str(content)?;
     Ok(scenario)
 }
-

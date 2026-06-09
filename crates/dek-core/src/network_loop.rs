@@ -69,8 +69,8 @@ fn deny_all_rule() -> CompiledNetworkRules {
 #[cfg(windows)]
 pub mod wfp_backend {
     use super::*;
-    use dek_windows_wfp::WfpFilterManager;
     use dek_enforcement_api::NetworkEnforcer as ApiNetworkEnforcer;
+    use dek_windows_wfp::WfpFilterManager;
 
     pub struct WfpEnforcer {
         mgr: WfpFilterManager,
@@ -94,7 +94,9 @@ pub mod wfp_backend {
             self.mgr.clear_rules()?;
             self.mgr.apply_rules(&deny_all_rule())
         }
-        fn backend(&self) -> &'static str { "wfp" }
+        fn backend(&self) -> &'static str {
+            "wfp"
+        }
     }
 }
 
@@ -104,8 +106,8 @@ pub mod wfp_backend {
 #[cfg(target_os = "macos")]
 pub mod nefilter_backend {
     use super::*;
-    use dek_macos_nefilter::NeFilterClient;
     use dek_enforcement_api::NetworkEnforcer as ApiNetworkEnforcer;
+    use dek_macos_nefilter::NeFilterClient;
 
     pub struct NeFilterEnforcer {
         client: NeFilterClient,
@@ -129,7 +131,9 @@ pub mod nefilter_backend {
             self.client.clear_rules()?;
             self.client.push_rules(&deny_all_rule())
         }
-        fn backend(&self) -> &'static str { "nefilter" }
+        fn backend(&self) -> &'static str {
+            "nefilter"
+        }
     }
 }
 
@@ -148,7 +152,10 @@ pub mod ebpf_backend {
     }
     impl EbpfEnforcer {
         pub fn new(tenant_id: String, device_id: String) -> Self {
-            Self { updater: MapUpdater::new(tenant_id, device_id, 0), generation: 0 }
+            Self {
+                updater: MapUpdater::new(tenant_id, device_id, 0),
+                generation: 0,
+            }
         }
 
         /// Convert a compiled rule's CIDR/port destinations into LPM map updates.
@@ -193,7 +200,9 @@ pub mod ebpf_backend {
             }
             Ok(())
         }
-        fn backend(&self) -> &'static str { "ebpf" }
+        fn backend(&self) -> &'static str {
+            "ebpf"
+        }
     }
 }
 
@@ -201,11 +210,24 @@ pub mod ebpf_backend {
 /// driver then no-ops, but MCP-plane enforcement is unaffected).
 pub fn platform_enforcer(_tenant_id: &str, _device_id: &str) -> Option<Box<dyn NetworkEnforcer>> {
     #[cfg(windows)]
-    { return wfp_backend::WfpEnforcer::new().map(|e| Box::new(e) as Box<dyn NetworkEnforcer>).ok(); }
+    {
+        return wfp_backend::WfpEnforcer::new()
+            .map(|e| Box::new(e) as Box<dyn NetworkEnforcer>)
+            .ok();
+    }
     #[cfg(target_os = "macos")]
-    { return nefilter_backend::NeFilterEnforcer::new().map(|e| Box::new(e) as Box<dyn NetworkEnforcer>).ok(); }
+    {
+        return nefilter_backend::NeFilterEnforcer::new()
+            .map(|e| Box::new(e) as Box<dyn NetworkEnforcer>)
+            .ok();
+    }
     #[cfg(target_os = "linux")]
-    { return Some(Box::new(ebpf_backend::EbpfEnforcer::new(_tenant_id.to_string(), _device_id.to_string()))); }
+    {
+        return Some(Box::new(ebpf_backend::EbpfEnforcer::new(
+            _tenant_id.to_string(),
+            _device_id.to_string(),
+        )));
+    }
     #[allow(unreachable_code)]
     None
 }
@@ -290,4 +312,3 @@ pub fn spawn(
         }
     })
 }
-

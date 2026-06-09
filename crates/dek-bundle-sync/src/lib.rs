@@ -64,7 +64,7 @@ impl BundleSyncAgent {
             tenant_id: tenant_id.to_string(),
             device_id: device_id.to_string(),
             key_set: std::sync::Arc::new(arc_swap::ArcSwap::from_pointee(
-                crate::keys::TrustedKeySet::from_single_pinned(pinned_public_key)
+                crate::keys::TrustedKeySet::from_single_pinned(pinned_public_key),
             )),
             client: RwLock::new(client),
         })
@@ -120,11 +120,17 @@ impl BundleSyncAgent {
             use crate::keys::{parse_signatures, VerifyOutcome};
 
             let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs() as i64)
+                .unwrap_or(0);
 
             let signed_bytes = serde_jcs::to_vec(&metadata["signed"])
                 .context("serialize signed payload using JCS")?;
-            let sigs = parse_signatures(metadata.get("signatures").unwrap_or(&serde_json::Value::Null));
+            let sigs = parse_signatures(
+                metadata
+                    .get("signatures")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
 
             let key_set = self.key_set.load();
             match key_set.verify(now, &signed_bytes, &sigs) {
@@ -136,7 +142,8 @@ impl BundleSyncAgent {
                     return Err(BundleError::SignatureRejected {
                         role: role.to_string(),
                         detail: format!("{:?}", outcome),
-                    }.into());
+                    }
+                    .into());
                 }
             }
 
@@ -162,7 +169,8 @@ impl BundleSyncAgent {
             return Err(BundleError::RollbackBlocked {
                 current: 0,
                 incoming: root_version, // Approximation since we don't return both from rollback manager easily here, but that's what the patch asked to do. Let's just return current 0 for now unless we change check_and_update_tuf
-            }.into());
+            }
+            .into());
         }
         info!("[BundleSync] Anti-Rollback check passed");
 
@@ -288,7 +296,9 @@ impl BundleSyncAgent {
         Ok((dek_config, bundle_path))
     }
 
-    pub async fn fetch_network_guardrails(&self) -> Result<Vec<dek_domain_schema::CompiledNetworkRules>> {
+    pub async fn fetch_network_guardrails(
+        &self,
+    ) -> Result<Vec<dek_domain_schema::CompiledNetworkRules>> {
         let url = format!(
             "{}/v1/tenants/{}/devices/{}/bundles/artifacts/network_guardrails.json",
             self.cloud_url, self.tenant_id, self.device_id
@@ -296,31 +306,38 @@ impl BundleSyncAgent {
         let client = self.client.read().await.clone();
         let res = client.get(&url).send().await?;
         if !res.status().is_success() {
-            return Err(anyhow::anyhow!("Failed to fetch network_guardrails.json: HTTP {}", res.status()));
+            return Err(anyhow::anyhow!(
+                "Failed to fetch network_guardrails.json: HTTP {}",
+                res.status()
+            ));
         }
 
         let body: serde_json::Value = res.json().await?;
-        
+
         let signed_bytes = serde_jcs::to_vec(&body["signed"])
             .context("serialize signed network guardrails using JCS")?;
-        
+
         use crate::keys::{parse_signatures, VerifyOutcome};
         let sigs = parse_signatures(body.get("signatures").unwrap_or(&serde_json::Value::Null));
-        
+
         let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
 
         let key_set = self.key_set.load();
         match key_set.verify(now, &signed_bytes, &sigs) {
             VerifyOutcome::Valid { .. } => {
                 // Signature verified, parse the rules
-                let rules: Vec<dek_domain_schema::CompiledNetworkRules> = serde_json::from_value(body["signed"].clone())
-                    .context("parse CompiledNetworkRules")?;
+                let rules: Vec<dek_domain_schema::CompiledNetworkRules> =
+                    serde_json::from_value(body["signed"].clone())
+                        .context("parse CompiledNetworkRules")?;
                 Ok(rules)
             }
-            outcome => {
-                Err(anyhow::anyhow!("Signature verification failed for network_guardrails.json: {:?}", outcome))
-            }
+            outcome => Err(anyhow::anyhow!(
+                "Signature verification failed for network_guardrails.json: {:?}",
+                outcome
+            )),
         }
     }
 }
@@ -329,7 +346,7 @@ impl BundleSyncAgent {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
-    
+
     use tokio::sync::RwLock;
 
     #[allow(dead_code)]
@@ -357,4 +374,3 @@ pub enum BundleError {
     #[error("anti-rollback: incoming gen {incoming} < current {current}")]
     RollbackBlocked { current: u64, incoming: u64 },
 }
-

@@ -12,7 +12,7 @@ use axum::{
 use dek_activation::snapshot::RuntimeSnapshot;
 use dek_decision::{DecisionRequest, DecisionResponse};
 use std::sync::Arc;
-use tokio::sync::oneshot;
+use serde_json::Value;
 use tracing::{error, info};
 
 use dek_policy_syncer::EnforcementState;
@@ -28,7 +28,10 @@ pub async fn start_sidecar_api(
     enforcement: Arc<ArcSwap<EnforcementState>>,
     port: u16,
 ) -> anyhow::Result<()> {
-    let state = ApiState { snapshot, enforcement };
+    let state = ApiState {
+        snapshot,
+        enforcement,
+    };
 
     let app = Router::new()
         .route("/v1/healthz", get(healthz))
@@ -89,28 +92,35 @@ async fn check(
             evaluator_results: vec![],
             latency_ms: 0,
         };
-        return (StatusCode::OK, Json(serde_json::to_value(response).unwrap()));
+        return (
+            StatusCode::OK,
+            Json(serde_json::to_value(response).unwrap_or_else(|_| serde_json::json!({}))),
+        );
     }
 
     let snap = state.snapshot.load();
     let val = serde_json::to_value(&req).unwrap_or(serde_json::json!({}));
 
     let start = std::time::Instant::now();
-    let res = snap.router.authorize(val).await.unwrap_or_else(|_| dek_policy_runtime::PolicyDecision {
-        evaluator_id: "core_api".into(),
-        evaluator_type: "router".into(),
-        required: true,
-        status: "error".into(),
-        decision: "deny".into(),
-        allow: false,
-        reason: "Policy evaluation failed".into(),
-        effects: serde_json::json!({}),
-        obligations: vec![],
-        metadata: serde_json::json!({}),
-    });
+    let res =
+        snap.router
+            .authorize(val)
+            .await
+            .unwrap_or_else(|_| dek_policy_runtime::PolicyDecision {
+                evaluator_id: "core_api".into(),
+                evaluator_type: "router".into(),
+                required: true,
+                status: "error".into(),
+                decision: "deny".into(),
+                allow: false,
+                reason: "Policy evaluation failed".into(),
+                effects: serde_json::json!({}),
+                obligations: vec![],
+                metadata: serde_json::json!({}),
+            });
 
     let latency = start.elapsed().as_millis() as u64;
-    
+
     let has_require_approval = res.obligations.iter().any(|o| o == "require_approval");
     let allow = res.allow && !has_require_approval;
 
@@ -125,10 +135,14 @@ async fn check(
             "DENIED_BY_POLICY".into()
         },
         reason: res.reason.clone(),
-        obligations: res.obligations.into_iter().map(|o| dek_decision::Obligation {
-            kind: o,
-            parameters: serde_json::json!({}),
-        }).collect(),
+        obligations: res
+            .obligations
+            .into_iter()
+            .map(|o| dek_decision::Obligation {
+                kind: o,
+                parameters: serde_json::json!({}),
+            })
+            .collect(),
         effects: res.effects,
         policy_bundle_id: "active".into(),
         policy_bundle_version: "v1".into(),
@@ -136,17 +150,20 @@ async fn check(
         latency_ms: latency,
     };
 
-    let mut json_resp = serde_json::to_value(response).unwrap();
+    let mut json_resp = serde_json::to_value(response).unwrap_or_else(|_| serde_json::json!({}));
     if has_require_approval {
         if let Some(obj) = json_resp.as_object_mut() {
-            obj.insert("error".to_string(), serde_json::json!({
-                "code": -32002,
-                "message": "Access Denied: pending_approval",
-                "data": {
-                    "status": "denied",
-                    "reason": res.reason
-                }
-            }));
+            obj.insert(
+                "error".to_string(),
+                serde_json::json!({
+                    "code": -32002,
+                    "message": "Access Denied: pending_approval",
+                    "data": {
+                        "status": "denied",
+                        "reason": res.reason
+                    }
+                }),
+            );
         }
     }
 
@@ -158,7 +175,7 @@ async fn batch_check(
     Json(reqs): Json<Vec<DecisionRequest>>,
 ) -> impl IntoResponse {
     let mut responses = Vec::with_capacity(reqs.len());
-    
+
     let enf = state.enforcement.load();
     let is_strict_deny = matches!(**enf, EnforcementState::StrictDeny { .. });
     let deny_reason = if let EnforcementState::StrictDeny { ref reason, .. } = **enf {
@@ -225,4 +242,3 @@ async fn batch_check(
 
     (StatusCode::OK, Json(responses))
 }
-

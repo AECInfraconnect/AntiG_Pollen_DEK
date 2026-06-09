@@ -78,4 +78,3 @@ pub struct DecisionResult {
     pub evaluator_results: Vec<EvaluatorResult>,
     pub obligations: Vec<String>,
 }
-
