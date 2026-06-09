@@ -17,8 +17,10 @@ pub mod update_server;
 pub mod ui;
 pub mod approvals;
 pub mod decision_logs;
+pub mod mtls;
 
-use anyhow::{Context, Result};
+
+use anyhow::Result;
 use askama::Template;
 use axum::{
     extract::{Form, Path, Query, State},
@@ -32,13 +34,8 @@ use axum_server::tls_rustls::RustlsConfig;
 use axum_server::Handle;
 use chrono::Utc;
 use ed25519_dalek::SigningKey;
-use rustls::{server::WebPkiClientVerifier, RootCertStore, ServerConfig};
-use rustls_pemfile::{certs, private_key};
-use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use serde::Deserialize;
 use std::collections::{HashMap, VecDeque};
-use std::fs::File;
-use std::io::BufReader;
 use std::net::SocketAddr;
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
@@ -181,34 +178,12 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
         )
         .with_state(state.clone());
 
-    // Load server certificate and key
-    let certs_der = load_certs("certs/server.crt")?;
-    let key_der = load_private_key("certs/server.key")?;
-
     // ---- :43891 mTLS Config ----
-    let mut root_cert_store = RootCertStore::empty();
-    let ca_certs = load_certs("certs/root_ca.crt")?;
-    root_cert_store.add_parsable_certificates(ca_certs);
-    let _client_verifier = WebPkiClientVerifier::builder(Arc::new(root_cert_store))
-        .allow_unauthenticated()
-        .build()
-        .context("build client verifier")?;
-
-    let mut server_config_mtls = ServerConfig::builder()
-        .with_no_client_auth()
-        .with_single_cert(certs_der.clone(), key_der.clone_key())
-        .context("server config mtls")?;
-    server_config_mtls.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-    let rustls_config_mtls = RustlsConfig::from_config(Arc::new(server_config_mtls));
+    let rustls_config_mtls = RustlsConfig::from_config(Arc::new(crate::mtls::build_mtls_config()?));
     let addr_mtls = SocketAddr::from(([127, 0, 0, 1], 43891));
 
     // ---- :43892 HTTPS Self-Signed Config ----
-    let mut server_config_https = ServerConfig::builder()
-        .with_no_client_auth()
-        .with_single_cert(certs_der, key_der)
-        .context("server config https")?;
-    server_config_https.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-    let rustls_config_https = RustlsConfig::from_config(Arc::new(server_config_https));
+    let rustls_config_https = RustlsConfig::from_config(Arc::new(crate::mtls::build_https_config()?));
     let addr_https = SocketAddr::from(([127, 0, 0, 1], 43892));
 
     info!("Mock Cloud mTLS API on https://127.0.0.1:43891");
@@ -247,17 +222,7 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
     Ok(())
 }
 
-fn load_certs(path: &str) -> Result<Vec<CertificateDer<'static>>> {
-    let file = File::open(path)?;
-    let mut reader = BufReader::new(file);
-    Ok(certs(&mut reader).collect::<Result<Vec<_>, _>>()?)
-}
 
-fn load_private_key(path: &str) -> Result<PrivateKeyDer<'static>> {
-    let file = File::open(path)?;
-    let mut reader = BufReader::new(file);
-    private_key(&mut reader)?.context("No private key found")
-}
 
 // =========================== Templates ===========================
 #[derive(Template)]

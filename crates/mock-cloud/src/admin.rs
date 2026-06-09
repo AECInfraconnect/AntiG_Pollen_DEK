@@ -20,6 +20,8 @@ pub struct AdminDashboardTemplate {
     pub relationships: Vec<Relationship>,
     pub policies: HashMap<String, Policy>,
     pub pep_deployments: HashMap<String, PepDeployment>,
+    pub active_leases: usize,
+    pub telemetry_event_count: usize,
 }
 
 pub async fn admin_dashboard(State(state): State<AppState>) -> impl IntoResponse {
@@ -36,6 +38,8 @@ pub async fn admin_dashboard(State(state): State<AppState>) -> impl IntoResponse
         relationships: reg.relationships.clone(),
         policies: reg.policies.clone(),
         pep_deployments: reg.pep_deployments.clone(),
+        active_leases: state.devices.lock().unwrap_or_else(|e| e.into_inner()).len(),
+        telemetry_event_count: state.telemetry_events.lock().unwrap_or_else(|e| e.into_inner()).len(),
     };
 
     match template.render() {

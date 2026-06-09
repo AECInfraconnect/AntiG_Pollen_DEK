@@ -8,6 +8,7 @@ dek-policy-runtime = { path = "../dek-policy-runtime" }
 dek-resilience = { path = "../dek-resilience" }
 dek-cedar = { path = "../dek-cedar" }
 dek-openfga = { path = "../dek-openfga" }
+dek-errors = { path = "../dek-errors" }
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true

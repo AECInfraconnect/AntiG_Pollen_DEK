@@ -8,8 +8,10 @@ fn test_valid_tenant() {
         "tenant_type": "enterprise",
         "display_name": "ACME Bank",
         "trust_domain_strategy": "shared",
+        "trust_domain": "spiffe://acme.internal",
         "data_region": "ap-southeast-1",
         "policy_mode": "enforce",
+        "default_fail_mode": "fail_closed",
         "created_at": "2026-06-08T00:00:00Z"
     }"#;
     let tenant: Result<Tenant, _> = serde_json::from_str(json_str);

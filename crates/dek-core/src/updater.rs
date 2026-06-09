@@ -5,6 +5,7 @@ use reqwest::Client;
 use std::fs;
 use tracing::{error, info};
 
+#[allow(dead_code)]
 pub async fn run_update(
     client: &Client,
     download_url: &str,

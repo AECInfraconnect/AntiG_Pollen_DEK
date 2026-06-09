@@ -19,7 +19,6 @@ pub use gate::strict_deny_reason;
 use crate::audit::AuditTrail;
 use crate::keys as keymgr;
 
-use anyhow::Result;
 use arc_swap::ArcSwap;
 use dek_bundle_sync::BundleSyncAgent;
 use dek_telemetry::CloudTelemetrySink;
@@ -47,7 +46,6 @@ pub enum SyncOutcome {
 
 pub struct PolicySyncer {
     bundle_agent: Arc<BundleSyncAgent>,
-    telemetry: Option<Arc<CloudTelemetrySink>>,
     cfg: FreshnessConfig,
     /// In-process source of truth for the PEP when co-located.
     enforcement: Arc<ArcSwap<EnforcementState>>,
@@ -81,7 +79,6 @@ impl PolicySyncer {
 
         Arc::new(Self {
             bundle_agent,
-            telemetry,
             cfg,
             // Start fail-closed: no bundle proven fresh yet (cold start).
             enforcement: Arc::new(ArcSwap::from_pointee(EnforcementState::StrictDeny {

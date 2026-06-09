@@ -9,6 +9,12 @@ pub struct WfpWatchdog {
     last_known_good: Option<CompiledNetworkRules>,
 }
 
+impl Default for WfpWatchdog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WfpWatchdog {
     pub fn new() -> Self {
         Self {

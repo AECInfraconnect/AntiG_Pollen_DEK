@@ -2,7 +2,7 @@ pub mod watchdog;
 
 use anyhow::Result;
 use dek_domain_schema::CompiledNetworkRules;
-use tracing::{info, warn, error};
+use tracing::{info, warn};
 
 // In a real Windows environment, this would call Windows Filtering Platform (WFP) APIs.
 // For now, we stub it to allow cross-compilation tests and development without Windows APIs failing.

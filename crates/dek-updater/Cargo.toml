@@ -14,3 +14,8 @@ clap = { version = "4.4", features = ["derive"] }
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "dek-updater"
+path = "src/main.rs"
+test = false

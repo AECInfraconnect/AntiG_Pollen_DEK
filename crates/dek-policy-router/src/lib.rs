@@ -64,6 +64,12 @@ pub struct PdpStats {
     pub failures: u64,
 }
 
+impl Default for PdpStats {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PdpStats {
     pub fn new() -> Self {
         Self {
@@ -149,7 +155,7 @@ impl PolicyRouter {
         let available: Vec<&String> = pool.iter()
             .filter(|p| {
                 if let Some(b) = self.breakers.get(*p) {
-                    matches!(b.permitted(), Admit::Accept)
+                    matches!(b.permitted(), Admit::Allow)
                 } else {
                     false
                 }
@@ -496,6 +502,8 @@ mod tests {
             },
             pdp_required: vec!["dummy".into()],
             pdp_conditional: vec![],
+            pdp_pool: vec![],
+            failover_strategy: FailoverStrategy::Priority,
         }]);
 
         let payload = serde_json::json!({ "request_type": "test" });
@@ -518,6 +526,8 @@ mod tests {
             },
             pdp_required: vec!["missing_pdp".into()], // would normally fail
             pdp_conditional: vec![],
+            pdp_pool: vec![],
+            failover_strategy: FailoverStrategy::Priority,
         }]);
 
         let payload = serde_json::json!({ "request_type": "emergency_action" });

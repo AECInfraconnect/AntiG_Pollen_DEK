@@ -14,6 +14,7 @@ use tokio::time::{sleep, timeout, Duration};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn, Instrument};
 
+#[allow(dead_code)]
 pub fn spawn_bundle_sync_task(
     cancel_token: CancellationToken,
     sync_agent: Arc<BundleSyncAgent>,

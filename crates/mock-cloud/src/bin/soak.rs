@@ -2,7 +2,7 @@ use clap::Parser;
 use reqwest::Client;
 use std::time::{Duration, Instant};
 use tracing::info;
-use tracing_subscriber;
+// use tracing_subscriber;
 use serde_json::json;
 
 #[derive(Parser, Debug)]
@@ -86,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut total_latency = Duration::from_millis(0);
 
     for (res, latency) in results {
-        if res.is_ok() && res.unwrap().status().is_success() {
+        if res.is_ok_and(|r| r.status().is_success()) {
             successes += 1;
         } else {
             failures += 1;

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use dek_domain_schema::CompiledNetworkRules;
-use tracing::{info, warn, error};
+use tracing::{info, warn};
 
 // Stub implementation for cross-compilation testing.
 // In reality, this communicates with the macOS Network Extension via XPC or Unix Sockets.

@@ -11,6 +11,7 @@ pub struct TraceSpan {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "event_type")]
+#[allow(clippy::large_enum_variant)]
 pub enum TelemetryEvent {
     #[serde(rename = "decision")]
     Decision {

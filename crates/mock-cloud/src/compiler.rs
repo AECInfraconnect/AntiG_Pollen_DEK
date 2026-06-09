@@ -50,9 +50,7 @@ pub fn compile_policy(policy: &Policy, target: CompilerTarget) -> Result<Compile
         }),
         CompilerTarget::Openfga => Ok(CompiledPolicy {
             target: "openfga".to_string(),
-            source_code: format!(
-                "model\n  schema 1.1\ntype user\ntype resource\n  relations\n    define viewer: [user]"
-            ),
+            source_code: "model\n  schema 1.1\ntype user\ntype resource\n  relations\n    define viewer: [user]".to_string(),
             compiled_binary_b64: None,
         }),
         CompilerTarget::Wasm => {

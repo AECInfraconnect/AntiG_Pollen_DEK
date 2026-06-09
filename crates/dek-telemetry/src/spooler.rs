@@ -161,7 +161,7 @@ impl Spooler {
 
         let mut batch = Vec::new();
         for r in rows.flatten() {
-            let (id, ct, nonce_bytes) = r;
+            let (id, ct, nonce_bytes): (i64, Vec<u8>, Vec<u8>) = r;
             let nonce = Nonce::from_slice(&nonce_bytes);
             match self.cipher.decrypt(nonce, ct.as_ref()) {
                 Ok(pt) => {

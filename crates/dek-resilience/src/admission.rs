@@ -30,7 +30,7 @@ impl AdmissionControl {
     }
 
     fn tenant_sem(&self, tenant: &str) -> Arc<Semaphore> {
-        let mut map = self.tenants.lock().unwrap();
+        let mut map = self.tenants.lock().unwrap_or_else(|e| e.into_inner());
         map.entry(tenant.to_string())
             .or_insert_with(|| Arc::new(Semaphore::new(self.per_tenant_limit)))
             .clone()

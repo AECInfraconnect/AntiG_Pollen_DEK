@@ -81,7 +81,7 @@ impl CircuitBreaker {
 
     /// Testable core.
     pub fn permitted_at(&self, now: Instant) -> Admit {
-        let mut g = self.inner.lock().unwrap();
+        let mut g = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         match g.state {
             State::Closed => Admit::Allow,
             State::Open => {
@@ -109,7 +109,7 @@ impl CircuitBreaker {
     }
 
     pub fn on_success(&self) {
-        let mut g = self.inner.lock().unwrap();
+        let mut g = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         match g.state {
             State::Closed => {
                 g.consecutive_failures = 0;
@@ -134,7 +134,7 @@ impl CircuitBreaker {
     }
 
     pub fn on_failure_at(&self, now: Instant) {
-        let mut g = self.inner.lock().unwrap();
+        let mut g = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         match g.state {
             State::Closed => {
                 g.consecutive_failures += 1;
@@ -160,7 +160,7 @@ impl CircuitBreaker {
     }
 
     pub fn is_open(&self) -> bool {
-        self.inner.lock().unwrap().state == State::Open
+        self.inner.lock().unwrap_or_else(|e| e.into_inner()).state == State::Open
     }
 }
 

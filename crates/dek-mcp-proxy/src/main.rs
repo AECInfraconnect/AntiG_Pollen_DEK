@@ -579,16 +579,15 @@ async fn handle_mcp_request(
             let mut compliance_tags = vec![];
 
             for ob in &decision.obligations {
-                if let Some(ob_type) = ob.get("type").and_then(|t| t.as_str()) {
-                    metrics::counter!("dek_obligation_enforced_total", "type" => ob_type.to_string()).increment(1);
-                    if ob_type == "require_approval" {
-                        require_approval = true;
-                        compliance_tags.push("SOC2-CC6.1".to_string());
-                    } else if ob_type == "step_up_mfa" {
-                        require_mfa = true;
-                        compliance_tags.push("PCI-DSS-4.0".to_string());
-                        compliance_tags.push("HIPAA-164.312(a)(1)".to_string());
-                    }
+                let ob_type = ob.as_str();
+                metrics::counter!("dek_obligation_enforced_total", "type" => ob_type.to_string()).increment(1);
+                if ob_type == "require_approval" {
+                    require_approval = true;
+                    compliance_tags.push("SOC2-CC6.1".to_string());
+                } else if ob_type == "step_up_mfa" {
+                    require_mfa = true;
+                    compliance_tags.push("PCI-DSS-4.0".to_string());
+                    compliance_tags.push("HIPAA-164.312(a)(1)".to_string());
                 }
             }
             compliance_tags.sort();
@@ -727,12 +726,11 @@ async fn handle_authorize(
             let mut require_mfa = false;
 
             for ob in &decision.obligations {
-                if let Some(ob_type) = ob.get("type").and_then(|t| t.as_str()) {
-                    if ob_type == "require_approval" {
-                        require_approval = true;
-                    } else if ob_type == "step_up_mfa" {
-                        require_mfa = true;
-                    }
+                let ob_type = ob.as_str();
+                if ob_type == "require_approval" {
+                    require_approval = true;
+                } else if ob_type == "step_up_mfa" {
+                    require_mfa = true;
                 }
             }
 

@@ -99,6 +99,7 @@ fn verify_tuf_signature(new_exe: &PathBuf, metadata_path: &PathBuf) -> Result<()
     };
 
     // 1. Check expiration
+    #[allow(clippy::collapsible_if)]
     if let Some(expires_str) = signed["expires"].as_str() {
         if let Ok(expires_dt) = expires_str.parse::<DateTime<Utc>>() {
             if Utc::now() > expires_dt {
