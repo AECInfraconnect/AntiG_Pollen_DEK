@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! supervisor.rs (v2) — aligned to the REAL dek-core structure.
 //!
 //! Supersedes the earlier generic draft: uses `CancellationToken` (not Notify),
@@ -313,3 +316,4 @@ impl Supervisor {
         let _ = tokio::signal::ctrl_c().await;
     }
 }
+

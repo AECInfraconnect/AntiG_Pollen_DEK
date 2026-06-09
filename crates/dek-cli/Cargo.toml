@@ -2,6 +2,7 @@
 name = "dek-cli"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 dek-ipc = { path = "../dek-ipc" }
@@ -32,3 +33,4 @@ tokio = { workspace = true, features = ["full", "rt-multi-thread"] }
 
 [lints]
 workspace = true
+

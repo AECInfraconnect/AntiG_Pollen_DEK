@@ -2,6 +2,7 @@
 name = "dek-policy-router"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 dek-policy-runtime = { path = "../dek-policy-runtime" }
@@ -22,3 +23,4 @@ tokio = { workspace = true, features = ["full", "test-util"] }
 
 [lints]
 workspace = true
+

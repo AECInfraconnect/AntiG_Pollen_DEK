@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::{Context, Result};
 use std::process::Command;
 
@@ -54,3 +57,4 @@ pub fn disable() -> Result<()> {
 
     Ok(())
 }
+

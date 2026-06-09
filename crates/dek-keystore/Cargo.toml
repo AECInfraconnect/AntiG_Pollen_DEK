@@ -2,6 +2,7 @@
 name = "dek-keystore"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
@@ -21,3 +22,4 @@ linux-keyutils = "0.2"
 
 [lints]
 workspace = true
+

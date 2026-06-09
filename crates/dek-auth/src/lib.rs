@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! dek-auth — shared JWT verification for Pollen DEK PEPs (proxy + stdio-wrapper).
 //!
 //! Extracts the JWT logic that previously lived inline in `dek-mcp-proxy` and
@@ -240,3 +243,4 @@ mod tests {
         assert!(v.verify(token).is_err());
     }
 }
+

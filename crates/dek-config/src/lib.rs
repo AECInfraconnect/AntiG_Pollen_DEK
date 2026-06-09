@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 pub mod logging;
 pub mod paths;
 pub mod scale_config;
@@ -227,3 +230,4 @@ impl DekConfig {
         Ok(config)
     }
 }
+

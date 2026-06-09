@@ -2,6 +2,7 @@
 name = "dek-domain-schema"
 version = "0.1.0"
 edition = "2024"
+license.workspace = true
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
@@ -13,3 +14,4 @@ sha2 = "0.11.0"
 
 [lints]
 workspace = true
+

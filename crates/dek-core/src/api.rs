@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use arc_swap::ArcSwap;
 use axum::{
     extract::State,
@@ -222,3 +225,4 @@ async fn batch_check(
 
     (StatusCode::OK, Json(responses))
 }
+

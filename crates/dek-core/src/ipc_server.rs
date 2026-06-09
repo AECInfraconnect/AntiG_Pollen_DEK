@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! ipc_server.rs — local IPC endpoint (health / status / reload).
 //!
 //! Lifted verbatim from `main.rs::spawn_ipc_server_task`, made `pub`, with the
@@ -242,3 +245,4 @@ pub async fn spawn_ipc_server_task(
         }
     }))
 }
+

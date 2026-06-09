@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! keys.rs — key distribution & rotation orchestration (Phase 2).
 //!
 //! Fetches `/v1/keys` over mTLS, verifies the payload is signed by a CURRENTLY
@@ -97,3 +100,4 @@ pub async fn fetch_and_merge(
     }
     Ok((merged, delta))
 }
+

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #[cfg(target_os = "linux")]
 pub fn notify_ready() {
     if let Err(e) = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]) {
@@ -156,3 +159,4 @@ where
     let rt = tokio::runtime::Runtime::new()?;
     rt.block_on(main_logic)
 }
+

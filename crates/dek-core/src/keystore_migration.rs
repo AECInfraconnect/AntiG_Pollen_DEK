@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use dek_config::BootstrapConfig;
 use dek_keystore::get_keystore;
 use reqwest::{Certificate, Identity};
@@ -123,3 +126,4 @@ pub async fn run_migration(bootstrap: &BootstrapConfig, pollen_cloud_url: &str) 
 
     false
 }
+

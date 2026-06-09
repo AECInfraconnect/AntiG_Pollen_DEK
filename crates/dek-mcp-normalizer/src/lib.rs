@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
@@ -78,3 +81,4 @@ pub trait TransportAdapter {
         user_id: Option<&str>,
     ) -> Result<NormalizedMcpEvent>;
 }
+

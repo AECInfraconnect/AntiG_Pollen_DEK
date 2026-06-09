@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! R4 Soak Test Harness
 //! Runs a continuous load against mock-cloud and dek-core, 
 //! injecting chaos and monitoring RSS memory growth to detect leaks.
@@ -189,3 +192,4 @@ async fn soak_harness() -> Result<()> {
     
     Ok(())
 }
+

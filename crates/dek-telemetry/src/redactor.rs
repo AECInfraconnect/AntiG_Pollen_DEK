@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::len_without_is_empty)]
 use regex::Regex;
 use serde_json::Value;
@@ -62,3 +65,4 @@ impl Default for Redactor {
         Self::new()
     }
 }
+

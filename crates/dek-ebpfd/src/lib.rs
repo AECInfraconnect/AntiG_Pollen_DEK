@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! dek-ebpfd — userspace supervisor for the DEK network Control Point.
 //!
 //! Production fix (HIGH): the loader now RETURNS an `EbpfHandle` that owns the
@@ -252,3 +255,4 @@ pub async fn start_ebpfd_supervisor(
     tracing::warn!("eBPFD supervisor is Linux-only; app-layer enforcement remains active.");
     Ok(EbpfHandle)
 }
+

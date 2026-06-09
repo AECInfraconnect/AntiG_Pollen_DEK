@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use crate::{MessageDirection, NormalizedMcpEvent, TransportAdapter, TransportType};
 use anyhow::Result;
 use serde_json::json;
@@ -85,3 +88,4 @@ impl TransportAdapter for HttpTransportAdapter {
         })
     }
 }
+

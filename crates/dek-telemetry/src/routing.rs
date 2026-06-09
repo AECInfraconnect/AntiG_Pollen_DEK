@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! routing.rs — R2.1: map each telemetry event to its contract endpoint.
 //!
 //! The Cloud contract (docs/contracts/pollen-cloud-dek-api.md §5) splits
@@ -74,3 +77,4 @@ mod tests {
         assert_eq!(g.get("/v1/telemetry/security-events").unwrap().0.len(), 1);
     }
 }
+

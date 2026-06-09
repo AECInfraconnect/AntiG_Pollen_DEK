@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::Result;
 
 pub mod doctor;
@@ -63,3 +66,4 @@ mod unsupported {
 }
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
 pub use unsupported::OsServiceManager;
+

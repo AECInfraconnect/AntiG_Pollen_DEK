@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! network_loop.rs — Phase A: network egress guardrail enforcement plane.
 //!
 //! Consumes `SyncOutcome` from the policy syncer and drives a per-OS
@@ -285,3 +288,4 @@ pub fn spawn(
         }
     })
 }
+

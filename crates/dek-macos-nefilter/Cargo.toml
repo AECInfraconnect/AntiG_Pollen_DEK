@@ -2,6 +2,7 @@
 name = "dek-macos-nefilter"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 authors = ["Pollen Cloud Team <team@pollen.cloud>"]
 description = "macOS Network Extension (NEFilter) IPC adapter for Pollen DEK"
 
@@ -14,3 +15,4 @@ serde_json.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Dependencies for macOS specific IPC (mach ports / XPC or unix domain sockets) would go here
+

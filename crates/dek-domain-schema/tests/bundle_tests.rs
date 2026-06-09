@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use chrono::{Duration, Utc};
 use dek_domain_schema::bundle::{ActivationMode, BundleArtifact, BundleManifest, LkgState};
@@ -115,3 +118,4 @@ fn test_lkg_fallback() {
     );
     assert!(state.fallback_manifest.is_none());
 }
+

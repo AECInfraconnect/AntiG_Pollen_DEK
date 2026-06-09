@@ -2,8 +2,10 @@
 name = "dummy_policy"
 version = "0.1.0"
 edition = "2024"
+license.workspace = true
 
 [dependencies]
 
 [lints]
 workspace = true
+

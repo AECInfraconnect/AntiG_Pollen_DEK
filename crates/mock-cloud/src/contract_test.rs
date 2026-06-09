@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -189,3 +192,4 @@ async fn telemetry_decision_logs_endpoint_accepts_and_redacts() {
     let res2 = app.clone().oneshot(req2).await.unwrap();
     assert_eq!(res2.status(), StatusCode::BAD_REQUEST);
 }
+

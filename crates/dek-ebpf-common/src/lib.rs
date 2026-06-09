@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![no_std]
 
 pub const LPM_MAP_CAPACITY: u32 = 4096;
@@ -44,3 +47,4 @@ pub struct DnsCaptureEvent {
     pub len: u16,
     pub data: [u8; DNS_PAYLOAD_MAX],
 }
+

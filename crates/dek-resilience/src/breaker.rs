@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! breaker.rs — per-evaluator circuit breaker.
 //!
 //! When a PDP/evaluator fails (error or timeout) repeatedly, the breaker OPENS
@@ -216,3 +219,4 @@ mod tests {
         assert_eq!(b.permitted_at(t1), Admit::Reject);
     }
 }
+

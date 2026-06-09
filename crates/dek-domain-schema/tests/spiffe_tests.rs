@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use dek_domain_schema::spiffe::{SpiffeBuilder, SpiffeId, validate_tenant_isolation};
 use dek_domain_schema::tenant::TrustDomainStrategy;
@@ -102,3 +105,4 @@ fn test_validate_tenant_isolation_custom() {
     let invalid_id = SpiffeId::parse("spiffe://other.acme.internal/device/d-1").unwrap();
     assert!(validate_tenant_isolation(&invalid_id, &strategy, "acme", "pollen.cloud").is_err());
 }
+

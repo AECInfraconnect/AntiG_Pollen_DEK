@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::{Context, Result};
 use rcgen::{CertificateParams, DnType, IsCa};
 use std::fs;
@@ -59,3 +62,4 @@ fn main() -> Result<()> {
     println!("All MTLS mock certificates successfully generated in `certs/`.");
     Ok(())
 }
+

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -27,3 +30,4 @@ pub struct Policy {
     pub template: Option<crate::policy_template::PolicyTemplate>,
     pub version: String,
 }
+

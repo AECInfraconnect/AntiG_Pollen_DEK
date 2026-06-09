@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use std::io::{self, Read};
 
 fn main() {
@@ -11,3 +14,4 @@ fn main() {
     let output = format!(r#"{{"allow": {}, "reason": "{}"}}"#, allow, reason);
     print!("{}", output);
 }
+

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! audit.rs — tamper-evident audit trail for every policy lifecycle event (Phase 3).
 //!
 //! Every event carries a monotonic `seq` and `prev_digest` forming a hash chain
@@ -130,3 +133,4 @@ fn chrono_now_rfc3339() -> String {
     let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     format!("unix:{secs}")
 }
+

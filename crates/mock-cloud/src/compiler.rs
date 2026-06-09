@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use axum::{
     extract::{Path, State},
     routing::post,
@@ -90,3 +93,4 @@ pub fn router() -> Router<AppState> {
         post(compile_policy_handler),
     )
 }
+

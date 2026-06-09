@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! dek-enroll — first-run device enrollment for Pollen DEK (RFC 8628).
 //!
 //! Production hardening: the device flow runs over an unreliable network for up
@@ -448,3 +451,4 @@ struct EnrollResp {
     #[serde(default)]
     cloud_url: Option<String>,
 }
+

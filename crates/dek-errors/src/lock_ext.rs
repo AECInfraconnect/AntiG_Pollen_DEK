@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! lock_ext.rs — poison-safe Mutex/RwLock access (Phase B reliability).
 //!
 //! `Mutex::lock().unwrap()` aborts the whole process on poisoning because the
@@ -80,3 +83,4 @@ mod tests {
         assert_eq!(*g, 42);
     }
 }
+

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! Integration: prove the cross-process gate fails closed and recovers.
 //! Run: cargo test -p dek-policy-syncer --test gate_integration
 
@@ -75,3 +78,4 @@ fn gate_fails_closed_when_status_absent() {
     invalidate_cache();
     assert_eq!(strict_deny_reason().as_deref(), Some("enforcement_status_unavailable"));
 }
+

@@ -1,14 +1,31 @@
-use dek_cedar::CedarAdapter;
-use dek_config::MtlsConfig;
-use dek_openfga::OpenFgaAdapter;
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
+pub mod factories;
+
 use dek_policy_router::PolicyRouter;
+use dek_pdp_sdk::AdapterRegistry;
 use serde_json::Value;
-use tracing::error;
+use tracing::{error, warn};
+
+/// Returns a default registry with all compiled-in features enabled
+pub fn default_registry() -> AdapterRegistry {
+    let mut registry = AdapterRegistry::new();
+    
+    #[cfg(feature = "adapter-cedar")]
+    registry.register(Box::new(factories::CedarFactory));
+    
+    #[cfg(feature = "adapter-opa")]
+    registry.register(Box::new(factories::OpaFactory));
+    
+    #[cfg(feature = "adapter-openfga")]
+    registry.register(Box::new(factories::OpenFgaFactory));
+    
+    registry
+}
 
 pub fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
-    let mtls: Option<MtlsConfig> = payload
-        .get("mtls")
-        .and_then(|v| serde_json::from_value(v.clone()).ok());
+    let registry = default_registry();
 
     if let Some(scale_val) = payload.get("scale") {
         if let Ok(scale) = serde_json::from_value::<dek_config::ScaleConfig>(scale_val.clone()) {
@@ -21,47 +38,41 @@ pub fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
     }
 
     if let Some(openfga) = payload.get("openfga") {
-        let endpoint = openfga
-            .get("endpoint")
-            .and_then(|v| v.as_str())
-            .unwrap_or("http://localhost:8080");
-        let store_id = openfga
-            .get("store_id")
-            .and_then(|v| v.as_str())
-            .unwrap_or("store_123");
-
-        match OpenFgaAdapter::new(endpoint, store_id, mtls.as_ref()) {
-            Ok(adapter) => router.register_evaluator("openfga", Box::new(adapter)),
-            Err(e) => error!("Failed to initialize OpenFGA Adapter with mTLS: {}", e),
-        }
-    }
-    if let Some(cedar) = payload.get("cedar") {
-        let policy_src = cedar
-            .get("policy_src")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        match CedarAdapter::new(policy_src) {
-            Ok(adapter) => router.register_evaluator("cedar", Box::new(adapter)),
-            Err(e) => error!("Failed to initialize Cedar Adapter: {}", e),
-        }
-    }
-    if let Some(wasm) = payload.get("opa_wasm") {
-        let policy_path = wasm
-            .get("policy_path")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-
-        if std::path::Path::new(policy_path).exists() {
-            if let Ok(runtime) = dek_policy_runtime::WasmtimePolicyRuntime::new(policy_path, None) {
-                router.register_evaluator("opa_wasm", Box::new(runtime));
-            } else {
-                error!(
-                    "Failed to initialize WASM Policy Runtime for path: {}",
-                    policy_path
-                );
+        match registry.build_adapter("openfga", openfga) {
+            Ok(adapter) => router.register_evaluator("openfga", adapter),
+            Err(e) => {
+                if registry.get("openfga").is_none() {
+                    warn!("OpenFGA adapter requested but not compiled in this build.");
+                } else {
+                    error!("Failed to initialize OpenFGA Adapter: {}", e);
+                }
             }
-        } else {
-            error!("WASM policy file not found at: {}", policy_path);
+        }
+    }
+
+    if let Some(cedar) = payload.get("cedar") {
+        match registry.build_adapter("cedar", cedar) {
+            Ok(adapter) => router.register_evaluator("cedar", adapter),
+            Err(e) => {
+                if registry.get("cedar").is_none() {
+                    warn!("Cedar adapter requested but not compiled in this build.");
+                } else {
+                    error!("Failed to initialize Cedar Adapter: {}", e);
+                }
+            }
+        }
+    }
+
+    if let Some(wasm) = payload.get("opa_wasm") {
+        match registry.build_adapter("opa_wasm", wasm) {
+            Ok(adapter) => router.register_evaluator("opa_wasm", adapter),
+            Err(e) => {
+                if registry.get("opa_wasm").is_none() {
+                    warn!("OPA adapter requested but not compiled in this build.");
+                } else {
+                    error!("Failed to initialize WASM Policy Runtime: {}", e);
+                }
+            }
         }
     }
 

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -46,3 +49,4 @@ pub fn parse_scenario(content: &str) -> anyhow::Result<AcceptanceScenario> {
     let scenario: AcceptanceScenario = serde_yaml::from_str(content)?;
     Ok(scenario)
 }
+

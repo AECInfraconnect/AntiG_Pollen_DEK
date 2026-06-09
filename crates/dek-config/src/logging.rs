@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use crate::paths::get_log_dir;
 use std::fs;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -80,3 +83,4 @@ fn spawn_log_sweeper(log_dir: std::path::PathBuf) {
         }
     });
 }
+

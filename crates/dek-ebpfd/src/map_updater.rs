@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::{bail, Result};
 use dek_domain_schema::ebpf::{EbpfMapUpdate, UpdateSource};
 use tracing::{info, warn};
@@ -76,3 +79,4 @@ impl MapUpdater {
         Ok(())
     }
 }
+

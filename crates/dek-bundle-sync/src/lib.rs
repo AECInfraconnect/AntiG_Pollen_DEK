@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::{Context, Result};
 use dek_config::MtlsConfig;
 
@@ -354,3 +357,4 @@ pub enum BundleError {
     #[error("anti-rollback: incoming gen {incoming} < current {current}")]
     RollbackBlocked { current: u64, incoming: u64 },
 }
+

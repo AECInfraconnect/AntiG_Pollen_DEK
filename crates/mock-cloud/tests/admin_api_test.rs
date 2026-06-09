@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![allow(clippy::unwrap_used)]
 use reqwest::Client;
 use std::time::Duration;
@@ -36,3 +39,4 @@ async fn test_admin_apis() {
         }
     }
 }
+

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![no_std]
 #![no_main]
 
@@ -190,3 +193,4 @@ fn try_dek_connect4(ctx: &SockAddrContext) -> Result<i32, ()> {
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     unsafe { core::hint::unreachable_unchecked() }
 }
+

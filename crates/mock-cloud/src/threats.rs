@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use crate::state::AppState;
 use axum::{
     extract::{State, Request},
@@ -72,3 +75,4 @@ pub async fn chaos_middleware(
 
     next.run(req).await
 }
+

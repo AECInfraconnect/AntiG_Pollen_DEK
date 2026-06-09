@@ -2,8 +2,8 @@
 name = "dek-core"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 authors = ["Pollen DEK Team"]
-license = "Apache-2.0"
 description = "Pollen DEK Supervisor and Agent"
 
 [dependencies]
@@ -88,3 +88,4 @@ assets = [
     ["../../packaging/linux/pollen-dek.service", "lib/systemd/system/pollen-dek.service", "644"]
 ]
 maintainer-scripts = "../../packaging/linux/scripts"
+

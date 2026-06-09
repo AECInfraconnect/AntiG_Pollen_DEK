@@ -1,7 +1,9 @@
 [package]
 name = "dek-ebpf-prog"
 version = "0.1.0"
+license.workspace = true
 edition = "2021"
+license = "Apache-2.0"
 
 # IMPORTANT: this crate compiles to BPF bytecode, NOT a normal host binary.
 # Build with:
@@ -23,4 +25,5 @@ path = "src/lib.rs"
 
 [features]
 default = []
+
 

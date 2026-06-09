@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::Result;
 use clap::Parser;
 use dek_mcp_normalizer::{MessageDirection, NormalizedMcpEvent, TransportType};
@@ -324,3 +327,4 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
+

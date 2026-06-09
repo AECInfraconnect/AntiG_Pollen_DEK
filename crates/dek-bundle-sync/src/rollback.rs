@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -188,3 +191,4 @@ mod tests {
         std::fs::remove_dir_all(dir).unwrap_or(());
     }
 }
+

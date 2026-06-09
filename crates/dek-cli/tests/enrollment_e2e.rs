@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! Integration test: full enrollment flow against an in-process mock cloud.
 //!
 //! Place at: crates/dek-cli/tests/enrollment_e2e.rs
@@ -218,3 +221,4 @@ fn sign_csr(ca_cert_pem: &str, ca_key_pem: &str, csr_pem: &str, spiffe_id: &str)
         .push(SanType::URI(spiffe_id.to_string()));
     csr.serialize_pem_with_signer(&ca).unwrap()
 }
+

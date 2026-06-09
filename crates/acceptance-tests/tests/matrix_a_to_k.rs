@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! Full-binary acceptance matrix (A–H) — spawns mock-cloud + dek-core and
 //! exercises the Pollen DEK contract end-to-end over the real HTTP(S)/mTLS path.
 //!
@@ -278,3 +281,4 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
 
     Ok(())
 }
+

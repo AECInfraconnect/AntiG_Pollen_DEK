@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,3 +27,4 @@ fn main() {
     let val = serde_json::to_value(&config.policy_config).unwrap();
     println!("Serialized: {:?}", val);
 }
+

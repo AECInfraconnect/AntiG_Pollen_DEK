@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use crate::state::AppState;
 use axum::{
     extract::{Path, State},
@@ -386,3 +389,4 @@ async fn patch_pep_deployment(Path(id): Path<String>, State(state): State<AppSta
         (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
     }
 }
+

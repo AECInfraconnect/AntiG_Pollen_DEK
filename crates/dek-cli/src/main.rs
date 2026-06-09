@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use dek_agent_connector::{AgentConfigRewriter, ClaudeDesktopRewriter};
@@ -349,3 +352,4 @@ async fn main() -> Result<()> {
     }
     Ok(())
 }
+

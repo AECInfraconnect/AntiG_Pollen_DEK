@@ -2,6 +2,7 @@
 name = "dek-enroll"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 reqwest = { workspace = true, features = ["json"] }
@@ -18,3 +19,4 @@ gethostname = "1.1.0"
 
 [lints]
 workspace = true
+

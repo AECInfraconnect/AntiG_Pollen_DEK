@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! keys.rs — trusted signing keys (rotation) + contract path (R3).
 //!
 //! DEK fetches keys at the contract path:
@@ -79,3 +82,4 @@ async fn rotate_key(State(st): State<AppState>) -> Json<Value> {
     st.audit_push("admin", "rotate-key", "introduced next key (overlap)");
     Json(json!({ "rotated": true, "next_key_id": next_kid }))
 }
+

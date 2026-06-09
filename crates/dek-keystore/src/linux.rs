@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use crate::Keystore;
 use anyhow::{Context, Result};
 use linux_keyutils::{Key, KeyRing, KeyRingIdentifier};
@@ -103,3 +106,4 @@ impl Keystore for KernelKeystore {
         Ok(())
     }
 }
+

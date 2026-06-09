@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::{Context, Result};
 use semver::Version;
 use serde::Deserialize;
@@ -185,3 +188,4 @@ pub fn verify_all(archive_path: &Path, sum_path: &Path, sig_path: &Path, pem_pat
     verify_cosign(archive_path, sig_path, pem_path)?;
     Ok(())
 }
+

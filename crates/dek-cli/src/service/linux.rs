@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use super::ServiceManager;
 use anyhow::{Context, Result};
 use std::fs;
@@ -124,3 +127,4 @@ ExecStart=/bin/sh -c 'if [ -f {exe_path}.bak ]; then mv {exe_path}.bak {exe_path
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 }
+

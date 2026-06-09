@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 pub mod agent;
 pub mod bundle;
 pub mod capabilities;
@@ -39,3 +42,4 @@ pub use spiffe::*;
 pub use telemetry_event::*;
 pub use tenant::*;
 pub use tool::*;
+

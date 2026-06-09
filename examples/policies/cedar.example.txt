@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
+permit(
+    principal,
+    action,
+    resource
+)
+when {
+    context.has_valid_mtls == true &&
+    context.user_department == "engineering"
+};

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! rollback.rs — `dekctl rollback`
 //!
 //! Restores the previous dek-core binary from the `.bak` left by the updater,
@@ -128,3 +131,4 @@ fn restart_service() -> Result<()> {
 fn restart_service() -> Result<()> {
     Ok(())
 }
+

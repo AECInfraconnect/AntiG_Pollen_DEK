@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! probation.rs — health-gated A/B update verification for dek-core.
 //!
 //! Replaces the previous logic in `main.rs` (a detached `sleep(15s)` that
@@ -256,3 +259,4 @@ fn abort_and_rollback(config_dir: &Path, marker: &ProbationMarker) -> ! {
         }
     }
 }
+

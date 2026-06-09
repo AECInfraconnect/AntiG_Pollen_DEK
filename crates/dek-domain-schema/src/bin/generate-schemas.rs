@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use schemars::schema_for;
 use std::fs;
@@ -42,3 +45,4 @@ fn main() {
         println!("Generated {}", out_path.display());
     }
 }
+
