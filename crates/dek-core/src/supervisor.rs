@@ -71,8 +71,12 @@ impl Supervisor {
         );
         let bootstrap =
             BootstrapConfig::load_or_default(&bootstrap_path).context("load bootstrap")?;
-            
-        tracing::info!("DEBUG BOOTSTRAP: Loaded from {}, key is: {}", bootstrap_path, bootstrap.pinned_bundle_public_key);
+
+        tracing::info!(
+            "DEBUG BOOTSTRAP: Loaded from {}, key is: {}",
+            bootstrap_path,
+            bootstrap.pinned_bundle_public_key
+        );
 
         let cloud_url = if !bootstrap.cloud_url.is_empty() {
             bootstrap.cloud_url.clone()
@@ -80,7 +84,10 @@ impl Supervisor {
             env_var("POLLEN_CLOUD_URL", "https://127.0.0.1:43891")
         };
 
-        if !cloud_url.starts_with("https://") && !cloud_url.contains("127.0.0.1") && !cloud_url.contains("localhost") {
+        if !cloud_url.starts_with("https://")
+            && !cloud_url.contains("127.0.0.1")
+            && !cloud_url.contains("localhost")
+        {
             error!("Fatal: POLLEN_CLOUD_URL must be https:// (downgrade protection).");
             std::process::exit(1);
         }
@@ -92,7 +99,9 @@ impl Supervisor {
         // Keystore migration (fail-open to file). Pull overrides if it succeeded.
         let mut client_key_override: Option<Vec<u8>> = None;
         let mut pinned_key_override: Option<String> = None;
-        if cloud_url.starts_with("https://") && crate::keystore_migration::run_migration(&bootstrap, &cloud_url).await {
+        if cloud_url.starts_with("https://")
+            && crate::keystore_migration::run_migration(&bootstrap, &cloud_url).await
+        {
             let ks = dek_keystore::get_keystore();
             if let Ok(k) = ks.load_key("mtls_client_key") {
                 client_key_override = Some(k);
@@ -103,9 +112,14 @@ impl Supervisor {
                 }
             }
         }
-        let pinned_key =
-            pinned_key_override.clone().unwrap_or_else(|| bootstrap.pinned_bundle_public_key.clone());
-        tracing::info!("DEBUG BOOTSTRAP OVERRIDE: override={:?} -> final_pinned_key={}", pinned_key_override, pinned_key);
+        let pinned_key = pinned_key_override
+            .clone()
+            .unwrap_or_else(|| bootstrap.pinned_bundle_public_key.clone());
+        tracing::info!(
+            "DEBUG BOOTSTRAP OVERRIDE: override={:?} -> final_pinned_key={}",
+            pinned_key_override,
+            pinned_key
+        );
 
         let tenant_id = bootstrap.tenant_id.as_deref().unwrap_or("unknown_tenant");
         let bundle_agent = Arc::new(BundleSyncAgent::new(
@@ -218,8 +232,9 @@ impl Supervisor {
             .tenant_id
             .clone()
             .unwrap_or_else(|| "unknown_tenant".to_string());
-        
-        let (health_tx, health_rx) = tokio::sync::watch::channel(crate::svid_renewal_failclosed::IdentityHealth::Healthy);
+
+        let (health_tx, health_rx) =
+            tokio::sync::watch::channel(crate::svid_renewal_failclosed::IdentityHealth::Healthy);
 
         let syncer = PolicySyncer::new(
             self.bundle_agent.clone(),
@@ -236,8 +251,14 @@ impl Supervisor {
         let enforcement_ref = syncer.enforcement();
         let telemetry_for_api = Some(self.telemetry_sink.clone());
         tokio::spawn(async move {
-            if let Err(e) =
-                crate::api::start_sidecar_api(snapshot_ref, enforcement_ref, telemetry_for_api, health_rx, 43890).await
+            if let Err(e) = crate::api::start_sidecar_api(
+                snapshot_ref,
+                enforcement_ref,
+                telemetry_for_api,
+                health_rx,
+                43890,
+            )
+            .await
             {
                 error!("Sidecar API failed: {}", e);
             }

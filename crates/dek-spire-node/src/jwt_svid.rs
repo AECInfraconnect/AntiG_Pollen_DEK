@@ -13,8 +13,6 @@ pub struct JwtSvidCache {
     cache: Arc<RwLock<HashMap<String, (String, i64)>>>,
 }
 
-
-
 impl JwtSvidCache {
     pub fn new(client: Arc<RwLock<Client>>, endpoint: String) -> Self {
         Self {
@@ -53,18 +51,21 @@ impl JwtSvidCache {
 
         // Slow path: Fetch new JWT
         let new_jwt = self.fetch_from_spire(audience).await?;
-        
+
         // Parse expiry from the token payload to cache it
         let exp = Self::parse_exp(&new_jwt)?;
 
-        self.cache.write().await.insert(audience.to_string(), (new_jwt.clone(), exp));
+        self.cache
+            .write()
+            .await
+            .insert(audience.to_string(), (new_jwt.clone(), exp));
 
         Ok(new_jwt)
     }
 
     async fn fetch_from_spire(&self, audience: &str) -> Result<String> {
         let client = self.client.read().await.clone();
-        
+
         let body = serde_json::json!({
             "audience": [audience]
         });
@@ -79,7 +80,11 @@ impl JwtSvidCache {
         if !resp.status().is_success() {
             let status = resp.status();
             let err_text = resp.text().await.unwrap_or_default();
-            return Err(anyhow::anyhow!("SPIRE JWT SVID fetch failed: {} - {}", status, err_text));
+            return Err(anyhow::anyhow!(
+                "SPIRE JWT SVID fetch failed: {} - {}",
+                status,
+                err_text
+            ));
         }
 
         #[derive(serde::Deserialize)]
@@ -96,16 +101,18 @@ impl JwtSvidCache {
         if parts.len() != 3 {
             return Err(anyhow::anyhow!("Invalid JWT format"));
         }
-        
+
         let payload_b64 = parts[1];
         // Standard or URL-safe base64 depending on JWT issuer
-        let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(payload_b64)
+        let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(payload_b64)
             .or_else(|_| base64::engine::general_purpose::STANDARD.decode(payload_b64))
             .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(payload_b64))
             .context("base64 decode jwt payload")?;
 
-        let payload: serde_json::Value = serde_json::from_slice(&decoded).context("parse jwt json")?;
-        
+        let payload: serde_json::Value =
+            serde_json::from_slice(&decoded).context("parse jwt json")?;
+
         if let Some(exp) = payload.get("exp").and_then(|v| v.as_i64()) {
             Ok(exp)
         } else {

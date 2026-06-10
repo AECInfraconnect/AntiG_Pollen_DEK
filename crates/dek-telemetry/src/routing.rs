@@ -82,7 +82,10 @@ mod tests {
             "/v1/telemetry/ebpf-events"
         );
         assert_eq!(endpoint_for(&json!({"event_type":"metric"})), "/v1/metrics");
-        assert_eq!(endpoint_for(&json!({"event_type":"runtime_metric"})), "/v1/metrics");
+        assert_eq!(
+            endpoint_for(&json!({"event_type":"runtime_metric"})),
+            "/v1/metrics"
+        );
         // unknown / audit -> generic events
         assert_eq!(
             endpoint_for(&json!({"event_type":"os_lifecycle"})),

@@ -37,12 +37,19 @@ pub fn load_or_bootstrap(pinned_b64: &str) -> TrustedKeySet {
     if let Ok(bytes) = std::fs::read(&path) {
         if let Ok(set) = serde_json::from_slice::<TrustedKeySet>(&bytes) {
             if !set.keys.is_empty() {
-                tracing::info!("DEBUG KEYMGR: Loaded TrustedKeySet from {}: {:?}", path.display(), set.keys.get(0).map(|k| &k.public_b64));
+                tracing::info!(
+                    "DEBUG KEYMGR: Loaded TrustedKeySet from {}: {:?}",
+                    path.display(),
+                    set.keys.get(0).map(|k| &k.public_b64)
+                );
                 return set;
             }
         }
     }
-    tracing::info!("DEBUG KEYMGR: Bootstrapping from single pinned key: {}", pinned_b64);
+    tracing::info!(
+        "DEBUG KEYMGR: Bootstrapping from single pinned key: {}",
+        pinned_b64
+    );
     TrustedKeySet::from_single_pinned(pinned_b64)
 }
 

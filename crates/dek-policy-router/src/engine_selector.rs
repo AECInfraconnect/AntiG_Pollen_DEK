@@ -77,7 +77,11 @@ impl EngineSelector {
     }
 
     /// Convenience: infer + select in one call.
-    pub fn resolve(method: &str, payload: &serde_json::Value, available: &[String]) -> Option<String> {
+    pub fn resolve(
+        method: &str,
+        payload: &serde_json::Value,
+        available: &[String],
+    ) -> Option<String> {
         Self::select(Self::infer_kind(method, payload), available)
     }
 }
@@ -106,7 +110,10 @@ mod tests {
     #[test]
     fn infer_relationship() {
         assert_eq!(
-            EngineSelector::infer_kind("check", &json!({"relation": "viewer", "object": "doc:1", "subject": "user:a"})),
+            EngineSelector::infer_kind(
+                "check",
+                &json!({"relation": "viewer", "object": "doc:1", "subject": "user:a"})
+            ),
             DecisionKind::Relationship
         );
     }
@@ -127,7 +134,10 @@ mod tests {
     fn select_respects_availability() {
         // prefers cedar for authz, but if only opa is built, pick opa
         assert_eq!(
-            EngineSelector::select(DecisionKind::Authorization, &avail(&["opa_wasm", "openfga"])),
+            EngineSelector::select(
+                DecisionKind::Authorization,
+                &avail(&["opa_wasm", "openfga"])
+            ),
             Some("opa_wasm".to_string())
         );
         // relationship prefers openfga
@@ -136,7 +146,10 @@ mod tests {
             Some("openfga".to_string())
         );
         // nothing available -> None (caller fail-closed)
-        assert_eq!(EngineSelector::select(DecisionKind::Authorization, &avail(&[])), None);
+        assert_eq!(
+            EngineSelector::select(DecisionKind::Authorization, &avail(&[])),
+            None
+        );
     }
 
     #[test]

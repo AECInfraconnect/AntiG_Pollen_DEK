@@ -98,7 +98,10 @@ pub struct PolicyRouter {
 }
 
 impl PolicyRouter {
-    pub fn new(adapters: HashMap<String, Box<dyn PolicyAdapter>>, routes: Vec<PolicyRoute>) -> Self {
+    pub fn new(
+        adapters: HashMap<String, Box<dyn PolicyAdapter>>,
+        routes: Vec<PolicyRoute>,
+    ) -> Self {
         Self { adapters, routes }
     }
 
@@ -125,7 +128,10 @@ impl PolicyRouter {
             trace_id: request.trace_id.clone(),
             decision: final_decision,
             reason: final_reason,
-            matched_policy_ids: adapter_results.iter().map(|r| r.adapter_id.clone()).collect(),
+            matched_policy_ids: adapter_results
+                .iter()
+                .map(|r| r.adapter_id.clone())
+                .collect(),
             matched_route_id,
             adapter_results,
             obligations: vec![],

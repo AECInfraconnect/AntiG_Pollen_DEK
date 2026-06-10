@@ -1,6 +1,6 @@
-use std::io::{self, Read, Write};
-use serde_json::Value;
 use regex::Regex;
+use serde_json::Value;
+use std::io::{self, Read, Write};
 
 #[link(wasm_import_module = "pollen_env")]
 extern "C" {
@@ -28,15 +28,17 @@ fn redact_value(v: &mut Value, email_re: &Regex, ssn_re: &Regex) {
     match v {
         Value::String(s) => {
             let mut result = s.clone();
-            result = email_re.replace_all(&result, "[REDACTED_EMAIL]").to_string();
+            result = email_re
+                .replace_all(&result, "[REDACTED_EMAIL]")
+                .to_string();
             result = ssn_re.replace_all(&result, "[REDACTED_SSN]").to_string();
-            
+
             // Try NER Redaction via host function
             // We use a small heuristic to avoid calling NER on short/empty strings
             if result.len() > 3 {
                 result = do_ner_redaction(&result);
             }
-            
+
             *s = result;
         }
         Value::Array(arr) => {
@@ -62,9 +64,9 @@ fn main() {
     if let Ok(mut json) = serde_json::from_str::<Value>(&input) {
         let email_re = Regex::new(r"(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}").unwrap();
         let ssn_re = Regex::new(r"\b\d{3}-\d{2}-\d{4}\b").unwrap();
-        
+
         redact_value(&mut json, &email_re, &ssn_re);
-        
+
         if let Ok(out) = serde_json::to_string(&json) {
             let _ = io::stdout().write_all(out.as_bytes());
         }

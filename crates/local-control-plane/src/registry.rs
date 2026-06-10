@@ -14,7 +14,10 @@ fn not_found() -> (StatusCode, Json<serde_json::Value>) {
 }
 
 fn internal_error(e: impl std::fmt::Display) -> (StatusCode, Json<serde_json::Value>) {
-    (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()})))
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(json!({"error": e.to_string()})),
+    )
 }
 
 pub fn router() -> Router<AppState> {
@@ -35,7 +38,9 @@ pub fn router() -> Router<AppState> {
         )
         .route(
             "/v1/tenants/:tenant_id/registry/blackbox-ai/:provider_id",
-            get(get_blackbox_ai).patch(patch_blackbox_ai).delete(delete_blackbox_ai),
+            get(get_blackbox_ai)
+                .patch(patch_blackbox_ai)
+                .delete(delete_blackbox_ai),
         )
         // MCP Servers
         .route(
@@ -44,7 +49,9 @@ pub fn router() -> Router<AppState> {
         )
         .route(
             "/v1/tenants/:tenant_id/registry/mcp-servers/:server_id",
-            get(get_mcp_server).patch(patch_mcp_server).delete(delete_mcp_server),
+            get(get_mcp_server)
+                .patch(patch_mcp_server)
+                .delete(delete_mcp_server),
         )
         // Tools
         .route(
@@ -62,7 +69,9 @@ pub fn router() -> Router<AppState> {
         )
         .route(
             "/v1/tenants/:tenant_id/registry/resources/:resource_id",
-            get(get_resource).patch(patch_resource).delete(delete_resource),
+            get(get_resource)
+                .patch(patch_resource)
+                .delete(delete_resource),
         )
         // Entities
         .route(
@@ -80,7 +89,9 @@ pub fn router() -> Router<AppState> {
         )
         .route(
             "/v1/tenants/:tenant_id/registry/relationships/:relationship_id",
-            get(get_relationship).patch(patch_relationship).delete(delete_relationship),
+            get(get_relationship)
+                .patch(patch_relationship)
+                .delete(delete_relationship),
         )
 }
 
@@ -136,7 +147,11 @@ async fn delete_agent(
     Path((tenant_id, agent_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    match state.registry_store.delete_agent(&tenant_id, &agent_id).await {
+    match state
+        .registry_store
+        .delete_agent(&tenant_id, &agent_id)
+        .await
+    {
         Ok(true) => (StatusCode::NO_CONTENT, Json(json!({}))),
         Ok(false) => not_found(),
         Err(e) => internal_error(e),
@@ -162,7 +177,11 @@ async fn create_blackbox_ai(
     Json(mut payload): Json<BlackboxAiProvider>,
 ) -> impl IntoResponse {
     payload.meta.tenant_id = tenant_id;
-    match state.registry_store.upsert_blackbox_ai(payload.clone()).await {
+    match state
+        .registry_store
+        .upsert_blackbox_ai(payload.clone())
+        .await
+    {
         Ok(item) => (StatusCode::CREATED, Json(json!(item))),
         Err(e) => internal_error(e),
     }
@@ -172,7 +191,11 @@ async fn get_blackbox_ai(
     Path((tenant_id, provider_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    match state.registry_store.get_blackbox_ai(&tenant_id, &provider_id).await {
+    match state
+        .registry_store
+        .get_blackbox_ai(&tenant_id, &provider_id)
+        .await
+    {
         Ok(Some(item)) => (StatusCode::OK, Json(json!(item))),
         Ok(None) => not_found(),
         Err(e) => internal_error(e),
@@ -185,7 +208,11 @@ async fn patch_blackbox_ai(
     Json(mut payload): Json<BlackboxAiProvider>,
 ) -> impl IntoResponse {
     payload.meta.tenant_id = tenant_id;
-    match state.registry_store.upsert_blackbox_ai(payload.clone()).await {
+    match state
+        .registry_store
+        .upsert_blackbox_ai(payload.clone())
+        .await
+    {
         Ok(item) => (StatusCode::OK, Json(json!(item))),
         Err(e) => internal_error(e),
     }
@@ -195,7 +222,11 @@ async fn delete_blackbox_ai(
     Path((tenant_id, provider_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    match state.registry_store.delete_blackbox_ai(&tenant_id, &provider_id).await {
+    match state
+        .registry_store
+        .delete_blackbox_ai(&tenant_id, &provider_id)
+        .await
+    {
         Ok(true) => (StatusCode::NO_CONTENT, Json(json!({}))),
         Ok(false) => not_found(),
         Err(e) => internal_error(e),
@@ -235,7 +266,11 @@ async fn get_mcp_server(
     Path((tenant_id, server_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    match state.registry_store.get_mcp_server(&tenant_id, &server_id).await {
+    match state
+        .registry_store
+        .get_mcp_server(&tenant_id, &server_id)
+        .await
+    {
         Ok(Some(item)) => (StatusCode::OK, Json(json!(item))),
         Ok(None) => not_found(),
         Err(e) => internal_error(e),
@@ -248,7 +283,11 @@ async fn patch_mcp_server(
     Json(mut payload): Json<McpServer>,
 ) -> impl IntoResponse {
     payload.meta.tenant_id = tenant_id;
-    match state.registry_store.upsert_mcp_server(payload.clone()).await {
+    match state
+        .registry_store
+        .upsert_mcp_server(payload.clone())
+        .await
+    {
         Ok(item) => (StatusCode::OK, Json(json!(item))),
         Err(e) => internal_error(e),
     }
@@ -258,7 +297,11 @@ async fn delete_mcp_server(
     Path((tenant_id, server_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    match state.registry_store.delete_mcp_server(&tenant_id, &server_id).await {
+    match state
+        .registry_store
+        .delete_mcp_server(&tenant_id, &server_id)
+        .await
+    {
         Ok(true) => (StatusCode::NO_CONTENT, Json(json!({}))),
         Ok(false) => not_found(),
         Err(e) => internal_error(e),
@@ -353,7 +396,11 @@ async fn get_resource(
     Path((tenant_id, resource_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    match state.registry_store.get_resource(&tenant_id, &resource_id).await {
+    match state
+        .registry_store
+        .get_resource(&tenant_id, &resource_id)
+        .await
+    {
         Ok(Some(item)) => (StatusCode::OK, Json(json!(item))),
         Ok(None) => not_found(),
         Err(e) => internal_error(e),
@@ -376,7 +423,11 @@ async fn delete_resource(
     Path((tenant_id, resource_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    match state.registry_store.delete_resource(&tenant_id, &resource_id).await {
+    match state
+        .registry_store
+        .delete_resource(&tenant_id, &resource_id)
+        .await
+    {
         Ok(true) => (StatusCode::NO_CONTENT, Json(json!({}))),
         Ok(false) => not_found(),
         Err(e) => internal_error(e),
@@ -412,7 +463,11 @@ async fn get_entity(
     Path((tenant_id, entity_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    match state.registry_store.get_entity(&tenant_id, &entity_id).await {
+    match state
+        .registry_store
+        .get_entity(&tenant_id, &entity_id)
+        .await
+    {
         Ok(Some(item)) => (StatusCode::OK, Json(json!(item))),
         Ok(None) => not_found(),
         Err(e) => internal_error(e),
@@ -435,7 +490,11 @@ async fn delete_entity(
     Path((tenant_id, entity_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    match state.registry_store.delete_entity(&tenant_id, &entity_id).await {
+    match state
+        .registry_store
+        .delete_entity(&tenant_id, &entity_id)
+        .await
+    {
         Ok(true) => (StatusCode::NO_CONTENT, Json(json!({}))),
         Ok(false) => not_found(),
         Err(e) => internal_error(e),
@@ -475,7 +534,11 @@ async fn get_relationship(
     Path((tenant_id, relationship_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    match state.registry_store.get_relationship(&tenant_id, &relationship_id).await {
+    match state
+        .registry_store
+        .get_relationship(&tenant_id, &relationship_id)
+        .await
+    {
         Ok(Some(item)) => (StatusCode::OK, Json(json!(item))),
         Ok(None) => not_found(),
         Err(e) => internal_error(e),
@@ -488,7 +551,11 @@ async fn patch_relationship(
     Json(mut payload): Json<Relationship>,
 ) -> impl IntoResponse {
     payload.meta.tenant_id = tenant_id;
-    match state.registry_store.upsert_relationship(payload.clone()).await {
+    match state
+        .registry_store
+        .upsert_relationship(payload.clone())
+        .await
+    {
         Ok(item) => (StatusCode::OK, Json(json!(item))),
         Err(e) => internal_error(e),
     }
@@ -498,7 +565,11 @@ async fn delete_relationship(
     Path((tenant_id, relationship_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    match state.registry_store.delete_relationship(&tenant_id, &relationship_id).await {
+    match state
+        .registry_store
+        .delete_relationship(&tenant_id, &relationship_id)
+        .await
+    {
         Ok(true) => (StatusCode::NO_CONTENT, Json(json!({}))),
         Ok(false) => not_found(),
         Err(e) => internal_error(e),

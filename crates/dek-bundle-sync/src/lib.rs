@@ -61,7 +61,10 @@ impl BundleSyncAgent {
         api_token: Option<String>,
     ) -> Result<Self> {
         let client = mtls.build_client(client_key_override)?;
-        tracing::info!("DEBUG BUNDLESYNC: new called with pinned_public_key: {}", pinned_public_key);
+        tracing::info!(
+            "DEBUG BUNDLESYNC: new called with pinned_public_key: {}",
+            pinned_public_key
+        );
         Ok(Self {
             cloud_url: cloud_url.to_string(),
             tenant_id: tenant_id.to_string(),
@@ -313,50 +316,73 @@ impl BundleSyncAgent {
         Ok((dek_config, bundle_path))
     }
 
-    async fn run_pipeline_local(&self, data_dir: std::path::PathBuf, client: reqwest::Client) -> Result<(DekConfig, std::path::PathBuf)> {
+    async fn run_pipeline_local(
+        &self,
+        data_dir: std::path::PathBuf,
+        client: reqwest::Client,
+    ) -> Result<(DekConfig, std::path::PathBuf)> {
         info!("[BundleSync] Local Mode detected, fetching manifest directly...");
-        let manifest_url = format!("{}/v1/tenants/{}/devices/{}/bundles/manifest", self.cloud_url, self.tenant_id, self.device_id);
-        
+        let manifest_url = format!(
+            "{}/v1/tenants/{}/devices/{}/bundles/manifest",
+            self.cloud_url, self.tenant_id, self.device_id
+        );
+
         let res = self.get(&client, &manifest_url).send().await?;
         if !res.status().is_success() {
-            return Err(anyhow::anyhow!("Manifest fetch failed: HTTP {}", res.status()));
+            return Err(anyhow::anyhow!(
+                "Manifest fetch failed: HTTP {}",
+                res.status()
+            ));
         }
         let manifest_val: serde_json::Value = res.json().await?;
-        
+
         // Deserialize back and forth to get the canonical bytes for verification
         use dek_control_plane_api::bundle::PollenPolicyBundleManifestV2;
-        let mut manifest: PollenPolicyBundleManifestV2 = serde_json::from_value(manifest_val.clone())?;
-        
+        let mut manifest: PollenPolicyBundleManifestV2 =
+            serde_json::from_value(manifest_val.clone())?;
+
         // The signatures to verify
-        let sigs_for_verify: Vec<crate::keys::SignatureEntry> = manifest.signatures.iter().map(|s| {
-            crate::keys::SignatureEntry {
-                key_id: None, // Force check against all pinned keys (bootstrap)
-                sig_b64: s.payload.clone(),
-            }
-        }).collect();
+        let sigs_for_verify: Vec<crate::keys::SignatureEntry> = manifest
+            .signatures
+            .iter()
+            .map(|s| {
+                crate::keys::SignatureEntry {
+                    key_id: None, // Force check against all pinned keys (bootstrap)
+                    sig_b64: s.payload.clone(),
+                }
+            })
+            .collect();
         tracing::info!("Found {} signatures in manifest", sigs_for_verify.len());
-        
+
         // Zero out signatures to match local-control-plane canonical form
         manifest.signatures.clear();
         let signed_bytes = serde_json::to_vec(&manifest)?;
         use sha2::Digest;
         let sha = hex::encode(sha2::Sha256::digest(&signed_bytes));
         tracing::info!("SYNC signed bytes SHA256: {}", sha);
-        
-        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
         let key_set = self.key_set.load();
-        
+
         // In Local Mode, the key_id in the signature is the signer's public key fingerprint (e.g. sig-xxx),
         // but the TrustedKeySet from single pinned key has key_id = "bootstrap".
         // We already set key_id = None when creating sigs_for_verify above.
-        
+
         match key_set.verify(now, &signed_bytes, &sigs_for_verify) {
             crate::keys::VerifyOutcome::Valid { key_id } => {
                 tracing::debug!("[BundleSync] Manifest verified by key '{}'", key_id);
             }
-            outcome => return Err(anyhow::anyhow!("Local Manifest signature rejected: {:?}", outcome)),
+            outcome => {
+                return Err(anyhow::anyhow!(
+                    "Local Manifest signature rejected: {:?}",
+                    outcome
+                ))
+            }
         }
-        
+
         let target_dir = data_dir.join("state").join("bundles");
         let bundle_version = format!("{}", manifest.build_number);
         let bundle_dir = target_dir.join(format!("bundle_{}", bundle_version));
@@ -364,11 +390,14 @@ impl BundleSyncAgent {
         std::fs::create_dir_all(&staging_dir)?;
 
         let mut merged_payload = json!({});
-        
+
         // Download artifacts
         for artifact in &manifest.artifacts {
             let hash = &artifact.sha256;
-            let url = format!("{}/v1/tenants/{}/devices/{}/bundles/artifacts/{}", self.cloud_url, self.tenant_id, self.device_id, hash);
+            let url = format!(
+                "{}/v1/tenants/{}/devices/{}/bundles/artifacts/{}",
+                self.cloud_url, self.tenant_id, self.device_id, hash
+            );
             let res = self.get(&client, &url).send().await?;
             if !res.status().is_success() {
                 return Err(anyhow::anyhow!("Artifact fetch failed for hash {}", hash));
@@ -378,7 +407,12 @@ impl BundleSyncAgent {
             // VERIFY SHA256
             let computed_sha = hex::encode(sha2::Sha256::digest(&bytes));
             if computed_sha != *hash {
-                return Err(anyhow::anyhow!("Artifact SHA256 mismatch for {}, expected {}, got {}", artifact.artifact_id, hash, computed_sha));
+                return Err(anyhow::anyhow!(
+                    "Artifact SHA256 mismatch for {}, expected {}, got {}",
+                    artifact.artifact_id,
+                    hash,
+                    computed_sha
+                ));
             }
 
             // STAGE ARTIFACT
@@ -387,7 +421,7 @@ impl BundleSyncAgent {
             std::fs::write(&artifact_path, &bytes)?;
 
             let filename = &artifact.artifact_id;
-            
+
             if filename.ends_with(".json") {
                 if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&bytes) {
                     if let Some(obj) = val.as_object() {
@@ -400,19 +434,25 @@ impl BundleSyncAgent {
                 }
             }
         }
-        
+
         // Fetch config
-        let config_url = format!("{}/v1/tenants/{}/devices/{}/config", self.cloud_url, self.tenant_id, self.device_id);
+        let config_url = format!(
+            "{}/v1/tenants/{}/devices/{}/config",
+            self.cloud_url, self.tenant_id, self.device_id
+        );
         let res = self.get(&client, &config_url).send().await?;
         let dek_config: DekConfig = res.json().await.context("Failed to parse DekConfig")?;
-        
+
         let mut config_val = json!({});
         if let Some(policy_config) = &dek_config.policy_config {
             config_val = serde_json::to_value(policy_config)?;
         }
-        
-        let final_merged = merge_safe(vec![(PrecedenceLevel::Tenant, config_val), (PrecedenceLevel::DeviceGroup, merged_payload)])?;
-        
+
+        let final_merged = merge_safe(vec![
+            (PrecedenceLevel::Tenant, config_val),
+            (PrecedenceLevel::DeviceGroup, merged_payload),
+        ])?;
+
         let payload_string = serde_json::to_string_pretty(&final_merged)?;
         let staging_manifest_path = staging_dir.join("manifest.json");
         std::fs::write(&staging_manifest_path, &payload_string)?;
@@ -425,8 +465,11 @@ impl BundleSyncAgent {
         }
 
         let bundle_path = bundle_dir.join("manifest.json");
-        
-        info!("[BundleSync] State: Staged combined config at {:?}", bundle_path);
+
+        info!(
+            "[BundleSync] State: Staged combined config at {:?}",
+            bundle_path
+        );
         Ok((dek_config, bundle_path))
     }
 

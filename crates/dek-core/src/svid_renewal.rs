@@ -92,7 +92,7 @@ pub fn spawn_svid_renewal_task(
                     let new_remaining = (remaining_secs - slept).max(0);
                     let health = crate::svid_renewal_failclosed::classify(new_remaining, false);
                     let _ = health_tx.send(health);
-                    
+
                     tokio::select! {
                         _ = cancel.cancelled() => break,
                         _ = tokio::time::sleep(RETRY_BACKOFF) => {}

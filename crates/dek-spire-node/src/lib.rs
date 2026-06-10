@@ -24,7 +24,9 @@ use tracing::{info, warn};
 pub mod jwt_svid;
 pub mod trust_bundle;
 
-pub use trust_bundle::{TrustBundleResponse, fetch_trust_bundle, install_root, spawn_trust_bundle_poller};
+pub use trust_bundle::{
+    fetch_trust_bundle, install_root, spawn_trust_bundle_poller, TrustBundleResponse,
+};
 
 // ----------------------------- existing path -------------------------------
 
@@ -197,8 +199,6 @@ pub async fn renew_svid(
         trust_bundle_pem: resp.trust_bundle_pem.unwrap_or_default(),
     })
 }
-
-
 
 /// Generate a keypair and a PKCS#10 CSR (empty SANs — the SPIRE server assigns
 /// the SPIFFE URI SAN at signing time).

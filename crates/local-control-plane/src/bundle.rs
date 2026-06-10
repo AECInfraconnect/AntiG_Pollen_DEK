@@ -2,9 +2,11 @@
 //! bundle.rs — build signed policy bundles in the SAME format as Pollen Cloud
 
 use anyhow::{Context, Result};
-use dek_control_plane_api::bundle::{BundleArtifactV2, BundleSignature, PollenPolicyBundleManifestV2, ActivationStrategy};
-use sha2::{Digest, Sha256};
+use dek_control_plane_api::bundle::{
+    ActivationStrategy, BundleArtifactV2, BundleSignature, PollenPolicyBundleManifestV2,
+};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 
 use crate::signing::LocalSigner;
 
@@ -51,7 +53,7 @@ pub async fn build_signed_bundle(
         let sha = hex::encode(sha2::Sha256::digest(&ca.bytes));
         let blob_path = format!("artifacts/{}", sha);
         blobs.push((blob_path.clone(), ca.bytes.clone()));
-        
+
         artifacts.push(BundleArtifactV2 {
             artifact_id: ca.artifact_id,
             adapter_id: ca.adapter_id,
@@ -88,14 +90,17 @@ pub async fn build_signed_bundle(
 
     manifest.signatures.clear(); // Ensure empty for signing
     let signed_bytes = serde_json::to_vec(&manifest).unwrap();
-    
+
     use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
     hasher.update(&signed_bytes);
     let hash_bytes = hasher.finalize();
-    let hash_hex = hash_bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+    let hash_hex = hash_bytes
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>();
     tracing::info!("LCP signed bytes SHA256: {}", hash_hex);
-    
+
     let sig_b64 = signer.sign_b64(&signed_bytes);
 
     manifest.signatures.push(BundleSignature {
@@ -112,18 +117,30 @@ pub fn verify_bundle(manifest: &PollenPolicyBundleManifestV2, public_b64: &str) 
     let mut copy = manifest.clone();
     let sigs = copy.signatures.clone();
     copy.signatures.clear();
-    let Ok(signed_bytes) = serde_json::to_vec(&copy) else { return false };
-    
-    use ed25519_dalek::{VerifyingKey, Signature, Verifier};
+    let Ok(signed_bytes) = serde_json::to_vec(&copy) else {
+        return false;
+    };
+
     use base64::Engine;
-    
-    let Ok(pk_bytes) = base64::prelude::BASE64_STANDARD.decode(public_b64) else { return false };
-    let Ok(arr): Result<[u8; 32], _> = pk_bytes.try_into() else { return false };
-    let Ok(vk) = VerifyingKey::from_bytes(&arr) else { return false };
-    
+    use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+
+    let Ok(pk_bytes) = base64::prelude::BASE64_STANDARD.decode(public_b64) else {
+        return false;
+    };
+    let Ok(arr): Result<[u8; 32], _> = pk_bytes.try_into() else {
+        return false;
+    };
+    let Ok(vk) = VerifyingKey::from_bytes(&arr) else {
+        return false;
+    };
+
     for s in sigs {
-        let Ok(sig_bytes) = base64::prelude::BASE64_STANDARD.decode(&s.payload) else { continue };
-        let Ok(sig_arr): Result<[u8; 64], _> = sig_bytes.try_into() else { continue };
+        let Ok(sig_bytes) = base64::prelude::BASE64_STANDARD.decode(&s.payload) else {
+            continue;
+        };
+        let Ok(sig_arr): Result<[u8; 64], _> = sig_bytes.try_into() else {
+            continue;
+        };
         let sig = Signature::from_bytes(&sig_arr);
         if vk.verify(&signed_bytes, &sig).is_ok() {
             return true;

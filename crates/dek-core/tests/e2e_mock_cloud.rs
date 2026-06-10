@@ -8,7 +8,7 @@ async fn test_mock_cloud_e2e() {
     // 4. Write fail-closed tests
     // 5. Write performance baseline tests
     // 6. Write telemetry redaction tests
-    
+
     let simulated_delay = Duration::from_millis(10);
     tokio::time::sleep(simulated_delay).await;
     assert!(true, "E2E mock cloud simulated flow passed");

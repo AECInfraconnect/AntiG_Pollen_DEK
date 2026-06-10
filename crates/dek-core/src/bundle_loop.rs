@@ -11,7 +11,7 @@
 use dek_bundle_sync::BundleSyncAgent;
 use metrics::counter;
 use std::sync::Arc;
-use tokio::sync::{RwLock, Notify};
+use tokio::sync::{Notify, RwLock};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, timeout, Duration};
 use tokio_util::sync::CancellationToken;
@@ -27,48 +27,63 @@ pub fn spawn_bundle_sync_task(
     reload_coordinator: Arc<crate::reload_coordinator::ReloadCoordinator>,
 ) -> JoinHandle<()> {
     let sse_notify = Arc::new(Notify::new());
-    
+
     // Spawn SSE listener task
     let sse_sync_agent = sync_agent.clone();
     let sse_client = metrics_client.clone();
     let sse_token = cancel_token.clone();
     let sse_notifier = sse_notify.clone();
-    
-    tokio::spawn(async move {
-        loop {
-            if sse_token.is_cancelled() { break; }
-            
-            let url = format!("{}/v1/push", sse_sync_agent.cloud_url);
-            let client = sse_client.read().await.clone();
-            
-            match client.get(&url).header("Accept", "text/event-stream").send().await {
-                Ok(mut res) => {
-                    if res.status().is_success() {
-                        info!("Connected to SSE endpoint: {}", url);
-                        while let Ok(Some(chunk)) = res.chunk().await {
-                            if sse_token.is_cancelled() { break; }
-                            if let Ok(text) = std::str::from_utf8(&chunk) {
-                                if text.contains("data:") || text.contains("event:") {
-                                    info!("SSE Push received, triggering bundle sync...");
-                                    sse_notifier.notify_one();
+
+    tokio::spawn(
+        async move {
+            loop {
+                if sse_token.is_cancelled() {
+                    break;
+                }
+
+                let url = format!("{}/v1/push", sse_sync_agent.cloud_url);
+                let client = sse_client.read().await.clone();
+
+                match client
+                    .get(&url)
+                    .header("Accept", "text/event-stream")
+                    .send()
+                    .await
+                {
+                    Ok(mut res) => {
+                        if res.status().is_success() {
+                            info!("Connected to SSE endpoint: {}", url);
+                            while let Ok(Some(chunk)) = res.chunk().await {
+                                if sse_token.is_cancelled() {
+                                    break;
+                                }
+                                if let Ok(text) = std::str::from_utf8(&chunk) {
+                                    if text.contains("data:") || text.contains("event:") {
+                                        info!("SSE Push received, triggering bundle sync...");
+                                        sse_notifier.notify_one();
+                                    }
                                 }
                             }
+                        } else {
+                            warn!(
+                                "SSE connection failed with status {}. Retrying in 10s...",
+                                res.status()
+                            );
                         }
-                    } else {
-                        warn!("SSE connection failed with status {}. Retrying in 10s...", res.status());
+                    }
+                    Err(e) => {
+                        warn!("SSE request error: {}. Retrying in 10s...", e);
                     }
                 }
-                Err(e) => {
-                    warn!("SSE request error: {}. Retrying in 10s...", e);
+
+                tokio::select! {
+                    _ = sleep(Duration::from_secs(10)) => {}
+                    _ = sse_token.cancelled() => break,
                 }
             }
-            
-            tokio::select! {
-                _ = sleep(Duration::from_secs(10)) => {}
-                _ = sse_token.cancelled() => break,
-            }
         }
-    }.instrument(tracing::info_span!("sse_listener")));
+        .instrument(tracing::info_span!("sse_listener")),
+    );
 
     tokio::spawn(
         async move {

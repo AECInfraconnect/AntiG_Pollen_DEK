@@ -42,7 +42,11 @@ async fn e2e_register_agent_tool_resource_entity() {
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), 201, "Expected 201 Created for agent registration");
+    assert_eq!(
+        res.status(),
+        201,
+        "Expected 201 Created for agent registration"
+    );
 
     let list = client
         .get(format!("{base}/v1/tenants/local/registry/agents"))
@@ -53,5 +57,11 @@ async fn e2e_register_agent_tool_resource_entity() {
         .await
         .unwrap();
 
-    assert!(list.as_array().unwrap().iter().any(|a| a["agent_id"] == "agent-e2e"), "Agent not found in list");
+    assert!(
+        list.as_array()
+            .unwrap()
+            .iter()
+            .any(|a| a["agent_id"] == "agent-e2e"),
+        "Agent not found in list"
+    );
 }

@@ -79,7 +79,10 @@ impl PolicySyncer {
         pinned_b64: String,
         api_token: Option<String>,
     ) -> Arc<Self> {
-        tracing::info!("DEBUG SYNCR: PolicySyncer::new called with pinned_b64: {}", pinned_b64);
+        tracing::info!(
+            "DEBUG SYNCR: PolicySyncer::new called with pinned_b64: {}",
+            pinned_b64
+        );
         let audit = AuditTrail::new(telemetry.clone(), device_id.clone(), tenant_id.clone());
         let set = keymgr::load_or_bootstrap(&pinned_b64);
         bundle_agent.update_keys(set);
@@ -323,15 +326,12 @@ impl PolicySyncer {
                     break;
                 }
 
-                let mut req = client
-                    .get(&push_url)
-                    .header("Accept", "text/event-stream");
+                let mut req = client.get(&push_url).header("Accept", "text/event-stream");
                 if let Some(token) = &s3.api_token {
                     req = req.header("Authorization", format!("Bearer {}", token));
                 }
 
-                match req.send().await
-                {
+                match req.send().await {
                     Ok(mut resp) if resp.status().is_success() => {
                         info!(
                             "[PolicySyncer] Connected to auto-sync push stream at {}",

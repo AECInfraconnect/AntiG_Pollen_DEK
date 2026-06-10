@@ -15,7 +15,10 @@ fn not_found() -> (StatusCode, Json<serde_json::Value>) {
 }
 
 fn internal_error(e: impl std::fmt::Display) -> (StatusCode, Json<serde_json::Value>) {
-    (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()})))
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(json!({"error": e.to_string()})),
+    )
 }
 
 pub fn router() -> Router<AppState> {
@@ -91,7 +94,11 @@ async fn delete_policy(
     Path((tenant_id, policy_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    match state.policy_store.delete_policy(&tenant_id, &policy_id).await {
+    match state
+        .policy_store
+        .delete_policy(&tenant_id, &policy_id)
+        .await
+    {
         Ok(true) => (StatusCode::NO_CONTENT, Json(json!({}))),
         Ok(false) => not_found(),
         Err(e) => internal_error(e),
@@ -103,7 +110,9 @@ async fn publish_policy(
     State(st): State<AppState>,
     Json(draft): Json<PolicyDraft>,
 ) -> impl IntoResponse {
-    let build_number = st.build_number.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    let build_number = st
+        .build_number
+        .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
     // 1. "Compile" draft into compiled artifacts
     let mut compiled = vec![];
@@ -124,7 +133,11 @@ async fn publish_policy(
     }
 
     // 2. Snapshot registry
-    let agents = st.registry_store.list_agents(&tenant).await.unwrap_or_default();
+    let agents = st
+        .registry_store
+        .list_agents(&tenant)
+        .await
+        .unwrap_or_default();
     let registry_snap = serde_json::json!({ "agents": agents });
 
     // 3. Build & Sign Bundle
@@ -152,17 +165,23 @@ async fn publish_policy(
         .await
         .unwrap();
     for (path, bytes) in built.blobs {
-        st.policy_store.put_blob(&tenant, &path, &bytes).await.unwrap();
+        st.policy_store
+            .put_blob(&tenant, &path, &bytes)
+            .await
+            .unwrap();
     }
 
     // 5. Broadcast to SSE for hot-reload
     let _ = st.bundle_tx.send(built.manifest.bundle_id.clone());
 
-    (StatusCode::OK, Json(json!({
-        "published": true,
-        "bundle_id": built.manifest.bundle_id,
-        "manifest": built.manifest
-    })))
+    (
+        StatusCode::OK,
+        Json(json!({
+            "published": true,
+            "bundle_id": built.manifest.bundle_id,
+            "manifest": built.manifest
+        })),
+    )
 }
 
 async fn validate_policy(
@@ -193,4 +212,3 @@ async fn simulate_policy(
         })),
     )
 }
-

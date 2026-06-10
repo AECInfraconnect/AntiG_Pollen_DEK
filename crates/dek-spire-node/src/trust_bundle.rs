@@ -33,12 +33,26 @@ fn default_refresh() -> u64 {
 }
 
 /// Fetch the trust bundle once (mTLS-authenticated client supplied by caller).
-pub async fn fetch_trust_bundle(client: &reqwest::Client, base_url: &str) -> Result<TrustBundleResponse> {
+pub async fn fetch_trust_bundle(
+    client: &reqwest::Client,
+    base_url: &str,
+) -> Result<TrustBundleResponse> {
     let url = format!("{}/v1/trust-bundle", base_url.trim_end_matches('/'));
-    let res = client.get(&url).send().await.context("request trust bundle")?;
-    anyhow::ensure!(res.status().is_success(), "trust-bundle fetch failed: {}", res.status());
+    let res = client
+        .get(&url)
+        .send()
+        .await
+        .context("request trust bundle")?;
+    anyhow::ensure!(
+        res.status().is_success(),
+        "trust-bundle fetch failed: {}",
+        res.status()
+    );
     let tb: TrustBundleResponse = res.json().await.context("parse trust bundle")?;
-    anyhow::ensure!(!tb.trust_bundle_pem.trim().is_empty(), "trust bundle PEM is empty");
+    anyhow::ensure!(
+        !tb.trust_bundle_pem.trim().is_empty(),
+        "trust bundle PEM is empty"
+    );
     Ok(tb)
 }
 
@@ -89,7 +103,10 @@ pub fn spawn_trust_bundle_poller(
                     Duration::from_secs(tb.refresh_hint.max(60))
                 }
                 Err(e) => {
-                    error!("trust bundle refresh failed: {e}; keeping LKG, retry in {:?}", backoff);
+                    error!(
+                        "trust bundle refresh failed: {e}; keeping LKG, retry in {:?}",
+                        backoff
+                    );
                     let b = backoff;
                     backoff = (backoff * 2).min(Duration::from_secs(600));
                     b
@@ -113,10 +130,17 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("root.crt").to_string_lossy().to_string();
 
-        let tb1 = TrustBundleResponse { trust_bundle_pem: "AAA".into(), jwt_authorities: vec![], refresh_hint: 3600 };
+        let tb1 = TrustBundleResponse {
+            trust_bundle_pem: "AAA".into(),
+            jwt_authorities: vec![],
+            refresh_hint: 3600,
+        };
         assert!(install_root(&tb1, &p).unwrap(), "first = changed");
         assert!(!install_root(&tb1, &p).unwrap(), "same = no change");
-        let tb2 = TrustBundleResponse { trust_bundle_pem: "BBB".into(), ..tb1 };
+        let tb2 = TrustBundleResponse {
+            trust_bundle_pem: "BBB".into(),
+            ..tb1
+        };
         assert!(install_root(&tb2, &p).unwrap(), "new root = changed");
         let _ = std::fs::remove_dir_all(&dir);
     }
