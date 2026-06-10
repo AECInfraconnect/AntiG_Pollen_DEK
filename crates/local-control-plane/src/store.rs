@@ -8,21 +8,46 @@ pub trait RegistryStore: Send + Sync {
     async fn upsert_agent(&self, agent: AiAgent) -> Result<AiAgent>;
     async fn get_agent(&self, tenant_id: &str, agent_id: &str) -> Result<Option<AiAgent>>;
     async fn list_agents(&self, tenant_id: &str) -> Result<Vec<AiAgent>>;
+    async fn delete_agent(&self, tenant_id: &str, agent_id: &str) -> Result<bool>;
+
+    async fn upsert_blackbox_ai(&self, provider: BlackboxAiProvider) -> Result<BlackboxAiProvider>;
+    async fn get_blackbox_ai(&self, tenant_id: &str, provider_id: &str) -> Result<Option<BlackboxAiProvider>>;
+    async fn list_blackbox_ai(&self, tenant_id: &str) -> Result<Vec<BlackboxAiProvider>>;
+    async fn delete_blackbox_ai(&self, tenant_id: &str, provider_id: &str) -> Result<bool>;
 
     async fn upsert_entity(&self, entity: Entity) -> Result<Entity>;
+    async fn get_entity(&self, tenant_id: &str, entity_id: &str) -> Result<Option<Entity>>;
     async fn list_entities(&self, tenant_id: &str) -> Result<Vec<Entity>>;
+    async fn delete_entity(&self, tenant_id: &str, entity_id: &str) -> Result<bool>;
 
     async fn upsert_resource(&self, resource: Resource) -> Result<Resource>;
+    async fn get_resource(&self, tenant_id: &str, resource_id: &str) -> Result<Option<Resource>>;
     async fn list_resources(&self, tenant_id: &str) -> Result<Vec<Resource>>;
+    async fn delete_resource(&self, tenant_id: &str, resource_id: &str) -> Result<bool>;
 
     async fn upsert_tool(&self, tool: Tool) -> Result<Tool>;
+    async fn get_tool(&self, tenant_id: &str, tool_id: &str) -> Result<Option<Tool>>;
     async fn list_tools(&self, tenant_id: &str) -> Result<Vec<Tool>>;
+    async fn delete_tool(&self, tenant_id: &str, tool_id: &str) -> Result<bool>;
 
     async fn upsert_mcp_server(&self, server: McpServer) -> Result<McpServer>;
+    async fn get_mcp_server(&self, tenant_id: &str, server_id: &str) -> Result<Option<McpServer>>;
     async fn list_mcp_servers(&self, tenant_id: &str) -> Result<Vec<McpServer>>;
+    async fn delete_mcp_server(&self, tenant_id: &str, server_id: &str) -> Result<bool>;
 
     async fn upsert_relationship(&self, relationship: Relationship) -> Result<Relationship>;
+    async fn get_relationship(&self, tenant_id: &str, relationship_id: &str) -> Result<Option<Relationship>>;
     async fn list_relationships(&self, tenant_id: &str) -> Result<Vec<Relationship>>;
+    async fn delete_relationship(&self, tenant_id: &str, relationship_id: &str) -> Result<bool>;
+}
+
+#[async_trait::async_trait]
+pub trait PolicyStore: Send + Sync {
+    async fn upsert_policy(&self, policy: dek_control_plane_api::policy::PolicyDraft) -> Result<dek_control_plane_api::policy::PolicyDraft>;
+    async fn get_policy(&self, tenant_id: &str, policy_id: &str) -> Result<Option<dek_control_plane_api::policy::PolicyDraft>>;
+    async fn list_policies(&self, tenant_id: &str) -> Result<Vec<dek_control_plane_api::policy::PolicyDraft>>;
+    async fn delete_policy(&self, tenant_id: &str, policy_id: &str) -> Result<bool>;
+    async fn put_policy_status(&self, tenant_id: &str, policy_id: &str, status: dek_control_plane_api::policy::PolicyLifecycleStatus) -> Result<()>;
 
     async fn upsert_policy_raw(&self, tenant: &str, id: &str, data: &serde_json::Value) -> Result<()>;
     async fn get_policy_raw(&self, tenant: &str, id: &str) -> Result<Option<serde_json::Value>>;
@@ -126,6 +151,24 @@ impl SqliteStore {
         }
         Ok(results)
     }
+
+    async fn delete_object(
+        &self,
+        tenant_id: &str,
+        object_type: &str,
+        object_id: &str,
+    ) -> Result<bool> {
+        let result = sqlx::query(
+            "DELETE FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3",
+        )
+        .bind(tenant_id)
+        .bind(object_type)
+        .bind(object_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
 }
 
 #[async_trait::async_trait]
@@ -157,6 +200,41 @@ impl RegistryStore for SqliteStore {
         self.list_objects(tenant_id, "agent").await
     }
 
+    async fn delete_agent(&self, tenant_id: &str, agent_id: &str) -> Result<bool> {
+        self.delete_object(tenant_id, "agent", agent_id).await
+    }
+
+    async fn upsert_blackbox_ai(&self, provider: BlackboxAiProvider) -> Result<BlackboxAiProvider> {
+        let status = serde_json::to_string(&provider.meta.status)
+            .unwrap()
+            .replace("\"", "");
+        let source = serde_json::to_string(&provider.meta.source)
+            .unwrap()
+            .replace("\"", "");
+        self.upsert_object(
+            &provider.meta.tenant_id,
+            "blackbox_ai",
+            &provider.provider_id,
+            &status,
+            &source,
+            &provider,
+        )
+        .await?;
+        Ok(provider)
+    }
+
+    async fn get_blackbox_ai(&self, tenant_id: &str, provider_id: &str) -> Result<Option<BlackboxAiProvider>> {
+        self.get_object(tenant_id, "blackbox_ai", provider_id).await
+    }
+
+    async fn list_blackbox_ai(&self, tenant_id: &str) -> Result<Vec<BlackboxAiProvider>> {
+        self.list_objects(tenant_id, "blackbox_ai").await
+    }
+
+    async fn delete_blackbox_ai(&self, tenant_id: &str, provider_id: &str) -> Result<bool> {
+        self.delete_object(tenant_id, "blackbox_ai", provider_id).await
+    }
+
     async fn upsert_entity(&self, entity: Entity) -> Result<Entity> {
         let status = serde_json::to_string(&entity.meta.status)
             .unwrap()
@@ -176,8 +254,16 @@ impl RegistryStore for SqliteStore {
         Ok(entity)
     }
 
+    async fn get_entity(&self, tenant_id: &str, entity_id: &str) -> Result<Option<Entity>> {
+        self.get_object(tenant_id, "entity", entity_id).await
+    }
+
     async fn list_entities(&self, tenant_id: &str) -> Result<Vec<Entity>> {
         self.list_objects(tenant_id, "entity").await
+    }
+
+    async fn delete_entity(&self, tenant_id: &str, entity_id: &str) -> Result<bool> {
+        self.delete_object(tenant_id, "entity", entity_id).await
     }
 
     async fn upsert_resource(&self, resource: Resource) -> Result<Resource> {
@@ -199,8 +285,16 @@ impl RegistryStore for SqliteStore {
         Ok(resource)
     }
 
+    async fn get_resource(&self, tenant_id: &str, resource_id: &str) -> Result<Option<Resource>> {
+        self.get_object(tenant_id, "resource", resource_id).await
+    }
+
     async fn list_resources(&self, tenant_id: &str) -> Result<Vec<Resource>> {
         self.list_objects(tenant_id, "resource").await
+    }
+
+    async fn delete_resource(&self, tenant_id: &str, resource_id: &str) -> Result<bool> {
+        self.delete_object(tenant_id, "resource", resource_id).await
     }
 
     async fn upsert_tool(&self, tool: Tool) -> Result<Tool> {
@@ -222,8 +316,16 @@ impl RegistryStore for SqliteStore {
         Ok(tool)
     }
 
+    async fn get_tool(&self, tenant_id: &str, tool_id: &str) -> Result<Option<Tool>> {
+        self.get_object(tenant_id, "tool", tool_id).await
+    }
+
     async fn list_tools(&self, tenant_id: &str) -> Result<Vec<Tool>> {
         self.list_objects(tenant_id, "tool").await
+    }
+
+    async fn delete_tool(&self, tenant_id: &str, tool_id: &str) -> Result<bool> {
+        self.delete_object(tenant_id, "tool", tool_id).await
     }
 
     async fn upsert_mcp_server(&self, server: McpServer) -> Result<McpServer> {
@@ -245,8 +347,16 @@ impl RegistryStore for SqliteStore {
         Ok(server)
     }
 
+    async fn get_mcp_server(&self, tenant_id: &str, server_id: &str) -> Result<Option<McpServer>> {
+        self.get_object(tenant_id, "mcp_server", server_id).await
+    }
+
     async fn list_mcp_servers(&self, tenant_id: &str) -> Result<Vec<McpServer>> {
         self.list_objects(tenant_id, "mcp_server").await
+    }
+
+    async fn delete_mcp_server(&self, tenant_id: &str, server_id: &str) -> Result<bool> {
+        self.delete_object(tenant_id, "mcp_server", server_id).await
     }
 
     async fn upsert_relationship(&self, relationship: Relationship) -> Result<Relationship> {
@@ -268,16 +378,69 @@ impl RegistryStore for SqliteStore {
         Ok(relationship)
     }
 
+    async fn get_relationship(&self, tenant_id: &str, relationship_id: &str) -> Result<Option<Relationship>> {
+        self.get_object(tenant_id, "relationship", relationship_id).await
+    }
+
     async fn list_relationships(&self, tenant_id: &str) -> Result<Vec<Relationship>> {
         self.list_objects(tenant_id, "relationship").await
     }
 
+    async fn delete_relationship(&self, tenant_id: &str, relationship_id: &str) -> Result<bool> {
+        self.delete_object(tenant_id, "relationship", relationship_id).await
+    }
+}
+
+#[async_trait::async_trait]
+impl PolicyStore for SqliteStore {
+    async fn upsert_policy(&self, policy: dek_control_plane_api::policy::PolicyDraft) -> Result<dek_control_plane_api::policy::PolicyDraft> {
+        let status = serde_json::to_string(&policy.meta.status)
+            .unwrap()
+            .replace("\"", "");
+        let source = serde_json::to_string(&policy.meta.source)
+            .unwrap()
+            .replace("\"", "");
+        self.upsert_object(
+            &policy.meta.tenant_id,
+            "policy_draft",
+            &policy.policy_id,
+            &status,
+            &source,
+            &policy,
+        )
+        .await?;
+        Ok(policy)
+    }
+
+    async fn get_policy(&self, tenant_id: &str, policy_id: &str) -> Result<Option<dek_control_plane_api::policy::PolicyDraft>> {
+        self.get_object(tenant_id, "policy_draft", policy_id).await
+    }
+
+    async fn list_policies(&self, tenant_id: &str) -> Result<Vec<dek_control_plane_api::policy::PolicyDraft>> {
+        self.list_objects(tenant_id, "policy_draft").await
+    }
+
+    async fn delete_policy(&self, tenant_id: &str, policy_id: &str) -> Result<bool> {
+        self.delete_object(tenant_id, "policy_draft", policy_id).await
+    }
+
+    async fn put_policy_status(&self, tenant_id: &str, policy_id: &str, status: dek_control_plane_api::policy::PolicyLifecycleStatus) -> Result<()> {
+        let mut policy = match self.get_policy(tenant_id, policy_id).await? {
+            Some(p) => p,
+            None => anyhow::bail!("Policy not found"),
+        };
+        // Just map it back to RegistryStatus string for meta status
+        policy.meta.status = serde_json::from_value(serde_json::to_value(status)?)?;
+        self.upsert_policy(policy).await?;
+        Ok(())
+    }
+
     async fn upsert_policy_raw(&self, tenant: &str, id: &str, data: &serde_json::Value) -> Result<()> {
-        self.upsert_object(tenant, "policy", id, "active", "local", data).await
+        self.upsert_object(tenant, "policy_raw", id, "active", "local", data).await
     }
 
     async fn get_policy_raw(&self, tenant: &str, id: &str) -> Result<Option<serde_json::Value>> {
-        self.get_object(tenant, "policy", id).await
+        self.get_object(tenant, "policy_raw", id).await
     }
 
     async fn put_blob(&self, tenant: &str, path: &str, bytes: &[u8]) -> Result<()> {

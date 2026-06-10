@@ -9,19 +9,25 @@ import {
   Activity,
   FileKey,
   Users,
-  Database
+  Database,
+  Cpu,
+  Settings as SettingsIcon,
+  UserCircle
 } from "lucide-react";
 
 const navigation = [
   { name: "Overview", href: "/", icon: LayoutDashboard },
-  { name: "Agents & Identity", href: "/agents", icon: Users },
+  { name: "Agents", href: "/agents", icon: Users },
+  { name: "Blackbox AI", href: "/blackbox-ai", icon: Cpu },
   { name: "MCP Servers", href: "/servers", icon: Server },
   { name: "Tools", href: "/tools", icon: Wrench },
   { name: "Resources", href: "/resources", icon: Database },
+  { name: "Entities", href: "/entities", icon: UserCircle },
   { name: "Relationships", href: "/relationships", icon: Network },
   { name: "Policy Enforcer", href: "/policies", icon: FileKey },
   { name: "Audit & Telemetry", href: "/audit", icon: Activity },
   { name: "Alerts", href: "/alerts", icon: ShieldAlert },
+  { name: "Settings", href: "/settings", icon: SettingsIcon },
 ];
 
 export function Sidebar() {

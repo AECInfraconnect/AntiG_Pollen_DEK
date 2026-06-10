@@ -1,0 +1,36 @@
+name: local-admin-e2e
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  local-admin-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/local-admin-dashboard/package-lock.json
+
+      - name: Rust fmt
+        run: cargo fmt --all -- --check
+
+      - name: Rust clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Rust tests
+        run: cargo test --workspace
+
+      - name: Build dashboard
+        working-directory: apps/local-admin-dashboard
+        run: |
+          npm ci
+          npm run build
+
+      - name: Run local admin E2E
+        run: bash scripts/e2e-local-admin.sh

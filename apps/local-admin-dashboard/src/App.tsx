@@ -7,6 +7,10 @@ import { Tools } from "./pages/Tools";
 import { Resources } from "./pages/Resources";
 import { Policies } from "./pages/Policies";
 import { DecisionLogs } from "./pages/DecisionLogs";
+import { Entities } from "./pages/Entities";
+import { Relationships } from "./pages/Relationships";
+import { BlackboxAI } from "./pages/BlackboxAI";
+import { Settings } from "./pages/Settings";
 
 function App() {
   return (
@@ -18,10 +22,13 @@ function App() {
           <Route path="servers" element={<Servers />} />
           <Route path="tools" element={<Tools />} />
           <Route path="resources" element={<Resources />} />
-          <Route path="relationships" element={<div className="glass p-6 rounded-xl"><h1>Relationships (WIP)</h1></div>} />
+          <Route path="entities" element={<Entities />} />
+          <Route path="relationships" element={<Relationships />} />
+          <Route path="blackbox-ai" element={<BlackboxAI />} />
           <Route path="policies" element={<Policies />} />
           <Route path="audit" element={<DecisionLogs />} />
           <Route path="alerts" element={<div className="glass p-6 rounded-xl"><h1>Alerts (WIP)</h1></div>} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </Router>
