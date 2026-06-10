@@ -1490,6 +1490,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "217698eaf96b4a3f0bc4f3662aaa55bdf913cd54d7204591faa790070c6d0853"
 
 [[package]]
+name = "crc32c"
+version = "0.6.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a47af21622d091a8f0fb295b88bc886ac74efcc613efc19f5d0b21de5c89e47"
+dependencies = [
+ "rustc_version",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2302,6 +2311,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-secure-spool"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "base64 0.22.1",
+ "bytes",
+ "crc32c",
+ "rand 0.8.6",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "uuid",
+ "windows 0.58.0",
+ "zeroize",
+]
+
+[[package]]
 name = "dek-spire-node"
 version = "0.1.0"
 dependencies = [
@@ -2316,6 +2342,15 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+]
+
+[[package]]
+name = "dek-spool-cli"
+version = "0.1.0"
+dependencies = [
+ "dek-secure-spool",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]
@@ -7789,6 +7824,7 @@ checksum = "ddd74a9687298c6858e9b88ec8935ec45d22e8fd5e6394fa1bd4e99a87789c76"
 dependencies = [
  "getrandom 0.4.2",
  "js-sys",
+ "serde_core",
  "wasm-bindgen",
 ]
 
