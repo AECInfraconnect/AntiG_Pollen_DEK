@@ -324,8 +324,8 @@ impl BundleSyncAgent {
         let manifest_val: serde_json::Value = res.json().await?;
         
         // Deserialize back and forth to get the canonical bytes for verification
-        use dek_control_plane_api::bundle::PollenPolicyBundleManifest;
-        let mut manifest: PollenPolicyBundleManifest = serde_json::from_value(manifest_val.clone())?;
+        use dek_control_plane_api::bundle::PollenPolicyBundleManifestV2;
+        let mut manifest: PollenPolicyBundleManifestV2 = serde_json::from_value(manifest_val.clone())?;
         
         // The signatures to verify
         let sigs_for_verify: Vec<crate::keys::SignatureEntry> = manifest.signatures.iter().map(|s| {
@@ -357,6 +357,12 @@ impl BundleSyncAgent {
             outcome => return Err(anyhow::anyhow!("Local Manifest signature rejected: {:?}", outcome)),
         }
         
+        let target_dir = data_dir.join("state").join("bundles");
+        let bundle_version = format!("{}", manifest.build_number);
+        let bundle_dir = target_dir.join(format!("bundle_{}", bundle_version));
+        let staging_dir = target_dir.join(format!("staging_{}", manifest.bundle_id));
+        std::fs::create_dir_all(&staging_dir)?;
+
         let mut merged_payload = json!({});
         
         // Download artifacts
@@ -368,6 +374,18 @@ impl BundleSyncAgent {
                 return Err(anyhow::anyhow!("Artifact fetch failed for hash {}", hash));
             }
             let bytes = res.bytes().await?;
+
+            // VERIFY SHA256
+            let computed_sha = hex::encode(sha2::Sha256::digest(&bytes));
+            if computed_sha != *hash {
+                return Err(anyhow::anyhow!("Artifact SHA256 mismatch for {}, expected {}, got {}", artifact.artifact_id, hash, computed_sha));
+            }
+
+            // STAGE ARTIFACT
+            let safe_filename = artifact.path.replace("/", "_");
+            let artifact_path = staging_dir.join(&safe_filename);
+            std::fs::write(&artifact_path, &bytes)?;
+
             let filename = &artifact.artifact_id;
             
             if filename.ends_with(".json") {
@@ -395,15 +413,18 @@ impl BundleSyncAgent {
         
         let final_merged = merge_safe(vec![(PrecedenceLevel::Tenant, config_val), (PrecedenceLevel::DeviceGroup, merged_payload)])?;
         
-        let target_dir = data_dir.join("state").join("bundles");
-        std::fs::create_dir_all(&target_dir)?;
-        let bundle_version = format!("{}", manifest.build_number);
-        let bundle_dir = target_dir.join(format!("bundle_{}", bundle_version));
-        std::fs::create_dir_all(&bundle_dir)?;
-        
         let payload_string = serde_json::to_string_pretty(&final_merged)?;
+        let staging_manifest_path = staging_dir.join("manifest.json");
+        std::fs::write(&staging_manifest_path, &payload_string)?;
+
+        // Promote from staging to final bundle directory atomically
+        if !bundle_dir.exists() {
+            std::fs::rename(&staging_dir, &bundle_dir)?;
+        } else {
+            let _ = std::fs::remove_dir_all(&staging_dir);
+        }
+
         let bundle_path = bundle_dir.join("manifest.json");
-        std::fs::write(&bundle_path, &payload_string)?;
         
         info!("[BundleSync] State: Staged combined config at {:?}", bundle_path);
         Ok((dek_config, bundle_path))

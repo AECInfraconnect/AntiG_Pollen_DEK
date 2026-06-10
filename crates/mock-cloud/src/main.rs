@@ -159,6 +159,10 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n"
             get(get_config),
         )
         .route("/v1/push", get(handle_push_stream))
+        .route("/.well-known/openid-configuration", get(openid_configuration))
+        .route("/jwks.json", get(jwks_json))
+        .route("/v1/chat/completions", post(mock_openai_chat))
+        .route("/v1/messages", post(mock_anthropic_messages))
         // Order matters for middleware. Chaos middleware should wrap the v1 endpoints.
         // And telemetry / threats routes are merged before the layer so they are wrapped, BUT
         // the middleware internally explicitly filters to only act on `/v1/` routes.
@@ -430,4 +434,75 @@ async fn handle_push_stream() -> impl IntoResponse {
 
     Sse::new(stream)
         .keep_alive(axum::response::sse::KeepAlive::new().interval(Duration::from_secs(15)))
+}
+
+// =========================== Mock JWT & Blackbox AI ===========================
+
+async fn openid_configuration() -> impl IntoResponse {
+    Json(serde_json::json!({
+        "issuer": "https://127.0.0.1:43891",
+        "jwks_uri": "https://127.0.0.1:43891/jwks.json",
+        "response_types_supported": ["id_token"],
+        "subject_types_supported": ["public"],
+        "id_token_signing_alg_values_supported": ["RS256"]
+    }))
+}
+
+async fn jwks_json(State(state): State<AppState>) -> impl IntoResponse {
+    // Generate a dummy JWK representation of the RSA public key
+    // In reality, you'd extract the e and n from the PEM, but for mock, we just return a stub structure
+    Json(serde_json::json!({
+        "keys": [{
+            "kty": "RSA",
+            "alg": "RS256",
+            "kid": "mock-key-1",
+            "use": "sig",
+            // Base64Url encoded modulus and exponent (dummy values for testing)
+            "n": "vM_o8y-WzFf_O...", 
+            "e": "AQAB"
+        }]
+    }))
+}
+
+async fn mock_openai_chat() -> impl IntoResponse {
+    Json(serde_json::json!({
+        "id": "chatcmpl-mock",
+        "object": "chat.completion",
+        "created": 1677652288,
+        "model": "gpt-4-mock",
+        "choices": [{
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": "This is a mock response from the Mock-Cloud OpenAI facade."
+            },
+            "finish_reason": "stop"
+        }],
+        "usage": {
+            "prompt_tokens": 9,
+            "completion_tokens": 12,
+            "total_tokens": 21
+        }
+    }))
+}
+
+async fn mock_anthropic_messages() -> impl IntoResponse {
+    Json(serde_json::json!({
+        "id": "msg_mock",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+            {
+                "type": "text",
+                "text": "This is a mock response from the Mock-Cloud Anthropic facade."
+            }
+        ],
+        "model": "claude-3-opus-mock",
+        "stop_reason": "end_turn",
+        "stop_sequence": null,
+        "usage": {
+            "input_tokens": 10,
+            "output_tokens": 15
+        }
+    }))
 }

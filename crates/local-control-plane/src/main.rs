@@ -1,6 +1,8 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Request},
     http::StatusCode,
+    middleware::Next,
+    response::Response,
     Json, Router,
 };
 use dek_control_plane_api::identity::ControlPlaneIdentity;
@@ -37,18 +39,23 @@ pub struct AppState {
 }
 
 pub async fn local_tenant_guard(
-    Path(tenant_id): Path<String>,
     State(state): State<AppState>,
-) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
-    if state.identity.tenant_id == "local" && tenant_id != "local" {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(
-                serde_json::json!({"error": "Local Admin Dashboard only supports tenant_id=local"}),
-            ),
-        ));
+    req: Request,
+    next: Next,
+) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
+    if state.identity.tenant_id == "local" {
+        let path = req.uri().path();
+        if path.starts_with("/v1/tenants/") {
+            let parts: Vec<&str> = path.split('/').collect();
+            if parts.len() > 3 && parts[3] != "local" {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({"error": "Local Admin Dashboard only supports tenant_id=local"})),
+                ));
+            }
+        }
     }
-    Ok(())
+    Ok(next.run(req).await)
 }
 
 #[tokio::main]
@@ -93,6 +100,7 @@ async fn main() -> anyhow::Result<()> {
         .merge(telemetry::router())
         .merge(bundle_routes())
         .route("/v1/push", axum::routing::get(push::sse_handler))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), local_tenant_guard))
         .layer(axum::middleware::from_fn_with_state(state.clone(), auth::require_token));
 
     let app = Router::new()
@@ -126,7 +134,7 @@ async fn get_mock_config(
     let mut combined_cedar = String::new();
 
     if let Ok(Some(manifest_val)) = st.policy_store.get_policy_raw(&tenant, "bundle:latest").await {
-        if let Ok(manifest) = serde_json::from_value::<dek_control_plane_api::bundle::PollenPolicyBundleManifest>(manifest_val) {
+        if let Ok(manifest) = serde_json::from_value::<dek_control_plane_api::bundle::PollenPolicyBundleManifestV2>(manifest_val) {
             for artifact in manifest.artifacts {
                 if artifact.adapter_id == "cedar" {
                     if let Ok(Some(bytes)) = st.policy_store.get_blob(&tenant, &artifact.path).await {
