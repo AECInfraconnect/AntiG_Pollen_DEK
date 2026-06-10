@@ -10,8 +10,10 @@ use tokio::net::TcpListener;
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 
+mod auth;
 mod bundle;
 mod policy;
+mod push;
 mod registry;
 mod signing;
 mod store;
@@ -28,6 +30,9 @@ pub struct AppState {
     pub telemetry_store: Arc<dyn store::TelemetryStore>,
     pub signer: Arc<LocalSigner>,
     pub build_number: Arc<AtomicU64>,
+    pub api_token: String,
+    pub auth_disabled: bool,
+    pub bundle_tx: tokio::sync::broadcast::Sender<String>,
 }
 
 pub async fn local_tenant_guard(
@@ -59,6 +64,13 @@ async fn main() -> anyhow::Result<()> {
     let signer = Arc::new(LocalSigner::load_or_create(&data_dir)?);
     info!("local control-plane signing key: {} (pub {})", signer.key_id, signer.public_key_b64());
 
+    let auth_disabled = std::env::var("DEK_LCP_AUTH_DISABLE").unwrap_or_default() == "1";
+    if auth_disabled {
+        tracing::warn!("DEK_LCP_AUTH_DISABLE=1: Authentication is disabled!");
+    }
+    let api_token = auth::load_or_create_token(&data_dir)?;
+    let (bundle_tx, _) = tokio::sync::broadcast::channel(100);
+
     let state = AppState {
         identity: ControlPlaneIdentity::local_default(),
         registry_store: store.clone(),
@@ -66,16 +78,25 @@ async fn main() -> anyhow::Result<()> {
         telemetry_store: store,
         signer,
         build_number: Arc::new(AtomicU64::new(1)),
+        api_token,
+        auth_disabled,
+        bundle_tx,
     };
 
     let static_dir = std::env::var("DEK_DASHBOARD_DIR")
         .unwrap_or_else(|_| "../../apps/local-admin-dashboard/dist".to_string());
 
-    let app = Router::new()
+    let api_routes = Router::new()
         .merge(registry::router())
         .merge(policy::router())
         .merge(telemetry::router())
         .merge(bundle_routes())
+        .route("/v1/push", axum::routing::get(push::sse_handler))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), auth::require_token));
+
+    let app = Router::new()
+        .route("/health", axum::routing::get(|| async { "ok" }))
+        .merge(api_routes)
         .fallback_service(
             ServeDir::new(&static_dir)
                 .not_found_service(ServeFile::new(format!("{}/index.html", static_dir))),

@@ -36,6 +36,8 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant_id/devices/:device_id/status",
             get(get_device_status),
         )
+        .route("/spire/svid/jwt", post(crate::jwt_svid_endpoint::handle_jwt_svid))
+        .route("/v1/trust-bundle", get(trust_bundle_handler))
 }
 
 #[derive(serde::Deserialize)]
@@ -358,4 +360,21 @@ async fn get_device_status(
     } else {
         (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" })))
     }
+}
+
+// jwt_svid_handler removed; using crate::jwt_svid_endpoint::handle_jwt_svid instead.
+
+async fn trust_bundle_handler(
+    State(_state): State<AppState>,
+) -> impl IntoResponse {
+    let trust_bundle = std::fs::read_to_string("certs/root_ca.crt").unwrap_or_default();
+    info!("CLOUD: Serving Trust Bundle");
+    (
+        StatusCode::OK,
+        Json(json!({
+            "trust_bundle_pem": trust_bundle,
+            "jwt_authorities": [],
+            "refresh_hint": 3600
+        })),
+    )
 }

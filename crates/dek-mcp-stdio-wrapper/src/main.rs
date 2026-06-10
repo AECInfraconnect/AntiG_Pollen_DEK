@@ -63,6 +63,7 @@ async fn main() -> Result<()> {
             cloud_url: String::new(),
             spiffe_id: None,
             tenant_id: None,
+            local_api_token: None,
         });
 
     let mut tenant_id = "default-tenant".to_string();
@@ -97,6 +98,7 @@ async fn main() -> Result<()> {
         &bootstrap.mtls,
         None,
         &telemetry_db.to_string_lossy(),
+        None,
     )
     .ok();
 

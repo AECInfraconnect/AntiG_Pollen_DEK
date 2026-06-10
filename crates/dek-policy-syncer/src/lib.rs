@@ -65,6 +65,7 @@ pub struct PolicySyncer {
     audit: AuditTrail,
     keys_url: String,
     push_url: String,
+    api_token: Option<String>,
 }
 
 impl PolicySyncer {
@@ -76,6 +77,7 @@ impl PolicySyncer {
         tenant_id: String,
         cloud_url: String,
         pinned_b64: String,
+        api_token: Option<String>,
     ) -> Arc<Self> {
         tracing::info!("DEBUG SYNCR: PolicySyncer::new called with pinned_b64: {}", pinned_b64);
         let audit = AuditTrail::new(telemetry.clone(), device_id.clone(), tenant_id.clone());
@@ -104,6 +106,7 @@ impl PolicySyncer {
             audit,
             keys_url,
             push_url,
+            api_token,
         })
     }
 
@@ -116,12 +119,12 @@ impl PolicySyncer {
     /// (TUF-Lite fetch + ed25519 verify + anti-rollback + hash + atomic stage).
     /// On success, records freshness and recomputes the enforcement state.
     pub async fn sync_once(&self) -> SyncOutcome {
-        // Build a temporary reqwest client using system roots for the mtls/key endpoint.
-        // In real use, this should probably come from the agent's mtls config.
         let client = reqwest::Client::new();
+
         match keymgr::fetch_and_merge(
             &client,
             &self.keys_url,
+            self.api_token.as_deref(),
             &self.bundle_agent.key_set_snapshot(),
         )
         .await
@@ -320,11 +323,14 @@ impl PolicySyncer {
                     break;
                 }
 
-                match client
+                let mut req = client
                     .get(&push_url)
-                    .header("Accept", "text/event-stream")
-                    .send()
-                    .await
+                    .header("Accept", "text/event-stream");
+                if let Some(token) = &s3.api_token {
+                    req = req.header("Authorization", format!("Bearer {}", token));
+                }
+
+                match req.send().await
                 {
                     Ok(mut resp) if resp.status().is_success() => {
                         info!(

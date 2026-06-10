@@ -98,6 +98,7 @@ enum ProfileAction {
         #[arg(long)] url: Option<String>,
         #[arg(long)] tenant_id: Option<String>,
         #[arg(long)] trusted_key: Option<String>,
+        #[arg(long)] token: Option<String>,
     },
     /// Show current profile
     Show,
@@ -368,9 +369,9 @@ async fn main() -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&caps)?);
         }
         Commands::Profile { action } => match action {
-            ProfileAction::Set { mode, url, tenant_id, trusted_key } => {
+            ProfileAction::Set { mode, url, tenant_id, trusted_key, token } => {
                 let m = mode.parse::<service::profile::ProfileMode>()?;
-                service::profile::set_profile(m, url, tenant_id, trusted_key)?;
+                service::profile::set_profile(m, url, tenant_id, trusted_key, token)?;
             }
             ProfileAction::Show => service::profile::show_profile()?,
         },

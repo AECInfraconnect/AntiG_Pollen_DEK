@@ -16,6 +16,7 @@ use anyhow::{Context, Result};
 use dek_bundle_sync::BundleSyncAgent;
 use dek_config::MtlsConfig;
 use dek_telemetry::CloudTelemetrySink;
+use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
@@ -43,18 +44,27 @@ pub fn spawn_svid_renewal_task(
     telemetry_sink: Arc<CloudTelemetrySink>,
     bundle_agent: Arc<BundleSyncAgent>,
     metrics_client: Arc<RwLock<reqwest::Client>>,
+    health_tx: tokio::sync::watch::Sender<crate::svid_renewal_failclosed::IdentityHealth>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         info!("SVID auto-renewal task started");
         loop {
-            // 1) Schedule next renewal at ~half of remaining lifetime.
+            // 1) Schedule next renewal and update health state.
+            let mut remaining_secs = 0;
             let sleep_dur = match seconds_until_renewal(&cfg.mtls.client_cert_path) {
-                Ok(d) => d,
+                Ok((d, expires)) => {
+                    remaining_secs = expires - now_secs();
+                    let health = crate::svid_renewal_failclosed::classify(remaining_secs, true);
+                    let _ = health_tx.send(health);
+                    d
+                }
                 Err(e) => {
                     warn!(
                         "could not read SVID expiry ({e}); will retry in {:?}",
                         FALLBACK_SLEEP
                     );
+                    let health = crate::svid_renewal_failclosed::classify(0, false);
+                    let _ = health_tx.send(health);
                     FALLBACK_SLEEP
                 }
             };
@@ -77,6 +87,12 @@ pub fn spawn_svid_renewal_task(
                         "SVID renewal failed: {e}; keeping current SVID, retry in {:?}",
                         RETRY_BACKOFF
                     );
+                    // The time we actually slept
+                    let slept = sleep_dur.as_secs() as i64;
+                    let new_remaining = (remaining_secs - slept).max(0);
+                    let health = crate::svid_renewal_failclosed::classify(new_remaining, false);
+                    let _ = health_tx.send(health);
+                    
                     tokio::select! {
                         _ = cancel.cancelled() => break,
                         _ = tokio::time::sleep(RETRY_BACKOFF) => {}
@@ -94,9 +110,9 @@ fn now_secs() -> i64 {
         .as_secs() as i64
 }
 
-/// Parse the leaf cert's `notAfter` and return how long to sleep before renewing
-/// (half of the remaining lifetime, floored at MIN_SLEEP).
-fn seconds_until_renewal(cert_path: &str) -> Result<Duration> {
+/// Parse the leaf cert's `notAfter` and return (sleep_duration, not_after_unix).
+/// Sleeps until 10 minutes before expiry.
+fn seconds_until_renewal(cert_path: &str) -> Result<(Duration, i64)> {
     let pem = std::fs::read(cert_path).context("read SVID cert")?;
     let (_, p) =
         x509_parser::pem::parse_x509_pem(&pem).map_err(|e| anyhow::anyhow!("PEM parse: {e}"))?;
@@ -104,11 +120,11 @@ fn seconds_until_renewal(cert_path: &str) -> Result<Duration> {
     let not_after = cert.validity().not_after.timestamp();
     let remaining = not_after - now_secs();
     metrics::gauge!("dek_svid_expiry_seconds").set(remaining as f64);
-    if remaining <= 0 {
-        return Ok(MIN_SLEEP); // already expired — renew promptly
+    if remaining <= 600 {
+        return Ok((MIN_SLEEP, not_after)); // <= 10m remaining — renew promptly
     }
-    let renew_in = (remaining / 2).max(MIN_SLEEP.as_secs() as i64);
-    Ok(Duration::from_secs(renew_in as u64))
+    let renew_in = (remaining - 600).max(MIN_SLEEP.as_secs() as i64);
+    Ok((Duration::from_secs(renew_in as u64), not_after))
 }
 
 async fn renew_once(
@@ -209,13 +225,13 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ca = make_ca();
 
-        // long-lived (~1000s) -> sleep ~500s
+        // long-lived (~1000s) -> sleep ~400s (1000 - 600)
         let long = sign_leaf(&ca, "device-x", time_offset(1000));
         let p_long = dir.path().join("long.crt");
         std::fs::write(&p_long, &long).unwrap();
-        let d = seconds_until_renewal(p_long.to_str().unwrap()).unwrap();
+        let (d, _) = seconds_until_renewal(p_long.to_str().unwrap()).unwrap();
         assert!(
-            d.as_secs() >= 400 && d.as_secs() <= 520,
+            d.as_secs() >= 390 && d.as_secs() <= 410,
             "got {}s",
             d.as_secs()
         );
@@ -224,7 +240,7 @@ mod tests {
         let short = sign_leaf(&ca, "device-x", time_offset(2));
         let p_short = dir.path().join("short.crt");
         std::fs::write(&p_short, &short).unwrap();
-        let d2 = seconds_until_renewal(p_short.to_str().unwrap()).unwrap();
+        let (d2, _) = seconds_until_renewal(p_short.to_str().unwrap()).unwrap();
         assert_eq!(d2, MIN_SLEEP);
     }
 

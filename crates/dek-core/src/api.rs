@@ -23,18 +23,21 @@ struct ApiState {
     snapshot: Arc<ArcSwap<RuntimeSnapshot>>,
     enforcement: Arc<ArcSwap<EnforcementState>>,
     telemetry: Option<Arc<CloudTelemetrySink>>,
+    identity_health: tokio::sync::watch::Receiver<crate::svid_renewal_failclosed::IdentityHealth>,
 }
 
 pub async fn start_sidecar_api(
     snapshot: Arc<ArcSwap<RuntimeSnapshot>>,
     enforcement: Arc<ArcSwap<EnforcementState>>,
     telemetry: Option<Arc<CloudTelemetrySink>>,
+    identity_health: tokio::sync::watch::Receiver<crate::svid_renewal_failclosed::IdentityHealth>,
     port: u16,
 ) -> anyhow::Result<()> {
     let state = ApiState {
         snapshot,
         enforcement,
         telemetry,
+        identity_health,
     };
 
     let app = Router::new()
@@ -83,7 +86,19 @@ async fn check(
     Json(req): Json<DecisionRequest>,
 ) -> impl IntoResponse {
     let enf = state.enforcement.load();
-    if let EnforcementState::StrictDeny { ref reason, .. } = **enf {
+    let health = *state.identity_health.borrow();
+    
+    let is_strict_deny = matches!(**enf, EnforcementState::StrictDeny { .. }) || health == crate::svid_renewal_failclosed::IdentityHealth::Expired;
+    
+    if is_strict_deny {
+        let reason = if health == crate::svid_renewal_failclosed::IdentityHealth::Expired {
+            "SVID expired".to_string()
+        } else if let EnforcementState::StrictDeny { ref reason, .. } = **enf {
+            reason.clone()
+        } else {
+            "Unknown".to_string()
+        };
+        
         let response = DecisionResponse {
             decision_id: uuid::Uuid::new_v4().to_string(),
             allow: false,
@@ -173,26 +188,30 @@ async fn check(
 
     if let Some(telemetry) = &state.telemetry {
         let event = serde_json::json!({
-            "event_type": "decision",
             "schema_version": "1.0",
             "event_id": response.decision_id,
-            "trace_id": "",
-            "span_id": "",
+            "event_type": "decision",
+            "timestamp": chrono::Utc::now().to_rfc3339(),
             "tenant_id": req.context.get("tenant_id").and_then(|v| v.as_str()).unwrap_or("local").to_string(),
             "device_id": "api-sidecar",
-            "spiffe_id": "",
-            "pep_type": "api",
-            "agent_id": "dek",
-            "principal_id": req.principal,
-            "action": req.action,
-            "resource_id": req.resource,
-            "decision": if res.allow { "allow" } else { "deny" },
-            "reason": res.reason,
-            "latency_ms": latency,
-            "policy_bundle_id": "active",
-            "policy_bundle_version": "v1",
-            "evaluator_type": res.evaluator_type,
-            "effects": response.effects,
+            "redaction_applied": true,
+            "payload": {
+                "trace_id": "",
+                "span_id": "",
+                "spiffe_id": "",
+                "pep_type": "api",
+                "agent_id": "dek",
+                "principal_id": req.principal,
+                "action": req.action,
+                "resource_id": req.resource,
+                "decision": if res.allow { "allow" } else { "deny" },
+                "reason": res.reason,
+                "latency_ms": latency,
+                "policy_bundle_id": "active",
+                "policy_bundle_version": "v1",
+                "evaluator_type": res.evaluator_type,
+                "effects": response.effects,
+            }
         });
         telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);
     }
@@ -207,8 +226,12 @@ async fn batch_check(
     let mut responses = Vec::with_capacity(reqs.len());
 
     let enf = state.enforcement.load();
-    let is_strict_deny = matches!(**enf, EnforcementState::StrictDeny { .. });
-    let deny_reason = if let EnforcementState::StrictDeny { ref reason, .. } = **enf {
+    let health = *state.identity_health.borrow();
+    let is_strict_deny = matches!(**enf, EnforcementState::StrictDeny { .. }) || health == crate::svid_renewal_failclosed::IdentityHealth::Expired;
+    
+    let deny_reason = if health == crate::svid_renewal_failclosed::IdentityHealth::Expired {
+        "fail-closed: SVID expired".to_string()
+    } else if let EnforcementState::StrictDeny { ref reason, .. } = **enf {
         format!("fail-closed: {}", reason)
     } else {
         String::new()
@@ -271,26 +294,30 @@ async fn batch_check(
 
         if let Some(telemetry) = &state.telemetry {
             let event = serde_json::json!({
-                "event_type": "decision",
                 "schema_version": "1.0",
                 "event_id": response.decision_id.clone(),
-                "trace_id": "",
-                "span_id": "",
+                "event_type": "decision",
+                "timestamp": chrono::Utc::now().to_rfc3339(),
                 "tenant_id": req.context.get("tenant_id").and_then(|v| v.as_str()).unwrap_or("local").to_string(),
                 "device_id": "api-sidecar",
-                "spiffe_id": "",
-                "pep_type": "api",
-                "agent_id": "dek",
-                "principal_id": req.principal.clone(),
-                "action": req.action.clone(),
-                "resource_id": req.resource.clone(),
-                "decision": if res.allow { "allow" } else { "deny" },
-                "reason": res.reason.clone(),
-                "latency_ms": latency,
-                "policy_bundle_id": "active",
-                "policy_bundle_version": "v1",
-                "evaluator_type": res.evaluator_type.clone(),
-                "effects": res.effects.clone(),
+                "redaction_applied": true,
+                "payload": {
+                    "trace_id": "",
+                    "span_id": "",
+                    "spiffe_id": "",
+                    "pep_type": "api",
+                    "agent_id": "dek",
+                    "principal_id": req.principal.clone(),
+                    "action": req.action.clone(),
+                    "resource_id": req.resource.clone(),
+                    "decision": if res.allow { "allow" } else { "deny" },
+                    "reason": res.reason.clone(),
+                    "latency_ms": latency,
+                    "policy_bundle_id": "active",
+                    "policy_bundle_version": "v1",
+                    "evaluator_type": res.evaluator_type.clone(),
+                    "effects": res.effects.clone(),
+                }
             });
             telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);
         }

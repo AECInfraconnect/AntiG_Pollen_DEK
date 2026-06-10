@@ -76,7 +76,7 @@ pub async fn build_signed_bundle(
         router_config_sha256: router_sha256,
         artifacts,
         signatures: vec![],
-        min_dek_version: "0.1.0".to_string(),
+        min_dek_version: "1.0.0-beta.1".to_string(),
         rollback_from: rollback_from.map(|s| s.to_string()),
     };
 

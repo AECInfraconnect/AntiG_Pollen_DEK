@@ -115,6 +115,7 @@ impl Supervisor {
             &bootstrap.mtls,
             &pinned_key,
             client_key_override.as_deref(),
+            bootstrap.local_api_token.clone(),
         )?);
         let data_dir = dek_config::paths::get_data_dir();
         let telemetry_sink = CloudTelemetrySink::new(
@@ -122,6 +123,7 @@ impl Supervisor {
             &bootstrap.mtls,
             client_key_override.as_deref(),
             &data_dir.join("telemetry.db").to_string_lossy(),
+            bootstrap.local_api_token.clone(),
         )?;
         let metrics_client = Arc::new(RwLock::new(
             bootstrap
@@ -216,6 +218,9 @@ impl Supervisor {
             .tenant_id
             .clone()
             .unwrap_or_else(|| "unknown_tenant".to_string());
+        
+        let (health_tx, health_rx) = tokio::sync::watch::channel(crate::svid_renewal_failclosed::IdentityHealth::Healthy);
+
         let syncer = PolicySyncer::new(
             self.bundle_agent.clone(),
             Some(self.telemetry_sink.clone()),
@@ -224,6 +229,7 @@ impl Supervisor {
             tenant_id.clone(),
             self.cloud_url.clone(),
             self.pinned_key.clone(),
+            self.bootstrap.local_api_token.clone(),
         );
 
         let snapshot_ref = reload_coordinator.activation.snapshot.clone();
@@ -231,7 +237,7 @@ impl Supervisor {
         let telemetry_for_api = Some(self.telemetry_sink.clone());
         tokio::spawn(async move {
             if let Err(e) =
-                crate::api::start_sidecar_api(snapshot_ref, enforcement_ref, telemetry_for_api, 43890).await
+                crate::api::start_sidecar_api(snapshot_ref, enforcement_ref, telemetry_for_api, health_rx, 43890).await
             {
                 error!("Sidecar API failed: {}", e);
             }
@@ -289,6 +295,7 @@ impl Supervisor {
             self.telemetry_sink.clone(),
             self.bundle_agent.clone(),
             self.metrics_client.clone(),
+            health_tx,
         );
 
         // 4) Wait for shutdown signal -> cancel -> bounded drain.
