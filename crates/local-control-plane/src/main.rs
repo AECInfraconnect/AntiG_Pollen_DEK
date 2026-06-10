@@ -5,23 +5,12 @@ use tracing::info;
 
 use dek_control_plane_api::identity::ControlPlaneIdentity;
 
-mod app;
-mod auth;
-mod bundle;
-mod compiler;
-mod config;
-mod error;
-mod policy;
-mod push;
-mod registry;
-mod signing;
-mod state;
-mod store;
-mod telemetry;
-
-use config::LocalControlPlaneConfig;
-use signing::LocalSigner;
-use state::AppState;
+use local_control_plane::app;
+use local_control_plane::auth;
+use local_control_plane::config::LocalControlPlaneConfig;
+use local_control_plane::signing::LocalSigner;
+use local_control_plane::state::AppState;
+use local_control_plane::store;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

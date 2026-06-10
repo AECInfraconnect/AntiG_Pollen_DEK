@@ -15,7 +15,7 @@
 //!   POST /v1/metrics                     (RuntimeMetric)
 //!   GET  /v1/tenants/:tenant/telemetry/decision-logs  (dashboard read)
 
-use crate::AppState;
+use crate::state::AppState;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
