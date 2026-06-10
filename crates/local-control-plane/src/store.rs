@@ -208,12 +208,8 @@ impl SqliteStore {
 #[async_trait::async_trait]
 impl RegistryStore for SqliteStore {
     async fn upsert_agent(&self, agent: AiAgent) -> Result<AiAgent> {
-        let status = serde_json::to_string(&agent.meta.status)
-            .unwrap()
-            .replace("\"", "");
-        let source = serde_json::to_string(&agent.meta.source)
-            .unwrap()
-            .replace("\"", "");
+        let status = serde_json::to_string(&agent.meta.status)?.replace("\"", "");
+        let source = serde_json::to_string(&agent.meta.source)?.replace("\"", "");
         self.upsert_object(
             &agent.meta.tenant_id,
             "agent",
@@ -239,12 +235,8 @@ impl RegistryStore for SqliteStore {
     }
 
     async fn upsert_blackbox_ai(&self, provider: BlackboxAiProvider) -> Result<BlackboxAiProvider> {
-        let status = serde_json::to_string(&provider.meta.status)
-            .unwrap()
-            .replace("\"", "");
-        let source = serde_json::to_string(&provider.meta.source)
-            .unwrap()
-            .replace("\"", "");
+        let status = serde_json::to_string(&provider.meta.status)?.replace("\"", "");
+        let source = serde_json::to_string(&provider.meta.source)?.replace("\"", "");
         self.upsert_object(
             &provider.meta.tenant_id,
             "blackbox_ai",
@@ -275,12 +267,8 @@ impl RegistryStore for SqliteStore {
     }
 
     async fn upsert_entity(&self, entity: Entity) -> Result<Entity> {
-        let status = serde_json::to_string(&entity.meta.status)
-            .unwrap()
-            .replace("\"", "");
-        let source = serde_json::to_string(&entity.meta.source)
-            .unwrap()
-            .replace("\"", "");
+        let status = serde_json::to_string(&entity.meta.status)?.replace("\"", "");
+        let source = serde_json::to_string(&entity.meta.source)?.replace("\"", "");
         self.upsert_object(
             &entity.meta.tenant_id,
             "entity",
@@ -306,12 +294,8 @@ impl RegistryStore for SqliteStore {
     }
 
     async fn upsert_resource(&self, resource: Resource) -> Result<Resource> {
-        let status = serde_json::to_string(&resource.meta.status)
-            .unwrap()
-            .replace("\"", "");
-        let source = serde_json::to_string(&resource.meta.source)
-            .unwrap()
-            .replace("\"", "");
+        let status = serde_json::to_string(&resource.meta.status)?.replace("\"", "");
+        let source = serde_json::to_string(&resource.meta.source)?.replace("\"", "");
         self.upsert_object(
             &resource.meta.tenant_id,
             "resource",
@@ -337,12 +321,8 @@ impl RegistryStore for SqliteStore {
     }
 
     async fn upsert_tool(&self, tool: Tool) -> Result<Tool> {
-        let status = serde_json::to_string(&tool.meta.status)
-            .unwrap()
-            .replace("\"", "");
-        let source = serde_json::to_string(&tool.meta.source)
-            .unwrap()
-            .replace("\"", "");
+        let status = serde_json::to_string(&tool.meta.status)?.replace("\"", "");
+        let source = serde_json::to_string(&tool.meta.source)?.replace("\"", "");
         self.upsert_object(
             &tool.meta.tenant_id,
             "tool",
@@ -368,12 +348,8 @@ impl RegistryStore for SqliteStore {
     }
 
     async fn upsert_mcp_server(&self, server: McpServer) -> Result<McpServer> {
-        let status = serde_json::to_string(&server.meta.status)
-            .unwrap()
-            .replace("\"", "");
-        let source = serde_json::to_string(&server.meta.source)
-            .unwrap()
-            .replace("\"", "");
+        let status = serde_json::to_string(&server.meta.status)?.replace("\"", "");
+        let source = serde_json::to_string(&server.meta.source)?.replace("\"", "");
         self.upsert_object(
             &server.meta.tenant_id,
             "mcp_server",
@@ -399,12 +375,8 @@ impl RegistryStore for SqliteStore {
     }
 
     async fn upsert_relationship(&self, relationship: Relationship) -> Result<Relationship> {
-        let status = serde_json::to_string(&relationship.meta.status)
-            .unwrap()
-            .replace("\"", "");
-        let source = serde_json::to_string(&relationship.meta.source)
-            .unwrap()
-            .replace("\"", "");
+        let status = serde_json::to_string(&relationship.meta.status)?.replace("\"", "");
+        let source = serde_json::to_string(&relationship.meta.source)?.replace("\"", "");
         self.upsert_object(
             &relationship.meta.tenant_id,
             "relationship",
@@ -442,12 +414,8 @@ impl PolicyStore for SqliteStore {
         &self,
         policy: dek_control_plane_api::policy::PolicyDraft,
     ) -> Result<dek_control_plane_api::policy::PolicyDraft> {
-        let status = serde_json::to_string(&policy.meta.status)
-            .unwrap()
-            .replace("\"", "");
-        let source = serde_json::to_string(&policy.meta.source)
-            .unwrap()
-            .replace("\"", "");
+        let status = serde_json::to_string(&policy.meta.status)?.replace("\"", "");
+        let source = serde_json::to_string(&policy.meta.source)?.replace("\"", "");
         self.upsert_object(
             &policy.meta.tenant_id,
             "policy_draft",
