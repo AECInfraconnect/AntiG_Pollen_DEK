@@ -5,6 +5,8 @@ import { Agents } from "./pages/Agents";
 import { Servers } from "./pages/Servers";
 import { Tools } from "./pages/Tools";
 import { Resources } from "./pages/Resources";
+import { Policies } from "./pages/Policies";
+import { DecisionLogs } from "./pages/DecisionLogs";
 
 function App() {
   return (
@@ -17,8 +19,8 @@ function App() {
           <Route path="tools" element={<Tools />} />
           <Route path="resources" element={<Resources />} />
           <Route path="relationships" element={<div className="glass p-6 rounded-xl"><h1>Relationships (WIP)</h1></div>} />
-          <Route path="policies" element={<div className="glass p-6 rounded-xl"><h1>Policy Enforcer (WIP)</h1></div>} />
-          <Route path="audit" element={<div className="glass p-6 rounded-xl"><h1>Audit & Telemetry (WIP)</h1></div>} />
+          <Route path="policies" element={<Policies />} />
+          <Route path="audit" element={<DecisionLogs />} />
           <Route path="alerts" element={<div className="glass p-6 rounded-xl"><h1>Alerts (WIP)</h1></div>} />
         </Route>
       </Routes>

@@ -10,6 +10,7 @@ pub struct PollenPolicyBundleManifest {
     pub environment_id: String,
     pub build_number: u64,
     pub created_at: String,
+    pub expires_at: Option<String>,
     pub created_by: String,
     pub registry_snapshot_sha256: String,
     pub router_config_sha256: String,

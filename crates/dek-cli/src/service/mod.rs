@@ -9,6 +9,7 @@ pub mod revoke;
 pub mod rollback;
 pub mod rotate;
 pub mod unenroll;
+pub mod profile;
 
 pub trait ServiceManager {
     fn install(&self) -> Result<()>;

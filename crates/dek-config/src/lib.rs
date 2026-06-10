@@ -26,26 +26,29 @@ impl MtlsConfig {
             .context(format!("Failed to read root CA from {}", self.root_ca_path))?;
         let root_ca = Certificate::from_pem(&root_ca_pem)?;
 
-        let client_cert = fs::read(&self.client_cert_path).context("Failed to read client cert")?;
-        let client_key = match client_key_override {
-            Some(key) => key.to_vec(),
-            None => fs::read(&self.client_key_path).context("Failed to read client key")?,
-        };
-
-        let mut id_pem = client_cert;
-        id_pem.extend_from_slice(b"\n");
-        id_pem.extend_from_slice(&client_key);
-        let identity = Identity::from_pem(&id_pem)?;
-
-        let client = reqwest::Client::builder()
-            .tls_built_in_root_certs(false) // trust ONLY the pinned private root
+        let mut builder = reqwest::Client::builder()
             .add_root_certificate(root_ca)
             .min_tls_version(reqwest::tls::Version::TLS_1_2)
-            .identity(identity)
             .connect_timeout(std::time::Duration::from_secs(5))
-            .timeout(std::time::Duration::from_secs(10))
-            .build()?;
-        Ok(client)
+            .timeout(std::time::Duration::from_secs(10));
+
+        let client_cert = fs::read(&self.client_cert_path).ok();
+        let client_key = match client_key_override {
+            Some(key) => Some(key.to_vec()),
+            None => fs::read(&self.client_key_path).ok(),
+        };
+
+        if let (Some(cert), Some(key)) = (client_cert, client_key) {
+            let mut id_pem = cert;
+            id_pem.extend_from_slice(b"\n");
+            id_pem.extend_from_slice(&key);
+            
+            if let Ok(identity) = Identity::from_pem(&id_pem) {
+                builder = builder.tls_built_in_root_certs(false).identity(identity);
+            }
+        }
+
+        builder.build().map_err(anyhow::Error::msg)
     }
 }
 
@@ -130,8 +133,11 @@ pub struct WasmConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub openfga: Option<OpenFgaConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cedar: Option<CedarConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub opa_wasm: Option<WasmConfig>,
     #[serde(flatten)]
     pub extra: std::collections::HashMap<String, serde_json::Value>,

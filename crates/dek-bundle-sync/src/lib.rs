@@ -59,6 +59,7 @@ impl BundleSyncAgent {
         client_key_override: Option<&[u8]>,
     ) -> Result<Self> {
         let client = mtls.build_client(client_key_override)?;
+        tracing::info!("DEBUG BUNDLESYNC: new called with pinned_public_key: {}", pinned_public_key);
         Ok(Self {
             cloud_url: cloud_url.to_string(),
             tenant_id: tenant_id.to_string(),
@@ -93,6 +94,11 @@ impl BundleSyncAgent {
 
         let data_dir = dek_config::paths::get_data_dir();
         let rollback_manager = RollbackManager::new(&data_dir);
+
+        // --- LOCAL MODE OVERRIDE ---
+        if self.tenant_id == "local" {
+            return self.run_pipeline_local(data_dir, client).await;
+        }
 
         // 1. Fetch TUF-Lite Metadata
         let mut root_version = 0;
@@ -296,6 +302,102 @@ impl BundleSyncAgent {
         Ok((dek_config, bundle_path))
     }
 
+    async fn run_pipeline_local(&self, data_dir: std::path::PathBuf, client: reqwest::Client) -> Result<(DekConfig, std::path::PathBuf)> {
+        info!("[BundleSync] Local Mode detected, fetching manifest directly...");
+        let manifest_url = format!("{}/v1/tenants/{}/devices/{}/bundles/manifest", self.cloud_url, self.tenant_id, self.device_id);
+        
+        let res = client.get(&manifest_url).send().await?;
+        if !res.status().is_success() {
+            return Err(anyhow::anyhow!("Manifest fetch failed: HTTP {}", res.status()));
+        }
+        let manifest_val: serde_json::Value = res.json().await?;
+        
+        // Deserialize back and forth to get the canonical bytes for verification
+        use dek_control_plane_api::bundle::PollenPolicyBundleManifest;
+        let mut manifest: PollenPolicyBundleManifest = serde_json::from_value(manifest_val.clone())?;
+        
+        // The signatures to verify
+        let sigs_for_verify: Vec<crate::keys::SignatureEntry> = manifest.signatures.iter().map(|s| {
+            crate::keys::SignatureEntry {
+                key_id: None, // Force check against all pinned keys (bootstrap)
+                sig_b64: s.payload.clone(),
+            }
+        }).collect();
+        tracing::info!("Found {} signatures in manifest", sigs_for_verify.len());
+        
+        // Zero out signatures to match local-control-plane canonical form
+        manifest.signatures.clear();
+        let signed_bytes = serde_json::to_vec(&manifest)?;
+        use sha2::Digest;
+        let sha = hex::encode(sha2::Sha256::digest(&signed_bytes));
+        tracing::info!("SYNC signed bytes SHA256: {}", sha);
+        
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
+        let key_set = self.key_set.load();
+        
+        // In Local Mode, the key_id in the signature is the signer's public key fingerprint (e.g. sig-xxx),
+        // but the TrustedKeySet from single pinned key has key_id = "bootstrap".
+        // We already set key_id = None when creating sigs_for_verify above.
+        
+        match key_set.verify(now, &signed_bytes, &sigs_for_verify) {
+            crate::keys::VerifyOutcome::Valid { key_id } => {
+                tracing::debug!("[BundleSync] Manifest verified by key '{}'", key_id);
+            }
+            outcome => return Err(anyhow::anyhow!("Local Manifest signature rejected: {:?}", outcome)),
+        }
+        
+        let mut merged_payload = json!({});
+        
+        // Download artifacts
+        for artifact in &manifest.artifacts {
+            let hash = &artifact.sha256;
+            let url = format!("{}/v1/tenants/{}/devices/{}/bundles/artifacts/{}", self.cloud_url, self.tenant_id, self.device_id, hash);
+            let res = client.get(&url).send().await?;
+            if !res.status().is_success() {
+                return Err(anyhow::anyhow!("Artifact fetch failed for hash {}", hash));
+            }
+            let bytes = res.bytes().await?;
+            let filename = &artifact.artifact_id;
+            
+            if filename.ends_with(".json") {
+                if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&bytes) {
+                    if let Some(obj) = val.as_object() {
+                        for (k, v) in obj {
+                            merged_payload[k] = v.clone();
+                        }
+                    } else if filename == "routes.json" {
+                        merged_payload["routes"] = val;
+                    }
+                }
+            }
+        }
+        
+        // Fetch config
+        let config_url = format!("{}/v1/tenants/{}/devices/{}/config", self.cloud_url, self.tenant_id, self.device_id);
+        let res = client.get(&config_url).send().await?;
+        let dek_config: DekConfig = res.json().await.context("Failed to parse DekConfig")?;
+        
+        let mut config_val = json!({});
+        if let Some(policy_config) = &dek_config.policy_config {
+            config_val = serde_json::to_value(policy_config)?;
+        }
+        
+        let final_merged = merge_safe(vec![(PrecedenceLevel::Tenant, config_val), (PrecedenceLevel::DeviceGroup, merged_payload)])?;
+        
+        let target_dir = data_dir.join("state").join("bundles");
+        std::fs::create_dir_all(&target_dir)?;
+        let bundle_version = format!("{}", manifest.build_number);
+        let bundle_dir = target_dir.join(format!("bundle_{}", bundle_version));
+        std::fs::create_dir_all(&bundle_dir)?;
+        
+        let payload_string = serde_json::to_string_pretty(&final_merged)?;
+        let bundle_path = bundle_dir.join("manifest.json");
+        std::fs::write(&bundle_path, &payload_string)?;
+        
+        info!("[BundleSync] State: Staged combined config at {:?}", bundle_path);
+        Ok((dek_config, bundle_path))
+    }
+
     pub async fn fetch_network_guardrails(
         &self,
     ) -> Result<Vec<dek_domain_schema::CompiledNetworkRules>> {
@@ -374,3 +476,6 @@ pub enum BundleError {
     #[error("anti-rollback: incoming gen {incoming} < current {current}")]
     RollbackBlocked { current: u64, incoming: u64 },
 }
+
+#[cfg(test)]
+mod sig_test;

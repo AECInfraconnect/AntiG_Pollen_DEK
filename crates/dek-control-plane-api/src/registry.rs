@@ -36,6 +36,9 @@ pub enum RegistryStatus {
     Active,
     Suspended,
     Deleted,
+    Draft,
+    Compiled,
+    Published,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

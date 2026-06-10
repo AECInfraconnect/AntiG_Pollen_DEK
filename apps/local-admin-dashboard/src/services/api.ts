@@ -10,7 +10,7 @@ export interface ObjectMeta {
   created_by: string;
   updated_by: string;
   source: 'manual' | 'discovery' | 'import' | 'cloud_sync' | 'agent_self_registration';
-  status: 'discovered' | 'pending_approval' | 'registered' | 'active' | 'suspended' | 'deleted';
+  status: 'discovered' | 'pending_approval' | 'registered' | 'active' | 'suspended' | 'deleted' | 'draft' | 'published' | 'compiled';
   tags: string[];
 }
 
@@ -129,4 +129,110 @@ export const RegistryApi = {
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   }
+};
+// ============================================================================
+// L4 additions to src/services/api.ts — Policy + Telemetry models & clients.
+// Append these to the existing api.ts (keep ObjectMeta/RegistryApi above).
+// ============================================================================
+
+// ---- Policy ----
+export type PolicyType = 'rego' | 'cedar' | 'open_fga' | 'pii_redaction' | 'route' | 'composite';
+
+export type PolicyLifecycleStatus =
+  | 'draft' | 'validated' | 'simulation_passed' | 'compiled'
+  | 'pending_approval' | 'approved' | 'published' | 'active';
+
+export interface PolicyTargets {
+  agent_ids: string[];
+  tool_ids: string[];
+  resource_ids: string[];
+  entity_ids: string[];
+  route_ids: string[];
+}
+
+export type PolicySource =
+  | { kind: 'raw_text'; language: string; text: string }
+  | { kind: 'template'; template_id: string; params: any }
+  | { kind: 'structured'; ir: any };
+
+export interface PolicyDraft {
+  meta: ObjectMeta;
+  policy_id: string;
+  name: string;
+  description?: string;
+  policy_type: PolicyType;
+  targets: PolicyTargets;
+  source: PolicySource;
+  compile_options: { optimization_level?: string; fail_on_warnings?: boolean };
+}
+
+// ---- Telemetry / Decision logs ----
+export type TelemetryEventType =
+  | 'decision_log' | 'policy_bundle_activated' | 'policy_bundle_rejected'
+  | 'runtime_metric' | 'security_event' | 'pii_redaction_event'
+  | 'adapter_health' | 'sync_health' | 'os_guardrail_event';
+
+export type DecisionEffect =
+  | 'allow' | 'deny' | 'redact' | 'mask' | 'warn' | 'require_approval' | 'break_glass_allow';
+
+export interface TelemetryEventEnvelope {
+  schema_version: string;
+  event_id: string;
+  event_type: TelemetryEventType;
+  timestamp: string;
+  tenant_id: string;
+  workspace_id: string;
+  environment_id: string;
+  device_id: string;
+  trace_id?: string;
+  span_id?: string;
+  payload: any; // DecisionResult for decision_log
+  redaction_applied: boolean;
+}
+
+export interface DecisionResult {
+  request_id: string;
+  trace_id: string;
+  decision: DecisionEffect;
+  reason: string;
+  matched_policy_ids: string[];
+  matched_route_id?: string;
+  adapter_results: { adapter_id: string; decision: DecisionEffect; reason?: string }[];
+  obligations: { obligation_type: string; fields: string[] }[];
+  latency_ms: number;
+}
+
+const POLICY_BASE = '/v1/tenants/local/policies';
+const TELEMETRY_BASE = '/v1/tenants/local/telemetry';
+
+export const PolicyApi = {
+  list: async (): Promise<PolicyDraft[]> => {
+    const res = await fetch(POLICY_BASE);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+  create: async (draft: PolicyDraft): Promise<PolicyDraft> => {
+    const res = await fetch(POLICY_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(draft),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+  publish: async (policyId: string): Promise<{ published: boolean; bundle_id: string; build_number: number }> => {
+    const res = await fetch(`${POLICY_BASE}/${policyId}/publish`, { method: 'POST' });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+};
+
+export const TelemetryApi = {
+  listDecisionLogs: async (): Promise<TelemetryEventEnvelope[]> => {
+    const res = await fetch(`${TELEMETRY_BASE}/decision-logs`);
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    // local-cp returns { count, decisions: [...] }
+    return data.decisions ?? data;
+  },
 };

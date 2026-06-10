@@ -132,12 +132,17 @@ impl TrustedKeySet {
                 None => self.usable_keys(now_unix).collect(),
             };
             for key in candidates {
-                if let Ok(vk) = key.verifying_key() {
-                    if vk.verify(signed, &signature).is_ok() {
-                        return VerifyOutcome::Valid {
-                            key_id: key.key_id.clone(),
-                        };
-                    }
+                let Ok(vk) = key.verifying_key() else {
+                    tracing::error!("Failed to parse VerifyingKey for kid {:?}", key.key_id);
+                    continue;
+                };
+                tracing::info!("Verifying with kid {:?}, strict verify...", key.key_id);
+                if let Err(e) = vk.verify_strict(signed, &signature) {
+                    tracing::error!("verify_strict failed: {:?}. Key_b64: {}, sig_b64: {}", e, key.public_b64, entry.sig_b64);
+                } else {
+                    return VerifyOutcome::Valid {
+                        key_id: key.key_id.clone(),
+                    };
                 }
             }
         }
