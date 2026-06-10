@@ -288,6 +288,36 @@ impl Supervisor {
         //  self.telemetry_sink / self.metrics_client / self.client_key_override.)
         let _ = &self.client_key_override;
 
+        // Trust Bundle Poller + Hot Rebuild
+        let (jwks_tx, _jwks_rx) = tokio::sync::watch::channel(Vec::<serde_json::Value>::new());
+        let (roots_changed_tx, mut roots_changed_rx) = tokio::sync::watch::channel(0u64);
+
+        if self.cloud_url.starts_with("https://") {
+            if let Ok(tb_client) = self.bootstrap.mtls.build_client(None) {
+                let _poller = dek_spire_node::spawn_trust_bundle_poller(
+                    tb_client,
+                    self.cloud_url.clone(),
+                    self.bootstrap.mtls.root_ca_path.clone(),
+                    jwks_tx,
+                    roots_changed_tx,
+                    self.cancel.clone(),
+                );
+            }
+        }
+
+        let mtls_clone = self.bootstrap.mtls.clone();
+        let metrics_client_clone = self.metrics_client.clone();
+        let override_key = self.client_key_override.clone();
+        tokio::spawn(async move {
+            while roots_changed_rx.changed().await.is_ok() {
+                let seq = *roots_changed_rx.borrow();
+                tracing::info!("trust root changed (seq={seq}); rebuilding mTLS clients");
+                if let Ok(new_client) = mtls_clone.build_client(override_key.as_deref()) {
+                    *metrics_client_clone.write().await = new_client;
+                }
+            }
+        });
+
         // Spawn SVID Renewal Task
         let renew_handle = crate::svid_renewal::spawn_svid_renewal_task(
             self.cancel.clone(),
