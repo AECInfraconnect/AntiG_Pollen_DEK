@@ -1,56 +1,103 @@
-# Pollen DEK - Open Source Desktop Enforcement Kit
+# Pollen DEK — Open-Source Device Enforcement Kit
 
-Pollen DEK is an Apache-2.0 open-source runtime for enforcing and observing AI agent, MCP, API, and tool-call activity at the desktop/edge.
+[![CI](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/ci.yml/badge.svg)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/AECInfraconnect/AntiG_Pollen_DEK?include_prereleases)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases)
 
-It can run fully locally with the Local Admin Dashboard, or connect to Pollen Cloud for managed enterprise policy, observability, compliance workflows, and support.
+**Pollen DEK** is an Apache-2.0 runtime that **enforces and observes AI-agent, MCP,
+API, and tool-call activity at the desktop/edge** — a Policy Enforcement Point
+(PEP) with a local Policy Decision Point (PDP).
+
+It runs **fully locally** with the built-in Local Admin Dashboard, or connects to
+**Pollen Cloud** (commercial) for managed multi-tenant policy, observability, and
+compliance. The DEK speaks **one contract** to both — switching targets changes
+only the endpoint + trust store, never the enforcement code.
+
+---
+
+## Why
+
+- **Enforce, don't just observe** — allow/deny/redact MCP tool calls and network
+  egress against signed policy, fail-closed by default.
+- **Policy your way** — Cedar (ABAC/RBAC), OPA/Rego (complex logic), OpenFGA
+  (ReBAC); the router auto-selects the right engine per request.
+- **Kernel-grade network control** — eBPF on Linux today; Windows WFP / macOS
+  System Extension in progress. Complex rules are kept out of the kernel to avoid
+  instability (kernel handles only simple, exact matches).
+- **Local-first, Cloud-ready** — same schema, bundle format, and telemetry
+  envelope in both modes.
 
 ## Quickstart
 
-### Local-only mode
-
+### Local mode (single machine, no Cloud)
 ```bash
-pollen-dek local-admin start
-pollen-dek service start --control-plane http://127.0.0.1:8787
-pollen-dek mcp-proxy start
+# 1) start the Local Control Plane + dashboard (http://127.0.0.1:3000)
+local-control-plane &
+
+# 2) point the DEK at it and enroll
+dek-cli profile set local --trusted-key <key-from-local-cp-log>
+dek-cli enroll --cloud-url http://127.0.0.1:3000
+
+# 3) run the enforcement point (PEP on :43890)
+dek-core &
+dek-cli doctor && dek-cli status
 ```
+See **[docs/quickstart_local_en.md](docs/quickstart_local_en.md)** (TH: `_th`).
 
 ### Pollen Cloud mode
-
 ```bash
-pollen-dek enroll --cloud https://cloud.pollen.ai --tenant <tenant>
-pollen-dek service start
+dek-cli profile set cloud --url https://cloud.pollen.ai --tenant-id <tenant>
+dek-cli enroll --cloud-url https://cloud.pollen.ai
+dek-core &
 ```
 
-## Download
+## Download & verify
 
-See GitHub Releases.
-
-### Install on Linux
+Binaries for Linux/macOS/Windows are on **[GitHub Releases](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases)**.
+Each asset ships with `SHA256SUMS` + a cosign signature; verify before running:
 ```bash
-curl -L https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/latest/download/pollen-dek-linux-amd64.tar.gz -o pollen-dek.tar.gz
-tar -xzf pollen-dek.tar.gz
-sudo ./pollen-dek/install.sh
+sha256sum -c SHA256SUMS
+cosign verify-blob --certificate <asset>.pem --signature <asset>.sig \
+  --certificate-identity-regexp "https://github.com/AECInfraconnect/AntiG_Pollen_DEK/.*" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" <asset>
 ```
-
-### Install on Windows
-```powershell
-Invoke-WebRequest -Uri "https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/latest/download/pollen-dek-windows-amd64.msi" -OutFile "pollen-dek.msi"
-Start-Process msiexec.exe -Wait -ArgumentList '/i pollen-dek.msi /qn'
-```
-
-### Install on macOS
+Update in place (verifies cosign before applying, with rollback):
 ```bash
-curl -L https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/latest/download/pollen-dek-macos-universal.pkg -o pollen-dek.pkg
-sudo installer -pkg pollen-dek.pkg -target /
+dek-cli update --channel beta
 ```
 
-## Plugin Architecture
+## Architecture (at a glance)
 
-- Policy evaluators: OPA, Cedar, OpenFGA
-- Transform plugins: PII Redactor
-- Telemetry sinks
-- Enforcement providers
+```
+ Local Admin Dashboard            Pollen Cloud (commercial)
+  SQLite · tenant=local            MySQL/TiDB · multi-tenant
+  HTTP 127.0.0.1 · Bearer          mTLS + OAuth + SPIFFE/SPIRE
+            \                         /
+             \  same schema/bundle/  /
+              \  telemetry + reload /
+               ▼                   ▼
+                ┌───────────────┐
+                │   DEK (PEP)   │  profile: local | cloud
+                │  enforce +    │
+                │  fail-closed  │
+                └───────────────┘
+```
+Full detail: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+
+## Plugin / Adapter SDK
+
+Policy engines are adapters built on **`dek-pdp-sdk`** (Apache-2.0); bundled
+adapters (Cedar/OPA/OpenFGA) are feature-gated, and you can add your own without
+touching the core. Transform plugins (e.g. PII redaction via `dek-pii-wasm`) and
+telemetry sinks plug in the same way. See **[examples/policies](examples/policies/)**.
+
+## Documentation
+
+Start at **[docs/README.md](docs/README.md)** — install guides, user/developer
+guides, runbooks, security model, compliance mapping, and the
+[DEK↔Cloud contract](docs/contracts/pollen-cloud-dek-api.md).
 
 ## License
 
-Pollen DEK is Apache-2.0. Pollen Cloud is commercial.
+DEK runtime, CLI, agent, SDK, adapters, and example policies are **Apache-2.0**.
+**Pollen Cloud is commercial.** See [LICENSE](LICENSE) and [NOTICE](NOTICE).
