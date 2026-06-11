@@ -3,7 +3,7 @@
 
 use crate::Keystore;
 use anyhow::{Context, Result};
-use linux_keyutils::{Key, KeyRing, KeyRingIdentifier};
+use linux_keyutils::{KeyRing, KeyRingIdentifier};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
