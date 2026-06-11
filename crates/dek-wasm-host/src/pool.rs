@@ -12,11 +12,11 @@ pub struct WorkerLease {
 
 impl WorkerLease {
     pub fn worker_mut(&mut self) -> &mut PluginWorker {
-        self.worker.as_mut().expect("worker already taken")
+        self.worker.as_mut().unwrap_or_else(|| panic!("worker already taken"))
     }
 
     fn take(mut self) -> PluginWorker {
-        self.worker.take().expect("worker already taken")
+        self.worker.take().unwrap_or_else(|| panic!("worker already taken"))
     }
 }
 
