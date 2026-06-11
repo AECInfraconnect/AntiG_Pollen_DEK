@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
@@ -381,10 +380,11 @@ impl Supervisor {
     }
 
     #[cfg(unix)]
+    #[allow(clippy::expect_used)]
     async fn wait_for_signal() {
         use tokio::signal::unix::{signal, SignalKind};
-        #[allow(clippy::expect_used)] let mut term = signal(SignalKind::terminate()).expect("SIGTERM handler");
-        #[allow(clippy::expect_used)] let mut int = signal(SignalKind::interrupt()).expect("SIGINT handler");
+        let mut term = signal(SignalKind::terminate()).expect("SIGTERM handler");
+        let mut int = signal(SignalKind::interrupt()).expect("SIGINT handler");
         tokio::select! { _ = term.recv() => {}, _ = int.recv() => {} }
     }
 

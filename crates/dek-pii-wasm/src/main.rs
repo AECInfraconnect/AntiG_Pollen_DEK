@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use regex::Regex;
 use serde_json::Value;
 use std::io::{self, Read, Write};
