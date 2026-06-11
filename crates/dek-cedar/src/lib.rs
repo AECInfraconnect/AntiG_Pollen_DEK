@@ -74,7 +74,9 @@ impl PolicyEvaluator for CedarAdapter {
             input.payload.get(key).and_then(|v| {
                 if v.is_object() {
                     v.get("kind")
+                        .or_else(|| v.get("resource_type"))
                         .or_else(|| v.get("id"))
+                        .or_else(|| v.get("resource_id"))
                         .and_then(|val| val.as_str().map(|s| s.to_string()))
                 } else if v.is_string() {
                     v.as_str().map(|s| s.to_string())
