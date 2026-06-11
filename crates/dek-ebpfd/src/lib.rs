@@ -46,9 +46,7 @@ pub use linux::{start_ebpfd_supervisor, EbpfHandle};
 mod linux {
     use super::{DnsObservation, ResolvedRecord, MIN_TTL_FLOOR_SECS};
     use anyhow::{Context, Result};
-    use aya::programs::{
-        CgroupAttachMode, CgroupSkb, CgroupSkbAttachType, CgroupSockAddr,
-    };
+    use aya::programs::{CgroupAttachMode, CgroupSkb, CgroupSkbAttachType, CgroupSockAddr};
     use aya::Ebpf;
     use hickory_proto::op::{Message, MessageType};
     use hickory_proto::rr::RData;
