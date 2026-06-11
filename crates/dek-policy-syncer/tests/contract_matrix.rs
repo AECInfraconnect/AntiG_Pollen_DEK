@@ -24,9 +24,9 @@ use dek_policy_syncer::state::{
     evaluate_state, write_status_atomic, EnforcementState, EnforcementStatus, FreshnessConfig,
 };
 use ed25519_dalek::{Signer, SigningKey};
-use std::sync::Mutex;
+use tokio::sync::Mutex;
 
-static SERIAL: Mutex<()> = Mutex::new(());
+static SERIAL: Mutex<()> = Mutex::const_new(());
 
 fn now() -> i64 {
     std::time::SystemTime::now()
@@ -49,8 +49,9 @@ fn sign_sigs(sk: &SigningKey, kid: &str, signed: &serde_json::Value) -> serde_js
 }
 
 // ── Scenario 1: valid signed bundle metadata verifies; forged rejected ──────
-#[test]
-fn s1_verify_valid_and_reject_forged() {
+#[tokio::test]
+async fn s1_verify_valid_and_reject_forged() {
+    let _g = SERIAL.lock().await;
     let (sk, pk) = keypair(1);
     let set = TrustedKeySet::from_single_pinned(&pk); // key_id = "bootstrap"
 
@@ -75,8 +76,9 @@ fn s1_verify_valid_and_reject_forged() {
 }
 
 // ── Scenario 2: key rotation merge + overlap + revoke ───────────────────────
-#[test]
-fn s2_key_rotation_overlap_then_revoke() {
+#[tokio::test]
+async fn s2_key_rotation_overlap_then_revoke() {
+    let _g = SERIAL.lock().await;
     let (sk_old, pk_old) = keypair(1);
     let (sk_new, pk_new) = keypair(2);
     let mut set = TrustedKeySet::from_single_pinned(&pk_old);
@@ -147,8 +149,9 @@ fn s2_key_rotation_overlap_then_revoke() {
 }
 
 // ── Scenario 3: freshness state machine (partition -> grace -> strict deny) ─
-#[test]
-fn s3_freshness_partition_to_strict_deny() {
+#[tokio::test]
+async fn s3_freshness_partition_to_strict_deny() {
+    let _g = SERIAL.lock().await;
     let cfg = FreshnessConfig {
         max_bundle_age_secs: 1000,
         grace_secs: 10,
@@ -172,9 +175,9 @@ fn s3_freshness_partition_to_strict_deny() {
 }
 
 // ── Scenario 4: PEP gate reads status file and fails closed ─────────────────
-#[test]
-fn s4_pep_gate_failsafe() {
-    let _g = SERIAL.lock().unwrap();
+#[tokio::test]
+async fn s4_pep_gate_failsafe() {
+    let _g = SERIAL.lock().await;
     std::env::set_var("DEK_DATA_DIR", std::env::temp_dir().join("dek-s4"));
 
     // strict deny published -> gate denies
@@ -217,7 +220,7 @@ async fn s5_v1_keys_chain_of_trust() {
     use axum::{routing::get, Json, Router};
     use serde_json::json;
 
-    let _g = SERIAL.lock().unwrap();
+    let _g = SERIAL.lock().await;
     std::env::set_var("DEK_DATA_DIR", std::env::temp_dir().join("dek-s5"));
 
     let (sk_boot, pk_boot) = keypair(1);

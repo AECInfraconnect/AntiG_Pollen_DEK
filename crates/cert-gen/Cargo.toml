@@ -1,8 +1,10 @@
 [package]
+license = "Apache-2.0"
+
 name = "cert-gen"
 version = "0.1.0"
 edition = "2021"
-license.workspace = true
+
 
 [dependencies]
 rcgen = "0.13"
