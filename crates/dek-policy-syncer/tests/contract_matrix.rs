@@ -1,4 +1,9 @@
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::duplicated_attributes)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::duplicated_attributes
+)]
 //! Phase 5 — contract integration matrix (in-process, deterministic, CI-friendly).
 //!
 //! Exercises the policy-syncer contract end-to-end WITHOUT spawning binaries:
