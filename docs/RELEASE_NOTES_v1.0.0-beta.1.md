@@ -3,6 +3,7 @@
 This release introduces end-to-end auto-update capabilities, OS installers, and kernel-level enforcement foundations.
 
 ## Highlights
+
 - **Automated Installers**: `pollen-dek-linux-amd64.deb` and `pollen-dek-windows-amd64.zip` are now generated automatically.
 - **End-to-End Auto-Updater**: `dek-updater` now performs atomic executable swaps with automatic rollback on health-check failure.
 - **CLI Proxy**: `dek-cli update --channel beta` seamlessly invokes `dek-updater`.
@@ -19,6 +20,7 @@ This release introduces end-to-end auto-update capabilities, OS installers, and 
 | macOS (tar) | `pollen-dek-macos-amd64.tar.gz` |
 
 To verify the integrity of these artifacts, download `SHA256SUMS` and `SHA256SUMS.sig`, then run:
+
 ```bash
 sha256sum -c SHA256SUMS
 

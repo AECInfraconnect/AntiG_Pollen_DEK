@@ -16,5 +16,5 @@ We welcome contributions from the community!
 
 ## Developer Certificate of Origin (DCO)
 
-All contributions must include a DCO sign-off in the commit message. 
+All contributions must include a DCO sign-off in the commit message.
 You can use `git commit -s` to append it automatically.

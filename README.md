@@ -30,6 +30,7 @@ only the endpoint + trust store, never the enforcement code.
 ## Quickstart
 
 ### Local mode (single machine, no Cloud)
+
 ```bash
 # 1) start the Local Control Plane + dashboard (http://127.0.0.1:3000)
 local-control-plane &
@@ -42,9 +43,11 @@ dek-cli enroll --cloud-url http://127.0.0.1:3000
 dek-core &
 dek-cli doctor && dek-cli status
 ```
+
 See **[docs/quickstart_local_en.md](docs/quickstart_local_en.md)** (TH: `_th`).
 
 ### Pollen Cloud mode
+
 ```bash
 dek-cli profile set cloud --url https://cloud.pollen.ai --tenant-id <tenant>
 dek-cli enroll --cloud-url https://cloud.pollen.ai
@@ -55,13 +58,16 @@ dek-core &
 
 Binaries for Linux/macOS/Windows are on **[GitHub Releases](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases)**.
 Each asset ships with `SHA256SUMS` + a cosign signature; verify before running:
+
 ```bash
 sha256sum -c SHA256SUMS
 cosign verify-blob --certificate <asset>.pem --signature <asset>.sig \
   --certificate-identity-regexp "https://github.com/AECInfraconnect/AntiG_Pollen_DEK/.*" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" <asset>
 ```
+
 Update in place (verifies cosign before applying, with rollback):
+
 ```bash
 dek-cli update --channel beta
 ```
@@ -82,6 +88,7 @@ dek-cli update --channel beta
                 │  fail-closed  │
                 └───────────────┘
 ```
+
 Full detail: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ## Plugin / Adapter SDK

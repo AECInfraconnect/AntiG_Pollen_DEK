@@ -160,13 +160,13 @@ jobs:
         run: cargo install cargo-cyclonedx
 
       - name: Generate CycloneDX SBOM
-        run: cargo cyclonedx --all --format json --output-pattern pollen-dek-sbom
+        run: cargo cyclonedx --format json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
-          name: pollen-dek-sbom.json
-          path: pollen-dek-sbom.json
+          name: pollen-dek-sboms
+          path: '**/*.cdx.json'
 
   release:
     name: Publish Release
