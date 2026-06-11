@@ -1,7 +1,11 @@
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::duplicated_attributes)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::duplicated_attributes
+)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::identity_op)]
 use dek_policy_runtime::{PolicyRuntime, WasmProfile, WasmtimePolicyRuntime};
 use serde_json::json;

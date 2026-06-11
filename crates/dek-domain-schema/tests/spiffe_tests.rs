@@ -1,7 +1,11 @@
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::duplicated_attributes)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::duplicated_attributes
+)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
-
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use dek_domain_schema::spiffe::{SpiffeBuilder, SpiffeId, validate_tenant_isolation};
 use dek_domain_schema::tenant::TrustDomainStrategy;
