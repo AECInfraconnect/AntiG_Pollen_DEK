@@ -20,7 +20,7 @@
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 #[derive(Debug, Deserialize)]
 struct ProbationMarker {
