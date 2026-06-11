@@ -25,6 +25,7 @@ hex = "0.4"
 arc-swap = "1"
 thiserror = "1"
 dek-control-plane-api = { version = "0.1.0", path = "../dek-control-plane-api" }
+dek-bundle-format = { version = "1.0.0-beta.1", path = "../dek-bundle-format" }
 [lints]
 workspace = true
 

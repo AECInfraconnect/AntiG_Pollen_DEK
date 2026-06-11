@@ -507,7 +507,8 @@ async fn handle_mcp_request(
     policy_input["principal"] = json!(principal);
     policy_input["resource"] = json!("mcp_tool");
 
-    let decision_req = dek_decision::DecisionRequest {
+    let decision_req = dek_decision::DecisionRequestV1 {
+        decision_id: uuid::Uuid::new_v4().to_string(),
         request_id: uuid::Uuid::new_v4().to_string(),
         trace_id: None,
         tenant_id: final_tenant_id.clone(),
@@ -631,6 +632,7 @@ async fn handle_mcp_request(
                     "redaction_applied": true,
                     "compliance_tags": if compliance_tags.is_empty() { serde_json::Value::Null } else { json!(compliance_tags) },
                     "payload": {
+                        "decision_id": decision_req.decision_id.clone(),
                         "request_id": decision_req.request_id.clone(),
                         "trace_id": decision_req.request_id.clone(),
                         "decision": if decision.allow { "allow" } else { "deny" },

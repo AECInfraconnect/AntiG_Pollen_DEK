@@ -116,20 +116,39 @@ async fn publish_policy(
         .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
     let mut compiled = vec![];
-    if let dek_control_plane_api::policy::PolicySource::RawText { language, text } = &draft.source {
-        compiled.push(crate::bundle::CompiledArtifact {
-            artifact_id: draft.name.clone(),
-            adapter_id: language.clone(),
-            artifact_type: format!("{}_text", language),
-            bytes: text.as_bytes().to_vec(),
-        });
-    } else {
-        compiled.push(crate::bundle::CompiledArtifact {
-            artifact_id: draft.name.clone(),
-            adapter_id: "cedar".into(),
-            artifact_type: "cedar_text".into(),
-            bytes: b"permit(principal,action,resource);".to_vec(),
-        });
+    match &draft.source {
+        dek_control_plane_api::policy::PolicySource::RawText { language, text } => {
+            compiled.push(crate::bundle::CompiledArtifact {
+                artifact_id: draft.name.clone(),
+                adapter_id: language.clone(),
+                artifact_type: format!("{}_text", language),
+                bytes: text.as_bytes().to_vec(),
+            });
+        }
+        dek_control_plane_api::policy::PolicySource::Structured { ir } => {
+            if let Ok(intent) = serde_json::from_value::<dek_policy_intent::PolicyIntent>(ir.clone()) {
+                if let Ok(compiled_policy) = dek_policy_compiler::CompilerOrchestrator::compile(&intent) {
+                    compiled.push(crate::bundle::CompiledArtifact {
+                        artifact_id: draft.name.clone(),
+                        adapter_id: compiled_policy.engine.clone(),
+                        artifact_type: format!("{}_text", compiled_policy.engine),
+                        bytes: compiled_policy.compiled_bytes,
+                    });
+                } else {
+                    return Err(ApiError::Internal(anyhow::anyhow!("Compilation failed")));
+                }
+            } else {
+                return Err(ApiError::Internal(anyhow::anyhow!("Invalid PolicyIntent IR")));
+            }
+        }
+        _ => {
+            compiled.push(crate::bundle::CompiledArtifact {
+                artifact_id: draft.name.clone(),
+                adapter_id: "cedar".into(),
+                artifact_type: "cedar_text".into(),
+                bytes: b"permit(principal,action,resource);".to_vec(),
+            });
+        }
     }
 
     let agents = st
@@ -157,7 +176,7 @@ async fn publish_policy(
         .upsert_policy_raw(
             &tenant,
             "bundle:latest",
-            &serde_json::to_value(&built.manifest).map_err(|e| ApiError::Internal(e.into()))?,
+            &built.envelope,
         )
         .await
         .map_err(ApiError::Internal)?;
@@ -169,14 +188,14 @@ async fn publish_policy(
             .map_err(ApiError::Internal)?;
     }
 
-    let _ = st.bundle_tx.send(built.manifest.bundle_id.clone());
+    let _ = st.bundle_tx.send(built.manifest.metadata.bundle_id.clone());
 
     Ok((
         StatusCode::OK,
         Json(json!({
             "published": true,
-            "bundle_id": built.manifest.bundle_id,
-            "manifest": built.manifest
+            "bundle_id": built.manifest.metadata.bundle_id,
+            "manifest": built.envelope
         })),
     ))
 }
@@ -185,10 +204,33 @@ async fn validate_policy(
     Path((tenant_id, policy_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> ApiResult<(StatusCode, Json<serde_json::Value>)> {
-    let _ = (tenant_id, policy_id, state);
+    let item = state
+        .policy_store
+        .get_policy(&tenant_id, &policy_id)
+        .await
+        .map_err(ApiError::Internal)?;
+
+    let policy = match item {
+        Some(p) => p,
+        None => return Err(ApiError::NotFound(policy_id)),
+    };
+
+    let mut errors = vec![];
+
+    match policy.source {
+        PolicySource::Structured { ir } => {
+            if let Err(e) = serde_json::from_value::<dek_policy_intent::PolicyIntent>(ir) {
+                errors.push(format!("PPI Validation Error: {}", e));
+            }
+        }
+        _ => {}
+    }
+
+    let is_valid = errors.is_empty();
+
     Ok((
         StatusCode::OK,
-        Json(json!({ "is_valid": true, "errors": [] })),
+        Json(json!({ "is_valid": is_valid, "errors": errors })),
     ))
 }
 

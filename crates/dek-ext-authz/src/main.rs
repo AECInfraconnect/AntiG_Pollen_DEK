@@ -32,6 +32,7 @@ pub struct ExtAuthzService {
     tenant_id: String,
     device_id: String,
     admission: Arc<AdmissionControl>,
+    telemetry: Option<std::sync::Arc<dek_telemetry::CloudTelemetrySink>>,
 }
 
 fn denied_check_response(reason: &str) -> CheckResponse {
@@ -112,20 +113,21 @@ impl Authorization for ExtAuthzService {
         policy_input["principal"] = json!(principal_id);
         policy_input["resource"] = json!(resource_id);
 
-        let decision_req = dek_decision::DecisionRequest {
+        let decision_req = dek_decision::DecisionRequestV1 {
+            decision_id: uuid::Uuid::new_v4().to_string(),
             request_id: uuid::Uuid::new_v4().to_string(),
             trace_id: None,
             tenant_id: self.tenant_id.clone(),
             device_id: self.device_id.clone(),
             principal: dek_decision::Principal {
-                id: principal_id,
+                id: principal_id.clone(),
                 roles: vec![],
             },
             agent: None,
-            action,
+            action: action.clone(),
             resource: dek_decision::ResourceRef {
                 resource_type: "url".into(),
-                resource_id,
+                resource_id: resource_id.clone(),
                 uri: None,
             },
             context: policy_input.clone(),
@@ -156,6 +158,37 @@ impl Authorization for ExtAuthzService {
                     metadata: json!({}),
                 }
             });
+
+        if let Some(telemetry) = &self.telemetry {
+            let event = json!({
+                "schema_version": "1.0",
+                "event_id": uuid::Uuid::new_v4().to_string(),
+                "event_type": "decision_log",
+                "timestamp": chrono::Utc::now().to_rfc3339(),
+                "tenant_id": self.tenant_id.clone(),
+                "workspace_id": "default",
+                "environment_id": "local",
+                "device_id": self.device_id.clone(),
+                "redaction_applied": false,
+                "payload": {
+                    "decision_id": decision_req.decision_id.clone(),
+                    "request_id": decision_req.request_id.clone(),
+                    "trace_id": decision_req.request_id.clone(),
+                    "decision": if decision.allow { "allow" } else { "deny" },
+                    "reason": decision.reason.clone(),
+                    "matched_policy_ids": [],
+                    "matched_route_id": serde_json::Value::Null,
+                    "adapter_results": [],
+                    "obligations": [],
+                    "latency_ms": 0,
+                    "principal": principal_id.clone(),
+                    "tool": "ext_authz",
+                    "method": action.clone(),
+                    "resource": resource_id.clone()
+                }
+            });
+            telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);
+        }
 
         if decision.allow {
             info!("ExtAuthz: Request Allowed");
@@ -241,11 +274,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         scale_config.max_concurrent_per_tenant,
     );
 
+    let telemetry_db = dek_config::paths::get_data_dir().join("telemetry-ext-authz.db");
+    let telemetry_sink = dek_telemetry::CloudTelemetrySink::new(
+        "https://telemetry.pollen-cloud.internal",
+        &bootstrap.mtls,
+        None,
+        &telemetry_db.to_string_lossy(),
+        None,
+    )
+    .ok();
+
     let service = ExtAuthzService {
         router: Arc::new(RwLock::new(router)),
         tenant_id: bootstrap.tenant_id.unwrap_or_else(|| "default".into()),
         device_id: bootstrap.device_id,
         admission,
+        telemetry: telemetry_sink,
     };
 
     info!("Envoy ext_authz gRPC listening on {}", addr);

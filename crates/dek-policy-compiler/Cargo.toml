@@ -1,0 +1,18 @@
+[package]
+name = "dek-policy-compiler"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+dek-policy-intent = { version = "1.0.0-beta.1", path = "../dek-policy-intent" }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror = "2.0.18"
+
+[lints]
+workspace = true

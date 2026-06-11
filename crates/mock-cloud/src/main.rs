@@ -13,6 +13,7 @@ pub mod jwt_svid_endpoint;
 pub mod keys;
 pub mod mtls;
 pub mod pdp;
+pub mod policy_intents;
 pub mod registry;
 pub mod scenarios;
 pub mod sidecar;
@@ -154,6 +155,7 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n"
         .merge(crate::approvals::router())
         .merge(crate::decision_logs::router())
         .merge(crate::sidecar::router())
+        .merge(crate::policy_intents::router())
         .route(
             "/v1/tenants/:tenant_id/devices/:device_id/config",
             get(get_config),

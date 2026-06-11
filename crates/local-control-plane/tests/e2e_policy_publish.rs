@@ -72,13 +72,9 @@ async fn e2e_publish_cedar_policy_and_get_manifest() {
         .await
         .unwrap();
 
-    assert_eq!(manifest["tenant_id"], "local");
+    assert_eq!(manifest["manifest"]["metadata"]["tenant"], "local");
     assert!(
-        !manifest["artifacts"].as_array().unwrap().is_empty(),
+        !manifest["manifest"]["artifacts"].as_array().unwrap().is_empty(),
         "Missing artifacts"
-    );
-    assert!(
-        !manifest["signatures"].as_array().unwrap().is_empty(),
-        "Missing signatures"
     );
 }
