@@ -278,16 +278,6 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
             .context("spawn dek-core")?,
     );
     wait_http(&format!("{PEP}/healthz"), 30).await?;
-    poll_until(
-        Duration::from_secs(30),
-        Duration::from_millis(300),
-        || async {
-            let (st, _allow, _body) = authorize(&c, &serde_json::json!({})).await;
-            st == 200 // PEP is ready
-        },
-    )
-    .await?;
-
     let req = serde_json::json!({
         "request_id": "req-e2e-1",
         "tenant_id": "local",
@@ -301,6 +291,17 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
         },
         "input_hash": "dummy_hash"
     });
+
+    poll_until(
+        Duration::from_secs(30),
+        Duration::from_millis(300),
+        || async {
+            let (st, allow, _body) = authorize(&c, &req).await;
+            st == 200 && allow
+        },
+    )
+    .await?;
+
     let (status, allow, body) = authorize(&c, &req).await;
     anyhow::ensure!(
         status == 200 && allow,

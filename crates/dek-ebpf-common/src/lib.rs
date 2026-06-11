@@ -118,35 +118,35 @@ pub struct DnsCaptureEvent {
 }
 
 #[allow(unsafe_code)]
-#[cfg(feature = "user")]
+#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for Ipv4LpmKey {}
 #[allow(unsafe_code)]
-#[cfg(feature = "user")]
+#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for Ipv6LpmKey {}
 #[allow(unsafe_code)]
-#[cfg(feature = "user")]
+#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for DekIp4Key {}
 #[allow(unsafe_code)]
-#[cfg(feature = "user")]
+#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for DekIp6Key {}
 #[allow(unsafe_code)]
-#[cfg(feature = "user")]
+#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for DekDnsCacheValue {}
 #[allow(unsafe_code)]
-#[cfg(feature = "user")]
+#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for DekConn4Key {}
 #[allow(unsafe_code)]
-#[cfg(feature = "user")]
+#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for DekConnDecisionValue {}
 #[allow(unsafe_code)]
-#[cfg(feature = "user")]
+#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for DekMetrics {}
 #[allow(unsafe_code)]
-#[cfg(feature = "user")]
+#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for PolicyVerdict {}
 #[allow(unsafe_code)]
-#[cfg(feature = "user")]
+#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for EgressEvent {}
 #[allow(unsafe_code)]
-#[cfg(feature = "user")]
+#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for DnsCaptureEvent {}

@@ -256,6 +256,8 @@ mod tests {
 
     #[test]
     fn evicts_oldest_when_over_capacity() {
+        let tmp = std::env::temp_dir().join(format!("spooler_test_{}", std::process::id()));
+        std::env::set_var("DEK_DATA_DIR", &tmp);
         let s = Spooler::with_capacity(":memory:", 3).unwrap();
         for i in 0..5 {
             s.push(Priority::Normal, &json!({ "n": i })).unwrap();
@@ -267,10 +269,13 @@ mod tests {
             .map(|(_, v)| v["n"].as_i64().unwrap())
             .collect();
         assert_eq!(ns, vec![2, 3, 4]); // 0,1 evicted
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 
     #[test]
     fn critical_survives_eviction_over_low() {
+        let tmp = std::env::temp_dir().join(format!("spooler_test_{}_2", std::process::id()));
+        std::env::set_var("DEK_DATA_DIR", &tmp);
         let s = Spooler::with_capacity(":memory:", 2).unwrap();
         s.push(Priority::Critical, &json!({ "k": "keep" })).unwrap();
         s.push(Priority::Low, &json!({ "k": "a" })).unwrap();
@@ -282,5 +287,6 @@ mod tests {
             .collect();
         assert!(ks.contains(&"keep".to_string()), "critical must survive");
         assert_eq!(batch.len(), 2);
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 }
