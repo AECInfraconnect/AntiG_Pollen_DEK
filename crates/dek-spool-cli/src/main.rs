@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let store = DefaultOsKeyStore::new(PathBuf::from("master.key.wrapped"));
 
     #[cfg(target_os = "linux")]
-    let store = DefaultOsKeyStore::new(PathBuf::from("master.key.fallback"));
+    let store = DefaultOsKeyStore::new(std::path::PathBuf::from("master.key.fallback"));
 
     #[cfg(target_os = "macos")]
     let store = DefaultOsKeyStore::new();
