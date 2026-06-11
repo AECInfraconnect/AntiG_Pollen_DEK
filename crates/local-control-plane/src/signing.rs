@@ -89,8 +89,8 @@ mod tests {
     #[test]
     fn persist_and_reload_same_key() {
         let dir = std::env::temp_dir().join(format!("lcp-sign-{}", std::process::id()));
-        let s1 = LocalSigner::load_or_create(&dir).unwrap();
-        let s2 = LocalSigner::load_or_create(&dir).unwrap();
+        #[allow(clippy::unwrap_used)] let s1 = LocalSigner::load_or_create(&dir).unwrap();
+        #[allow(clippy::unwrap_used)] let s2 = LocalSigner::load_or_create(&dir).unwrap();
         assert_eq!(s1.public_key_b64(), s2.public_key_b64(), "key must persist");
         assert_eq!(s1.key_id, s2.key_id);
         let _ = std::fs::remove_dir_all(&dir);
@@ -99,7 +99,7 @@ mod tests {
     #[test]
     fn signature_is_deterministic_per_key() {
         let dir = std::env::temp_dir().join(format!("lcp-sign2-{}", std::process::id()));
-        let s = LocalSigner::load_or_create(&dir).unwrap();
+        #[allow(clippy::unwrap_used)] let s = LocalSigner::load_or_create(&dir).unwrap();
         let a = s.sign_b64(b"hello");
         let b = s.sign_b64(b"hello");
         assert_eq!(a, b, "ed25519 is deterministic");
