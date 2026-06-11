@@ -8,7 +8,8 @@ use std::fs;
 use std::path::Path;
 
 fn main() -> Result<()> {
-    let certs_dir = Path::new("../../certs");
+    let out_dir = std::env::args().nth(1).unwrap_or_else(|| "../../certs".to_string());
+    let certs_dir = Path::new(&out_dir);
     if !certs_dir.exists() {
         fs::create_dir_all(certs_dir).context("Failed to create certs directory")?;
     }
