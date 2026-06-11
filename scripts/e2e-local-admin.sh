@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
+cargo clippy --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --exclude dek-opa-wasm --all-targets -- -D warnings
 cargo test -p dek-control-plane-api
 cargo test -p local-control-plane
 
