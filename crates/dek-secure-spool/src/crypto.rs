@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit, OsRng, Payload},
     Aes256Gcm, Key, Nonce,
