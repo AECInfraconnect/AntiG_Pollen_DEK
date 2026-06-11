@@ -2,8 +2,17 @@
 // Copyright (c) 2026 AEC Infraconnect
 
 use std::env;
+use std::fs::File;
+use std::path::Path;
 
 fn main() {
+    // Always create a dummy file to satisfy include_bytes_aligned! on all platforms
+    // and in case the eBPF build fails (e.g. missing bpf-linker)
+    if let Some(out_dir) = env::var_os("OUT_DIR") {
+        let dest_path = Path::new(&out_dir).join("dek-ebpf-prog");
+        let _ = File::create(&dest_path);
+    }
+
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
 
     // eBPF is only applicable on Linux
