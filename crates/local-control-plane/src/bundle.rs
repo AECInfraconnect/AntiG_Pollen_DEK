@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 // SPDX-License-Identifier: Apache-2.0
 //! bundle.rs — build signed policy bundles in the SAME format as Pollen Cloud
 
