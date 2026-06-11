@@ -29,7 +29,7 @@ pub struct RecordAad {
 
 impl RecordAad {
     pub fn to_bytes(&self) -> Vec<u8> {
-        serde_json::to_vec(self).expect("AAD serialization must not fail")
+        serde_json::to_vec(self).unwrap_or_else(|e| panic!("AAD serialization must not fail: {}", e))
     }
 }
 
