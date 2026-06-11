@@ -16,6 +16,7 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 | Trust root | pinned local signing key | SPIRE trust bundle (rotatable) |
 
 **Invariants (same in both modes):**
+
 - **I1** identical schema / bundle format / telemetry envelope (`dek-control-plane-api` is the single source of truth) — the DEK can't tell Local from Cloud.
 - **I2** protocol/security may differ (Local = HTTP+Bearer, Cloud = mTLS+OAuth+SPIFFE).
 - **I3** bundles are always signed; the DEK verifies identically and fail-closed.
@@ -25,6 +26,7 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 ## Crate map
 
 **Control / supervision**
+
 - `dek-core` — supervisor: HTTP/IPC API (PEP on `:43890`), config load, SVID/mTLS lifecycle, hot-reload coordination, network enforcement loop, identity-health gate.
 - `dek-config` — bootstrap config, profiles, paths.
 - `dek-policy-syncer` — bundle sync (poll + SSE push), enforcement-state machine (Active / GracePeriod / StrictDeny), fail-closed freshness gate.
@@ -34,6 +36,7 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 - `dek-secure-spool` — durable disk-backed queueing for telemetry and audit events before shipping.
 
 **Decision / PEP**
+
 - `dek-mcp-proxy` — MCP authorize endpoint; emits decision telemetry; obligations (require_approval / step_up_mfa).
 - `dek-policy-router` — route matching + **adaptive engine selection** (`engine_selector`), circuit breakers, per-tenant admission, failover, break-glass.
 - `dek-policy-runtime` — `PolicyRuntime` trait + Wasmtime runtime.
@@ -42,16 +45,19 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 - `dek-resilience` — circuit breakers, admission control, and system overload protections.
 
 **Network enforcement (OS)**
+
 - `dek-ebpfd` (+ `dek-ebpf-prog`, `dek-ebpf-common`) — Linux eBPF cgroup enforcement (kernel).
 - `dek-windows-wfp` — Windows Filtering Platform (user-mode today; kernel callout driver in progress).
 - `dek-macos-nefilter` — macOS NetworkExtension / System Extension.
 - **Kernel complexity guard** (`dek-core::kernel_guard`) — only simple, exact rules (CIDR/port/exact-domain, bounded count) go to the kernel; complex rules fall to the user-mode plane to avoid verifier rejection/instability.
 
 **Identity (Cloud)**
+
 - `dek-spire-node` — node attestation (join token → CSR → X.509-SVID), JWT-SVID cache, trust-bundle polling/rotation.
 - `dek-enroll` — enrollment + OAuth device flow.
 
 **Control planes**
+
 - `dek-control-plane-api` — shared contract (bundle manifest, telemetry envelope, registry objects, policy drafts, identity modes).
 - `local-control-plane` — Axum + SQLite + local signing; registry/policy/bundle/telemetry/push.
 - `apps/local-admin-dashboard` — React/Vite UI (registry, policies, decision logs).

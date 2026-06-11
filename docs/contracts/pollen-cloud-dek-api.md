@@ -3,6 +3,7 @@
 This document is the Single Source of Truth for the APIs and data models used between the Pollen Cloud (and Mock-Cloud) and the Data Execution Kernel (DEK).
 
 ## JSON Schemas
+
 All objects exchanged must adhere to their respective JSON schemas:
 
 - `tenant.schema.json`
@@ -20,6 +21,7 @@ All objects exchanged must adhere to their respective JSON schemas:
 ## API Endpoints
 
 ### 1. Registry APIs
+
 Used to manage the entities within a tenant.
 
 - `GET    /v1/tenants/{tenant_id}/registry/agents`
@@ -32,6 +34,7 @@ Used to manage the entities within a tenant.
 - `POST   /v1/tenants/{tenant_id}/registry/relationships`
 
 ### 2. Policy APIs
+
 Used to manage policies and perform simulation testing.
 
 - `GET    /v1/tenants/{tenant_id}/policies`
@@ -41,6 +44,7 @@ Used to manage policies and perform simulation testing.
 - `POST   /v1/tenants/{tenant_id}/policies/simulate`
 
 ### 3. Bundle APIs
+
 Used by DEK to fetch TUF-lite metadata and the securely signed bundles.
 
 - `GET  /v1/tenants/{tenant_id}/devices/{device_id}/bundles/metadata/root.json`
@@ -53,6 +57,7 @@ Used by DEK to fetch TUF-lite metadata and the securely signed bundles.
 - `POST /v1/tenants/{tenant_id}/bundles/rollback`
 
 ### 4. DEK Config APIs
+
 Device-specific configurations and credentials.
 
 - `GET /v1/tenants/{tenant_id}/devices/{device_id}/config`
@@ -61,6 +66,7 @@ Device-specific configurations and credentials.
 - `GET /v1/tenants/{tenant_id}/devices/{device_id}/capabilities`
 
 ### 5. Telemetry APIs
+
 Used by DEK to send telemetry to the cloud.
 
 - `POST /v1/telemetry/events`
@@ -74,6 +80,7 @@ Used by DEK to send telemetry to the cloud.
 - `GET  /admin/api/traces/{trace_id}`
 
 ## Enforced Headers
+
 - `Authorization: Bearer <token>`
 - `Content-Type: application/json`
 - `X-Pollen-Device-Id: <device_id>`
