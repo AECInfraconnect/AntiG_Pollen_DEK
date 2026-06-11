@@ -1806,6 +1806,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-bundle-format"
+version = "1.0.0-beta.1"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "dek-bundle-sync"
 version = "0.1.0"
 dependencies = [
@@ -1813,6 +1820,7 @@ dependencies = [
  "arc-swap",
  "base64 0.22.1",
  "chrono",
+ "dek-bundle-format",
  "dek-config",
  "dek-control-plane-api",
  "dek-domain-schema",
@@ -1829,6 +1837,14 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "dek-capability-registry"
+version = "1.0.0-beta.1"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2020,6 +2036,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-entity-registry"
+version = "1.0.0-beta.1"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "dek-errors"
 version = "0.1.0"
 dependencies = [
@@ -2033,6 +2057,7 @@ dependencies = [
 name = "dek-ext-authz"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "dek-activation",
  "dek-config",
  "dek-decision",
@@ -2041,6 +2066,7 @@ dependencies = [
  "dek-policy-syncer",
  "dek-resilience",
  "dek-router-builder",
+ "dek-telemetry",
  "metrics",
  "metrics-exporter-prometheus",
  "prost 0.13.5",
@@ -2261,6 +2287,25 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "dek-policy-compiler"
+version = "1.0.0-beta.1"
+dependencies = [
+ "anyhow",
+ "dek-policy-intent",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "dek-policy-intent"
+version = "1.0.0-beta.1"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -4316,7 +4361,10 @@ dependencies = [
  "axum 0.7.9",
  "base64 0.22.1",
  "chrono",
+ "dek-bundle-format",
  "dek-control-plane-api",
+ "dek-policy-compiler",
+ "dek-policy-intent",
  "ed25519-dalek",
  "futures-util",
  "getrandom 0.2.17",
@@ -4592,6 +4640,7 @@ dependencies = [
  "clap",
  "dek-domain-schema",
  "dek-plugin-sdk",
+ "dek-policy-intent",
  "ed25519-dalek",
  "futures-util",
  "hex",
@@ -5205,7 +5254,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 
 [[package]]
-name = "pii-redactor"
+name = "pii-redactor-plugin"
 version = "0.1.0"
 dependencies = [
  "once_cell",

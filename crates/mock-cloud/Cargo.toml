@@ -34,6 +34,7 @@ futures-util = "0.3"
 sha2 = "0.10"
 hex = "0.4"
 tower-http = { version = "0.5", features = ["fs", "cors"] }
+dek-policy-intent = { version = "1.0.0-beta.1", path = "../dek-policy-intent" }
 
 [lints]
 workspace = true

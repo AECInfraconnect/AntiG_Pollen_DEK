@@ -288,7 +288,7 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
         "device_id": "device-001",
         "principal": { "id": "e2e-user", "roles": [] },
         "action": "tools/call",
-        "resource": { "kind": "mcp_tool", "id": "safe.echo" },
+        "resource": { "resource_type": "mcp_tool", "resource_id": "safe.echo" },
         "context": {
             "mcp": { "method": "tools/call", "params": { "name": "safe.echo" } },
             "risk_tier": "low"

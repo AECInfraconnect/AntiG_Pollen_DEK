@@ -40,8 +40,8 @@ impl NetworkEnforcer for NeFilterClient {
         }
 
         info!(
-            "Pushing compiled rules to macOS Network Extension: {} (v{})",
-            rules.policy_id, rules.version
+            "OS Enforcement (macOS): pushing compiled rules to Pollen Network Extension for policy '{}' (v{}, risk={})",
+            rules.policy_id, rules.version, rules.risk_tier
         );
 
         Ok(())

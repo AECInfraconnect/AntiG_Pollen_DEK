@@ -256,10 +256,7 @@ impl BundleSyncAgent {
         let res = self.get(&client, &config_url).send().await?;
         let dek_config: DekConfig = res.json().await.context("Failed to parse DekConfig")?;
 
-        let mut config_val = json!({});
-        if let Some(policy_config) = &dek_config.policy_config {
-            config_val = serde_json::to_value(policy_config)?;
-        }
+        let config_val = serde_json::to_value(&dek_config)?;
 
         // 4. Safe Config Merge (Tenant config vs Bundle)
         let final_merged = merge_safe(vec![
@@ -336,26 +333,23 @@ impl BundleSyncAgent {
         }
         let manifest_val: serde_json::Value = res.json().await?;
 
-        // Deserialize back and forth to get the canonical bytes for verification
-        use dek_control_plane_api::bundle::PollenPolicyBundleManifestV2;
-        let mut manifest: PollenPolicyBundleManifestV2 =
-            serde_json::from_value(manifest_val.clone())?;
+        // Extract manifest and signatures from the envelope
+        let manifest_json = manifest_val.get("manifest").context("Missing manifest in envelope")?;
+        let signatures_json = manifest_val.get("signatures").context("Missing signatures in envelope")?;
+
+        use dek_bundle_format::PollenPolicyBundle;
+        let manifest: PollenPolicyBundle = serde_json::from_value(manifest_json.clone())?;
 
         // The signatures to verify
-        let sigs_for_verify: Vec<crate::keys::SignatureEntry> = manifest
-            .signatures
-            .iter()
-            .map(|s| {
-                crate::keys::SignatureEntry {
-                    key_id: None, // Force check against all pinned keys (bootstrap)
-                    sig_b64: s.payload.clone(),
-                }
+        let sigs_for_verify: Vec<crate::keys::SignatureEntry> = crate::keys::parse_signatures(signatures_json)
+            .into_iter()
+            .map(|mut s| {
+                s.key_id = None; // Force check against all pinned keys (bootstrap)
+                s
             })
             .collect();
         tracing::info!("Found {} signatures in manifest", sigs_for_verify.len());
 
-        // Zero out signatures to match local-control-plane canonical form
-        manifest.signatures.clear();
         let signed_bytes = serde_json::to_vec(&manifest)?;
         use sha2::Digest;
         let sha = hex::encode(sha2::Sha256::digest(&signed_bytes));
@@ -384,9 +378,9 @@ impl BundleSyncAgent {
         }
 
         let target_dir = data_dir.join("state").join("bundles");
-        let bundle_version = format!("{}", manifest.build_number);
+        let bundle_version = format!("{}", manifest.metadata.version);
         let bundle_dir = target_dir.join(format!("bundle_{}", bundle_version));
-        let staging_dir = target_dir.join(format!("staging_{}", manifest.bundle_id));
+        let staging_dir = target_dir.join(format!("staging_{}", manifest.metadata.bundle_id));
         std::fs::create_dir_all(&staging_dir)?;
 
         let mut merged_payload = json!({});
@@ -409,7 +403,7 @@ impl BundleSyncAgent {
             if computed_sha != *hash {
                 return Err(anyhow::anyhow!(
                     "Artifact SHA256 mismatch for {}, expected {}, got {}",
-                    artifact.artifact_id,
+                    artifact.path,
                     hash,
                     computed_sha
                 ));
@@ -420,7 +414,7 @@ impl BundleSyncAgent {
             let artifact_path = staging_dir.join(&safe_filename);
             std::fs::write(&artifact_path, &bytes)?;
 
-            let filename = &artifact.artifact_id;
+            let filename = artifact.path.split('/').last().unwrap_or("unknown");
 
             if filename.ends_with(".json") {
                 if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&bytes) {
@@ -443,10 +437,7 @@ impl BundleSyncAgent {
         let res = self.get(&client, &config_url).send().await?;
         let dek_config: DekConfig = res.json().await.context("Failed to parse DekConfig")?;
 
-        let mut config_val = json!({});
-        if let Some(policy_config) = &dek_config.policy_config {
-            config_val = serde_json::to_value(policy_config)?;
-        }
+        let config_val = serde_json::to_value(&dek_config)?;
 
         let final_merged = merge_safe(vec![
             (PrecedenceLevel::Tenant, config_val),
@@ -458,13 +449,21 @@ impl BundleSyncAgent {
         std::fs::write(&staging_manifest_path, &payload_string)?;
 
         // Promote from staging to final bundle directory atomically
-        if !bundle_dir.exists() {
-            std::fs::rename(&staging_dir, &bundle_dir)?;
-        } else {
-            let _ = std::fs::remove_dir_all(&staging_dir);
+        if bundle_dir.exists() {
+            tracing::info!("[BundleSync] Overwriting existing bundle_dir in Local Mode: {:?}", bundle_dir);
+            let _ = std::fs::remove_dir_all(&bundle_dir);
         }
+        std::fs::rename(&staging_dir, &bundle_dir)?;
 
         let bundle_path = bundle_dir.join("manifest.json");
+
+        // Symlink latest
+        let latest_symlink = target_dir.join("latest");
+        let _ = std::fs::remove_file(&latest_symlink);
+        #[cfg(unix)]
+        let _ = std::os::unix::fs::symlink(&bundle_dir, &latest_symlink);
+        #[cfg(windows)]
+        let _ = std::os::windows::fs::symlink_dir(&bundle_dir, &latest_symlink);
 
         info!(
             "[BundleSync] State: Staged combined config at {:?}",

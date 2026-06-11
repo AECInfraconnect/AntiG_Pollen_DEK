@@ -88,16 +88,26 @@ mod linux {
     ) -> Result<EbpfHandle> {
         info!("Starting eBPFD Supervisor (network Control Point)...");
 
-        if let Err(e) = fs::create_dir_all(BPFFS_PATH) {
+        // Use a helper to securely create directories with 0o700 permissions
+        let create_secure_dir = |path: &str| -> Result<()> {
+            fs::create_dir_all(path)?;
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(path)?.permissions();
+            perms.set_mode(0o700);
+            fs::set_permissions(path, perms)?;
+            Ok(())
+        };
+
+        if let Err(e) = create_secure_dir(BPFFS_PATH) {
             warn!(
-                "Could not create BPFFS path {} ({}); is /sys/fs/bpf mounted?",
+                "Could not securely create BPFFS path {} ({}); is /sys/fs/bpf mounted?",
                 BPFFS_PATH, e
             );
         }
-        if let Err(e) = fs::create_dir_all(cgroup_path) {
-            warn!("Could not create supervised cgroup {} ({})", cgroup_path, e);
+        if let Err(e) = create_secure_dir(cgroup_path) {
+            warn!("Could not securely create supervised cgroup {} ({})", cgroup_path, e);
         } else {
-            info!("Scoped cgroup ready at {}", cgroup_path);
+            info!("Scoped cgroup securely ready at {}", cgroup_path);
         }
 
         // Bytecode embedded at compile time (replace dummy.o with the real
