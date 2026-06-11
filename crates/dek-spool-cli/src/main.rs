@@ -3,14 +3,13 @@ use dek_secure_spool::{
     os::DefaultOsKeyStore,
     segment::{SegmentWriter, TelemetryEvent},
 };
-use std::path::PathBuf;
 use uuid::Uuid;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Initialize OS-specific KeyStore...");
 
     #[cfg(windows)]
-    let store = DefaultOsKeyStore::new(PathBuf::from("master.key.wrapped"));
+    let store = DefaultOsKeyStore::new(std::path::PathBuf::from("master.key.wrapped"));
 
     #[cfg(target_os = "linux")]
     let store = DefaultOsKeyStore::new(std::path::PathBuf::from("master.key.fallback"));
