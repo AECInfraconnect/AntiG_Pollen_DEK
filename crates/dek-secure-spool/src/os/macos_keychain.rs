@@ -1,5 +1,6 @@
 use crate::key_manager::{KeyStoreError, OsKeyStore};
 
+#[derive(Default)]
 pub struct MacOsKeychainStore;
 
 impl MacOsKeychainStore {

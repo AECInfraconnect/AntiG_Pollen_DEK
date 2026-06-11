@@ -175,6 +175,7 @@ fn s3_freshness_partition_to_strict_deny() {
 #[test]
 fn s4_pep_gate_failsafe() {
     let _g = SERIAL.lock().unwrap();
+    std::env::set_var("DEK_DATA_DIR", std::env::temp_dir().join("dek-s4"));
 
     // strict deny published -> gate denies
     write_status_atomic(&EnforcementStatus {
@@ -215,6 +216,9 @@ fn s4_pep_gate_failsafe() {
 async fn s5_v1_keys_chain_of_trust() {
     use axum::{routing::get, Json, Router};
     use serde_json::json;
+
+    let _g = SERIAL.lock().unwrap();
+    std::env::set_var("DEK_DATA_DIR", std::env::temp_dir().join("dek-s5"));
 
     let (sk_boot, pk_boot) = keypair(1);
     let (_sk_rogue, _pk_rogue) = keypair(7);
