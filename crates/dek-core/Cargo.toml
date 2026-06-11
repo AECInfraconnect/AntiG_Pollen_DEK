@@ -1,8 +1,10 @@
 [package]
+license = "Apache-2.0"
+
 name = "dek-core"
 version = "0.1.0"
 edition = "2021"
-license.workspace = true
+
 authors = ["Pollen DEK Team"]
 description = "Pollen DEK Supervisor and Agent"
 
@@ -17,7 +19,6 @@ dek-domain-schema = { path = "../dek-domain-schema" }
 dek-keystore = { path = "../dek-keystore" }
 dek-ipc = { path = "../dek-ipc" }
 
-dek-ebpfd = { path = "../dek-ebpfd" }
 dek-wasm-host = { path = "../dek-wasm-host" }
 dek-policy-router = { path = "../dek-policy-router" }
 
@@ -71,6 +72,7 @@ dek-windows-wfp = { path = "../dek-windows-wfp" }
 [target.'cfg(target_os = "linux")'.dependencies]
 sd-notify = "0.4.1"
 libc = "0.2"
+dek-ebpfd = { path = "../dek-ebpfd" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 dek-macos-nefilter = { path = "../dek-macos-nefilter" }

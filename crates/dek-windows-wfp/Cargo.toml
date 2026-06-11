@@ -1,8 +1,10 @@
 [package]
+license = "Apache-2.0"
+
 name = "dek-windows-wfp"
 version = "0.1.0"
 edition = "2021"
-license.workspace = true
+
 authors = ["Pollen Cloud Team <team@pollen.cloud>"]
 description = "Windows Filtering Platform (WFP) adapter for Pollen DEK network guardrails"
 
