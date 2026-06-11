@@ -13,10 +13,6 @@ use std::net::Ipv4Addr;
 #[cfg(target_os = "linux")]
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-#[cfg(target_os = "linux")]
-unsafe impl aya::Pod for DekIp4Key {}
-#[cfg(target_os = "linux")]
-unsafe impl aya::Pod for DekDnsCacheValue {}
 
 #[cfg(target_os = "linux")]
 fn now_ns() -> u64 {

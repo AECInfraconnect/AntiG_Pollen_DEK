@@ -46,17 +46,17 @@ pub use linux::{start_ebpfd_supervisor, EbpfHandle};
 mod linux {
     use super::{DnsObservation, ResolvedRecord, MIN_TTL_FLOOR_SECS};
     use anyhow::{Context, Result};
-    use aya::{
-        programs::{CgroupSkb, CgroupSkbAttachType, CgroupSockAddr, SockAddrAttachType},
-        Ebpf,
+    use aya::programs::{
+        CgroupAttachMode, CgroupSkb, CgroupSkbAttachType, CgroupSockAddr,
     };
+    use aya::Ebpf;
     use hickory_proto::op::{Message, MessageType};
     use hickory_proto::rr::RData;
     use std::fs;
     use std::net::IpAddr;
     use tokio::sync::mpsc::Sender;
     use tokio::task::{self, JoinHandle};
-    use tracing::{error, info, warn};
+    use tracing::{info, warn};
 
     const BPFFS_PATH: &str = "/sys/fs/bpf/pollen-dek";
 
@@ -141,9 +141,7 @@ mod linux {
             let p: &mut CgroupSockAddr = prog.try_into().context("connect4 program")?;
             p.load().context("load connect4")?;
             let cg = fs::File::open(cgroup_path).context("open cgroup (connect4)")?;
-            // NOTE: attach signature is aya-version-sensitive; mirror the repo's
-            // existing connect4 call so this stays consistent.
-            p.attach(cg, SockAddrAttachType::IPv4)
+            p.attach(cg, CgroupAttachMode::Single)
                 .context("attach connect4")?;
             info!("Attached cgroup/connect4 to {}", cgroup_path);
         }
@@ -153,10 +151,10 @@ mod linux {
             let p: &mut CgroupSkb = prog.try_into().context("dns_capture program")?;
             p.load().context("load dns_capture")?;
             let cg_e = fs::File::open(cgroup_path).context("open cgroup (egress)")?;
-            p.attach(cg_e, CgroupSkbAttachType::Egress)
+            p.attach(cg_e, CgroupSkbAttachType::Egress, CgroupAttachMode::Single)
                 .context("attach egress")?;
             let cg_i = fs::File::open(cgroup_path).context("open cgroup (ingress)")?;
-            p.attach(cg_i, CgroupSkbAttachType::Ingress)
+            p.attach(cg_i, CgroupSkbAttachType::Ingress, CgroupAttachMode::Single)
                 .context("attach ingress")?;
             info!(
                 "Attached cgroup/skb DNS capture (egress+ingress) to {}",
@@ -169,16 +167,19 @@ mod linux {
         let mut tasks: Vec<JoinHandle<()>> = Vec::new();
 
         // ---- DNS ring buffer reader ----
-        // AsyncRingBuf is provided by aya's async_tokio feature (matches the
-        // repo's current dependency set).
-        if let Ok(dns_map) = bpf.take_map("DNS_EVENTS") {
-            match aya::maps::AsyncRingBuf::try_from(dns_map) {
-                Ok(mut ring) => {
-                    tasks.push(task::spawn(async move {
-                        info!("eBPFD DNS ring-buffer reader started");
-                        loop {
-                            match ring.next().await {
-                                Some(item) => {
+        if let Some(dns_map) = bpf.take_map("DNS_EVENTS") {
+            match aya::maps::RingBuf::try_from(dns_map) {
+                Ok(ring) => {
+                    if let Ok(mut async_fd) = tokio::io::unix::AsyncFd::new(ring) {
+                        tasks.push(task::spawn(async move {
+                            info!("eBPFD DNS ring-buffer reader started");
+                            loop {
+                                let mut guard = match async_fd.readable_mut().await {
+                                    Ok(g) => g,
+                                    Err(_) => break,
+                                };
+                                let ring = guard.get_inner_mut();
+                                while let Some(item) = ring.next() {
                                     let bytes: &[u8] = &item;
                                     if bytes.len()
                                         < std::mem::size_of::<dek_ebpf_common::DnsCaptureEvent>()
@@ -193,10 +194,8 @@ mod linux {
                                         log_observation(&obs);
                                         // Update DNS cache for every resolved record
                                         for rec in &obs.answers {
-                                            if let std::net::IpAddr::V4(ipv4) = rec.ip {
-                                                // Using a dummy Ebpf handle for map updates would require
-                                                // either cloning bpf or sharing it. For demonstration:
-                                                // let _ = crate::dns_cache::update_dns_ip_cache_v4(..., ipv4, &obs.qname, Duration::from_secs(rec.ttl_secs as u64), 0, 0);
+                                            if let std::net::IpAddr::V4(_ipv4) = rec.ip {
+                                                // ...
                                             }
                                         }
                                         if let Some(tx) = &obs_tx {
@@ -204,15 +203,14 @@ mod linux {
                                         }
                                     }
                                 }
-                                None => {
-                                    // ring closed
-                                    break;
-                                }
+                                guard.clear_ready();
                             }
-                        }
-                    }));
+                        }));
+                    } else {
+                        warn!("DNS_EVENTS -> AsyncFd failed");
+                    }
                 }
-                Err(e) => warn!("DNS_EVENTS -> AsyncRingBuf failed: {e}"),
+                Err(e) => warn!("DNS_EVENTS -> RingBuf failed: {e}"),
             }
         } else {
             warn!("DNS_EVENTS map not found");

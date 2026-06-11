@@ -5,7 +5,10 @@ edition = "2024"
 license.workspace = true
 
 [dependencies]
+aya = { version = "0.13", optional = true }
 
 [lints]
 workspace = true
 
+[features]
+user = ["aya"]
