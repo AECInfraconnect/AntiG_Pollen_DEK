@@ -6,6 +6,7 @@ cargo clippy --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude p
 cargo test -p dek-control-plane-api
 cargo test -p local-control-plane
 
+mkdir -p ./target/e2e
 export DEK_LCP_AUTH_DISABLE=1
 export DEK_LCP_DB='sqlite://./target/e2e/pollen-local.db?mode=rwc'
 export DEK_LCP_DATA='./target/e2e/pollen-local-data'
