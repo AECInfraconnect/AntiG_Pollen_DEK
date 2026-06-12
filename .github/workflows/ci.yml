@@ -17,7 +17,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -31,27 +31,28 @@ jobs:
       run: cargo fmt --all -- --check
       
     - name: Clippy
-      run: cargo clippy --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --exclude dek-opa-wasm --all-targets --all-features -- -D warnings
+      run: cargo clippy --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --all-targets --all-features -- -D warnings
       
     - name: Run Tests
-      run: cargo test --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --exclude dek-opa-wasm --all-features
+      run: cargo test --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --all-features
       
     - name: Build Release
-      run: cargo build --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --exclude dek-opa-wasm --release
+      run: cargo build --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --release
 
   ebpf_build:
     name: eBPF Build (Linux Only)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Install Rust nightly for eBPF
       uses: dtolnay/rust-toolchain@nightly
       with:
         components: rust-src, llvm-tools-preview
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
+    - uses: cargo-bins/cargo-binstall@main
     - name: Install bpf-linker
-      run: cargo install bpf-linker
+      run: cargo binstall -y bpf-linker
     - name: Build eBPF Prog
       run: cargo +nightly build --manifest-path crates/dek-ebpf-prog/Cargo.toml --target bpfel-unknown-none -Z build-std=core --release
     - name: Build eBPF Daemon
@@ -61,7 +62,7 @@ jobs:
     name: WASM Plugin Build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Install wasm32-wasip1 target
       uses: dtolnay/rust-toolchain@stable
       with:

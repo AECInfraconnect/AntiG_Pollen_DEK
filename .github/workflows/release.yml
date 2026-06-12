@@ -35,7 +35,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -66,6 +66,7 @@ jobs:
           APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
           APPLE_DEV_ID: ${{ secrets.APPLE_DEV_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           echo "$APPLE_CERT_B64" | base64 --decode > cert.p12
           security create-keychain -p "" build.keychain
@@ -78,7 +79,7 @@ jobs:
           
           # Zip for notarization
           ditto -c -k --keepParent staging staging.zip
-          xcrun notarytool submit staging.zip --apple-id "$APPLE_DEV_ID" --password "$APPLE_APP_PASSWORD" --wait
+          xcrun notarytool submit staging.zip --apple-id "$APPLE_DEV_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
           xcrun stapler staple staging/dek-core
           xcrun stapler staple staging/dek-mcp-proxy
           xcrun stapler staple staging/dek-ext-authz
@@ -118,7 +119,7 @@ jobs:
           tar -czvf ../${{ matrix.artifact_name }}.tar.gz *
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.artifact_name }}
           path: |
@@ -130,7 +131,7 @@ jobs:
     name: Build eBPF Bytecode
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust Nightly
         uses: dtolnay/rust-toolchain@nightly
@@ -138,7 +139,8 @@ jobs:
           components: rust-src, llvm-tools-preview
 
       - name: Install bpf-linker
-        run: cargo install bpf-linker
+        uses: cargo-bins/cargo-binstall@main
+      - run: cargo binstall -y bpf-linker
 
       - name: Build eBPF Object
         run: cargo +nightly build --manifest-path crates/dek-ebpf-prog/Cargo.toml --target bpfel-unknown-none -Z build-std=core --release
@@ -148,7 +150,7 @@ jobs:
           cp crates/dek-ebpf-prog/target/bpfel-unknown-none/release/dek-ebpf-prog dek-ebpf-prog.bpf.o
 
       - name: Upload eBPF Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: dek-ebpf-prog.bpf.o
           path: dek-ebpf-prog.bpf.o
@@ -157,16 +159,17 @@ jobs:
     name: Generate SBOM
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install cargo-cyclonedx
-        run: cargo install cargo-cyclonedx
+        uses: cargo-bins/cargo-binstall@main
+      - run: cargo binstall -y cargo-cyclonedx
 
       - name: Generate CycloneDX SBOM
         run: cargo cyclonedx --format json
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: pollen-dek-sboms
           path: '**/*.cdx.json'
@@ -177,10 +180,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: release_artifacts
           merge-multiple: true

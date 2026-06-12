@@ -10,9 +10,7 @@ export DEK_DASHBOARD_DIR="$(pwd)/apps/local-admin-dashboard/dist"
 cargo run -p local-control-plane &
 LCP_PID=$!
 trap 'kill $LCP_PID || true' EXIT
-sleep 5
-
-curl -fsS http://127.0.0.1:3000/health
+for i in $(seq 1 30); do curl -fsS http://127.0.0.1:3000/health && break; sleep 1; done
 cargo test -p local-control-plane --test e2e_registry
 cargo test -p local-control-plane --test e2e_policy_publish
 

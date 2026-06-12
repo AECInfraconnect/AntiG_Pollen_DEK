@@ -1,0 +1,6 @@
+# Temporary ignore for historic key leak until a git filter-repo can be performed.
+# Please perform `git filter-repo` to permanently wipe this key and then remove this ignore file.
+[allowlist]
+paths = [
+    '''master\.key\.wrapped''',
+]
