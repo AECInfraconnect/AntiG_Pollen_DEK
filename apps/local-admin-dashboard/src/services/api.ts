@@ -11,7 +11,7 @@ export class ControlPlaneClient {
       this.baseUrl = 'http://localhost:43891/v1/tenants/local';
       this.mockRole = 'admin';
     } else {
-      this.baseUrl = 'http://localhost:43890/v1/tenants/local';
+      this.baseUrl = '/v1/tenants/local';
       this.mockRole = '';
     }
     this.tenantId = 'local';
