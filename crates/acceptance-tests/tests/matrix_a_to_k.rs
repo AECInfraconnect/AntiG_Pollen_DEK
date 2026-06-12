@@ -146,6 +146,7 @@ async fn enroll_and_start_core() -> Result<Proc> {
         .env("DEK_LOG_DIR", &tmp_logs)
         .env("DEK_BUNDLE_SYNC_INTERVAL", "2")
         .env("DEK_MAX_STALE_SECS", "4")
+        .env("DEK_GRACE_SECS", "0")
         .env("RUST_BACKTRACE", "1")
         .spawn()
         .context("spawn dek-core")?;
