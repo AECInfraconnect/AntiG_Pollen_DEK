@@ -145,7 +145,7 @@ jobs:
 
       - name: Extract eBPF Artifact
         run: |
-          cp target/bpfel-unknown-none/release/dek-ebpf-prog dek-ebpf-prog.bpf.o
+          cp crates/dek-ebpf-prog/target/bpfel-unknown-none/release/dek-ebpf-prog dek-ebpf-prog.bpf.o
 
       - name: Upload eBPF Artifact
         uses: actions/upload-artifact@v4
