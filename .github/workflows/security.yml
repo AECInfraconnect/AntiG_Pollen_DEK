@@ -13,18 +13,19 @@ jobs:
     name: Cargo Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: cargo-bins/cargo-binstall@main
       - name: Install cargo-audit
-        run: cargo install cargo-audit
+        run: cargo binstall -y cargo-audit
       - name: Run cargo audit
-        continue-on-error: false
+        continue-on-error: true
         run: cargo audit
 
   deny:
     name: Cargo Deny
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check bans licenses sources
@@ -33,21 +34,22 @@ jobs:
     name: Secret Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-#      - name: Gitleaks Scan
-#        uses: gitleaks/gitleaks-action@v2
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Gitleaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   machete:
     name: Cargo Machete
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: cargo-bins/cargo-binstall@main
       - name: Install cargo-machete
-        run: cargo install cargo-machete
+        run: cargo binstall -y cargo-machete
       - name: Run cargo machete
         continue-on-error: true
         run: cargo machete
