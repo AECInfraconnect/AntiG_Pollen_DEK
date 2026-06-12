@@ -192,7 +192,7 @@ async fn publish_policy(
         .await
         .map_err(ApiError::Internal)?;
 
-    draft.meta.status = "published".to_string();
+    draft.meta.status = dek_control_plane_api::registry::RegistryStatus::Published;
     st.policy_store
         .upsert_policy(draft)
         .await
