@@ -223,9 +223,14 @@ impl Supervisor {
             .and_then(|v| v.parse().ok())
             .unwrap_or(86400);
 
+        let grace = std::env::var("DEK_GRACE_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(600);
+
         let fresh_cfg = FreshnessConfig {
             max_bundle_age_secs: max_stale, // Configurable for tests
-            grace_secs: 600,
+            grace_secs: grace,
         };
         let tenant_id = self
             .bootstrap
