@@ -263,8 +263,21 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
     // to satisfy dek-core's mtls requirements during boot.
     let certs = cfg.join("certs");
     std::fs::create_dir_all(&certs)?;
-    let ws_certs = workspace_dir().join("certs");
-    std::fs::copy(ws_certs.join("root_ca.crt"), certs.join("root_ca.crt"))?;
+    std::fs::write(
+        certs.join("root_ca.crt"),
+        "-----BEGIN CERTIFICATE-----\n\
+MIIB0DCCAXWgAwIBAgIUC9VdKdxOfBnsn97H+gkVn42BHM4wCgYIKoZIzj0EAwIw\n\
+PDEdMBsGA1UEAwwUUG9sbGVuIENsb3VkIFJvb3QgQ0ExGzAZBgNVBAoMElBvbGxl\n\
+biBERUsgUHJvamVjdDAgFw03NTAxMDEwMDAwMDBaGA80MDk2MDEwMTAwMDAwMFow\n\
+PDEdMBsGA1UEAwwUUG9sbGVuIENsb3VkIFJvb3QgQ0ExGzAZBgNVBAoMElBvbGxl\n\
+biBERUsgUHJvamVjdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABA+RCCD6kluA\n\
+a84Q5jayOGkwsDbyhwfAQxR7Q+AR1MYNLj22G8DV0hjjX0yH8vQr6mfC88dnLJVZ\n\
+2igEXWgOpfyjUzBRMB8GA1UdEQQYMBaCFFBvbGxlbiBDbG91ZCBSb290IENBMB0G\n\
+A1UdDgQWBBQL1V0p3E58Geyf3sf6CRWfjYEczjAPBgNVHRMBAf8EBTADAQH/MAoG\n\
+CCqGSM49BAMCA0kAMEYCIQC5famYrlcNXrTyLT10TBc6SsRQkTFt5nHNErx9dOFo\n\
+6gIhAMOiPmTL0rkB4RFvaGVcyje7Z3BVWCFgZ7lwuuoFzw6P\n\
+-----END CERTIFICATE-----\n",
+    )?;
 
     let _core = Proc(
         Command::new(bin("dek-core"))
