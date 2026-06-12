@@ -171,13 +171,13 @@ function PolicyEditor({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-md border bg-transparent px-3 py-2 text-sm" placeholder="Allow safe tools" />
+            <label htmlFor="policy-name" className="text-xs font-medium text-muted-foreground">Name</label>
+            <input id="policy-name" value={name} onChange={(e) => setName(e.target.value)}
+              className="mt-1 w-full rounded-md border bg-transparent px-3 py-2 text-sm" placeholder="e.g. pol-net-deny" />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Engine</label>
-            <select value={type} onChange={(e) => setType(e.target.value as PolicyType)}
+            <label htmlFor="policy-engine" className="text-xs font-medium text-muted-foreground">Engine</label>
+            <select id="policy-engine" value={type} onChange={(e) => setType(e.target.value as PolicyType)}
               className="mt-1 w-full rounded-md border bg-transparent px-3 py-2 text-sm">
               <option value="cedar">Cedar</option>
               <option value="rego">OPA / Rego</option>
@@ -187,8 +187,8 @@ function PolicyEditor({ onClose, onCreated }: { onClose: () => void; onCreated: 
         </div>
 
         <div>
-          <label className="text-xs font-medium text-muted-foreground">Policy source (compiled on the control plane, not the DEK)</label>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={10}
+          <label htmlFor="policy-source" className="text-xs font-medium text-muted-foreground">Policy source (compiled on the control plane, not the DEK)</label>
+          <textarea id="policy-source" value={text} onChange={(e) => setText(e.target.value)} rows={10}
             className="mt-1 w-full rounded-md border bg-black/30 px-3 py-2 font-mono text-xs" spellCheck={false} />
         </div>
 

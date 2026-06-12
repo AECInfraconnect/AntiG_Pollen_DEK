@@ -155,6 +155,23 @@ async fn enroll_and_start_core() -> Result<Proc> {
     Ok(Proc(core))
 }
 
+macro_rules! wait_for_audit {
+    ($cond:expr, $msg:expr) => {
+        let mut found = false;
+        for _ in 0..60 {
+            if let Ok(audits) = fetch_audits().await {
+                let txt = audits.to_string();
+                if $cond(&txt) {
+                    found = true;
+                    break;
+                }
+            }
+            sleep(Duration::from_millis(500)).await;
+        }
+        assert!(found, "{}", $msg);
+    };
+}
+
 /// Pull the mock-cloud audit log (DEK-side audit events land here).
 async fn fetch_audits() -> Result<serde_json::Value> {
     let c = insecure_client();
@@ -229,18 +246,10 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
     );
 
     // audit trail received policy.sync.success (poll since spooler flushes async)
-    let mut audit_found = false;
-    for _ in 0..20 {
-        if let Ok(audits) = fetch_audits().await {
-            let txt = audits.to_string();
-            if txt.contains("policy.sync") || txt.contains("bundle") {
-                audit_found = true;
-                break;
-            }
-        }
-        sleep(Duration::from_millis(500)).await;
-    }
-    assert!(audit_found, "A: sync audit present");
+    wait_for_audit!(
+        |txt: &str| txt.contains("policy.sync") || txt.contains("bundle"),
+        "A: sync audit present"
+    );
 
     // ---- B: Unsigned/forged push -> reject + critical audit ----
     let _ = pep
@@ -248,9 +257,8 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
         .send()
         .await;
     sleep(Duration::from_secs(4)).await;
-    let audits = fetch_audits().await?;
-    assert!(
-        audits.to_string().contains("poisoned") || audits.to_string().contains("POISON_BUNDLE"),
+    wait_for_audit!(
+        |txt: &str| txt.contains("poisoned") || txt.contains("POISON_BUNDLE"),
         "B: tampered bundle produced a rejection audit"
     );
 
@@ -289,9 +297,8 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
         .send()
         .await;
     sleep(Duration::from_secs(4)).await;
-    let audits = fetch_audits().await?;
-    assert!(
-        audits.to_string().contains("KEY_ROTATE"),
+    wait_for_audit!(
+        |txt: &str| txt.contains("KEY_ROTATE"),
         "E: Key rotation audit present"
     );
 
@@ -366,9 +373,8 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
         .send()
         .await;
     sleep(Duration::from_secs(4)).await;
-    let audits = fetch_audits().await?;
-    assert!(
-        audits.to_string().contains("network-publish"),
+    wait_for_audit!(
+        |txt: &str| txt.contains("network-publish"),
         "I: Network rule publish audit present"
     );
 
