@@ -88,9 +88,9 @@ depends = "$auto"
 section = "utility"
 priority = "optional"
 assets = [
-    ["../../target/x86_64-unknown-linux-gnu/release/dek-core", "usr/bin/", "755"],
-    ["../../target/x86_64-unknown-linux-gnu/release/dek-mcp-proxy", "usr/bin/", "755"],
-    ["../../target/x86_64-unknown-linux-gnu/release/dek-updater", "usr/bin/", "755"],
+    ["target/release/dek-core", "usr/bin/", "755"],
+    ["target/release/dek-mcp-proxy", "usr/bin/", "755"],
+    ["target/release/dek-updater", "usr/bin/", "755"],
     ["../../packaging/linux/pollen-dek.service", "lib/systemd/system/pollen-dek.service", "644"]
 ]
 maintainer-scripts = "../../packaging/linux/scripts"
