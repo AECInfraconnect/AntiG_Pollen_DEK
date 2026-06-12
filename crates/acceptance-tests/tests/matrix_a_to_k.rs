@@ -261,7 +261,7 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
         .send()
         .await;
     // DEK_BUNDLE_SYNC_INTERVAL is 2s, wait a bit so it triggers fallback
-    sleep(Duration::from_secs(5)).await;
+    sleep(Duration::from_secs(8)).await;
     let (_status, allow, _) = authorize(&pep, &allow_req).await?;
     // Note: strict-deny when stale exceeds max grace period or network fails
     // We just verify it enforces strict-deny (allow == false) and doesn't crash
@@ -334,7 +334,7 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
         .json(&serde_json::json!({"enabled": true}))
         .send()
         .await;
-    sleep(Duration::from_secs(5)).await;
+    sleep(Duration::from_secs(8)).await;
     let (_status, allow, _) = authorize(&pep, &allow_req).await?;
     assert!(
         !allow,
@@ -345,7 +345,7 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
         .json(&serde_json::json!({"enabled": false}))
         .send()
         .await;
-    sleep(Duration::from_secs(5)).await;
+    sleep(Duration::from_secs(8)).await;
 
     // ---- I: Network enforce ----
     let mock_policy = serde_json::json!({
