@@ -11,6 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Discover contract capabilities and supported protocol versions. */
         get: operations["ContractDiscoveryApi_getDiscovery"];
         put?: never;
         post?: never;
@@ -29,6 +30,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Ingest a batch of telemetry events. */
         post: operations["TelemetryApi_ingestBatch"];
         delete?: never;
         options?: never;
@@ -45,6 +47,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Fetch the latest signed policy bundle manifest for a device. */
         post: operations["BundleApi_fetchLatest"];
         delete?: never;
         options?: never;
@@ -81,16 +84,10 @@ export interface components {
             sunset?: Record<string, never>;
             capabilities: string[];
         };
-        ErrorEnvelope: {
-            /** @enum {string} */
-            schema_version: "error-envelope.v1";
-            error: components["schemas"]["PollenError"];
-        };
         PollenError: {
             code: string;
             message: string;
-            correlation_id?: string;
-            details?: Record<string, never>;
+            trace_id?: string;
         };
         TelemetryBatchRequest: {
             /** @enum {string} */
@@ -142,7 +139,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContractDiscoveryResponse"] | components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["ContractDiscoveryResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
                 };
             };
         };
@@ -170,7 +176,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TelemetryIngestResponse"] | components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["TelemetryIngestResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
                 };
             };
         };
@@ -201,7 +216,23 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BundleFetchResponse"] | components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["BundleFetchResponse"];
+                };
+            };
+            /** @description The client has made a conditional request and the resource has not been modified. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
                 };
             };
         };
