@@ -169,7 +169,7 @@ async fn ingest_batches(
     }
     drop(logs);
     
-    (StatusCode::OK, Json(serde_json::json!({ "status": "ingested", "kind": "batches", "count": n })))
+    (StatusCode::OK, Json(serde_json::json!({ "status": "ok", "processed": n })))
 }
 
 #[derive(serde::Deserialize)]

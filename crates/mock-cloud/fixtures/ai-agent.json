@@ -1,5 +1,5 @@
 {
-  "schema_version": "pollen.ai-agent.v1",
+  "schema_version": "<your-cloud-domain>-agent.v1",
   "agent_id": "agent-copilot-1",
   "tenant_id": "tenant-acme-prod",
   "name": "GitHub Copilot Local",

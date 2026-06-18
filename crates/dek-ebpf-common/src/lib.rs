@@ -146,7 +146,19 @@ unsafe impl aya::Pod for DekMetrics {}
 unsafe impl aya::Pod for PolicyVerdict {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+#[allow(unsafe_code)]
+#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for EgressEvent {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for DnsCaptureEvent {}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Default)]
+pub struct DekRuntimeMode {
+    pub default_action: u32, // 1 = allow (observe-only), 0 = deny (fail-closed)
+}
+
+#[allow(unsafe_code)]
+#[cfg(all(feature = "user", target_os = "linux"))]
+unsafe impl aya::Pod for DekRuntimeMode {}

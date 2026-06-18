@@ -1,17 +1,30 @@
 import { useState, useEffect } from "react";
-import { switchProfile, ConnectorApi } from "../services/api";
+import { switchProfile, defaultClient, ContractDiscoveryResponse, ConnectorApi } from "../services/api";
 
 export function Settings() {
   const [profile, setProfile] = useState<'local' | 'mock-cloud'>('local');
   const [connectors, setConnectors] = useState<any[]>([]);
   const [newConnectorUrl, setNewConnectorUrl] = useState('http://localhost:8181');
   const [testResults, setTestResults] = useState<Record<string, any>>({});
+  const [discovery, setDiscovery] = useState<ContractDiscoveryResponse | null>(null);
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
 
   useEffect(() => {
     const p = localStorage.getItem('dek_admin_profile');
     if (p === 'mock-cloud') setProfile('mock-cloud');
+    loadDiscovery();
     loadConnectors();
   }, []);
+
+  const loadDiscovery = async () => {
+    try {
+      setDiscoveryError(null);
+      const res = await defaultClient.getContractDiscovery();
+      setDiscovery(res);
+    } catch (e: any) {
+      setDiscoveryError(e.message || String(e));
+    }
+  };
 
   const loadConnectors = async () => {
     try {
@@ -99,6 +112,57 @@ export function Settings() {
             />
           </div>
         </div>
+      </div>
+
+      <div className="glass p-6 rounded-xl space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium">Contract Discovery</h3>
+          <button 
+            onClick={loadDiscovery}
+            className="px-3 py-1 bg-secondary text-secondary-foreground rounded text-xs hover:opacity-80"
+          >
+            Refresh
+          </button>
+        </div>
+        
+        {discoveryError ? (
+          <div className="text-sm text-red-500 bg-red-500/10 p-4 rounded-md">
+            Failed to load discovery: {discoveryError}
+          </div>
+        ) : discovery ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="space-y-1">
+                <span className="text-muted-foreground block">Preferred Contract</span>
+                <span className="font-medium bg-primary/10 text-primary px-2 py-1 rounded inline-block">{discovery.preferred}</span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-muted-foreground block">Schema Version</span>
+                <span className="font-medium">{discovery.schema_version}</span>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <span className="text-sm text-muted-foreground block">Supported Contracts</span>
+              <div className="flex flex-wrap gap-2">
+                {discovery.supported.map(s => (
+                  <span key={s} className="text-xs bg-muted px-2 py-1 rounded-full">{s}</span>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-sm text-muted-foreground block">Capabilities</span>
+              <div className="flex flex-wrap gap-2">
+                {discovery.capabilities.map(c => (
+                  <span key={c} className="text-xs bg-muted px-2 py-1 rounded-full">{c}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground">Loading...</div>
+        )}
       </div>
 
       <div className="glass p-6 rounded-xl space-y-6">

@@ -7,7 +7,7 @@ use axum::{
 };
 use tower_http::services::{ServeDir, ServeFile};
 
-use crate::{auth, bundle, connectors, policy, push, registry, state::AppState, telemetry};
+use crate::{auth, bundle, connectors, discovery, policy, push, registry, state::AppState, telemetry};
 
 pub async fn local_tenant_guard(
     State(state): State<AppState>,
@@ -32,6 +32,10 @@ pub async fn local_tenant_guard(
 }
 
 pub fn create_app(state: AppState, static_dir: &str) -> Router {
+    let public_routes = Router::new()
+        .route("/health", axum::routing::get(|| async { "ok" }))
+        .merge(discovery::router());
+
     let api_routes = Router::new()
         .merge(registry::router())
         .merge(policy::router())
@@ -49,7 +53,7 @@ pub fn create_app(state: AppState, static_dir: &str) -> Router {
         ));
 
     Router::new()
-        .route("/health", axum::routing::get(|| async { "ok" }))
+        .merge(public_routes)
         .merge(api_routes)
         .fallback_service(
             ServeDir::new(static_dir)

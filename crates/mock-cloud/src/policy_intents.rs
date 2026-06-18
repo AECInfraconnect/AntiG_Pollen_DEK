@@ -16,7 +16,7 @@ pub fn router() -> Router<crate::state::AppState> {
 async fn draft_policy_intent(Json(input): Json<DraftRequest>) -> Json<serde_json::Value> {
     // Deterministic beta stub. Replace with AI orchestrator in Pollen Cloud.
     let ppi = serde_json::json!({
-        "apiVersion": "pollen.ai/v1alpha1",
+        "apiVersion": "<your-cloud-domain>/v1alpha1",
         "kind": "PolicyIntent",
         "metadata": {
             "id": format!("pol-{}", chrono::Utc::now().timestamp_millis()),

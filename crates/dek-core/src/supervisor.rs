@@ -318,7 +318,7 @@ impl Supervisor {
         let _ = &self.client_key_override;
 
         // Trust Bundle Poller + Hot Rebuild
-        let (jwks_tx, _jwks_rx) = tokio::sync::watch::channel(Vec::<serde_json::Value>::new());
+        let (jwks_tx, _jwks_rx) = tokio::sync::watch::channel::<Vec<serde_json::Value>>(vec![]);
         let (roots_changed_tx, mut roots_changed_rx) = tokio::sync::watch::channel(0u64);
 
         if self.cloud_url.starts_with("https://") {

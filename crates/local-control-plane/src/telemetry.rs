@@ -124,7 +124,7 @@ async fn store_events(
             stored += 1;
         }
     }
-    (StatusCode::OK, Json(json!({ "ingested": stored })))
+    (StatusCode::OK, Json(json!({ "status": "ok", "processed": stored })))
 }
 
 /// Dashboard read-side: return DecisionLog events (newest first).

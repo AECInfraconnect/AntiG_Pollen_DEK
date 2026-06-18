@@ -28,9 +28,8 @@ pub struct RecordAad {
 }
 
 impl RecordAad {
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Result<Vec<u8>, serde_json::Error> {
         serde_json::to_vec(self)
-            .unwrap_or_else(|e| panic!("AAD serialization must not fail: {}", e))
     }
 }
 
@@ -73,7 +72,7 @@ impl AeadKey {
     ) -> Result<EncryptedRecord, CryptoError> {
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&self.key_bytes));
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-        let aad_bytes = aad.to_bytes();
+        let aad_bytes = aad.to_bytes().map_err(|_| CryptoError::Encrypt)?;
 
         let ciphertext = cipher
             .encrypt(
@@ -104,7 +103,7 @@ impl AeadKey {
 
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&self.key_bytes));
         let nonce = Nonce::from_slice(&record.nonce);
-        let aad_bytes = record.aad.to_bytes();
+        let aad_bytes = record.aad.to_bytes().map_err(|_| CryptoError::Decrypt)?;
 
         cipher
             .decrypt(

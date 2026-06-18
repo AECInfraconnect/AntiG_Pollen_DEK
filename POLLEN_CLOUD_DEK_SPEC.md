@@ -9,12 +9,12 @@ Pollen Cloud and DEK communicate securely over the public internet using a rigor
 ### 1.1 mTLS & SPIFFE/SPIRE (X.509-SVID)
 - **Transport**: All Cloud-DEK communication happens over HTTPS with Mutual TLS (mTLS).
 - **Identity**: DEK uses `dek-spire-node` to perform node attestation. It exchanges a short-lived join token for an X.509-SVID (SPIFFE Verifiable Identity Document).
-- **SPIFFE ID**: DEK identifies itself via a SPIFFE ID (e.g., `spiffe://pollen.ai/tenant/{tenant_id}/device/{device_id}`).
+- **SPIFFE ID**: DEK identifies itself via a SPIFFE ID (e.g., `spiffe://<your-cloud-domain>/tenant/{tenant_id}/device/{device_id}`).
 - **JWT-SVID**: For Application-level authentication (API layer), DEK acquires a JWT-SVID from the SPIRE agent, allowing Pollen Cloud to verify the exact workload identity cryptographically.
 
 ### 1.2 OAuth & Enrollment
 - **Initial Enrollment**: DEK uses the OAuth 2.0 Device Authorization Grant flow (`dek-cli enroll`).
-- DEK prompts the user with a code to enter at `https://cloud.pollen.ai/device`.
+- DEK prompts the user with a code to enter at `https://cloud.<your-cloud-domain>/device`.
 - Upon approval, DEK receives long-lived refresh tokens and initial trust bundles.
 
 ### 1.3 Trust Store & Pinned Keys

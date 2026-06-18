@@ -24,9 +24,7 @@ impl WfpFilterManager {
 
 impl NetworkEnforcer for WfpFilterManager {
     fn start(&mut self) -> Result<()> {
-        info!("Starting Windows Filtering Platform (WFP) provider (observe-only prototype)");
-        self.is_active = true;
-        Ok(())
+        anyhow::bail!("Windows Filtering Platform (WFP) integration is not compiled. The current build is a stub.");
     }
 
     fn stop(&mut self) -> Result<()> {

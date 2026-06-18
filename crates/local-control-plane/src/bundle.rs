@@ -86,7 +86,7 @@ pub async fn build_signed_bundle(
     }
 
     let manifest = PollenPolicyBundle {
-        api_version: "pollen.ai/v1alpha1".to_string(),
+        api_version: "<your-cloud-domain>/v1alpha1".to_string(),
         kind: "Bundle".to_string(),
         metadata: BundleMetadata {
             bundle_id: format!("bundle-local-{}", build_number),
@@ -119,6 +119,7 @@ pub async fn build_signed_bundle(
     let sig_b64 = _signer.sign_b64(&signed_bytes);
 
     let envelope = serde_json::json!({
+        "schema_version": "bundle.signed-envelope.v1",
         "manifest": manifest,
         "signatures": [{
             "signature_id": format!("sig-{}", bundle_version),
@@ -145,6 +146,10 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route(
             "/v1/tenants/:tenant/devices/:device/bundles/latest",
+            axum::routing::post(get_latest_bundle),
+        )
+        .route(
+            "/v1/tenants/:tenant/devices/:device/bundles/manifest",
             axum::routing::post(get_manifest),
         )
         .route(
@@ -222,6 +227,23 @@ async fn get_trusted_keys(State(st): State<AppState>) -> ApiResult<Json<serde_js
         "key_id": st.signer.key_id, "public_b64": st.signer.public_key_b64(),
         "status": "active", "not_before_unix": 0, "not_after_unix": 0
     }]})))
+}
+
+async fn get_latest_bundle(
+    Path((tenant, _device)): Path<(String, String)>,
+    State(st): State<AppState>,
+    body: Option<Json<serde_json::Value>>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let _ = body;
+    match st
+        .policy_store
+        .get_policy_raw(&tenant, "bundle:latest")
+        .await
+    {
+        Ok(Some(val)) => Ok(Json(serde_json::json!({"envelope": val}))),
+        Ok(None) => Err(ApiError::NotFound("bundle".into())),
+        Err(e) => Err(ApiError::Internal(e)),
+    }
 }
 
 async fn get_manifest(

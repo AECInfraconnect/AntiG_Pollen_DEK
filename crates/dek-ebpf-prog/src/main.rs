@@ -59,6 +59,9 @@ static EVENTS: RingBuf = RingBuf::with_byte_size(256 * 1024, 0);
 #[map]
 static DNS_EVENTS: RingBuf = RingBuf::with_byte_size(256 * 1024, 0);
 
+#[map]
+static RUNTIME_MODE: PerCpuArray<dek_ebpf_common::DekRuntimeMode> = PerCpuArray::with_max_entries(1, 0);
+
 // ------------------------- DNS capture (cgroup_skb) -------------------------
 
 #[cgroup_skb]
@@ -135,7 +138,13 @@ fn try_capture(ctx: &SkBuffContext) -> Result<(), ()> {
             (*p).cgroup_id = bpf_get_current_cgroup_id();
             (*p).len = n as u16;
             // Bounded copy of the DNS payload into the event buffer.
-            let dst = &mut (&mut (*p).data)[..n];
+            let dst = match (&mut (*p).data).get_mut(..n) {
+                Some(d) => d,
+                None => {
+                    entry.discard(0);
+                    return Err(());
+                }
+            };
             if ctx.load_bytes(payload_off, dst).is_err() {
                 entry.discard(0);
                 return Err(());
@@ -150,11 +159,17 @@ fn try_capture(ctx: &SkBuffContext) -> Result<(), ()> {
 
 #[cgroup_sock_addr(connect4)]
 pub fn dek_connect4(ctx: SockAddrContext) -> i32 {
-    try_dek_connect4(&ctx).unwrap_or(1) // default ALLOW on error (fail-open)
+    let mode = unsafe {
+        RUNTIME_MODE
+            .get(0)
+            .map(|m| m.default_action)
+            .unwrap_or(1)
+    };
+    try_dek_connect4(&ctx, mode).unwrap_or(mode as i32)
 }
 
 #[inline(always)]
-fn try_dek_connect4(ctx: &SockAddrContext) -> Result<i32, ()> {
+fn try_dek_connect4(ctx: &SockAddrContext, default_action: u32) -> Result<i32, ()> {
     let sa = unsafe { &*ctx.sock_addr };
     let dest_ip = u32::from_be(sa.user_ip4);
     let dest_port = u16::from_be(sa.user_port as u16);
@@ -193,7 +208,7 @@ fn try_dek_connect4(ctx: &SockAddrContext) -> Result<i32, ()> {
 
     if !has_dns_context {
         // Protected Mode Fallback
-        let protected_mode = false; // Could read from another map
+        let protected_mode = default_action == 0;
         if protected_mode {
             return Ok(0);
         }

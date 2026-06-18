@@ -10,6 +10,10 @@ Pollen DEK beta 5 brings major stability and edge functionality improvements.
 
 ### Added
 
+- **Release Provenance & Arm64 Support** — Release pipelines now produce `aarch64` binaries for Linux and macOS. Implemented GitHub Artifact Attestations (`actions/attest-build-provenance`) for all release artifacts, alongside Sigstore keyless cosign and Windows Authenticode signing.
+- **eBPF Hardening** — `dek-ebpfd` now manages periodic DNS LRU cache eviction and dynamically propagates `DekRuntimeMode` (fail-closed vs observe-only default action) to the eBPF datapath. The `dek-ebpfd` build degrades gracefully on Linux hosts missing `bpf-linker`.
+- **Contract Discovery** — Implemented `/.well-known/pollen-contract` discovery endpoint. The Local Admin Dashboard is now wired to consume generated TypeScript API types to discover and render contract capabilities.
+
 - **Dry-run Simulation Engine** — Simulate policies locally without enforcement or side effects via the Local Admin Dashboard.
 - **Audit Export** — Export decision logs as CSV and JSON directly from the dashboard.
 - **Connector Health Tests** — Configure and test connectivity to external PDPs (OPA, Cedar, OpenFGA) via the Settings page.
@@ -18,9 +22,11 @@ Pollen DEK beta 5 brings major stability and edge functionality improvements.
 - **Contract Hub** — Strict enforcement of `DecisionResult` schema with `adapter_results` and `obligations`.
 
 ### Changed
+- **OS Capability Honesty** — `dek-capability-registry` accurately advertises native OS enforcement modes (e.g. `windows-wfp`, `macos-nefilter`) only if the host OS supports them. Stubs correctly return `NotSupported` errors instead of panicking.
 - Refactored `latency_ms` to `i64` to match typify types and schema definitions.
 - Restored `PollenError` standard envelope across API specs.
 - Enforced MSRV of Rust 1.85 to support edition 2024 features safely.
+- Genericized Cloud references from `pollen.ai` to `<your-cloud-domain>`.
 
 ## [1.0.0-beta.1] — 2026-06
 
