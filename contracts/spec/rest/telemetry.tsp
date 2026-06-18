@@ -17,11 +17,13 @@ model TelemetryIngestResponse {
   retry_after_seconds?: int32;
 }
 
+@tag("Telemetry")
 @route("/v1/telemetry/batches")
 interface TelemetryApi {
+  @doc("Ingest a batch of telemetry events.")
   @post
   ingestBatch(
     ...PollenHeaders,
     @body body: TelemetryBatchRequest
-  ): TelemetryIngestResponse | ErrorEnvelope;
+  ): TelemetryIngestResponse | PollenError;
 }

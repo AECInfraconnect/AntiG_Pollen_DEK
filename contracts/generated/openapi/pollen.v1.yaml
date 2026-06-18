@@ -1,12 +1,21 @@
 openapi: 3.1.0
 info:
-  title: Pollen Cloud-DEK Contract
-  version: '1.0'
-tags: []
+  title: Pollen DEK Control-Plane API
+  version: 1.0.0
+  contact:
+    name: Pollen Platform Team
+    url: https://pollen.ai
+    email: platform@pollen.ai
+  description: Contract between Pollen Cloud / Local Control Plane and the DEK edge enforcement plane.
+tags:
+  - name: Discovery
+  - name: Bundles
+  - name: Telemetry
 paths:
   /.well-known/pollen-contract:
     get:
       operationId: ContractDiscoveryApi_getDiscovery
+      description: Discover contract capabilities and supported protocol versions.
       parameters:
         - $ref: '#/components/parameters/PollenHeaders.contractVersion'
         - $ref: '#/components/parameters/PollenHeaders.deviceId'
@@ -17,12 +26,19 @@ paths:
           content:
             application/json:
               schema:
-                anyOf:
-                  - $ref: '#/components/schemas/ContractDiscoveryResponse'
-                  - $ref: '#/components/schemas/ErrorEnvelope'
+                $ref: '#/components/schemas/ContractDiscoveryResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - Discovery
   /v1/telemetry/batches:
     post:
       operationId: TelemetryApi_ingestBatch
+      description: Ingest a batch of telemetry events.
       parameters:
         - $ref: '#/components/parameters/PollenHeaders.contractVersion'
         - $ref: '#/components/parameters/PollenHeaders.deviceId'
@@ -33,9 +49,15 @@ paths:
           content:
             application/json:
               schema:
-                anyOf:
-                  - $ref: '#/components/schemas/TelemetryIngestResponse'
-                  - $ref: '#/components/schemas/ErrorEnvelope'
+                $ref: '#/components/schemas/TelemetryIngestResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - Telemetry
       requestBody:
         required: true
         content:
@@ -45,6 +67,7 @@ paths:
   /v1/tenants/{tenant_id}/devices/{device_id}/bundles/latest:
     post:
       operationId: BundleApi_fetchLatest
+      description: Fetch the latest signed policy bundle manifest for a device.
       parameters:
         - $ref: '#/components/parameters/PollenHeaders.contractVersion'
         - $ref: '#/components/parameters/PollenHeaders.deviceId'
@@ -65,9 +88,17 @@ paths:
           content:
             application/json:
               schema:
-                anyOf:
-                  - $ref: '#/components/schemas/BundleFetchResponse'
-                  - $ref: '#/components/schemas/ErrorEnvelope'
+                $ref: '#/components/schemas/BundleFetchResponse'
+        '304':
+          description: The client has made a conditional request and the resource has not been modified.
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - Bundles
       requestBody:
         required: true
         content:
@@ -160,18 +191,6 @@ components:
           type: array
           items:
             type: string
-    ErrorEnvelope:
-      type: object
-      required:
-        - schema_version
-        - error
-      properties:
-        schema_version:
-          type: string
-          enum:
-            - error-envelope.v1
-        error:
-          $ref: '#/components/schemas/PollenError'
     PollenError:
       type: object
       required:
@@ -182,11 +201,8 @@ components:
           type: string
         message:
           type: string
-        correlation_id:
+        trace_id:
           type: string
-        details:
-          type: object
-          unevaluatedProperties: {}
     TelemetryBatchRequest:
       type: object
       required:

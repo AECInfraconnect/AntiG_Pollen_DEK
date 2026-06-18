@@ -44,7 +44,7 @@ async fn set_latency(
 ) -> impl IntoResponse {
     {
         let mut cfg = state.chaos_config.lock().unwrap();
-        cfg.global_latency_ms = req.delay_ms;
+        cfg.global_latency_ms = req.delay_ms as i64;
     }
     Json(serde_json::json!({"status": "latency_updated", "delay_ms": req.delay_ms}))
 }
@@ -63,7 +63,7 @@ pub async fn chaos_middleware(State(state): State<AppState>, req: Request, next:
     }
 
     if latency > 0 && req.uri().path().starts_with("/v1/") {
-        tokio::time::sleep(std::time::Duration::from_millis(latency)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(latency as u64)).await;
     }
 
     next.run(req).await

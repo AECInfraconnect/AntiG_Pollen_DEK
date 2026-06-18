@@ -11,12 +11,12 @@ exclude = [
 resolver = "2"
 
 [workspace.package]
-version = "1.0.0-beta.1"
+version = "1.0.0-beta.5"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/AECInfraconnect/AntiG_Pollen_DEK"
 authors = ["AEC Infraconnect <info@aecinfraconnect.com>"]
-rust-version = "1.70"
+rust-version = "1.85"
 
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }

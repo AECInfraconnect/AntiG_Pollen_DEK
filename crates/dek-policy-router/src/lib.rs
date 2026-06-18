@@ -65,6 +65,19 @@ use dek_errors::lock_ext::LockExt;
 use dek_resilience::breaker::{Admit, CircuitBreaker, CircuitConfig};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ForcedState {
+    ForceDown,
+    ForceUp,
+}
+
+pub struct ManualOverride {
+    pub pdp_id: String,
+    pub forced_state: ForcedState,
+    pub until: Option<Instant>,
+}
 
 pub struct PdpStats {
     pub ewma_latency: f64,
@@ -109,6 +122,7 @@ pub struct PolicyRouter {
     evaluators: HashMap<String, Box<dyn PolicyRuntime>>,
     breakers: HashMap<String, Arc<CircuitBreaker>>,
     stats: HashMap<String, Arc<Mutex<PdpStats>>>,
+    overrides: Mutex<HashMap<String, ManualOverride>>,
     round_robin_counter: AtomicUsize,
     pdp_timeout_ms: u64,
     circuit_config: CircuitConfig,
@@ -121,13 +135,14 @@ impl PolicyRouter {
             evaluators: HashMap::new(),
             breakers: HashMap::new(),
             stats: HashMap::new(),
+            overrides: Mutex::new(HashMap::new()),
             round_robin_counter: AtomicUsize::new(0),
             pdp_timeout_ms: 200,
             circuit_config: CircuitConfig::default(),
         }
     }
 
-    /// ids ของ evaluator ที่ register จริงใน build นี้ (feature-gated adapters)
+    /// ids เธเธญเธ evaluator เธ—เธตเน register เธเธฃเธดเธเนเธ build เธเธตเน (feature-gated adapters)
     pub fn evaluator_ids(&self) -> Vec<String> {
         self.evaluators.keys().cloned().collect()
     }
@@ -144,6 +159,30 @@ impl PolicyRouter {
             cooldown: std::time::Duration::from_secs(cooldown_secs),
             half_open_required_successes: 2,
         };
+    }
+
+    pub fn set_override(&self, pdp_id: &str, forced: ForcedState, ttl: Option<Duration>) {
+        let until = ttl.map(|t| Instant::now() + t);
+        let mut ov = self.overrides.lock_safe();
+        ov.insert(pdp_id.to_string(), ManualOverride {
+            pdp_id: pdp_id.to_string(),
+            forced_state: forced,
+            until,
+        });
+    }
+
+    pub fn override_for(&self, pdp_id: &str) -> Option<ForcedState> {
+        let mut ov = self.overrides.lock_safe();
+        if let Some(entry) = ov.get(pdp_id) {
+            if let Some(until) = entry.until {
+                if Instant::now() > until {
+                    let _ = ov.remove(pdp_id);
+                    return None;
+                }
+            }
+            return Some(entry.forced_state.clone());
+        }
+        None
     }
 
     pub fn register_evaluator(&mut self, id: &str, evaluator: Box<dyn PolicyRuntime>) {
@@ -174,10 +213,16 @@ impl PolicyRouter {
         let available: Vec<&String> = pool
             .iter()
             .filter(|p| {
-                if let Some(b) = self.breakers.get(*p) {
-                    matches!(b.permitted(), Admit::Allow)
-                } else {
-                    false
+                match self.override_for(p) {
+                    Some(ForcedState::ForceDown) => false,
+                    Some(ForcedState::ForceUp) => true,
+                    None => {
+                        if let Some(b) = self.breakers.get(*p) {
+                            matches!(b.permitted(), Admit::Allow)
+                        } else {
+                            false
+                        }
+                    }
                 }
             })
             .collect();
@@ -227,6 +272,14 @@ impl PolicyRouter {
     }
 
     pub async fn authorize(&self, payload: serde_json::Value) -> Result<PolicyDecision> {
+        self.authorize_inner(payload, false).await
+    }
+
+    pub async fn authorize_dry_run(&self, payload: serde_json::Value) -> Result<PolicyDecision> {
+        self.authorize_inner(payload, true).await
+    }
+
+    async fn authorize_inner(&self, payload: serde_json::Value, dry_run: bool) -> Result<PolicyDecision> {
         // Support both old nested schema and new NormalizedMcpEvent schema
         let method = payload
             .get("request_type")
@@ -355,7 +408,7 @@ impl PolicyRouter {
             }
         }
 
-        // AUTO-SELECT: ไม่มี PDP ระบุเลย -> เลือก engine ตาม decision kind
+        // AUTO-SELECT: เนเธกเนเธกเธต PDP เธฃเธฐเธเธธเน€เธฅเธข -> เน€เธฅเธทเธญเธ engine เธ•เธฒเธก decision kind
         if to_evaluate.is_empty() {
             let available = self.evaluator_ids();
             match EngineSelector::resolve(method, &payload, &available) {
@@ -367,7 +420,7 @@ impl PolicyRouter {
                     to_evaluate.push(engine);
                 }
                 None => {
-                    // fail-closed: ไม่มี engine ที่เหมาะ + build ไม่มี -> deny
+                    // fail-closed: เนเธกเนเธกเธต engine เธ—เธตเนเน€เธซเธกเธฒเธฐ + build เนเธกเนเธกเธต -> deny
                     return Ok(PolicyDecision {
                         evaluator_id: "router_autoselect".into(),
                         evaluator_type: "router".into(),
@@ -392,7 +445,9 @@ impl PolicyRouter {
                 // Check circuit breaker before hitting PDP
                 if let Some(ref b) = breaker {
                     if let Admit::Reject = b.permitted() {
-                        metrics::counter!("dek_proxy_requests_total", "decision" => "deny", "reason" => "circuit_open", "evaluator" => ev_id.clone()).increment(1);
+                        if !dry_run {
+                            metrics::counter!("dek_proxy_requests_total", "decision" => "deny", "reason" => "circuit_open", "evaluator" => ev_id.clone()).increment(1);
+                        }
                         tracing::warn!(%ev_id, "request rejected (circuit breaker open)");
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
@@ -409,17 +464,21 @@ impl PolicyRouter {
                 match tokio::time::timeout(timeout_dur, eval_fut).await {
                     Ok(Ok(res)) => {
                         let latency = start_time.elapsed().as_millis() as f64;
-                        metrics::histogram!("dek_policy_eval_latency_ms", "evaluator" => ev_id.clone()).record(latency);
+                        if !dry_run {
+                            metrics::histogram!("dek_policy_eval_latency_ms", "evaluator" => ev_id.clone()).record(latency);
+                        }
 
                         tracing::info!("Evaluator {} returned: {}", ev_id, res.decision);
 
-                        if let Some(ref b) = breaker {
-                            b.on_success();
-                        }
-                        if let Some(stats) = self.stats.get(&ev_id) {
-                            let mut s = stats.lock_safe();
-                            s.successes += 1;
-                            s.record_latency(latency, 0.2);
+                        if !dry_run {
+                            if let Some(ref b) = breaker {
+                                b.on_success();
+                            }
+                            if let Some(stats) = self.stats.get(&ev_id) {
+                                let mut s = stats.lock_safe();
+                                s.successes += 1;
+                                s.record_latency(latency, 0.2);
+                            }
                         }
 
                         // Combine obligations
@@ -449,16 +508,20 @@ impl PolicyRouter {
                         }
                     }
                     Ok(Err(dek_policy_runtime::PolicyError::Unavailable(msg))) => {
-                        metrics::counter!("dek_pdp_unavailable_total", "evaluator" => ev_id.clone()).increment(1);
+                        if !dry_run {
+                            metrics::counter!("dek_pdp_unavailable_total", "evaluator" => ev_id.clone()).increment(1);
+                        }
                         tracing::warn!(
                             "required PDP unavailable: {msg}; mode: {:?}",
                             route.enforcement_mode
                         );
-                        if let Some(ref b) = breaker {
-                            b.on_failure();
-                        }
-                        if let Some(stats) = self.stats.get(&ev_id) {
-                            stats.lock_safe().failures += 1;
+                        if !dry_run {
+                            if let Some(ref b) = breaker {
+                                b.on_failure();
+                            }
+                            if let Some(stats) = self.stats.get(&ev_id) {
+                                stats.lock_safe().failures += 1;
+                            }
                         }
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
@@ -469,14 +532,18 @@ impl PolicyRouter {
                         break;
                     }
                     Ok(Err(e)) => {
-                        metrics::counter!("dek_pdp_error_total", "evaluator" => ev_id.clone())
-                            .increment(1);
-                        tracing::warn!("PDP error: {e}; mode: {:?}", route.enforcement_mode);
-                        if let Some(ref b) = breaker {
-                            b.on_failure();
+                        if !dry_run {
+                            metrics::counter!("dek_pdp_error_total", "evaluator" => ev_id.clone())
+                                .increment(1);
                         }
-                        if let Some(stats) = self.stats.get(&ev_id) {
-                            stats.lock_safe().failures += 1;
+                        tracing::warn!("PDP error: {e}; mode: {:?}", route.enforcement_mode);
+                        if !dry_run {
+                            if let Some(ref b) = breaker {
+                                b.on_failure();
+                            }
+                            if let Some(stats) = self.stats.get(&ev_id) {
+                                stats.lock_safe().failures += 1;
+                            }
                         }
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
@@ -486,14 +553,18 @@ impl PolicyRouter {
                     }
                     Err(_) => {
                         // Timeout elapsed
-                        metrics::counter!("dek_pdp_timeout_total", "evaluator" => ev_id.clone())
-                            .increment(1);
-                        tracing::warn!("PDP timeout for evaluator: {}", ev_id);
-                        if let Some(ref b) = breaker {
-                            b.on_failure();
+                        if !dry_run {
+                            metrics::counter!("dek_pdp_timeout_total", "evaluator" => ev_id.clone())
+                                .increment(1);
                         }
-                        if let Some(stats) = self.stats.get(&ev_id) {
-                            stats.lock_safe().failures += 1;
+                        tracing::warn!("PDP timeout for evaluator: {}", ev_id);
+                        if !dry_run {
+                            if let Some(ref b) = breaker {
+                                b.on_failure();
+                            }
+                            if let Some(stats) = self.stats.get(&ev_id) {
+                                stats.lock_safe().failures += 1;
+                            }
                         }
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
@@ -623,5 +694,69 @@ mod tests {
         let res = router.authorize(payload).await.unwrap();
         assert_eq!(res.decision, "allow");
         assert_eq!(res.reason, "Break-glass mode activated");
+    }
+
+    #[tokio::test]
+    async fn test_authorize_dry_run() {
+        let mut router = PolicyRouter::new();
+        router.register_evaluator("dummy", Box::new(DummyRuntime));
+        router.set_routes(vec![Route {
+            id: "route1".into(),
+            priority: 10,
+            enforcement_mode: EnforcementMode::Standard,
+            match_rule: EnterpriseMatchRule {
+                method: Some("test".into()),
+                tool_category: None,
+                resource_type: None,
+                severity_level: None,
+            },
+            pdp_required: vec!["dummy".into()],
+            pdp_conditional: vec![],
+            pdp_pool: vec![],
+            failover_strategy: FailoverStrategy::Priority,
+        }]);
+
+        let payload = serde_json::json!({ "request_type": "test" });
+        let res = router.authorize_dry_run(payload).await.unwrap();
+        assert_eq!(res.decision, "allow");
+        assert_eq!(res.reason, "All evaluators passed");
+        
+        // Ensure no metrics/stats were mutated
+        let stats = router.stats.get("dummy").unwrap().lock_safe();
+        assert_eq!(stats.successes, 0); // dry_run should skip incrementing
+    }
+
+    #[tokio::test]
+    async fn test_pdp_conditional() {
+        let mut router = PolicyRouter::new();
+        router.register_evaluator("dummy", Box::new(DummyRuntime));
+        router.set_routes(vec![Route {
+            id: "route1".into(),
+            priority: 10,
+            enforcement_mode: EnforcementMode::Standard,
+            match_rule: EnterpriseMatchRule {
+                method: Some("test".into()),
+                tool_category: None,
+                resource_type: None,
+                severity_level: None,
+            },
+            pdp_required: vec![],
+            pdp_conditional: vec![crate::ConditionalPdp {
+                evaluator: "dummy".into(),
+                required_payload_key: "require_dummy".into(),
+            }],
+            pdp_pool: vec![],
+            failover_strategy: FailoverStrategy::Priority,
+        }]);
+
+        // Payload without require_dummy -> won't evaluate dummy, defaults to auto-select but fail-closed since no match
+        let payload1 = serde_json::json!({ "request_type": "test" });
+        let res1 = router.authorize(payload1).await.unwrap();
+        assert_eq!(res1.decision, "deny");
+
+        // Payload with require_dummy -> evaluates dummy -> allow
+        let payload2 = serde_json::json!({ "request_type": "test", "require_dummy": true });
+        let res2 = router.authorize(payload2).await.unwrap();
+        assert_eq!(res2.decision, "allow");
     }
 }

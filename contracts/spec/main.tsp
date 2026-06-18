@@ -12,8 +12,12 @@ using TypeSpec.Http;
 using TypeSpec.Rest;
 using TypeSpec.OpenAPI;
 
-@service(#{ title: "Pollen Cloud-DEK Contract" })
-@info(#{ version: "1.0" })
+@service(#{ title: "Pollen DEK Control-Plane API" })
+@info(#{
+  version: "1.0.0",
+  contact: #{ name: "Pollen Platform Team", url: "https://pollen.ai", email: "platform@pollen.ai" }
+})
+@doc("Contract between Pollen Cloud / Local Control Plane and the DEK edge enforcement plane.")
 @server("https://api.pollen.cloud", "Pollen Cloud")
 @server("http://127.0.0.1:17891", "Local Control Plane / Mock Cloud")
 namespace Pollen.Contract;

@@ -1,0 +1,1 @@
+import "@typespec/http"; import "@typespec/openapi"; using TypeSpec.Http; using TypeSpec.OpenAPI; @service(#{ title: "Test API" }) @info(#{ version: "1.0.0", contact: #{ name: "Test" }, description: "Desc" }) namespace Test;

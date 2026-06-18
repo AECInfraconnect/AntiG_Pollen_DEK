@@ -14,6 +14,7 @@ import {
   Settings as SettingsIcon,
   UserCircle
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const navigation = [
   { name: "Overview", href: "/", icon: LayoutDashboard },
@@ -34,6 +35,7 @@ const navigation = [
 
 export function Sidebar() {
   const location = useLocation();
+  const { t } = useTranslation();
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-card/50 backdrop-blur-xl">
@@ -67,7 +69,7 @@ export function Sidebar() {
                   )}
                   aria-hidden="true"
                 />
-                {item.name}
+                {t(item.name)}
               </Link>
             );
           })}

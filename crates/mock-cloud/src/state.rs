@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use std::collections::{HashMap, VecDeque};
@@ -54,7 +54,7 @@ pub struct RolloutConfig {
 #[derive(Clone, Debug)]
 pub struct ChaosConfig {
     pub outage_enabled: bool,
-    pub global_latency_ms: u64,
+    pub global_latency_ms: i64,
 }
 
 #[derive(Clone)]

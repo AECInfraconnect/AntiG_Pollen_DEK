@@ -7,7 +7,7 @@ use axum::{
 };
 use tower_http::services::{ServeDir, ServeFile};
 
-use crate::{auth, bundle, policy, push, registry, state::AppState, telemetry};
+use crate::{auth, bundle, connectors, policy, push, registry, state::AppState, telemetry};
 
 pub async fn local_tenant_guard(
     State(state): State<AppState>,
@@ -37,6 +37,7 @@ pub fn create_app(state: AppState, static_dir: &str) -> Router {
         .merge(policy::router())
         .merge(telemetry::router())
         .merge(bundle::router())
+        .merge(connectors::router())
         .route("/v1/push", axum::routing::get(push::sse_handler))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),

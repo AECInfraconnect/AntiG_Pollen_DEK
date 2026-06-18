@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use axum::{
@@ -46,7 +46,7 @@ async fn trusted_keys_contract_path_serves_signed_envelope() {
         network_rules: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
         chaos_config: std::sync::Arc::new(std::sync::Mutex::new(crate::state::ChaosConfig {
             outage_enabled: false,
-            global_latency_ms: 0,
+            global_latency_ms: 0_i64,
         })),
         approvals: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
     };
@@ -120,7 +120,7 @@ async fn telemetry_decision_logs_endpoint_accepts_and_redacts() {
         network_rules: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
         chaos_config: std::sync::Arc::new(std::sync::Mutex::new(crate::state::ChaosConfig {
             outage_enabled: false,
-            global_latency_ms: 0,
+            global_latency_ms: 0_i64,
         })),
         approvals: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
     };

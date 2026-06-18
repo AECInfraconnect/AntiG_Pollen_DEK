@@ -11,3 +11,4 @@ pub mod signing;
 pub mod state;
 pub mod store;
 pub mod telemetry;
+pub mod connectors;

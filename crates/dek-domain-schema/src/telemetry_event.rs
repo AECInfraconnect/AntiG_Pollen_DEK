@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use schemars::JsonSchema;
@@ -39,7 +39,7 @@ pub enum TelemetryEvent {
         policy_ids: Vec<String>,
         bundle_id: String,
         bundle_version: String,
-        latency_ms: u64,
+        latency_ms: i64,
         cached: bool,
         timestamp: String,
         #[serde(skip_serializing_if = "Option::is_none")]
