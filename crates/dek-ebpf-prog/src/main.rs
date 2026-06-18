@@ -199,7 +199,7 @@ fn try_dek_connect4(ctx: &SockAddrContext, default_action: u32) -> Result<i32, (
     }
 
     if is_expired {
-        let _ = DNS_IP_CACHE_V4.remove(&dns_key);
+        let _ = unsafe { DNS_IP_CACHE_V4.remove(&dns_key) };
     }
 
     if !has_dns_context {
@@ -216,7 +216,7 @@ fn try_dek_connect4(ctx: &SockAddrContext, default_action: u32) -> Result<i32, (
     } else {
         // 2) LPM trie (IP/CIDR)
         let key = aya_ebpf::maps::lpm_trie::Key::new(32, dest_ip);
-        if let Some(v) = VERDICT_MAP.get(&key) {
+        if let Some(v) = unsafe { VERDICT_MAP.get(&key) } {
             verdict = *v;
         } else if let Some(v) = unsafe { PORTS_MAP.get(&dest_port) } {
             // 3) port policy
