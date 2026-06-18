@@ -22,7 +22,7 @@ pub fn init_logging(#[allow(unused_variables)] service_name: &str) -> anyhow::Re
     {
         // On Windows/macOS, use tracing-appender for daily rolling files.
         let log_dir = get_log_dir();
-        fs::create_dir_all(&log_dir)?;
+        fs::create_dir_all(&log_dir).map_err(|e| anyhow::anyhow!("Failed to create log dir {:?}: {}", log_dir, e))?;
 
         // Ensure proper permissions where applicable
         #[cfg(unix)]
