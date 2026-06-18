@@ -43,10 +43,11 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 - Adapters: `dek-cedar`, `dek-openfga`, OPA via Wasm — built on `dek-pdp-sdk`, feature-gated by `dek-router-builder`.
 - `dek-plugin-sdk` / `dek-plugin-host` — transform plugins (e.g. `dek-pii-wasm`).
 - `dek-resilience` — circuit breakers, admission control, and system overload protections.
+- `dek-capability-registry` — dynamically detects and honestly advertises supported OS-native enforcement modes (e.g., `linux-ebpf`, `windows-wfp`, `macos-nefilter`) safely without panicking on unsupported systems.
 
 **Network enforcement (OS)**
 
-- `dek-ebpfd` (+ `dek-ebpf-prog`, `dek-ebpf-common`) — Linux eBPF cgroup enforcement (kernel).
+- `dek-ebpfd` (+ `dek-ebpf-prog`, `dek-ebpf-common`) — Linux eBPF cgroup enforcement (kernel). Manages dynamic DNS LRU cache eviction and allows runtime toggling between `fail-closed` and `observe-only` modes via pinned BPF maps (`/sys/fs/bpf/pollen-dek`). Fails gracefully if `bpf-linker` is missing on older hosts.
 - `dek-windows-wfp` — Windows Filtering Platform (user-mode today; kernel callout driver in progress).
 - `dek-macos-nefilter` — macOS NetworkExtension / System Extension.
 - **Kernel complexity guard** (`dek-core::kernel_guard`) — only simple, exact rules (CIDR/port/exact-domain, bounded count) go to the kernel; complex rules fall to the user-mode plane to avoid verifier rejection/instability.
@@ -58,7 +59,7 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 
 **Control planes**
 
-- `dek-control-plane-api` — Contract Hub: shared contract (bundle manifest, telemetry envelope, registry objects, policy drafts, identity modes).
+- `dek-control-plane-api` — Contract Hub: shared contract (bundle manifest, telemetry envelope, registry objects, policy drafts, identity modes). Exposes `/.well-known/pollen-contract` to serve TypeSpec-generated OpenAPI contracts and supported schema definitions to consumers.
 - `local-control-plane` — Axum + SQLite + local signing; registry/policy/bundle/telemetry/push. Supports Connector config/testing and Dry-run Simulator engine.
 - `apps/local-admin-dashboard` — React/Vite UI (registry, policies, decision logs, simulator, and connector configuration).
 - `mock-cloud` — reference Cloud implementing the same contract for offline testing.
