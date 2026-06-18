@@ -27,8 +27,7 @@ pub fn build_engine(cfg: &WasmHostConfig) -> Result<Engine> {
         pool.total_core_instances(cfg.max_core_instances);
         pool.total_memories(cfg.total_memories);
         pool.total_tables(cfg.total_tables);
-        let pages = (cfg.max_memory_bytes / 65536) as u64;
-        pool.memory_pages(pages);
+        pool.max_memory_size(cfg.max_memory_bytes);
         pool.table_elements(cfg.table_elements);
 
         // Optional: keep a number of warm affine slots for frequently used modules.

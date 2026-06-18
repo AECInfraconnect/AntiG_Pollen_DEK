@@ -146,8 +146,6 @@ unsafe impl aya::Pod for DekMetrics {}
 unsafe impl aya::Pod for PolicyVerdict {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
-#[allow(unsafe_code)]
-#[cfg(all(feature = "user", target_os = "linux"))]
 unsafe impl aya::Pod for EgressEvent {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
