@@ -1828,6 +1828,7 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "jsonschema",
+ "pollen-contract",
  "rand 0.10.1",
  "reqwest 0.12.28",
  "serde",
@@ -1907,7 +1908,7 @@ dependencies = [
 name = "dek-control-plane-api"
 version = "0.1.0"
 dependencies = [
- "async-trait",
+ "pollen-contract",
  "schemars 0.8.22",
  "serde",
  "serde_json",
@@ -1977,6 +1978,7 @@ name = "dek-domain-schema"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "pollen-contract",
  "schemars 0.8.22",
  "serde",
  "serde_json",
@@ -2456,6 +2458,7 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
+ "pollen-contract",
  "rand 0.8.6",
  "regex",
  "reqwest 0.12.28",
@@ -4371,6 +4374,7 @@ dependencies = [
  "futures-util",
  "getrandom 0.2.17",
  "hex",
+ "pollen-contract",
  "rand 0.8.6",
  "reqwest 0.12.28",
  "serde",
@@ -4648,6 +4652,7 @@ dependencies = [
  "hex",
  "jsonschema",
  "jsonwebtoken 10.4.0",
+ "pollen-contract",
  "rand 0.10.1",
  "rand_core 0.6.4",
  "rcgen 0.11.3",
@@ -5364,6 +5369,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "pollen-contract"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "regress",
+ "schemars 0.8.22",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "time",
+ "typify",
+]
+
+[[package]]
 name = "polling"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5959,6 +5978,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
+name = "regress"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2057b2325e68a893284d1538021ab90279adac1139957ca2a74426c6f118fb48"
+dependencies = [
+ "hashbrown 0.16.1",
+ "memchr",
+]
+
+[[package]]
 name = "reqwest"
 version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6320,6 +6349,7 @@ version = "0.8.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fbf2ae1b8bc8e02df939598064d22402220cd5bbcca1c76f7d6a310974d5615"
 dependencies = [
+ "chrono",
  "dyn-clone",
  "schemars_derive",
  "serde",
@@ -6548,6 +6578,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf41e0cfaf7226dca15e8197172c295a782857fcb97fad1808a166870dee75a3"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "serde_tokenstream"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7c49585c52c01f13c5c2ebb333f14f6885d76daa768d8a037d28017ec538c69"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "serde",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -7739,6 +7781,53 @@ name = "typenum"
 version = "1.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
+
+[[package]]
+name = "typify"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7144144e97e987c94758a3017c920a027feac0799df325d6df4fc8f08d02068e"
+dependencies = [
+ "typify-impl",
+ "typify-macro",
+]
+
+[[package]]
+name = "typify-impl"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "062879d46aa4c9dfe0d33b035bbaf512da192131645d05deacb7033ec8581a09"
+dependencies = [
+ "heck 0.5.0",
+ "log",
+ "proc-macro2",
+ "quote",
+ "regress",
+ "schemars 0.8.22",
+ "semver",
+ "serde",
+ "serde_json",
+ "syn 2.0.117",
+ "thiserror 2.0.18",
+ "unicode-ident",
+]
+
+[[package]]
+name = "typify-macro"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9708a3ceb6660ba3f8d2b8f0567e7d4b8b198e2b94d093b8a6077a751425de9e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "schemars 0.8.22",
+ "semver",
+ "serde",
+ "serde_json",
+ "serde_tokenstream",
+ "syn 2.0.117",
+ "typify-impl",
+]
 
 [[package]]
 name = "uds_windows"

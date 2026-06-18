@@ -37,6 +37,7 @@ sha2 = "0.10"
 hex = "0.4"
 tower-http = { version = "0.5", features = ["fs", "cors"] }
 dek-policy-intent = { version = "1.0.0-beta.1", path = "../dek-policy-intent" }
+pollen-contract = { path = "../../contracts/generated/rust/pollen-contract" }
 
 [lints]
 workspace = true
@@ -44,4 +45,3 @@ workspace = true
 [dev-dependencies]
 jsonschema = "0.46.5"
 tower = { version = "0.4", features = ["util"] }
-

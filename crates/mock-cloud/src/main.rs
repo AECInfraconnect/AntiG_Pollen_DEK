@@ -160,10 +160,22 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n"
             "/v1/tenants/:tenant_id/devices/:device_id/config",
             get(get_config),
         )
-        .route("/v1/push", get(handle_push_stream))
+        .route(
+            "/v1/tenants/:tenant_id/devices/:device_id/events",
+            get(handle_push_stream),
+        )
         .route(
             "/.well-known/openid-configuration",
             get(openid_configuration),
+        )
+        .route(
+            "/.well-known/pollen-contract",
+            get(|| async {
+                Json(serde_json::json!({
+                    "contract_version": "1.0",
+                    "capabilities": ["telemetry-batches", "sse-hot-reload"]
+                }))
+            }),
         )
         .route("/jwks.json", get(jwks_json))
         .route("/v1/chat/completions", post(mock_openai_chat))
@@ -421,7 +433,9 @@ async fn get_config(
     )
 }
 
-async fn handle_push_stream() -> impl IntoResponse {
+async fn handle_push_stream(
+    Path((_tenant_id, _device_id)): Path<(String, String)>,
+) -> impl IntoResponse {
     use axum::response::sse::{Event, Sse};
     use futures_util::stream;
     use std::convert::Infallible;
@@ -431,8 +445,8 @@ async fn handle_push_stream() -> impl IntoResponse {
         tokio::time::sleep(Duration::from_secs(30)).await;
         // Mock push event every 30 seconds
         let event = Event::default().data(format!(
-            "{{\"event\": \"bundle_ready\", \"version\": \"push-{}\"}}",
-            count
+            "{{\"event_type\": \"PollenBundleReadyV1\", \"version\": \"v{}\", \"bundle_id\": \"bnd-{}\"}}",
+            count, count
         ));
         Some((Ok::<_, Infallible>(event), count + 1))
     });

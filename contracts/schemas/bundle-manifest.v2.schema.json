@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.pollen.dev/schemas/bundle-manifest.v2.schema.json",
+  "title": "PollenPolicyBundleManifestV2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "tenant_id",
+    "generation",
+    "created_at",
+    "expires_at",
+    "target",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "bundle-manifest.v2" },
+    "bundle_id": { "type": "string" },
+    "tenant_id": { "type": "string" },
+    "generation": { "type": "integer", "minimum": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device_id", "pep_types", "pdp_types"],
+      "properties": {
+        "device_id": { "type": "string" },
+        "entity_ids": { "type": "array", "items": { "type": "string" } },
+        "pep_types": { "type": "array", "items": { "type": "string" } },
+        "pdp_types": { "type": "array", "items": { "type": "string" } },
+        "os_layers": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "capabilities_required": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifact_id", "kind", "sha256", "path"],
+        "properties": {
+          "artifact_id": { "type": "string" },
+          "kind": {
+            "type": "string",
+            "enum": ["opa-wasm", "rego", "cedar", "openfga-model", "openfga-tuples", "os-l4-rules", "wasm-plugin-config"]
+          },
+          "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
+          "path": { "type": "string" },
+          "entrypoint": { "type": "string" }
+        }
+      }
+    }
+  }
+}

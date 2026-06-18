@@ -1,0 +1,26 @@
+version: 1
+headers:
+  X-Pollen-Contract-Version:
+    required: true
+    direction: request-response
+    description: Contract minor version used on the wire.
+  X-Pollen-Device-Id:
+    required: true
+    direction: request
+    description: Stable DEK device identity.
+  X-Pollen-Tenant-Id:
+    required: true
+    direction: request
+    description: Tenant identity.
+  X-Pollen-Bundle-Generation:
+    required: false
+    direction: request-response
+    description: Last known policy bundle generation.
+  Deprecation:
+    required: false
+    direction: response
+    description: Standard HTTP deprecation signal.
+  Sunset:
+    required: false
+    direction: response
+    description: Standard HTTP sunset timestamp.

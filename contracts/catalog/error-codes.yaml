@@ -1,0 +1,18 @@
+version: 1
+errors:
+  CONTRACT_VERSION_UNSUPPORTED:
+    http_status: 426
+    severity: warning
+    dek_behavior: enter_grace_period_keep_lkg
+  CONTRACT_SCHEMA_MISMATCH:
+    http_status: 422
+    severity: security
+    dek_behavior: reject_artifact_keep_lkg_emit_audit
+  BUNDLE_SIGNATURE_INVALID:
+    http_status: 422
+    severity: security
+    dek_behavior: reject_artifact_keep_lkg_emit_audit
+  CAPABILITY_MISSING:
+    http_status: 409
+    severity: warning
+    dek_behavior: reject_artifact_keep_lkg_emit_audit

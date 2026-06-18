@@ -1,0 +1,36 @@
+extends:
+  - spectral:oas
+
+rules:
+  pollen-operation-id-required:
+    description: Every operation must have operationId for stable codegen.
+    severity: error
+    given: $.paths[*][*]
+    then:
+      field: operationId
+      function: truthy
+
+  pollen-contract-version-header-required:
+    description: Every operation must document X-Pollen-Contract-Version.
+    severity: warn
+    given: $.paths[*][*].parameters
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          type: array
+          contains:
+            type: object
+            properties:
+              name:
+                const: X-Pollen-Contract-Version
+              in:
+                const: header
+
+  pollen-error-envelope-required:
+    description: Operations should document standard error response.
+    severity: warn
+    given: $.paths[*][*].responses
+    then:
+      field: 'default'
+      function: truthy

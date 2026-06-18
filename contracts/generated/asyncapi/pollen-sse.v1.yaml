@@ -1,0 +1,66 @@
+asyncapi: 3.0.0
+info:
+  title: Pollen Cloud-DEK SSE Contract
+  version: 1.0.0
+servers:
+  cloud:
+    host: api.pollen.cloud
+    protocol: https
+  local:
+    host: 127.0.0.1:17891
+    protocol: http
+channels:
+  bundleEvents:
+    address: /v1/tenants/{tenantId}/devices/{deviceId}/events
+    messages:
+      BundleReady:
+        $ref: '#/components/messages/BundleReady'
+      ContractDeprecated:
+        $ref: '#/components/messages/ContractDeprecated'
+operations:
+  receiveBundleEvents:
+    action: receive
+    channel:
+      $ref: '#/channels/bundleEvents'
+components:
+  messages:
+    BundleReady:
+      name: BundleReady
+      title: BundleReady
+      payload:
+        $ref: '#/components/schemas/BundleReadyPayload'
+    ContractDeprecated:
+      name: ContractDeprecated
+      title: ContractDeprecated
+      payload:
+        $ref: '#/components/schemas/ContractDeprecatedPayload'
+  schemas:
+    BundleReadyPayload:
+      type: object
+      additionalProperties: false
+      required: [schema_version, tenant_id, device_id, generation]
+      properties:
+        schema_version:
+          const: sse.bundle-ready.v1
+        tenant_id:
+          type: string
+        device_id:
+          type: string
+        generation:
+          type: integer
+        reason:
+          type: string
+    ContractDeprecatedPayload:
+      type: object
+      additionalProperties: false
+      required: [schema_version, contract_version, sunset]
+      properties:
+        schema_version:
+          const: sse.contract-deprecated.v1
+        contract_version:
+          type: string
+        sunset:
+          type: string
+          format: date-time
+        migration_url:
+          type: string

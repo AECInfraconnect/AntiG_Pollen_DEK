@@ -1,0 +1,238 @@
+openapi: 3.1.0
+info:
+  title: Pollen Cloud-DEK Contract
+  version: '1.0'
+tags: []
+paths:
+  /.well-known/pollen-contract:
+    get:
+      operationId: ContractDiscoveryApi_getDiscovery
+      parameters:
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/ContractDiscoveryResponse'
+                  - $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/telemetry/batches:
+    post:
+      operationId: TelemetryApi_ingestBatch
+      parameters:
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/TelemetryIngestResponse'
+                  - $ref: '#/components/schemas/ErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryBatchRequest'
+  /v1/tenants/{tenant_id}/devices/{device_id}/bundles/latest:
+    post:
+      operationId: BundleApi_fetchLatest
+      parameters:
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/BundleFetchResponse'
+                  - $ref: '#/components/schemas/ErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BundleFetchRequest'
+components:
+  parameters:
+    PollenHeaders.contractVersion:
+      name: X-Pollen-Contract-Version
+      in: header
+      required: true
+      schema:
+        type: string
+    PollenHeaders.deviceId:
+      name: X-Pollen-Device-Id
+      in: header
+      required: false
+      schema:
+        type: string
+    PollenHeaders.tenantId:
+      name: X-Pollen-Tenant-Id
+      in: header
+      required: false
+      schema:
+        type: string
+  schemas:
+    BundleFetchRequest:
+      type: object
+      required:
+        - tenant_id
+        - device_id
+        - capabilities
+      properties:
+        tenant_id:
+          type: string
+        device_id:
+          type: string
+        current_generation:
+          type: integer
+          format: int32
+        capabilities:
+          type: array
+          items:
+            type: string
+    BundleFetchResponse:
+      type: object
+      required:
+        - schema_version
+        - status
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - bundle-fetch-response.v1
+        status:
+          type: string
+          enum:
+            - not_modified
+            - bundle_ready
+        generation:
+          type: integer
+          format: int32
+        envelope: {}
+    ContractDiscoveryResponse:
+      type: object
+      required:
+        - schema_version
+        - supported
+        - preferred
+        - capabilities
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - contract-discovery.v1
+        supported:
+          type: array
+          items:
+            type: string
+        preferred:
+          type: string
+        minimum_dek_version:
+          type: string
+        sunset:
+          type: object
+          unevaluatedProperties:
+            type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+    ErrorEnvelope:
+      type: object
+      required:
+        - schema_version
+        - error
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - error-envelope.v1
+        error:
+          $ref: '#/components/schemas/PollenError'
+    PollenError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        correlation_id:
+          type: string
+        details:
+          type: object
+          unevaluatedProperties: {}
+    TelemetryBatchRequest:
+      type: object
+      required:
+        - schema_version
+        - tenant_id
+        - device_id
+        - batch_id
+        - events
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - telemetry-batch.v1
+        tenant_id:
+          type: string
+        device_id:
+          type: string
+        batch_id:
+          type: string
+        events:
+          type: array
+          items: {}
+    TelemetryIngestResponse:
+      type: object
+      required:
+        - schema_version
+        - accepted
+        - rejected
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - telemetry-ingest-response.v1
+        accepted:
+          type: integer
+          format: int32
+        rejected:
+          type: integer
+          format: int32
+        retry_after_seconds:
+          type: integer
+          format: int32
+servers:
+  - url: http://127.0.0.1:17891
+    description: Local Control Plane / Mock Cloud
+    variables: {}
+  - url: https://api.pollen.cloud
+    description: Pollen Cloud
+    variables: {}

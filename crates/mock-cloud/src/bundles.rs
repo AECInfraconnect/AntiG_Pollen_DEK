@@ -19,8 +19,8 @@ use serde_json::json;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route(
-            "/v1/tenants/:tenant_id/bundles/latest",
-            get(get_latest_bundle),
+            "/v1/tenants/:tenant_id/devices/:device_id/bundles/latest",
+            post(get_latest_bundle),
         )
         .route(
             "/v1/devices/:device_id/desired-state",
@@ -120,9 +120,11 @@ fn sign_bundle(manifest: &BundleManifest) -> serde_json::Value {
 }
 
 async fn get_latest_bundle(
-    Path(tenant_id): Path<String>,
+    Path((tenant_id, _device_id)): Path<(String, String)>,
     State(state): State<AppState>,
+    body: Option<Json<serde_json::Value>>,
 ) -> impl IntoResponse {
+    let _ = body; // ignoring the device's current manifest
     let revision = state.revision.load(std::sync::atomic::Ordering::Relaxed) as u64;
     let manifest = generate_bundle(&tenant_id, revision, false);
     (StatusCode::OK, Json(sign_bundle(&manifest)))

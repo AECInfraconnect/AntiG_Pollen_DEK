@@ -33,6 +33,7 @@ pub fn router() -> Router<AppState> {
         .route("/v1/telemetry/traces", post(ingest))
         .route("/v1/telemetry/ebpf-events", post(ingest))
         .route("/v1/metrics", post(ingest))
+        .route("/v1/telemetry/batches", post(ingest_batches))
         // tenant-scoped alias (DEK may post per-tenant)
         .route("/v1/tenants/:tenant/telemetry/events", post(ingest_tenant))
         // dashboard read-side
@@ -40,6 +41,12 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/telemetry/decision-logs",
             get(list_decision_logs),
         )
+}
+
+#[derive(serde::Deserialize)]
+pub struct TelemetryBatchRequest {
+    pub tenant_id: String,
+    pub events: Vec<serde_json::Value>,
 }
 
 #[derive(serde::Deserialize)]
@@ -52,6 +59,13 @@ pub struct TelemetryBatch {
 fn has_unredacted_secret(ev: &serde_json::Value) -> bool {
     let blob = ev.to_string().to_lowercase();
     blob.contains("authorization:") || blob.contains("bearer ") || blob.contains("\"password\"")
+}
+
+async fn ingest_batches(
+    State(st): State<AppState>,
+    Json(batch): Json<TelemetryBatchRequest>,
+) -> impl IntoResponse {
+    store_events(&st, &batch.tenant_id, batch.events).await
 }
 
 async fn ingest(

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.pollen.dev/schemas/telemetry-envelope.v1.schema.json",
+  "title": "PollenTelemetryEnvelopeV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_id", "event_type", "timestamp", "tenant_id", "device_id", "payload", "redaction_applied"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "telemetry-envelope.v1" },
+    "event_id": { "type": "string" },
+    "event_type": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "tenant_id": { "type": "string" },
+    "workspace_id": { "type": "string" },
+    "environment_id": { "type": "string" },
+    "device_id": { "type": "string" },
+    "trace_id": { "type": "string" },
+    "span_id": { "type": "string" },
+    "payload": { "type": "object" },
+    "redaction_applied": { "type": "boolean" }
+  }
+}
