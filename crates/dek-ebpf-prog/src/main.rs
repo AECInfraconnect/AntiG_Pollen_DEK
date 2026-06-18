@@ -211,14 +211,14 @@ fn try_dek_connect4(ctx: &SockAddrContext, default_action: u32) -> Result<i32, (
     }
 
     // 1) cgroup-specific policy
-    if let Some(v) = CGROUP_POLICY_MAP.get(&cgroup_id) {
+    if let Some(v) = unsafe { CGROUP_POLICY_MAP.get(&cgroup_id) } {
         verdict = *v;
     } else {
         // 2) LPM trie (IP/CIDR)
         let key = aya_ebpf::maps::lpm_trie::Key::new(32, dest_ip);
         if let Some(v) = VERDICT_MAP.get(&key) {
             verdict = *v;
-        } else if let Some(v) = PORTS_MAP.get(&dest_port) {
+        } else if let Some(v) = unsafe { PORTS_MAP.get(&dest_port) } {
             // 3) port policy
             verdict = *v;
         }
