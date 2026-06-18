@@ -68,14 +68,16 @@ async fn wait_https(url: &str, tries: u32) -> Result<()> {
 }
 
 async fn setup_mock_cloud() -> Result<Proc> {
-    assert!(
-        Command::new("cargo")
-            .args(["build", "--workspace"])
-            .status()
-            .await?
-            .success(),
-        "workspace build failed"
-    );
+    if std::env::var("DEK_SKIP_HARNESS_BUILD").is_err() {
+        assert!(
+            Command::new("cargo")
+                .args(["build", "--workspace"])
+                .status()
+                .await?
+                .success(),
+            "workspace build failed"
+        );
+    }
     let _ = Command::new(bin("cert-gen"))
         .arg("certs")
         .current_dir(workspace_dir())

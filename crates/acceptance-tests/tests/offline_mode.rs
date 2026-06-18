@@ -125,22 +125,16 @@ async fn authorize(
 #[tokio::test]
 #[ignore = "offline mode e2e"]
 async fn test_offline_mode_resilience() -> Result<()> {
-    assert!(
-        Command::new("cargo")
-            .args([
-                "build",
-                "-p",
-                "local-control-plane",
-                "-p",
-                "dek-cli",
-                "-p",
-                "dek-core"
-            ])
-            .status()
-            .await?
-            .success(),
-        "workspace build failed"
-    );
+    if std::env::var("DEK_SKIP_HARNESS_BUILD").is_err() {
+        assert!(
+            Command::new("cargo")
+                .args(["build", "--workspace"])
+                .status()
+                .await?
+                .success(),
+            "workspace build failed"
+        );
+    }
 
     let lcp_data = std::env::temp_dir().join(format!("lcp-off-{}", std::process::id()));
 
