@@ -80,8 +80,9 @@ impl CloudTelemetrySink {
         tenant_id: String,
         device_id: String,
     ) -> Result<Arc<Self>> {
+        let reqwest_client = mtls.build_client(client_key_override)?;
         let client = Arc::new(tokio::sync::RwLock::new(
-            mtls.build_client(client_key_override)?,
+            reqwest_client.clone(),
         ));
         let spooler = Arc::new(Spooler::new(db_path)?);
         let redactor = Arc::new(Redactor::new());
@@ -99,7 +100,7 @@ impl CloudTelemetrySink {
         });
 
         // Initialize OTLP Metrics Provider
-        Self::init_otlp_metrics(endpoint_url, mtls)?;
+        Self::init_otlp_metrics(endpoint_url, reqwest_client.clone())?;
 
         let bg_sink = sink.clone();
         tokio::spawn(async move {
@@ -129,10 +130,11 @@ impl CloudTelemetrySink {
         Ok(sink)
     }
 
-    fn init_otlp_metrics(endpoint_url: &str, _mtls: &MtlsConfig) -> Result<()> {
+    fn init_otlp_metrics(endpoint_url: &str, http_client: reqwest::Client) -> Result<()> {
         let exporter = opentelemetry_otlp::new_exporter()
             .http()
             .with_endpoint(format!("{}/v1/metrics", endpoint_url))
+            .with_http_client(http_client)
             .build_metrics_exporter(Box::new(
                 opentelemetry_sdk::metrics::reader::DefaultTemporalitySelector::new(),
             ))

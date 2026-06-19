@@ -57,6 +57,9 @@ pub struct Spooler {
 
 impl Spooler {
     fn get_or_create_key() -> Result<Key<Aes256Gcm>> {
+        if std::env::var("DEK_TELEMETRY_DISABLE_KEYRING").is_ok() {
+            return Self::try_fallback_file();
+        }
         match Self::try_keyring() {
             Ok(key) => Ok(key),
             Err(e) => {
