@@ -36,6 +36,7 @@ dek-plugin-sdk = { path = "../dek-plugin-sdk" }
 dek-cedar = { path = "../dek-cedar" }
 dek-policy-runtime = { path = "../dek-policy-runtime" }
 reqwest = { workspace = true, features = ["json"] }
+dek-config = { version = "0.1.0", path = "../dek-config" }
 
 [dev-dependencies]
 tempfile = "3.27.0"

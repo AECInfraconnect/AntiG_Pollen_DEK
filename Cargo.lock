@@ -4459,6 +4459,7 @@ dependencies = [
  "chrono",
  "dek-bundle-format",
  "dek-cedar",
+ "dek-config",
  "dek-control-plane-api",
  "dek-plugin-sdk",
  "dek-policy-compiler",
