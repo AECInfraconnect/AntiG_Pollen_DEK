@@ -475,7 +475,12 @@ async fn simulate_policy(
             });
             let _ = state
                 .telemetry_store
-                .put_telemetry("local", "decision", ev["event_id"].as_str().unwrap_or("unknown"), &ev)
+                .put_telemetry(
+                    "local",
+                    "decision",
+                    ev["event_id"].as_str().unwrap_or("unknown"),
+                    &ev,
+                )
                 .await;
 
             Ok((
@@ -512,7 +517,12 @@ async fn simulate_policy(
             });
             let _ = state
                 .telemetry_store
-                .put_telemetry("local", "decision", ev["event_id"].as_str().unwrap_or("unknown"), &ev)
+                .put_telemetry(
+                    "local",
+                    "decision",
+                    ev["event_id"].as_str().unwrap_or("unknown"),
+                    &ev,
+                )
                 .await;
 
             Ok((
