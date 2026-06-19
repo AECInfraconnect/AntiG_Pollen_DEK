@@ -289,6 +289,7 @@ CCqGSM49BAMCA0kAMEYCIQC5famYrlcNXrTyLT10TBc6SsRQkTFt5nHNErx9dOFo\n\
             .env("DEK_DATA_DIR", &data)
             .env("DEK_LOG_DIR", &logs)
             .env("DEK_BUNDLE_SYNC_INTERVAL", "2")
+            .env("DEK_TELEMETRY_DISABLE_KEYRING", "1")
             .env_remove("DEK_PINNED_KEY_OVERRIDE")
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
