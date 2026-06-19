@@ -380,12 +380,19 @@ async fn get_artifact(
         ));
     }
 
-    let path = format!("artifacts/{sha}");
-    match st.policy_store.get_blob(&tenant, &path).await {
-        Ok(Some(bytes)) => Ok((StatusCode::OK, bytes)),
-        Ok(None) => Err(ApiError::NotFound("artifact".into())),
-        Err(e) => Err(ApiError::Internal(e)),
+    let possible_paths = [
+        format!("artifacts/{sha}"),
+        format!("registry/{sha}"),
+        format!("router/{sha}"),
+    ];
+
+    for path in possible_paths {
+        if let Ok(Some(bytes)) = st.policy_store.get_blob(&tenant, &path).await {
+            return Ok((StatusCode::OK, bytes));
+        }
     }
+
+    Err(ApiError::NotFound("artifact".into()))
 }
 
 async fn deploy_to_pep(
