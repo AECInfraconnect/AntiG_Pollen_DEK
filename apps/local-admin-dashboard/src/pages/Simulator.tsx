@@ -25,28 +25,50 @@ export function Simulator() {
 
   useEffect(() => {
     const policy = policies.find(p => p.policy_id === selectedPolicyId);
-    if (policy && policy.source?.kind === "raw_text" && policy.source.language === "cedar" && policy.source.text) {
+    if (policy && policy.source?.kind === "raw_text" && policy.source.text) {
       const text = policy.source.text;
-      const principalMatch = text.match(/principal\s*==\s*([A-Za-z0-9_]+::"[^"]+")/);
-      if (principalMatch) setPrincipal(principalMatch[1]);
       
-      const actionMatch = text.match(/action\s*==\s*([A-Za-z0-9_]+::"[^"]+")/);
-      if (actionMatch) setAction(actionMatch[1]);
-      
-      const resourceMatch = text.match(/resource\s*==\s*([A-Za-z0-9_]+::"[^"]+")/);
-      if (resourceMatch) setResource(resourceMatch[1]);
+      if (policy.policy_type === "cedar" || policy.source.language === "cedar") {
+        const principalMatch = text.match(/principal\s*==\s*([A-Za-z0-9_]+::"[^"]+")/);
+        if (principalMatch) setPrincipal(principalMatch[1]);
+        else setPrincipal('User::"alice"');
+        
+        const actionMatch = text.match(/action\s*==\s*([A-Za-z0-9_]+::"[^"]+")/);
+        if (actionMatch) setAction(actionMatch[1]);
+        else setAction('Action::"read"');
+        
+        const resourceMatch = text.match(/resource\s*==\s*([A-Za-z0-9_]+::"[^"]+")/);
+        if (resourceMatch) setResource(resourceMatch[1]);
+        else setResource('Document::"123"');
 
-      const contextMatches = text.matchAll(/context\.([a-zA-Z0-9_]+)\s*==\s*"([^"]+)"/g);
-      const ctxObj: any = {};
-      let foundContext = false;
-      for (const match of contextMatches) {
-        ctxObj[match[1]] = match[2];
-        foundContext = true;
-      }
-      if (foundContext) {
-        setContextStr(JSON.stringify(ctxObj, null, 2));
-      } else {
-        setContextStr("{}");
+        const contextMatches = text.matchAll(/context\.([a-zA-Z0-9_]+)\s*==\s*"([^"]+)"/g);
+        const ctxObj: any = {};
+        let foundContext = false;
+        for (const match of contextMatches) {
+          ctxObj[match[1]] = match[2];
+          foundContext = true;
+        }
+        if (foundContext) {
+          setContextStr(JSON.stringify(ctxObj, null, 2));
+        } else {
+          setContextStr("{}");
+        }
+      } else if (policy.policy_type === "rego" || policy.source.language === "rego") {
+        const actionMatch = text.match(/input\.action\s*==\s*"([^"]+)"/);
+        if (actionMatch) setAction(actionMatch[1]);
+        else setAction('read');
+        
+        setPrincipal('alice');
+        setResource('document_123');
+        setContextStr('{}');
+      } else if (policy.policy_type === "open_fga" || policy.source.language === "fga") {
+        const relationMatch = text.match(/define\s+([a-zA-Z0-9_]+)\s*:/);
+        if (relationMatch) setAction(relationMatch[1]);
+        else setAction('viewer');
+        
+        setPrincipal('user:alice');
+        setResource('document:123');
+        setContextStr('{}');
       }
     }
   }, [selectedPolicyId, policies]);
@@ -117,6 +139,15 @@ export function Simulator() {
                   <option key={p.policy_id} value={p.policy_id}>{p.name} ({p.policy_id})</option>
                 ))}
               </select>
+              {selectedPolicyId && policies.find(p => p.policy_id === selectedPolicyId) && (
+                <div className="mt-2 text-[11px] px-2 py-1.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1.5">
+                  <span className="font-semibold">Recommended Deployment:</span> 
+                  {policies.find(p => p.policy_id === selectedPolicyId)?.policy_type === 'cedar' && "Application PEP (Native Cedar)"}
+                  {policies.find(p => p.policy_id === selectedPolicyId)?.policy_type === 'rego' && "Proxy PEP (Envoy / L7 Gateway)"}
+                  {policies.find(p => p.policy_id === selectedPolicyId)?.policy_type === 'open_fga' && "Application PEP (Authz API)"}
+                  {!['cedar', 'rego', 'open_fga'].includes(policies.find(p => p.policy_id === selectedPolicyId)?.policy_type || '') && "Gateway PEP"}
+                </div>
+              )}
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Principal ID</label>
@@ -169,13 +200,35 @@ export function Simulator() {
             {result && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-lg">
-                  {result.allowed ? (
-                    <span className="flex items-center gap-2 text-emerald-400"><CheckCircle2 className="h-5 w-5"/> ALLOW</span>
-                  ) : (
-                    <span className="flex items-center gap-2 text-red-400"><XCircle className="h-5 w-5"/> DENY</span>
+                  {result.decision !== 'Not Evaluated' && (
+                     result.allowed ? (
+                        <span className="flex items-center gap-2 text-emerald-400"><CheckCircle2 className="h-5 w-5"/> ALLOW</span>
+                      ) : (
+                        <span className="flex items-center gap-2 text-red-400"><XCircle className="h-5 w-5"/> DENY</span>
+                      )
+                  )}
+                  {result.decision === 'Not Evaluated' && (
+                      <span className="flex items-center gap-2 text-slate-400"><PlayCircle className="h-5 w-5"/> SIMULATION ONLY</span>
                   )}
                 </div>
-                <div className="text-muted-foreground whitespace-pre-wrap">
+                
+                <div className="grid grid-cols-2 gap-4 text-sm mt-4 border-t border-white/10 pt-4">
+                   <div>
+                      <div className="text-muted-foreground mb-1">Syntax Check</div>
+                      <div className={result.syntax_check?.startsWith('Passed') ? 'text-emerald-400' : 'text-red-400 font-semibold'}>{result.syntax_check || 'N/A'}</div>
+                   </div>
+                   <div>
+                      <div className="text-muted-foreground mb-1">Deployment Test</div>
+                      <div className={result.deployment_test?.startsWith('Passed') ? 'text-emerald-400' : 'text-red-400 font-semibold'}>{result.deployment_test || 'N/A'}</div>
+                   </div>
+                   <div className="col-span-2">
+                      <div className="text-muted-foreground mb-1">Recommended PEP Target</div>
+                      <div className="text-blue-400 inline-block px-3 py-1 rounded bg-blue-500/10 border border-blue-500/20">{result.recommended_pep || 'N/A'}</div>
+                   </div>
+                </div>
+
+                <div className="text-muted-foreground whitespace-pre-wrap mt-4 border-t border-white/10 pt-4">
+                  <div className="text-xs mb-2">Raw Response:</div>
                   {JSON.stringify(result, null, 2)}
                 </div>
               </div>
