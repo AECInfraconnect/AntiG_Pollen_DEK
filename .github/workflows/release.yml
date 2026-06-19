@@ -169,8 +169,7 @@ jobs:
           components: rust-src, llvm-tools-preview
 
       - name: Install bpf-linker
-        uses: cargo-bins/cargo-binstall@main
-      - run: cargo binstall -y bpf-linker
+        run: cargo install bpf-linker
 
       - name: Build eBPF Object
         run: cargo +nightly build --manifest-path crates/dek-ebpf-prog/Cargo.toml --target bpfel-unknown-none -Z build-std=core --release
