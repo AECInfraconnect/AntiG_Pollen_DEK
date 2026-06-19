@@ -404,6 +404,35 @@ async fn deploy_to_pep(
         Err(e) => return Err(ApiError::Internal(e)),
     };
 
+    // Validation logic
+    if let Some(manifest_val) = val.get("manifest") {
+        if let Ok(manifest) =
+            serde_json::from_value::<dek_bundle_format::PollenPolicyBundle>(manifest_val.clone())
+        {
+            let mut has_yaml = false;
+            let mut has_rego = false;
+            let mut has_openfga = false;
+            for art in manifest.artifacts {
+                if art.r#type == "yaml_text" {
+                    has_yaml = true;
+                }
+                if art.r#type == "rego_text" {
+                    has_rego = true;
+                }
+                if art.r#type == "open_fga_text" {
+                    has_openfga = true;
+                }
+            }
+
+            if pep_id == "ext_authz" && has_yaml {
+                return Err(ApiError::BadRequest("Deployment Failed: Policy Bundle contains YAML artifacts which are not supported by Envoy/L7 Proxy PEP. Please deploy to MCP Proxy or STDIO Wrapper instead.".into()));
+            }
+            if (pep_id == "mcp_proxy" || pep_id == "stdio_wrapper") && (has_rego || has_openfga) {
+                return Err(ApiError::BadRequest("Deployment Failed: Policy Bundle contains Rego/OpenFGA artifacts which are only supported by Envoy/L7 Proxy PEP.".into()));
+            }
+        }
+    }
+
     let data_dir = dek_config::paths::get_data_dir();
     let pep_dir = data_dir.join(format!("pep_{}", pep_id));
 
