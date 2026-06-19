@@ -20,6 +20,10 @@ fn main() {
         return;
     }
 
+    if env::var("DEK_SKIP_EBPF_BUILD").is_ok() {
+        return;
+    }
+
     // Try reading from DEK_EBPF_OBJECT first
     if let Some(dek_ebpf_object) = env::var_os("DEK_EBPF_OBJECT") {
         if Path::new(&dek_ebpf_object).exists() {

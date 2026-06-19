@@ -40,6 +40,8 @@ jobs:
       run: cargo test --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --locked
       
     - name: Build release default workspace
+      env:
+        DEK_SKIP_EBPF_BUILD: "1"
       run: cargo build --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --release --locked
 
   ebpf_build:
