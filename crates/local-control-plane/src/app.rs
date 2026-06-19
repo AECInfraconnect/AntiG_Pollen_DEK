@@ -44,7 +44,10 @@ pub fn create_app(state: AppState, static_dir: &str) -> Router {
         .merge(telemetry::router())
         .merge(bundle::router())
         .merge(connectors::router())
-        .route("/v1/tenants/:tenant/devices/:device/events", axum::routing::get(push::sse_handler))
+        .route(
+            "/v1/tenants/:tenant/devices/:device/events",
+            axum::routing::get(push::sse_handler),
+        )
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             local_tenant_guard,
