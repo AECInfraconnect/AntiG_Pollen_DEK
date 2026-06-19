@@ -449,12 +449,18 @@ async fn simulate_policy(
     router.set_routes(vec![route]);
 
     let start_time = std::time::Instant::now();
-    let result = router.authorize_dry_run(serde_json::from_value(input.clone()).unwrap_or_default()).await;
+    let result = router
+        .authorize_dry_run(serde_json::from_value(input.clone()).unwrap_or_default())
+        .await;
     let eval_time_ms = start_time.elapsed().as_millis();
 
     match result {
         Ok(decision) => {
-            let req_id = input.get("request_id").and_then(|v| v.as_str()).unwrap_or("sim_req").to_string();
+            let req_id = input
+                .get("request_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("sim_req")
+                .to_string();
             let ev = json!({
                 "event_type": "decision",
                 "event_id": format!("sim_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)),
@@ -467,8 +473,11 @@ async fn simulate_policy(
                     "latency_ms": eval_time_ms as i32
                 }
             });
-            let _ = state.telemetry_store.put_telemetry("local", "decision", ev["event_id"].as_str().unwrap(), &ev).await;
-            
+            let _ = state
+                .telemetry_store
+                .put_telemetry("local", "decision", ev["event_id"].as_str().unwrap(), &ev)
+                .await;
+
             Ok((
                 StatusCode::OK,
                 Json(json!({
@@ -482,9 +491,13 @@ async fn simulate_policy(
                     "deployment_test": deployment_test
                 })),
             ))
-        },
+        }
         Err(e) => {
-            let req_id = input.get("request_id").and_then(|v| v.as_str()).unwrap_or("sim_req").to_string();
+            let req_id = input
+                .get("request_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("sim_req")
+                .to_string();
             let ev = json!({
                 "event_type": "decision",
                 "event_id": format!("sim_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)),
@@ -497,7 +510,10 @@ async fn simulate_policy(
                     "latency_ms": eval_time_ms as i32
                 }
             });
-            let _ = state.telemetry_store.put_telemetry("local", "decision", ev["event_id"].as_str().unwrap(), &ev).await;
+            let _ = state
+                .telemetry_store
+                .put_telemetry("local", "decision", ev["event_id"].as_str().unwrap(), &ev)
+                .await;
 
             Ok((
                 StatusCode::BAD_REQUEST,
@@ -511,6 +527,6 @@ async fn simulate_policy(
                     "deployment_test": "Failed during execution"
                 })),
             ))
-        },
+        }
     }
 }
