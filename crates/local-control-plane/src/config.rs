@@ -25,7 +25,7 @@ impl LocalControlPlaneConfig {
 
         let dashboard_dir = PathBuf::from(
             std::env::var("DEK_DASHBOARD_DIR")
-                .unwrap_or_else(|_| "../../apps/local-admin-dashboard/dist".into()),
+                .unwrap_or_else(|_| "./apps/local-admin-dashboard/dist".into()),
         );
 
         let auth_disabled = std::env::var("DEK_LCP_AUTH_DISABLE").unwrap_or_default() == "1";

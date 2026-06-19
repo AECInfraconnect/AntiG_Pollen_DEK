@@ -23,6 +23,34 @@ export function Simulator() {
     }).catch(console.error);
   }, []);
 
+  useEffect(() => {
+    const policy = policies.find(p => p.policy_id === selectedPolicyId);
+    if (policy && policy.source?.kind === "raw_text" && policy.source.language === "cedar" && policy.source.text) {
+      const text = policy.source.text;
+      const principalMatch = text.match(/principal\s*==\s*([A-Za-z0-9_]+::"[^"]+")/);
+      if (principalMatch) setPrincipal(principalMatch[1]);
+      
+      const actionMatch = text.match(/action\s*==\s*([A-Za-z0-9_]+::"[^"]+")/);
+      if (actionMatch) setAction(actionMatch[1]);
+      
+      const resourceMatch = text.match(/resource\s*==\s*([A-Za-z0-9_]+::"[^"]+")/);
+      if (resourceMatch) setResource(resourceMatch[1]);
+
+      const contextMatches = text.matchAll(/context\.([a-zA-Z0-9_]+)\s*==\s*"([^"]+)"/g);
+      const ctxObj: any = {};
+      let foundContext = false;
+      for (const match of contextMatches) {
+        ctxObj[match[1]] = match[2];
+        foundContext = true;
+      }
+      if (foundContext) {
+        setContextStr(JSON.stringify(ctxObj, null, 2));
+      } else {
+        setContextStr("{}");
+      }
+    }
+  }, [selectedPolicyId, policies]);
+
   const handleSimulate = async () => {
     if (!selectedPolicyId) {
       setError("Please select a policy to simulate");
@@ -44,8 +72,8 @@ export function Simulator() {
 
     const payload = {
       action,
-      resource: { resource_type: "item", resource_id: resource },
-      principal: { id: principal, roles: [] },
+      resource,
+      principal,
       context: ctx,
     };
 

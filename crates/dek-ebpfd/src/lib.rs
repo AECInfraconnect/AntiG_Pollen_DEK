@@ -90,7 +90,7 @@ mod linux {
         use aya::maps::{Array, MapData};
         let pin_path = format!("{}/RUNTIME_MODE", BPFFS_PATH);
         let map_data = MapData::from_pin(&pin_path).context("load pinned RUNTIME_MODE")?;
-        let mut map: Array<_, u32> = Array::try_from(map_data)?;
+        let mut map: Array<_, u32> = Array::try_from(aya::maps::Map::Array(map_data))?;
         map.set(0, action, 0).context("set RUNTIME_MODE action")?;
         info!("eBPFD: set_runtime_default_action to {}", action);
         Ok(())

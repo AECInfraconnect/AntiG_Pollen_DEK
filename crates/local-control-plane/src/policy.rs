@@ -350,17 +350,20 @@ async fn simulate_policy(
     let mut router = dek_policy_router::PolicyRouter::new();
 
     if language_id == "cedar" {
-        if let Ok(adapter) = dek_cedar::CedarAdapter::new(&policy_text) {
-            router.register_evaluator(
-                "sim_evaluator",
-                Box::new(SimulateRuntime {
-                    cedar_adapter: adapter,
-                }),
-            );
-        } else {
-            return Err(ApiError::Internal(anyhow::anyhow!(
-                "Failed to initialize Cedar engine"
-            )));
+        match dek_cedar::CedarAdapter::new(&policy_text) {
+            Ok(adapter) => {
+                router.register_evaluator(
+                    "sim_evaluator",
+                    Box::new(SimulateRuntime {
+                        cedar_adapter: adapter,
+                    }),
+                );
+            }
+            Err(e) => {
+                return Err(ApiError::Internal(anyhow::anyhow!(
+                    "Failed to parse Cedar policy: {}", e
+                )));
+            }
         }
     } else {
         // Fallback for non-cedar
