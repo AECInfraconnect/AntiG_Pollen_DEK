@@ -41,7 +41,16 @@ fn main() {
     } else {
         // Find the compiled eBPF object and copy it to OUT_DIR/dek-ebpf-prog
         // `aya_build` uses the same profile as the host build (release or debug)
-        let src = env::var_os("CARGO_MANIFEST_DIR")
+        let src_isolated = env::var_os("CARGO_MANIFEST_DIR")
+            .map(|dir| {
+                Path::new(&dir).join(format!(
+                    "../dek-ebpf-prog/target/bpfel-unknown-none/{}/dek-ebpf-prog",
+                    profile
+                ))
+            })
+            .unwrap_or_else(|| Path::new("").to_path_buf());
+
+        let src_workspace = env::var_os("CARGO_MANIFEST_DIR")
             .map(|dir| {
                 Path::new(&dir).join(format!(
                     "../../target/bpfel-unknown-none/{}/dek-ebpf-prog",
@@ -50,22 +59,33 @@ fn main() {
             })
             .unwrap_or_else(|| Path::new("").to_path_buf());
 
-        if src.exists() {
-            let _ = std::fs::copy(&src, &dest_path);
+        if src_isolated.exists() {
+            let _ = std::fs::copy(&src_isolated, &dest_path);
+        } else if src_workspace.exists() {
+            let _ = std::fs::copy(&src_workspace, &dest_path);
         } else {
-            // fallback
-            let fallback = env::var_os("CARGO_MANIFEST_DIR")
+            // fallback for isolated target
+            let fallback_isolated = env::var_os("CARGO_MANIFEST_DIR")
+                .map(|dir| {
+                    Path::new(&dir).join("../dek-ebpf-prog/target/bpfel-unknown-none/release/dek-ebpf-prog")
+                })
+                .unwrap();
+            
+            // fallback for workspace target
+            let fallback_workspace = env::var_os("CARGO_MANIFEST_DIR")
                 .map(|dir| {
                     Path::new(&dir).join("../../target/bpfel-unknown-none/release/dek-ebpf-prog")
                 })
                 .unwrap();
 
-            if fallback.exists() {
-                let _ = std::fs::copy(&fallback, &dest_path);
+            if fallback_isolated.exists() {
+                let _ = std::fs::copy(&fallback_isolated, &dest_path);
+            } else if fallback_workspace.exists() {
+                let _ = std::fs::copy(&fallback_workspace, &dest_path);
             } else if profile == "release" {
                 panic!(
-                    "eBPF build succeeded but target object not found at {:?}",
-                    src
+                    "eBPF build succeeded but target object not found at {:?} or {:?}",
+                    src_isolated, src_workspace
                 );
             }
         }
