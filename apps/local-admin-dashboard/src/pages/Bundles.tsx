@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Package, RefreshCw, CheckCircle, Clock } from "lucide-react";
+import { Package, RefreshCw, CheckCircle, Clock, XCircle } from "lucide-react";
 import { BundleApi } from "../services/api";
 
 export function Bundles() {
@@ -8,6 +8,8 @@ export function Bundles() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDialog, setShowDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [syncResult, setSyncResult] = useState<any>(null);
 
   const load = async () => {
@@ -181,6 +183,8 @@ export function Bundles() {
                       });
                       setShowDialog(true);
                     } catch (e: any) {
+                      setErrorMessage(e.message || String(e));
+                      setShowErrorDialog(true);
                       setError(`Deploy to ${pep.name} failed: ${e.message}`);
                     }
                   }}
@@ -221,6 +225,30 @@ export function Bundles() {
                 className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showErrorDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-red-500/20 bg-card p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-full bg-red-500/20 p-2 text-red-500">
+                <XCircle className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-semibold">Deployment Failed</h3>
+            </div>
+            <p className="mb-6 text-sm text-red-400">
+              {errorMessage}
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowErrorDialog(false)}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+              >
+                Close
               </button>
             </div>
           </div>

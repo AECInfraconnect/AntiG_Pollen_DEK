@@ -352,6 +352,7 @@ async fn simulate_policy(
     let mut syntax_check = "Passed".to_string();
     let recommended_pep: String;
     let mut deployment_test = "Passed".to_string();
+    let target_pep = input.get("target_pep").and_then(|v| v.as_str());
 
     if language_id == "cedar" {
         recommended_pep = "MCP Proxy PEP, Envoy Proxy, STDIO Wrapper".to_string();
@@ -363,6 +364,11 @@ async fn simulate_policy(
                         cedar_adapter: adapter,
                     }),
                 );
+                if let Some(pep) = target_pep {
+                    deployment_test = format!("Passed: Compatible with {}", pep);
+                } else {
+                    deployment_test = "Passed: Compatible with multiple PEPs".to_string();
+                }
             }
             Err(e) => {
                 syntax_check = format!("Failed: {}", e);
@@ -388,7 +394,15 @@ async fn simulate_policy(
             syntax_check = "Failed: missing package declaration".to_string();
             deployment_test = "Failed: Invalid syntax".to_string();
         } else {
-            deployment_test = "Passed: Compatible with Envoy/L7 Proxy PEP".to_string();
+            if let Some(pep) = target_pep {
+                if pep == "mcp_proxy" || pep == "stdio_wrapper" {
+                    deployment_test = "Failed: Policy Bundle contains Rego/OpenFGA artifacts which are only supported by Envoy/L7 Proxy PEP.".to_string();
+                } else {
+                    deployment_test = "Passed: Compatible with Envoy/L7 Proxy PEP".to_string();
+                }
+            } else {
+                deployment_test = "Passed: Compatible with Envoy/L7 Proxy PEP".to_string();
+            }
         }
         return Ok((
             StatusCode::OK,
@@ -409,7 +423,15 @@ async fn simulate_policy(
             syntax_check = "Failed: missing model declaration".to_string();
             deployment_test = "Failed: Invalid syntax".to_string();
         } else {
-            deployment_test = "Passed: Compatible with OpenFGA Server".to_string();
+            if let Some(pep) = target_pep {
+                if pep == "mcp_proxy" || pep == "stdio_wrapper" {
+                    deployment_test = "Failed: Policy Bundle contains Rego/OpenFGA artifacts which are only supported by Envoy/L7 Proxy PEP.".to_string();
+                } else {
+                    deployment_test = "Passed: Compatible with OpenFGA Server".to_string();
+                }
+            } else {
+                deployment_test = "Passed: Compatible with OpenFGA Server".to_string();
+            }
         }
         return Ok((
             StatusCode::OK,
