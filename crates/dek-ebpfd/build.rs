@@ -67,10 +67,11 @@ fn main() {
             // fallback for isolated target
             let fallback_isolated = env::var_os("CARGO_MANIFEST_DIR")
                 .map(|dir| {
-                    Path::new(&dir).join("../dek-ebpf-prog/target/bpfel-unknown-none/release/dek-ebpf-prog")
+                    Path::new(&dir)
+                        .join("../dek-ebpf-prog/target/bpfel-unknown-none/release/dek-ebpf-prog")
                 })
                 .unwrap();
-            
+
             // fallback for workspace target
             let fallback_workspace = env::var_os("CARGO_MANIFEST_DIR")
                 .map(|dir| {
