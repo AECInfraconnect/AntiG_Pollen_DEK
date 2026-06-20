@@ -10,6 +10,12 @@ pub struct RuleEngine {
     rules: Vec<Box<dyn SuggestionRule>>,
 }
 
+impl Default for RuleEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RuleEngine {
     pub fn new() -> Self {
         Self { rules: Vec::new() }
