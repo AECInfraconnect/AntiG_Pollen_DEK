@@ -140,7 +140,7 @@ curl -s http://127.0.0.1:3000/v1/tenants/local/telemetry/decision-logs
 # -> { "count": 1, "decisions": [ { ... "payload": { "decision": "allow" } } ] }
 ```
 
-View them in the dashboard under **Audit & Decision Logs**.
+View them in the dashboard under **Audit & Decision Logs**. You can also explore **Agent Discovery** to see locally running AI tools or the **Cost Ledger** to view estimated token spend and auto-generated policy suggestions.
 
 ## What just happened
 

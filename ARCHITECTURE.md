@@ -57,8 +57,11 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 - `dek-spire-node` — node attestation (join token → CSR → X.509-SVID), JWT-SVID cache, trust-bundle polling/rotation.
 - `dek-enroll` — enrollment + OAuth device flow.
 
-**Control planes**
+**Control planes & Observers**
 
+- `dek-agent-discovery` — background OS process scanning and heuristic fingerprinting to find Shadow AI and local agents.
+- `dek-agent-observer` — token usage tracking, local cost estimation, and telemetry shipping for AI APIs.
+- `dek-policy-suggester` — automatic Rego policy generation based on observed cost thresholds and agent behavior.
 - `dek-control-plane-api` — Contract Hub: shared contract (bundle manifest, telemetry envelope, registry objects, policy drafts, identity modes). Exposes `/.well-known/pollen-contract` to serve TypeSpec-generated OpenAPI contracts and supported schema definitions to consumers.
 - `local-control-plane` — Axum + SQLite + local signing; registry/policy/bundle/telemetry/push. Supports Connector config/testing and Dry-run Simulator engine.
 - `apps/local-admin-dashboard` — React/Vite UI (registry, policies, decision logs, simulator, and connector configuration).
