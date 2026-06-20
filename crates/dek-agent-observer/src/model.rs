@@ -8,7 +8,7 @@ pub struct AgentObservationEvent {
     pub agent_id: Option<String>,
     pub shadow_candidate_id: Option<String>,
     pub timestamp: String,
-    
+
     pub resources: Option<Vec<ResourceObservation>>,
     pub token_usage: Option<TokenUsageObservation>,
     pub cost: Option<CostObservation>,

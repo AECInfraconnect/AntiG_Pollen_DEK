@@ -1,5 +1,6 @@
 pub mod generated {
     #![allow(clippy::all)]
+    #![allow(clippy::unwrap_used)]
     #![allow(non_camel_case_types)]
     include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 }

@@ -81,8 +81,8 @@ async fn register_candidate(
         .map_err(ApiError::Internal)?
         .ok_or_else(|| ApiError::NotFound(candidate_id.clone()))?;
 
-    let candidate: dek_agent_discovery::model::DiscoveredAgentCandidate = serde_json::from_value(raw)
-        .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+    let candidate: dek_agent_discovery::model::DiscoveredAgentCandidate =
+        serde_json::from_value(raw).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
 
     let agent = dek_agent_discovery::to_registry_agent(&tenant, &candidate, &req)
         .map_err(ApiError::Internal)?;
