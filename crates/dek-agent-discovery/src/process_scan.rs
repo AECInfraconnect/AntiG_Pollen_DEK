@@ -22,7 +22,11 @@ pub fn scan_processes() -> Result<Vec<ProcessEvidence>> {
     for (pid, p) in sys.processes() {
         let exe = p.exe().map(|x| x.to_string_lossy().to_string());
         let cwd = p.cwd().map(|x| x.to_string_lossy().to_string());
-        let cmd_template = p.cmd().iter().map(|s| crate::redaction::redact_arg(&s.to_string_lossy())).collect();
+        let cmd_template = p
+            .cmd()
+            .iter()
+            .map(|s| crate::redaction::redact_arg(&s.to_string_lossy()))
+            .collect();
 
         out.push(ProcessEvidence {
             pid: pid.as_u32(),

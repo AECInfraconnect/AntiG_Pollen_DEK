@@ -1,10 +1,13 @@
 use crate::model::*;
 use crate::process_scan::scan_processes;
 use anyhow::Result;
-use std::collections::BTreeMap;
 use dek_control_plane_api::registry::AiAgent;
+use std::collections::BTreeMap;
 
-pub async fn run_scan(_tenant: &str, _req: &serde_json::Value) -> Result<Vec<DiscoveredAgentCandidate>> {
+pub async fn run_scan(
+    _tenant: &str,
+    _req: &serde_json::Value,
+) -> Result<Vec<DiscoveredAgentCandidate>> {
     let mut candidates = Vec::new();
 
     // 1. Process Scan
@@ -21,7 +24,7 @@ pub async fn run_scan(_tenant: &str, _req: &serde_json::Value) -> Result<Vec<Dis
                     redacted: true,
                     data: serde_json::to_value(&p).unwrap_or_default(),
                 };
-                
+
                 let agent_type = crate::fingerprint::infer_agent_type_from_name(&p.process_name);
 
                 candidates.push(DiscoveredAgentCandidate {
@@ -74,10 +77,11 @@ pub fn to_registry_agent(
     candidate: &DiscoveredAgentCandidate,
     req: &serde_json::Value,
 ) -> Result<AiAgent> {
-    let name = req.get("agent_name")
+    let name = req
+        .get("agent_name")
         .and_then(|v| v.as_str())
         .unwrap_or(&candidate.suggested_registration.name);
-    
+
     Ok(AiAgent {
         meta: dek_control_plane_api::registry::ObjectMeta {
             schema_version: "pollen.agent.v1".into(),

@@ -22,12 +22,15 @@ async fn ingest_observation(
 ) -> impl IntoResponse {
     let mut ev = event;
     ev.tenant_id = tenant.clone();
-    
+
     // Convert to Value and upsert to store as raw event for now
     if let Ok(v) = serde_json::to_value(&ev) {
-        let _ = state.registry_store.upsert_raw(&tenant, "obs", &ev.event_id, &v).await;
+        let _ = state
+            .registry_store
+            .upsert_raw(&tenant, "obs", &ev.event_id, &v)
+            .await;
     }
-    
+
     (StatusCode::CREATED, Json(json!({"status": "ingested"})))
 }
 
@@ -41,9 +44,9 @@ async fn cost_summary(
     };
 
     let mut total_cost = 0.0;
-    
+
     for r in records {
-        if let Some(event_id) = r.get("event_id") {
+        if let Some(_event_id) = r.get("event_id") {
             if let Some(cost) = r.get("cost") {
                 if let Some(c) = cost.get("total_cost").and_then(|v| v.as_f64()) {
                     total_cost += c;

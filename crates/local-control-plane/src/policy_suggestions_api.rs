@@ -11,8 +11,14 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/v1/tenants/:tenant/policy-suggestions", get(list_suggestions))
-        .route("/v1/tenants/:tenant/policy-suggestions/generate", post(generate))
+        .route(
+            "/v1/tenants/:tenant/policy-suggestions",
+            get(list_suggestions),
+        )
+        .route(
+            "/v1/tenants/:tenant/policy-suggestions/generate",
+            post(generate),
+        )
 }
 
 async fn list_suggestions(
@@ -70,7 +76,8 @@ async fn generate(
                 .upsert_raw(&tenant, "policy_suggestion", &s.suggestion_id, &v)
                 .await;
         }
-    } Ok(Json(serde_json::json!({
+    }
+    Ok(Json(serde_json::json!({
         "schema_version": "generate-suggestions-response.v1",
         "generated_count": suggestions.len()
     })))
