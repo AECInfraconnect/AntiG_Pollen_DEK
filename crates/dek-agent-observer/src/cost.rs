@@ -96,7 +96,7 @@ mod tests {
             }),
         };
 
-        let cost = calculate_cost(&event, "openai", &catalog).unwrap();
+        let cost = calculate_cost(&event, "openai", &catalog).expect("should calculate cost");
         assert_eq!(cost.input_cost, 5.0);
         assert_eq!(cost.output_cost, 30.0);
         assert_eq!(cost.total_cost, 35.0);
