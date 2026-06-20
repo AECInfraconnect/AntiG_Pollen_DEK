@@ -90,11 +90,12 @@ dek-cli update --channel beta
              \  same schema/bundle/  /
               \  telemetry + reload /
                ▼                   ▼
-                ┌───────────────┐
-                │   DEK (PEP)   │  profile: local | cloud
-                │  enforce +    │
-                │  fail-closed  │
-                └───────────────┘
+                ┌───────────────────┐
+                │     DEK (PEP)     │  profile: local | cloud
+                │ enforce + observe │
+                │ shadow AI scanner │
+                │ cost/token ledger │
+                └───────────────────┘
 ```
 
 Full detail: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
