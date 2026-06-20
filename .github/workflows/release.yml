@@ -223,7 +223,7 @@ jobs:
 
       - name: Generate SHA256SUMS
         working-directory: release_artifacts
-        run: sha256sum * > SHA256SUMS
+        run: find . -type f -exec sha256sum {} + > SHA256SUMS
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.5.0
@@ -232,10 +232,8 @@ jobs:
         working-directory: release_artifacts
         run: |
           # Keyless signing creates .sig and .pem files per artifact bound to the GitHub runner OIDC token
-          for file in *; do
-            if [ -f "$file" ]; then
-              cosign sign-blob --yes --output-signature "$file.sig" --output-certificate "$file.pem" "$file"
-            fi
+          find . -type f ! -name "SHA256SUMS" | while read file; do
+            cosign sign-blob --yes --output-signature "$file.sig" --output-certificate "$file.pem" "$file"
           done
 
       - name: Verify Signatures (Self-Check)
