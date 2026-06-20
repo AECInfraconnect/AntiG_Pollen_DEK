@@ -189,6 +189,7 @@ async fn main() -> Result<()> {
             .unwrap_or_else(|| "default".into()),
         bootstrap.device_id.clone(),
     )
+    .await
     .ok();
 
     if let Some(ref tel) = telemetry {

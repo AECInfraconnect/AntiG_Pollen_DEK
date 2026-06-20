@@ -71,7 +71,7 @@ pub struct CloudTelemetrySink {
 }
 
 impl CloudTelemetrySink {
-    pub fn new(
+    pub async fn new(
         endpoint_url: &str,
         mtls: &MtlsConfig,
         client_key_override: Option<&[u8]>,
@@ -82,7 +82,9 @@ impl CloudTelemetrySink {
     ) -> Result<Arc<Self>> {
         let reqwest_client = mtls.build_client(client_key_override)?;
         let client = Arc::new(tokio::sync::RwLock::new(reqwest_client.clone()));
-        let spooler = Arc::new(Spooler::new(db_path)?);
+        let db_path_str = db_path.to_string();
+        let spooler_res = tokio::task::spawn_blocking(move || Spooler::new(&db_path_str)).await;
+        let spooler = Arc::new(spooler_res.map_err(|e| anyhow::anyhow!("spawn error: {}", e))??);
         let redactor = Arc::new(Redactor::new());
 
         let sink = Arc::new(Self {
@@ -94,7 +96,13 @@ impl CloudTelemetrySink {
                 dek_config::EnterpriseProfile::default(),
             )),
             api_token,
-            fallback: Arc::new(fallback_spool::SecureFallback::new(tenant_id, device_id)?),
+            fallback: Arc::new(
+                tokio::task::spawn_blocking(move || {
+                    fallback_spool::SecureFallback::new(tenant_id, device_id)
+                })
+                .await
+                .map_err(|e| anyhow::anyhow!("spawn error: {}", e))??,
+            ),
         });
 
         // Initialize OTLP Metrics Provider

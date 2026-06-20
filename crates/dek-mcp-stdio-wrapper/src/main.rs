@@ -103,6 +103,7 @@ async fn main() -> Result<()> {
         tenant_id.clone(),
         bootstrap.device_id.clone(),
     )
+    .await
     .ok();
 
     let mut cmd = Command::new(&args.command_args[0]);
