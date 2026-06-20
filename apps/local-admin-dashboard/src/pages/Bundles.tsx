@@ -179,7 +179,7 @@ export function Bundles() {
                       setSyncResult({
                         message: `Deployed ${bundleId} to ${pep.name}.`,
                         bundle_id: bundleId,
-                        timestamp: res.timestamp
+                        timestamp: (res as any).timestamp
                       });
                       setShowDialog(true);
                     } catch (e: any) {

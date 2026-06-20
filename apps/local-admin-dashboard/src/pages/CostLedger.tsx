@@ -10,7 +10,7 @@ export function CostLedger() {
     setLoading(true);
     try {
       const data = await ObservationApi.getCostSummary();
-      setTotalCost(data.total_cost || 0);
+      setTotalCost((data as any).total_cost || 0);
     } catch (e) {
       console.error(e);
     } finally {

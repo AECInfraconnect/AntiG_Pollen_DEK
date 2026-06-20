@@ -1,9 +1,10 @@
+use crate::config::SuggesterConfig;
 use crate::model::*;
 use anyhow::Result;
 use dek_agent_observer::model::AgentObservationEvent;
 
 pub fn generate_suggestions(
-    _tenant: &str,
+    tenant: &str,
     _candidates: &[dek_agent_discovery::model::DiscoveredAgentCandidate],
     events: &[AgentObservationEvent],
 ) -> Result<Vec<PolicySuggestion>> {
@@ -11,10 +12,10 @@ pub fn generate_suggestions(
 
     // Add built-in rules
     engine.add_rule(Box::new(MockCostSpikeRule {
-        tenant_id: _tenant.to_string(),
+        tenant_id: tenant.to_string(),
     }));
     engine.add_rule(Box::new(MockUnregisteredEgressRule {
-        tenant_id: _tenant.to_string(),
+        tenant_id: tenant.to_string(),
     }));
 
     engine.evaluate_all(events)
@@ -26,13 +27,14 @@ struct MockCostSpikeRule {
 
 impl crate::rules::SuggestionRule for MockCostSpikeRule {
     fn evaluate(&self, events: &[AgentObservationEvent]) -> Result<Vec<PolicySuggestion>> {
+        let config = SuggesterConfig::default();
         let total_cost = if events.iter().any(|e| e.token_usage.is_some()) {
             30.0
         } else {
             0.0
         };
 
-        if total_cost < 25.0 {
+        if total_cost < config.cost_alert_threshold_usd {
             return Ok(vec![]);
         }
 
@@ -44,7 +46,10 @@ impl crate::rules::SuggestionRule for MockCostSpikeRule {
             target_tool_id: None,
             suggestion_type: "EnforceCostBudget".into(),
             title: "AI usage cost exceeded suggested daily threshold".into(),
-            summary: format!("Observed estimated cost ${:.2}. Suggest daily budget guardrail.", total_cost),
+            summary: format!(
+                "Observed estimated cost ${:.2}. Suggest daily budget guardrail.",
+                total_cost
+            ),
             severity: "medium".into(),
             confidence: 0.75,
             recommended_policy_type: "rego".into(),
@@ -52,7 +57,7 @@ impl crate::rules::SuggestionRule for MockCostSpikeRule {
             artifacts: vec![PolicyArtifact {
                 language: "rego".into(),
                 name: "daily_ai_cost_budget.rego".into(),
-                content: "package pollen.policies.daily_cost\nimport future.keywords.if\n\ndefault allow := true\nmax_daily_cost_usd := 25.00\nallow := false if {\n  input.cost.currency == \"USD\"\n  input.cost.total_cost > max_daily_cost_usd\n}".to_string(),
+                content: include_str!("../templates/daily_ai_cost_budget.rego").to_string(),
             }],
             status: "suggested".into(),
             created_at: chrono::Utc::now().to_rfc3339(),
@@ -84,5 +89,23 @@ impl crate::rules::SuggestionRule for MockUnregisteredEgressRule {
             status: "suggested".into(),
             created_at: chrono::Utc::now().to_rfc3339(),
         }])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_suggestions() {
+        let events = vec![];
+        let suggestions = generate_suggestions("test_tenant", &[], &events).unwrap();
+        // Because of MockCostSpikeRule returns nothing if total_cost < 25
+        // And MockUnregisteredEgressRule always returns 1
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(
+            suggestions[0].suggestion_type,
+            "RestrictExternalLlmProvider"
+        );
     }
 }

@@ -1748,6 +1748,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "sysinfo 0.33.1",
+ "thiserror 2.0.18",
  "tokio",
  "tracing",
  "url",
@@ -1761,6 +1762,7 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
+ "thiserror 2.0.18",
  "uuid",
 ]
 
@@ -2333,6 +2335,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "thiserror 2.0.18",
  "tokio",
  "tracing",
  "uuid",

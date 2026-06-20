@@ -1,4 +1,4 @@
-use crate::model::{AgentObservationEvent, CostLedgerEntry, TokenUsage};
+use crate::model::{AgentObservationEvent, CostLedgerEntry};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -48,4 +48,57 @@ pub fn calculate_cost(
         estimated: true,
         timestamp: event.timestamp.clone(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::TokenUsage;
+
+    #[test]
+    fn test_calculate_cost() {
+        let mut providers = HashMap::new();
+        let mut models = HashMap::new();
+        models.insert(
+            "gpt-4o".to_string(),
+            ModelPrice {
+                input_per_1m: 5.0,
+                output_per_1m: 15.0,
+            },
+        );
+        providers.insert("openai".to_string(), models);
+
+        let catalog = PriceCatalog {
+            catalog_version: "1.0".to_string(),
+            currency: "USD".to_string(),
+            providers,
+        };
+
+        let event = AgentObservationEvent {
+            event_id: "evt1".into(),
+            tenant_id: "t1".into(),
+            trace_id: "tr1".into(),
+            agent_id: Some("agent1".into()),
+            shadow_candidate_id: None,
+            tool_id: None,
+            resource_id: None,
+            surface: "test".into(),
+            action: "test".into(),
+            pep_type: None,
+            risk_level: None,
+            timestamp: "2026-06-20T12:00:00Z".into(),
+            payload_json: "{}".into(),
+            token_usage: Some(TokenUsage {
+                model: Some("gpt-4o".into()),
+                input_tokens: Some(1_000_000),
+                output_tokens: Some(2_000_000),
+                total_tokens: Some(3_000_000),
+            }),
+        };
+
+        let cost = calculate_cost(&event, "openai", &catalog).unwrap();
+        assert_eq!(cost.input_cost, 5.0);
+        assert_eq!(cost.output_cost, 30.0);
+        assert_eq!(cost.total_cost, 35.0);
+    }
 }

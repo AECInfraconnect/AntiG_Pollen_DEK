@@ -62,6 +62,30 @@ export type CostLedgerEntry = components['schemas']['CostLedgerEntry'];
 export type PolicySuggestion = components['schemas']['PolicySuggestion'];
 export type DiscoveryCandidate = components['schemas']['DiscoveryCandidate'];
 
+export interface ConnectorConfig {
+  id: string;
+  kind?: string;
+  endpoint?: string;
+  health_interval_secs?: number;
+  mtls_enabled?: boolean;
+  [key: string]: any;
+}
+
+export interface SimulationRequest {
+  action: string;
+  resource: string;
+  principal: string;
+  context: any;
+  target_pep?: string;
+}
+
+export interface SimulationResult {
+  passed?: boolean;
+  decision?: string;
+  logs?: string[];
+  [key: string]: any;
+}
+
 export interface Entity {
   meta: ObjectMeta;
   entity_id: string;
