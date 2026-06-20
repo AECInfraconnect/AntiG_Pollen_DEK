@@ -14,7 +14,7 @@ anyhow.workspace = true
 dek-policy-intent = { version = "1.0.0-beta.1", path = "../dek-policy-intent" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-thiserror = "2.0.18"
+thiserror.workspace = true
 
 [lints]
 workspace = true

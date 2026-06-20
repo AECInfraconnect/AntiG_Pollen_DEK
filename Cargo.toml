@@ -29,7 +29,8 @@ async-trait = "0.1"
 arc-swap = "1.7"
 chrono = "0.4"
 dek-pdp-sdk = { path = "crates/dek-pdp-sdk" }
-
+thiserror = "2"
+jsonschema = { version = "0.46.5", default-features = false }
 [workspace.lints.rust]
 unsafe_code = "deny"
 unused_must_use = "deny"
