@@ -97,9 +97,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_generate_suggestions() {
+    fn test_generate_suggestions() -> Result<()> {
         let events = vec![];
-        let suggestions = generate_suggestions("test_tenant", &[], &events).unwrap();
+        let suggestions = generate_suggestions("test_tenant", &[], &events)?;
         // Because of MockCostSpikeRule returns nothing if total_cost < 25
         // And MockUnregisteredEgressRule always returns 1
         assert_eq!(suggestions.len(), 1);
@@ -107,5 +107,6 @@ mod tests {
             suggestions[0].suggestion_type,
             "RestrictExternalLlmProvider"
         );
+        Ok(())
     }
 }
