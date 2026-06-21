@@ -19,8 +19,11 @@ only the endpoint + trust store, never the enforcement code.
 ## Why
 
 - **Enforce, don't just observe** — allow/deny/redact MCP tool calls and network
-  egress against signed policy, fail-closed by default.
-- **Shadow AI Discovery & Cost Control** — Automatically detects local unmanaged AI agents via process heuristics and tracks estimated token costs, with automatic policy generation.
+  egress against signed policy, fail-closed by default. Context-aware parameter-level enforcement natively supported.
+- **Shadow AI Discovery & Cost Control** — Automatically detects local unmanaged AI agents via process heuristics and tracks estimated token costs, with automatic policy generation based on budget thresholds.
+- **Trust & Resilience** — Calculates real-time Agent Trust Scores, enabling dynamic kill-switches or `RequireApproval` obligations when anomalous behavior occurs. Rate limit token-buckets protect downstream endpoints.
+- **Content Guard** — Inspects payload parameters for prompt-injections, PII leakage, and malicious content before policy evaluation even triggers.
+- **Tamper-Evident Audit** — All telemetry and decisions are securely queued locally with a SHA-256 hash chain before shipping, proving audit log integrity.
 - **Policy your way** — Cedar (ABAC/RBAC), OPA/Rego (complex logic), OpenFGA
   (ReBAC); the router auto-selects the right engine per request.
 - **Kernel-grade network control** — eBPF on Linux today (with dynamic DNS LRU caching and runtime modes); Windows WFP / macOS
