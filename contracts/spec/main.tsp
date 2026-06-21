@@ -15,7 +15,7 @@ using TypeSpec.OpenAPI;
 @service(#{ title: "Pollen DEK Control-Plane API" })
 @info(#{
   version: "1.0.0",
-  contact: #{ name: "Pollen Platform Team", url: "https://<your-cloud-domain>", email: "platform@<your-cloud-domain>" }
+  contact: #{ name: "Pollen Platform Team", url: "https://your-cloud-domain.com", email: "platform@your-cloud-domain.com" }
 })
 @doc("Contract between Pollen Cloud / Local Control Plane and the DEK edge enforcement plane.")
 @server("https://api.pollen.cloud", "Pollen Cloud")
