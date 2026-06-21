@@ -18,5 +18,6 @@ pub mod orchestrator;
 pub mod process_scan;
 pub mod redaction;
 pub mod source_catalog;
+pub mod web_ai_scan;
 
 pub use api::{run_scan, run_scan_v2, to_registry_agent, to_registry_agent_v2};

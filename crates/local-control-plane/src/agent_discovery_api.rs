@@ -122,8 +122,12 @@ async fn register_candidate(
         .map_err(ApiError::Internal)?
         .ok_or_else(|| ApiError::NotFound(candidate_id.clone()))?;
 
-    let candidate: dek_agent_discovery::model::DiscoveredAgentCandidateV2 =
+    let mut candidate: dek_agent_discovery::model::DiscoveredAgentCandidateV2 =
         serde_json::from_value(raw).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+
+    if candidate.status == dek_agent_discovery::model::DiscoveryStatus::Registered {
+        return Err(ApiError::BadRequest("Agent is already registered".to_string()));
+    }
 
     let agent = dek_agent_discovery::to_registry_agent_v2(&tenant, &candidate, &req)
         .map_err(ApiError::Internal)?;
@@ -131,6 +135,15 @@ async fn register_candidate(
     let registered = st
         .registry_store
         .upsert_agent(agent)
+        .await
+        .map_err(ApiError::Internal)?;
+
+    candidate.status = dek_agent_discovery::model::DiscoveryStatus::Registered;
+    let updated_candidate_value = serde_json::to_value(&candidate)
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+    
+    st.registry_store
+        .upsert_raw(&tenant, "discovery_candidate", &candidate_id, &updated_candidate_value)
         .await
         .map_err(ApiError::Internal)?;
 

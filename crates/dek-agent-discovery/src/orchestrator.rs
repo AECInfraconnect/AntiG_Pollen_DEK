@@ -3,13 +3,20 @@ use anyhow::Result;
 
 pub struct DiscoveryOrchestrator {
     tenant_id: String,
+    sni_source: Option<std::sync::Arc<dyn crate::web_ai_scan::SniFlowSource>>,
 }
 
 impl DiscoveryOrchestrator {
     pub fn new(tenant_id: &str) -> Self {
         Self {
             tenant_id: tenant_id.to_string(),
+            sni_source: None,
         }
+    }
+
+    pub fn with_sni_source(mut self, source: std::sync::Arc<dyn crate::web_ai_scan::SniFlowSource>) -> Self {
+        self.sni_source = Some(source);
+        self
     }
 
     pub async fn run_scan(
@@ -113,6 +120,15 @@ impl DiscoveryOrchestrator {
             job.sources.push("browser_extension".into());
             if let Ok(mut browser_evidence) = crate::browser_scan::scan_browsers() {
                 all_evidence.append(&mut browser_evidence);
+            }
+        }
+
+        // 8. Web AI App Scan (Browser Web AI Discovery)
+        if wants_source("web_ai") {
+            job.sources.push("web_ai".into());
+            let config = crate::config::DiscoveryConfig::default();
+            if let Ok(mut web_ai_evidence) = crate::web_ai_scan::scan_web_ai(self.sni_source.as_deref(), &config) {
+                all_evidence.append(&mut web_ai_evidence);
             }
         }
 

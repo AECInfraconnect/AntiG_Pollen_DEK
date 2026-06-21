@@ -41,6 +41,7 @@ pub enum InferredAgentType {
     IdeAgent,
     CliAgent,
     BrowserAgent,
+    WebAIApp,
     McpClient,
     McpServer,
     LocalModelServer,
@@ -77,6 +78,9 @@ pub enum EvidenceSource {
     Container,
     PortProbe,
     PythonFramework,
+    BrowserSession,
+    BrowserHistory,
+    NetworkSni,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
