@@ -71,7 +71,7 @@ dek-pdp-sdk = { workspace = true }
 
 
 [target.'cfg(windows)'.dependencies]
-windows-service = "0.7"
+windows-service = "0.8"
 dek-windows-wfp = { path = "../dek-windows-wfp" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
