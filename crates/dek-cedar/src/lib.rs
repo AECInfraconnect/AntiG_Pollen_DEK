@@ -1,3 +1,5 @@
+#![warn(clippy::print_stdout, clippy::print_stderr)]
+#![deny(clippy::unwrap_used, clippy::expect_used)]
 use anyhow::Result;
 use async_trait::async_trait;
 use cedar_policy::{
@@ -25,7 +27,7 @@ impl CedarAdapter {
 
 #[async_trait]
 impl PolicyRuntime for CedarAdapter {
-    async fn evaluate(&self, input: serde_json::Value) -> Result<PolicyDecision> {
+    async fn evaluate(&self, input: serde_json::Value) -> dek_policy_runtime::PolicyResult {
         let principal = input
             .get("principal")
             .and_then(|v| v.as_str())
@@ -39,45 +41,38 @@ impl PolicyRuntime for CedarAdapter {
             .and_then(|v| v.as_str())
             .unwrap_or("Resource::\"unknown\"");
 
-        println!("Evaluating Cedar Policy:\n{}", self.policy_src);
+        tracing::info!("Evaluating Cedar Policy:\n{}", self.policy_src);
 
         let context = match input.get("context") {
             Some(ctx_val) => {
-                Context::from_json_value(ctx_val.clone(), None).unwrap_or_else(|_| Context::empty())
+                Context::from_json_value(ctx_val.clone(), None).map_err(|e| dek_policy_runtime::PolicyError::Invalid(format!("Context parse error: {}", e)))?
             }
             None => Context::empty(),
         };
 
         let entities = match input.get("entities") {
             Some(ent_val) => Entities::from_json_value(ent_val.clone(), None)
-                .unwrap_or_else(|_| Entities::empty()),
+                .map_err(|e| dek_policy_runtime::PolicyError::Invalid(format!("Entities parse error: {}", e)))?,
             None => Entities::empty(),
         };
 
-        // For simplicity, we assume strings are fully qualified like `User::"alice"`
-        // Or if they are just raw strings, we wrap them.
-        let make_uid = |type_name: &str, id: &str| -> EntityUid {
+        let make_uid = |type_name: &str, id: &str| -> std::result::Result<EntityUid, dek_policy_runtime::PolicyError> {
             if id.contains("::") {
-                EntityUid::from_str(id).unwrap_or_else(|_| {
-                    EntityUid::from_type_name_and_id(
-                        EntityTypeName::from_str(type_name).unwrap(),
-                        EntityId::from_str("unknown").unwrap(),
-                    )
-                })
+                EntityUid::from_str(id).map_err(|e| dek_policy_runtime::PolicyError::Invalid(format!("EntityUid parse error: {}", e)))
             } else {
-                EntityUid::from_type_name_and_id(
-                    EntityTypeName::from_str(type_name).unwrap(),
-                    EntityId::from_str(id).unwrap(),
-                )
+                Ok(EntityUid::from_type_name_and_id(
+                    EntityTypeName::from_str(type_name).map_err(|e| dek_policy_runtime::PolicyError::Invalid(format!("EntityTypeName parse error: {}", e)))?,
+                    EntityId::from_str(id).map_err(|e| dek_policy_runtime::PolicyError::Invalid(format!("EntityId parse error: {}", e)))?,
+                ))
             }
         };
 
-        let principal_uid = make_uid("User", principal);
-        let action_uid = make_uid("Action", action);
-        let resource_uid = make_uid("Resource", resource);
+        let principal_uid = make_uid("User", principal)?;
+        let action_uid = make_uid("Action", action)?;
+        let resource_uid = make_uid("Resource", resource)?;
 
         let request = Request::new(principal_uid, action_uid, resource_uid, context, None)
-            .map_err(|e| anyhow::anyhow!("Cedar Request Error: {}", e))?;
+            .map_err(|e| dek_policy_runtime::PolicyError::Eval(format!("Cedar Request Error: {}", e)))?;
 
         let authorizer = Authorizer::new();
         let answer = authorizer.is_authorized(&request, &self.policy_set, &entities);

@@ -25,3 +25,4 @@ notify = "8.2.0"
 base64 = "0.22"
 
 dek-router-builder = { path = "../dek-router-builder" }
+jsonwebtoken = "9.3.1"

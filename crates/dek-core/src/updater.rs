@@ -81,7 +81,7 @@ pub async fn run_update(
                 "target_version": "pending",
                 "backup_path": backup_path.to_string_lossy().to_string(),
                 "target_path": exe_path.to_string_lossy().to_string(),
-                "timestamp": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
+                "timestamp": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs()
             });
             
             fs::write(&marker_path, serde_json::to_string_pretty(&marker_data)?)?;

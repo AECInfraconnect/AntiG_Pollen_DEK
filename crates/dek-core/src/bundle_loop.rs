@@ -1,60 +1,22 @@
-use anyhow::Result;
-use dek_config::DekConfig;
+//! bundle_loop.rs — periodic unified bundle-sync pipeline + binary auto-update.
+//!
+//! Lifted verbatim from `main.rs::spawn_bundle_sync_task`, made `pub`.
+//! Each tick runs `BundleSyncAgent::run_pipeline()` (fetch -> verify ed25519 ->
+//! merge -> stage active_bundle), and if the returned config carries an
+//! `update_config` with a new version, triggers the health-gated A/B updater.
+
+use dek_bundle_sync::BundleSyncAgent;
 use metrics::counter;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, timeout, Duration};
-use tokio_retry::strategy::ExponentialBackoff;
-use tokio_retry::{Retry, RetryIf};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn, Instrument};
 
-pub async fn run_sync_pipeline_with_retry(
-    sync_agent: &dek_bundle_sync::BundleSyncAgent,
-) -> Result<DekConfig> {
-    info!("Running Unified Sync Pipeline...");
-    let strategy = ExponentialBackoff::from_millis(2000)
-        .factor(2)
-        .max_delay(Duration::from_secs(30))
-        .take(10);
-
-    RetryIf::spawn(
-        strategy,
-        || async {
-            match sync_agent.run_pipeline().await {
-                Ok(c) => Ok(c),
-                Err(e) => {
-                    warn!("Pipeline run failed: {}. Retrying...", e);
-                    counter!("dek_core_config_fetch_errors_total").increment(1);
-                    Err(e)
-                }
-            }
-        },
-        |e: &anyhow::Error| {
-            if let Some(reqwest_err) = e.downcast_ref::<reqwest::Error>() {
-                if let Some(status) = reqwest_err.status() {
-                    if status.is_client_error() {
-                        error!(
-                            "Fatal HTTP client error running pipeline: {}. Aborting startup.",
-                            status
-                        );
-                        return false;
-                    }
-                }
-                if reqwest_err.is_builder() || reqwest_err.is_request() {
-                    return false;
-                }
-            }
-            true
-        },
-    )
-    .await
-}
-
 pub fn spawn_bundle_sync_task(
     cancel_token: CancellationToken,
-    sync_agent: Arc<dek_bundle_sync::BundleSyncAgent>,
+    sync_agent: Arc<BundleSyncAgent>,
     bundle_sync_interval: u64,
     metrics_client: Arc<RwLock<reqwest::Client>>,
     pinned_key: String,
@@ -77,9 +39,14 @@ pub fn spawn_bundle_sync_task(
                                     if update.version != current_version {
                                         info!("New binary update found: version {}", update.version);
                                         let client = metrics_client.read().await.clone();
-                                        match crate::updater::run_update(&client, &update.download_url, &update.signature_b64, &pinned_key).await {
+                                        match crate::updater::run_update(
+                                            &client,
+                                            &update.download_url,
+                                            &update.signature_b64,
+                                            &pinned_key,
+                                        ).await {
                                             Ok(_) => {
-                                                info!("Update applied successfully. Version updated to {}", update.version);
+                                                info!("Update staged successfully. Version updated to {}", update.version);
                                                 current_version = update.version;
                                             }
                                             Err(e) => {
