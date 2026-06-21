@@ -37,7 +37,10 @@ pub fn router() -> Router<AppState> {
         // tenant-scoped alias (DEK may post per-tenant)
         .route("/v1/tenants/:tenant/telemetry/events", post(ingest_tenant))
         // dashboard read-side
-        .route("/v1/tenants/:tenant/telemetry/decision-logs", get(list_decision_logs))
+        .route(
+            "/v1/tenants/:tenant/telemetry/decision-logs",
+            get(list_decision_logs),
+        )
 }
 
 #[derive(serde::Deserialize)]
@@ -52,7 +55,10 @@ fn has_unredacted_secret(ev: &serde_json::Value) -> bool {
     blob.contains("authorization:") || blob.contains("bearer ") || blob.contains("\"password\"")
 }
 
-async fn ingest(State(st): State<AppState>, Json(batch): Json<TelemetryBatch>) -> impl IntoResponse {
+async fn ingest(
+    State(st): State<AppState>,
+    Json(batch): Json<TelemetryBatch>,
+) -> impl IntoResponse {
     store_events(&st, "local", batch.events).await
 }
 
@@ -79,24 +85,21 @@ async fn store_events(
         }
         let val = ev.clone();
         // store keyed by event_id; object_type carries the event kind for filtering
-        let kind = ev.get("event_type")
+        let kind = ev
+            .get("event_type")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown")
             .to_string();
-        
-        let event_id = ev.get("event_id")
+
+        let event_id = ev
+            .get("event_id")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
             .unwrap_or_else(|| format!("ev_{}", chrono::Utc::now().timestamp_nanos()));
 
         if st
             .telemetry_store
-            .put_telemetry(
-                tenant,
-                &kind,
-                &event_id,
-                &val,
-            )
+            .put_telemetry(tenant, &kind, &event_id, &val)
             .await
             .is_ok()
         {
@@ -112,11 +115,18 @@ async fn list_decision_logs(
     State(st): State<AppState>,
 ) -> impl IntoResponse {
     let mut items = vec![];
-    if let Ok(mut logs) = st.telemetry_store.list_telemetry(&tenant, "decision_log").await {
+    if let Ok(mut logs) = st
+        .telemetry_store
+        .list_telemetry(&tenant, "decision_log")
+        .await
+    {
         items.append(&mut logs);
     }
     if let Ok(mut logs) = st.telemetry_store.list_telemetry(&tenant, "decision").await {
         items.append(&mut logs);
     }
-    (StatusCode::OK, Json(json!({ "count": items.len(), "decisions": items })))
+    (
+        StatusCode::OK,
+        Json(json!({ "count": items.len(), "decisions": items })),
+    )
 }

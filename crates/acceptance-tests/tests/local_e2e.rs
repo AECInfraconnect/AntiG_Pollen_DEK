@@ -24,25 +24,44 @@ const LCP: &str = "http://127.0.0.1:3000";
 const PEP: &str = "http://127.0.0.1:43890";
 
 fn workspace_dir() -> PathBuf {
-    std::env::current_dir().unwrap().parent().unwrap().parent().unwrap().to_path_buf()
+    std::env::current_dir()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf()
 }
 fn bin(name: &str) -> PathBuf {
-    std::env::current_exe().unwrap().parent().unwrap().parent().unwrap()
-        .join(name).with_extension(std::env::consts::EXE_EXTENSION)
+    std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join(name)
+        .with_extension(std::env::consts::EXE_EXTENSION)
 }
 fn client() -> reqwest::Client {
-    reqwest::Client::builder().danger_accept_invalid_certs(true).build().unwrap()
+    reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap()
 }
 
 struct Proc(Child);
 impl Drop for Proc {
-    fn drop(&mut self) { let _ = self.0.start_kill(); }
+    fn drop(&mut self) {
+        let _ = self.0.start_kill();
+    }
 }
 
 async fn wait_http(url: &str, tries: u32) -> Result<()> {
     let c = client();
     for _ in 0..tries {
-        if c.get(url).send().await.is_ok() { return Ok(()); }
+        if c.get(url).send().await.is_ok() {
+            return Ok(());
+        }
         sleep(Duration::from_millis(500)).await;
     }
     anyhow::bail!("timeout waiting for {url}")
@@ -53,19 +72,37 @@ async fn wait_http(url: &str, tries: u32) -> Result<()> {
 async fn fetch_local_trust_key(c: &reqwest::Client) -> Result<String> {
     let v: serde_json::Value = c
         .get(format!("{LCP}/v1/tenants/local/devices/_/trusted-keys"))
-        .send().await?.json().await?;
-    v["keys"][0]["public_b64"].as_str()
+        .send()
+        .await?
+        .json()
+        .await?;
+    v["keys"][0]["public_b64"]
+        .as_str()
         .map(String::from)
         .context("local-cp trusted-keys missing public_b64")
 }
 
 /// authorize() -> (http_status, allow). Fail-closed: any parse failure => deny.
-async fn authorize(c: &reqwest::Client, body: &serde_json::Value) -> (u16, bool, serde_json::Value) {
-    match c.post(format!("{PEP}/v1/decision/check")).json(body).send().await {
+async fn authorize(
+    c: &reqwest::Client,
+    body: &serde_json::Value,
+) -> (u16, bool, serde_json::Value) {
+    match c
+        .post(format!("{PEP}/v1/decision/check"))
+        .json(body)
+        .send()
+        .await
+    {
         Ok(r) => {
             let st = r.status().as_u16();
-            let body_json = r.json::<serde_json::Value>().await.unwrap_or(serde_json::json!({}));
-            let allow = body_json.get("allow").and_then(|a| a.as_bool()).unwrap_or(false);
+            let body_json = r
+                .json::<serde_json::Value>()
+                .await
+                .unwrap_or(serde_json::json!({}));
+            let allow = body_json
+                .get("allow")
+                .and_then(|a| a.as_bool())
+                .unwrap_or(false);
             (st, allow, body_json)
         }
         Err(_) => (0, false, serde_json::json!({})),
@@ -77,7 +114,11 @@ async fn authorize(c: &reqwest::Client, body: &serde_json::Value) -> (u16, bool,
 async fn local_e2e_author_publish_enforce_log() -> Result<()> {
     // ---- build once ----
     assert!(
-        Command::new("cargo").args(["build", "--workspace"]).status().await?.success(),
+        Command::new("cargo")
+            .args(["build", "--workspace"])
+            .status()
+            .await?
+            .success(),
         "workspace build failed"
     );
 
@@ -91,7 +132,8 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
             .env("DEK_LCP_AUTH_DISABLE", "1")
             .env("RUST_LOG", "info")
             .env_remove("DEK_PINNED_KEY_OVERRIDE")
-            .spawn().context("spawn local-control-plane")?,
+            .spawn()
+            .context("spawn local-control-plane")?,
     );
     wait_http(&format!("{LCP}/v1/tenants/local/registry/agents"), 20).await?;
 
@@ -114,26 +156,51 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
         "source": { "kind": "raw_text", "language": "cedar", "text": "permit(principal, action, resource);" },
         "compile_options": { "fail_on_warnings": true }
     });
-    let r = c.post(format!("{LCP}/v1/tenants/local/policies")).json(&draft).send().await?;
-    anyhow::ensure!(r.status().as_u16() == 201, "author: expected 201, got {}", r.status());
+    let r = c
+        .post(format!("{LCP}/v1/tenants/local/policies"))
+        .json(&draft)
+        .send()
+        .await?;
+    anyhow::ensure!(
+        r.status().as_u16() == 201,
+        "author: expected 201, got {}",
+        r.status()
+    );
 
     // ======================================================================
     // STEP 2 — PUBLISH: local-cp compiles + signs a bundle with its local key
     // ======================================================================
-    let r = c.post(format!("{LCP}/v1/tenants/local/policies/{policy_id}/publish"))
+    let r = c
+        .post(format!(
+            "{LCP}/v1/tenants/local/policies/{policy_id}/publish"
+        ))
         .json(&draft)
-        .send().await?;
-    anyhow::ensure!(r.status().is_success(), "publish: expected 2xx, got {}", r.status());
+        .send()
+        .await?;
+    anyhow::ensure!(
+        r.status().is_success(),
+        "publish: expected 2xx, got {}",
+        r.status()
+    );
     let pub_body: serde_json::Value = r.json().await?;
-    anyhow::ensure!(pub_body["published"] == true, "publish: not marked published: {pub_body}");
+    anyhow::ensure!(
+        pub_body["published"] == true,
+        "publish: not marked published: {pub_body}"
+    );
     println!("[local_e2e] published bundle: {}", pub_body["bundle_id"]);
 
     // verify the signed manifest is fetchable on the same contract path Cloud uses
     let manifest: serde_json::Value = c
         .get(format!("{LCP}/v1/tenants/local/devices/_/bundles/manifest"))
-        .send().await?.json().await?;
+        .send()
+        .await?
+        .json()
+        .await?;
     anyhow::ensure!(
-        manifest["signatures"].as_array().map(|s| !s.is_empty()).unwrap_or(false),
+        manifest["signatures"]
+            .as_array()
+            .map(|s| !s.is_empty())
+            .unwrap_or(false),
         "published manifest must be signed"
     );
 
@@ -143,16 +210,26 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
     let trust_key = fetch_local_trust_key(&c).await?;
     let cfg = std::env::temp_dir().join(format!("dek-cfg-e2e-{}", std::process::id()));
     let data = std::env::temp_dir().join(format!("dek-data-e2e-{}", std::process::id()));
-    
+
     std::fs::create_dir_all(&cfg)?;
     std::fs::create_dir_all(&data)?;
 
     // profile -> local (writes bootstrap.json: cloud_url=LCP, tenant_id=local, trust=local key)
     let st = Command::new(bin("dek-cli"))
-        .args(["profile", "set", "local", "--url", LCP, "--trusted-key", &trust_key])
-        .env("DEK_CONFIG_DIR", &cfg).env("DEK_DATA_DIR", &data)
+        .args([
+            "profile",
+            "set",
+            "local",
+            "--url",
+            LCP,
+            "--trusted-key",
+            &trust_key,
+        ])
+        .env("DEK_CONFIG_DIR", &cfg)
+        .env("DEK_DATA_DIR", &data)
         .env_remove("DEK_PINNED_KEY_OVERRIDE")
-        .status().await?;
+        .status()
+        .await?;
     anyhow::ensure!(st.success(), "profile set local failed");
 
     // LCP doesn't implement /enroll (no need), so we just provide mock certs
@@ -164,11 +241,14 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
 
     let _core = Proc(
         Command::new(bin("dek-core"))
-            .env("DEK_CONFIG_DIR", &cfg).env("DEK_DATA_DIR", &data)
+            .env("DEK_CONFIG_DIR", &cfg)
+            .env("DEK_DATA_DIR", &data)
             .env("DEK_BUNDLE_SYNC_INTERVAL", "2")
             .env_remove("DEK_PINNED_KEY_OVERRIDE")
-            .stdout(Stdio::inherit()).stderr(Stdio::inherit())
-            .spawn().context("spawn dek-core")?,
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .context("spawn dek-core")?,
     );
     wait_http(&format!("{PEP}/healthz"), 30).await?;
     sleep(Duration::from_secs(4)).await; // allow first bundle sync + verify
@@ -199,18 +279,27 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
     sleep(Duration::from_secs(3)).await; // allow telemetry flush
     let logs: serde_json::Value = c
         .get(format!("{LCP}/v1/tenants/local/telemetry/decision-logs"))
-        .send().await?.json().await?;
+        .send()
+        .await?
+        .json()
+        .await?;
     let decisions = logs["decisions"].as_array().cloned().unwrap_or_default();
     anyhow::ensure!(
         !decisions.is_empty(),
         "decision-log: expected at least one decision recorded in local-cp"
     );
     let has_allow = decisions.iter().any(|d| {
-        d.pointer("/payload/decision").and_then(|v| v.as_str()) == Some("allow") ||
-        d.pointer("/mcp/verdict").and_then(|v| v.as_str()) == Some("allow")
+        d.pointer("/payload/decision").and_then(|v| v.as_str()) == Some("allow")
+            || d.pointer("/mcp/verdict").and_then(|v| v.as_str()) == Some("allow")
     });
-    anyhow::ensure!(has_allow, "decision-log: expected an 'allow' decision; got {decisions:?}");
-    println!("[local_e2e] decision-log OK: {} decision(s) recorded", decisions.len());
+    anyhow::ensure!(
+        has_allow,
+        "decision-log: expected an 'allow' decision; got {decisions:?}"
+    );
+    println!(
+        "[local_e2e] decision-log OK: {} decision(s) recorded",
+        decisions.len()
+    );
 
     println!("[local_e2e] PASS — author -> publish -> enforce -> decision-log");
     let _ = std::fs::remove_dir_all(&lcp_data);

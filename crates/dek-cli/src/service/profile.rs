@@ -79,7 +79,11 @@ pub fn set_profile(
         std::fs::create_dir_all(parent).ok();
     }
     std::fs::write(&bootstrap_path, json).context("write bootstrap.json")?;
-    println!("DEBUG DEK-CLI: Wrote profile to {}, key is: {}", bootstrap_path.display(), cfg.pinned_bundle_public_key);
+    println!(
+        "DEBUG DEK-CLI: Wrote profile to {}, key is: {}",
+        bootstrap_path.display(),
+        cfg.pinned_bundle_public_key
+    );
     println!("Switched to {:?} profile.", mode);
     #[cfg(unix)]
     {
@@ -93,7 +97,10 @@ pub fn set_profile(
         cfg.cloud_url,
         cfg.tenant_id.as_deref().unwrap_or("(none)")
     );
-    println!("Next: run `dek-cli enroll --cloud-url {}` then restart the DEK service.", cfg.cloud_url);
+    println!(
+        "Next: run `dek-cli enroll --cloud-url {}` then restart the DEK service.",
+        cfg.cloud_url
+    );
     Ok(())
 }
 
@@ -108,7 +115,10 @@ pub fn show_profile() -> Result<()> {
     };
     println!("mode:       {mode}");
     println!("cloud_url:  {}", cfg.cloud_url);
-    println!("tenant_id:  {}", cfg.tenant_id.as_deref().unwrap_or("(none)"));
+    println!(
+        "tenant_id:  {}",
+        cfg.tenant_id.as_deref().unwrap_or("(none)")
+    );
     println!("device_id:  {}", cfg.device_id);
     println!("trust_key:  {}", cfg.pinned_bundle_public_key);
     Ok(())

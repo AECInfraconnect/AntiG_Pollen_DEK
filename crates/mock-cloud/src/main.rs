@@ -9,8 +9,8 @@ pub mod bundles;
 pub mod compiler;
 pub mod decision_logs;
 pub mod fixtures;
-pub mod keys;
 pub mod jwt_svid_endpoint;
+pub mod keys;
 pub mod mtls;
 pub mod pdp;
 pub mod registry;
@@ -159,7 +159,10 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n"
             get(get_config),
         )
         .route("/v1/push", get(handle_push_stream))
-        .route("/.well-known/openid-configuration", get(openid_configuration))
+        .route(
+            "/.well-known/openid-configuration",
+            get(openid_configuration),
+        )
         .route("/jwks.json", get(jwks_json))
         .route("/v1/chat/completions", post(mock_openai_chat))
         .route("/v1/messages", post(mock_anthropic_messages))
@@ -458,7 +461,7 @@ async fn jwks_json(State(state): State<AppState>) -> impl IntoResponse {
             "kid": "mock-key-1",
             "use": "sig",
             // Base64Url encoded modulus and exponent (dummy values for testing)
-            "n": "vM_o8y-WzFf_O...", 
+            "n": "vM_o8y-WzFf_O...",
             "e": "AQAB"
         }]
     }))

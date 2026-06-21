@@ -69,7 +69,7 @@ async fn setup_local_cp() -> Result<Proc> {
         .stderr(Stdio::null())
         .spawn()
         .context("spawn local-control-plane")?;
-    
+
     wait_http("http://127.0.0.1:3000/v1/tenants/local/registry/agents", 20).await?;
     Ok(Proc(lcp))
 }
@@ -80,10 +80,14 @@ async fn local_control_plane_e2e() -> Result<()> {
     let _lcp = setup_local_cp().await?;
 
     let c = reqwest::Client::new();
-    
+
     // Test 1: Verify the UI is being served at the root (fallback to index.html)
     let ui_res = c.get("http://127.0.0.1:3000/").send().await?;
-    assert_eq!(ui_res.status().as_u16(), 200, "Dashboard UI must be served at root");
+    assert_eq!(
+        ui_res.status().as_u16(),
+        200,
+        "Dashboard UI must be served at root"
+    );
     let html = ui_res.text().await?;
     assert!(html.contains("<html"), "Response must be HTML");
 
@@ -115,15 +119,21 @@ async fn local_control_plane_e2e() -> Result<()> {
         "labels": {}
     });
 
-    let res = c.post("http://127.0.0.1:3000/v1/tenants/local/registry/agents")
+    let res = c
+        .post("http://127.0.0.1:3000/v1/tenants/local/registry/agents")
         .json(&create_req)
         .send()
         .await?;
-    
-    assert_eq!(res.status().as_u16(), 201, "Agent creation should return HTTP 201 Created");
+
+    assert_eq!(
+        res.status().as_u16(),
+        201,
+        "Agent creation should return HTTP 201 Created"
+    );
 
     // Test 3: List agents and ensure the new agent is in the response
-    let list_res = c.get("http://127.0.0.1:3000/v1/tenants/local/registry/agents")
+    let list_res = c
+        .get("http://127.0.0.1:3000/v1/tenants/local/registry/agents")
         .send()
         .await?;
     assert_eq!(list_res.status().as_u16(), 200);

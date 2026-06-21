@@ -20,9 +20,7 @@ struct Claims {
     sub: String,
 }
 
-pub async fn handle_jwt_svid(
-    Json(payload): Json<JwtSvidRequest>,
-) -> Json<JwtSvidResponse> {
+pub async fn handle_jwt_svid(Json(payload): Json<JwtSvidRequest>) -> Json<JwtSvidResponse> {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()

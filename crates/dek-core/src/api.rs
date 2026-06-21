@@ -11,8 +11,8 @@ use axum::{
 };
 use dek_activation::snapshot::RuntimeSnapshot;
 use dek_decision::{DecisionRequest, DecisionResponse};
-use std::sync::Arc;
 use serde_json::Value;
+use std::sync::Arc;
 use tracing::{error, info};
 
 use dek_policy_syncer::EnforcementState;
@@ -87,9 +87,10 @@ async fn check(
 ) -> impl IntoResponse {
     let enf = state.enforcement.load();
     let health = *state.identity_health.borrow();
-    
-    let is_strict_deny = matches!(**enf, EnforcementState::StrictDeny { .. }) || health == crate::svid_renewal_failclosed::IdentityHealth::Expired;
-    
+
+    let is_strict_deny = matches!(**enf, EnforcementState::StrictDeny { .. })
+        || health == crate::svid_renewal_failclosed::IdentityHealth::Expired;
+
     if is_strict_deny {
         let reason = if health == crate::svid_renewal_failclosed::IdentityHealth::Expired {
             "SVID expired".to_string()
@@ -98,7 +99,7 @@ async fn check(
         } else {
             "Unknown".to_string()
         };
-        
+
         let response = DecisionResponse {
             decision_id: uuid::Uuid::new_v4().to_string(),
             allow: false,
@@ -227,8 +228,9 @@ async fn batch_check(
 
     let enf = state.enforcement.load();
     let health = *state.identity_health.borrow();
-    let is_strict_deny = matches!(**enf, EnforcementState::StrictDeny { .. }) || health == crate::svid_renewal_failclosed::IdentityHealth::Expired;
-    
+    let is_strict_deny = matches!(**enf, EnforcementState::StrictDeny { .. })
+        || health == crate::svid_renewal_failclosed::IdentityHealth::Expired;
+
     let deny_reason = if health == crate::svid_renewal_failclosed::IdentityHealth::Expired {
         "fail-closed: SVID expired".to_string()
     } else if let EnforcementState::StrictDeny { ref reason, .. } = **enf {
@@ -321,7 +323,7 @@ async fn batch_check(
             });
             telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);
         }
-        
+
         responses.push(response);
     }
 

@@ -97,7 +97,7 @@ pub fn kernel_subset(rules: &CompiledNetworkRules) -> (CompiledNetworkRules, Par
     let mut kernel_rules = rules.clone();
     kernel_rules.conditions = NetworkConditions {
         destinations: part.kernel.clone(),
-        protocols: vec![],     // conditions already forced user-mode if present
+        protocols: vec![], // conditions already forced user-mode if present
         time_window: None,
     };
     (kernel_rules, part)
@@ -110,34 +110,66 @@ mod tests {
     use serde_json::json;
 
     fn dest(t: &str, v: serde_json::Value) -> NetworkDestination {
-        NetworkDestination { r#type: t.into(), value: v }
+        NetworkDestination {
+            r#type: t.into(),
+            value: v,
+        }
     }
-    fn rules_with(dests: Vec<NetworkDestination>, time_window: Option<String>) -> CompiledNetworkRules {
+    fn rules_with(
+        dests: Vec<NetworkDestination>,
+        time_window: Option<String>,
+    ) -> CompiledNetworkRules {
         CompiledNetworkRules {
-            policy_id: "p".into(), policy_type: "NETWORK_EGRESS_GUARDRAIL".into(), version: 1,
-            risk_tier: "low".into(), targets: NetworkTargets::default(),
-            conditions: NetworkConditions { destinations: dests, protocols: vec![], time_window },
-            effect: NetworkGuardrailEffect::Deny, obligations: vec![],
-            fallback: NetworkFallback { cloud_unavailable: "deny".into(), policy_stale: "deny".into() },
+            policy_id: "p".into(),
+            policy_type: "NETWORK_EGRESS_GUARDRAIL".into(),
+            version: 1,
+            risk_tier: "low".into(),
+            targets: NetworkTargets::default(),
+            conditions: NetworkConditions {
+                destinations: dests,
+                protocols: vec![],
+                time_window,
+            },
+            effect: NetworkGuardrailEffect::Deny,
+            obligations: vec![],
+            fallback: NetworkFallback {
+                cloud_unavailable: "deny".into(),
+                policy_stale: "deny".into(),
+            },
         }
     }
 
     #[test]
     fn cidr_and_port_are_kernel_safe() {
-        assert_eq!(classify_destination(&dest("cidr", json!("10.0.0.0/8")), false), RuleComplexity::KernelSafe);
-        assert_eq!(classify_destination(&dest("port", json!(443)), false), RuleComplexity::KernelSafe);
+        assert_eq!(
+            classify_destination(&dest("cidr", json!("10.0.0.0/8")), false),
+            RuleComplexity::KernelSafe
+        );
+        assert_eq!(
+            classify_destination(&dest("port", json!(443)), false),
+            RuleComplexity::KernelSafe
+        );
     }
 
     #[test]
     fn wildcard_domain_is_user_mode() {
-        assert_eq!(classify_destination(&dest("domain", json!("*.evil.com")), false), RuleComplexity::UserModeOnly);
-        assert_eq!(classify_destination(&dest("domain", json!("api.exact.com")), false), RuleComplexity::KernelSafe);
+        assert_eq!(
+            classify_destination(&dest("domain", json!("*.evil.com")), false),
+            RuleComplexity::UserModeOnly
+        );
+        assert_eq!(
+            classify_destination(&dest("domain", json!("api.exact.com")), false),
+            RuleComplexity::KernelSafe
+        );
     }
 
     #[test]
     fn conditions_force_user_mode() {
         // time_window present -> everything user-mode even if dests are simple
-        let r = rules_with(vec![dest("cidr", json!("1.0.0.0/8"))], Some("09:00-17:00".into()));
+        let r = rules_with(
+            vec![dest("cidr", json!("1.0.0.0/8"))],
+            Some("09:00-17:00".into()),
+        );
         let p = partition_rules(&r);
         assert_eq!(p.kernel.len(), 0);
         assert_eq!(p.user_mode.len(), 1);
@@ -145,12 +177,15 @@ mod tests {
 
     #[test]
     fn partition_splits_correctly() {
-        let r = rules_with(vec![
-            dest("cidr", json!("10.0.0.0/8")),       // kernel
-            dest("domain", json!("*.bad.com")),       // user
-            dest("port", json!(8080)),                // kernel
-            dest("regex", json!(".*")),               // user
-        ], None);
+        let r = rules_with(
+            vec![
+                dest("cidr", json!("10.0.0.0/8")),  // kernel
+                dest("domain", json!("*.bad.com")), // user
+                dest("port", json!(8080)),          // kernel
+                dest("regex", json!(".*")),         // user
+            ],
+            None,
+        );
         let p = partition_rules(&r);
         assert_eq!(p.kernel.len(), 2);
         assert_eq!(p.user_mode.len(), 2);
@@ -159,7 +194,8 @@ mod tests {
     #[test]
     fn cap_overflow_goes_user_mode() {
         let many: Vec<_> = (0..(MAX_KERNEL_ENTRIES + 5))
-            .map(|i| dest("port", json!(i as u32))).collect();
+            .map(|i| dest("port", json!(i as u32)))
+            .collect();
         let r = rules_with(many, None);
         let p = partition_rules(&r);
         assert_eq!(p.kernel.len(), MAX_KERNEL_ENTRIES);
@@ -169,10 +205,13 @@ mod tests {
 
     #[test]
     fn kernel_subset_has_only_safe_dests() {
-        let r = rules_with(vec![
-            dest("cidr", json!("10.0.0.0/8")),
-            dest("domain", json!("*.bad.com")),
-        ], None);
+        let r = rules_with(
+            vec![
+                dest("cidr", json!("10.0.0.0/8")),
+                dest("domain", json!("*.bad.com")),
+            ],
+            None,
+        );
         let (ks, _) = kernel_subset(&r);
         assert_eq!(ks.conditions.destinations.len(), 1);
         assert_eq!(ks.conditions.destinations[0].r#type, "cidr");

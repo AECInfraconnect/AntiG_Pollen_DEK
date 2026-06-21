@@ -54,13 +54,13 @@ impl WasmtimePluginHost {
                     _ => return 0,
                 };
                 let mem_slice = memory.data(&caller);
-                
+
                 let start = ptr as usize;
                 let end = start + len as usize;
                 if end > mem_slice.len() {
                     return 0;
                 }
-                
+
                 let text = match std::str::from_utf8(&mem_slice[start..end]) {
                     Ok(s) => s,
                     Err(_) => return 0,
@@ -68,11 +68,13 @@ impl WasmtimePluginHost {
 
                 // NER mock for gliner-pii-small local inference
                 // In a real scenario, we'd make a blocking HTTP call to a local sidecar
-                let redacted = text.replace("John Doe", "[REDACTED_NAME]").replace("Acme Corp", "[REDACTED_ORG]");
+                let redacted = text
+                    .replace("John Doe", "[REDACTED_NAME]")
+                    .replace("Acme Corp", "[REDACTED_ORG]");
                 let redacted_bytes = redacted.as_bytes();
-                
+
                 let out_len = redacted_bytes.len().min(max_out_len as usize);
-                
+
                 let out_start = out_ptr as usize;
                 let out_end = out_start + out_len;
                 let mem_mut = memory.data_mut(&mut caller);
@@ -80,7 +82,7 @@ impl WasmtimePluginHost {
                     return 0;
                 }
                 mem_mut[out_start..out_end].copy_from_slice(&redacted_bytes[..out_len]);
-                
+
                 out_len as u32
             },
         )?;

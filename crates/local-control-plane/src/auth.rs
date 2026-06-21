@@ -57,7 +57,10 @@ pub async fn require_token(
         return Ok(next.run(req).await);
     }
 
-    let auth_header = req.headers().get(AUTHORIZATION).and_then(|h| h.to_str().ok());
+    let auth_header = req
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|h| h.to_str().ok());
     let provided_token = match auth_header {
         Some(h) if h.starts_with("Bearer ") => h.trim_start_matches("Bearer ").trim(),
         _ => return Err(StatusCode::UNAUTHORIZED),

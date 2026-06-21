@@ -3,6 +3,11 @@
 
 use crate::state::AppState;
 use axum::{
+    extract::Request,
+    middleware::{self, Next},
+    response::Response,
+};
+use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
@@ -11,11 +16,6 @@ use axum::{
 };
 use dek_domain_schema::*;
 use serde_json::json;
-use axum::{
-    extract::Request,
-    middleware::{self, Next},
-    response::Response,
-};
 
 pub fn router() -> Router<AppState> {
     let internal_routes = Router::new()
@@ -33,8 +33,14 @@ pub fn router() -> Router<AppState> {
         .route("/agents", get(list_agents).post(create_agent))
         .route("/agents/:id", get(get_agent).patch(patch_agent))
         // MCP Servers
-        .route("/mcp_servers", get(list_mcp_servers).post(create_mcp_server))
-        .route("/mcp_servers/:id", get(get_mcp_server).patch(patch_mcp_server))
+        .route(
+            "/mcp_servers",
+            get(list_mcp_servers).post(create_mcp_server),
+        )
+        .route(
+            "/mcp_servers/:id",
+            get(get_mcp_server).patch(patch_mcp_server),
+        )
         // Tools
         .route("/tools", get(list_tools).post(create_tool))
         .route("/tools/:id", get(get_tool).patch(patch_tool))
@@ -42,13 +48,22 @@ pub fn router() -> Router<AppState> {
         .route("/resources", get(list_resources).post(create_resource))
         .route("/resources/:id", get(get_resource).patch(patch_resource))
         // Relationships
-        .route("/relationships", get(list_relationships).post(create_relationship))
+        .route(
+            "/relationships",
+            get(list_relationships).post(create_relationship),
+        )
         // Policies
         .route("/policies", get(list_policies).post(create_policy))
         .route("/policies/:id", get(get_policy).patch(patch_policy))
         // PEP Deployments
-        .route("/pep_deployments", get(list_pep_deployments).post(create_pep_deployment))
-        .route("/pep_deployments/:id", get(get_pep_deployment).patch(patch_pep_deployment));
+        .route(
+            "/pep_deployments",
+            get(list_pep_deployments).post(create_pep_deployment),
+        )
+        .route(
+            "/pep_deployments/:id",
+            get(get_pep_deployment).patch(patch_pep_deployment),
+        );
 
     Router::new()
         .nest("/v1/registry", internal_routes.clone())
@@ -56,13 +71,14 @@ pub fn router() -> Router<AppState> {
         .route_layer(middleware::from_fn(mock_rbac_middleware))
 }
 
-async fn mock_rbac_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
+async fn mock_rbac_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
     // Only enforce on state-changing methods
     let method = req.method().clone();
-    if method == axum::http::Method::POST || method == axum::http::Method::PATCH || method == axum::http::Method::DELETE || method == axum::http::Method::PUT {
+    if method == axum::http::Method::POST
+        || method == axum::http::Method::PATCH
+        || method == axum::http::Method::DELETE
+        || method == axum::http::Method::PUT
+    {
         if let Some(role) = req.headers().get("x-mock-role") {
             if let Ok(role_str) = role.to_str() {
                 if role_str != "admin" && role_str != "tenant-admin" {
@@ -97,7 +113,10 @@ async fn create_tenant(
     (StatusCode::CREATED, Json(payload))
 }
 
-async fn get_tenant(Path(params): Path<std::collections::HashMap<String, String>>, State(state): State<AppState>) -> impl IntoResponse {
+async fn get_tenant(
+    Path(params): Path<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     let id = params.get("id").cloned().unwrap_or_default();
     let reg = state.registry.lock().unwrap();
     if let Some(item) = reg.tenants.get(&id) {
@@ -141,7 +160,10 @@ async fn create_principal(
     (StatusCode::CREATED, Json(payload))
 }
 
-async fn get_principal(Path(params): Path<std::collections::HashMap<String, String>>, State(state): State<AppState>) -> impl IntoResponse {
+async fn get_principal(
+    Path(params): Path<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     let id = params.get("id").cloned().unwrap_or_default();
     let reg = state.registry.lock().unwrap();
     if let Some(item) = reg.principals.get(&id) {
@@ -185,7 +207,10 @@ async fn create_device(
     (StatusCode::CREATED, Json(payload))
 }
 
-async fn get_device(Path(params): Path<std::collections::HashMap<String, String>>, State(state): State<AppState>) -> impl IntoResponse {
+async fn get_device(
+    Path(params): Path<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     let id = params.get("id").cloned().unwrap_or_default();
     let reg = state.registry.lock().unwrap();
     if let Some(item) = reg.devices.get(&id) {
@@ -249,7 +274,10 @@ async fn create_agent(
     (StatusCode::CREATED, Json(payload))
 }
 
-async fn get_agent(Path(params): Path<std::collections::HashMap<String, String>>, State(state): State<AppState>) -> impl IntoResponse {
+async fn get_agent(
+    Path(params): Path<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     let id = params.get("id").cloned().unwrap_or_default();
     let reg = state.registry.lock().unwrap();
     if let Some(item) = reg.agents.get(&id) {
@@ -339,7 +367,10 @@ async fn create_tool(
     (StatusCode::CREATED, Json(payload))
 }
 
-async fn get_tool(Path(params): Path<std::collections::HashMap<String, String>>, State(state): State<AppState>) -> impl IntoResponse {
+async fn get_tool(
+    Path(params): Path<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     let id = params.get("id").cloned().unwrap_or_default();
     let reg = state.registry.lock().unwrap();
     if let Some(item) = reg.tools.get(&id) {
@@ -383,7 +414,10 @@ async fn create_resource(
     (StatusCode::CREATED, Json(payload))
 }
 
-async fn get_resource(Path(params): Path<std::collections::HashMap<String, String>>, State(state): State<AppState>) -> impl IntoResponse {
+async fn get_resource(
+    Path(params): Path<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     let id = params.get("id").cloned().unwrap_or_default();
     let reg = state.registry.lock().unwrap();
     if let Some(item) = reg.resources.get(&id) {
@@ -445,7 +479,10 @@ async fn create_policy(
     (StatusCode::CREATED, Json(payload))
 }
 
-async fn get_policy(Path(params): Path<std::collections::HashMap<String, String>>, State(state): State<AppState>) -> impl IntoResponse {
+async fn get_policy(
+    Path(params): Path<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     let id = params.get("id").cloned().unwrap_or_default();
     let reg = state.registry.lock().unwrap();
     if let Some(item) = reg.policies.get(&id) {

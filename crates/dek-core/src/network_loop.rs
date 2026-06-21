@@ -11,11 +11,11 @@
 //! Replaces the cfg-scattered inline task in supervisor.rs with one trait-based
 //! driver that covers all three platforms uniformly.
 
+use dek_domain_schema::capabilities::EnforcementLevel;
 use dek_domain_schema::network_guardrail::{
     CompiledNetworkRules, NetworkConditions, NetworkDestination, NetworkFallback,
     NetworkGuardrailEffect, NetworkTargets,
 };
-use dek_domain_schema::capabilities::EnforcementLevel;
 use dek_policy_syncer::SyncOutcome;
 
 use tokio::sync::mpsc::Receiver;

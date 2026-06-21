@@ -100,10 +100,14 @@ enum ProfileAction {
     /// Set profile: local (default url http://127.0.0.1:3000) or cloud
     Set {
         mode: String,
-        #[arg(long)] url: Option<String>,
-        #[arg(long)] tenant_id: Option<String>,
-        #[arg(long)] trusted_key: Option<String>,
-        #[arg(long)] token: Option<String>,
+        #[arg(long)]
+        url: Option<String>,
+        #[arg(long)]
+        tenant_id: Option<String>,
+        #[arg(long)]
+        trusted_key: Option<String>,
+        #[arg(long)]
+        token: Option<String>,
     },
     /// Show current profile
     Show,
@@ -168,7 +172,10 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Commands::Update { channel } => {
-            info!("Initiating update via dek-updater (channel: {})...", channel);
+            info!(
+                "Initiating update via dek-updater (channel: {})...",
+                channel
+            );
             let exe_path = std::env::current_exe()?;
             let updater_dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
             let updater_exe = if cfg!(windows) {
@@ -176,18 +183,18 @@ async fn main() -> Result<()> {
             } else {
                 updater_dir.join("dek-updater")
             };
-            
+
             if !updater_exe.exists() {
                 error!("Updater not found at {:?}", updater_exe);
                 std::process::exit(1);
             }
-            
+
             let status = std::process::Command::new(&updater_exe)
                 .arg("upgrade")
                 .arg("--channel")
                 .arg(&channel)
                 .status()?;
-                
+
             if !status.success() {
                 error!("Update failed.");
                 std::process::exit(1);
@@ -401,7 +408,13 @@ async fn main() -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&caps)?);
         }
         Commands::Profile { action } => match action {
-            ProfileAction::Set { mode, url, tenant_id, trusted_key, token } => {
+            ProfileAction::Set {
+                mode,
+                url,
+                tenant_id,
+                trusted_key,
+                token,
+            } => {
                 let m = mode.parse::<service::profile::ProfileMode>()?;
                 service::profile::set_profile(m, url, tenant_id, trusted_key, token)?;
             }

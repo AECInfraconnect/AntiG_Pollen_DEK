@@ -138,7 +138,12 @@ impl TrustedKeySet {
                 };
                 tracing::info!("Verifying with kid {:?}, strict verify...", key.key_id);
                 if let Err(e) = vk.verify_strict(signed, &signature) {
-                    tracing::error!("verify_strict failed: {:?}. Key_b64: {}, sig_b64: {}", e, key.public_b64, entry.sig_b64);
+                    tracing::error!(
+                        "verify_strict failed: {:?}. Key_b64: {}, sig_b64: {}",
+                        e,
+                        key.public_b64,
+                        entry.sig_b64
+                    );
                 } else {
                     return VerifyOutcome::Valid {
                         key_id: key.key_id.clone(),

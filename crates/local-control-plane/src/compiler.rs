@@ -42,13 +42,28 @@ pub struct RegoCompiler;
 #[async_trait::async_trait]
 impl PolicyCompiler for RegoCompiler {
     async fn validate(&self, _draft: &PolicyDraft) -> Result<ValidationResult> {
-        Ok(ValidationResult { is_valid: true, errors: vec![] })
+        Ok(ValidationResult {
+            is_valid: true,
+            errors: vec![],
+        })
     }
     async fn compile(&self, _draft: &PolicyDraft) -> Result<CompilationResult> {
-        Ok(CompilationResult { success: true, bytecode: Some(b"mock_rego_bytecode".to_vec()), errors: vec![] })
+        Ok(CompilationResult {
+            success: true,
+            bytecode: Some(b"mock_rego_bytecode".to_vec()),
+            errors: vec![],
+        })
     }
-    async fn simulate(&self, _draft: &PolicyDraft, _input: serde_json::Value) -> Result<SimulationResult> {
-        Ok(SimulationResult { allowed: true, evaluation_time_ms: 1, log_output: vec![] })
+    async fn simulate(
+        &self,
+        _draft: &PolicyDraft,
+        _input: serde_json::Value,
+    ) -> Result<SimulationResult> {
+        Ok(SimulationResult {
+            allowed: true,
+            evaluation_time_ms: 1,
+            log_output: vec![],
+        })
     }
 }
 
@@ -57,13 +72,28 @@ pub struct CedarCompiler;
 #[async_trait::async_trait]
 impl PolicyCompiler for CedarCompiler {
     async fn validate(&self, _draft: &PolicyDraft) -> Result<ValidationResult> {
-        Ok(ValidationResult { is_valid: true, errors: vec![] })
+        Ok(ValidationResult {
+            is_valid: true,
+            errors: vec![],
+        })
     }
     async fn compile(&self, _draft: &PolicyDraft) -> Result<CompilationResult> {
-        Ok(CompilationResult { success: true, bytecode: Some(b"mock_cedar_bytecode".to_vec()), errors: vec![] })
+        Ok(CompilationResult {
+            success: true,
+            bytecode: Some(b"mock_cedar_bytecode".to_vec()),
+            errors: vec![],
+        })
     }
-    async fn simulate(&self, _draft: &PolicyDraft, _input: serde_json::Value) -> Result<SimulationResult> {
-        Ok(SimulationResult { allowed: true, evaluation_time_ms: 1, log_output: vec![] })
+    async fn simulate(
+        &self,
+        _draft: &PolicyDraft,
+        _input: serde_json::Value,
+    ) -> Result<SimulationResult> {
+        Ok(SimulationResult {
+            allowed: true,
+            evaluation_time_ms: 1,
+            log_output: vec![],
+        })
     }
 }
 
@@ -72,13 +102,28 @@ pub struct OpenFgaCompiler;
 #[async_trait::async_trait]
 impl PolicyCompiler for OpenFgaCompiler {
     async fn validate(&self, _draft: &PolicyDraft) -> Result<ValidationResult> {
-        Ok(ValidationResult { is_valid: true, errors: vec![] })
+        Ok(ValidationResult {
+            is_valid: true,
+            errors: vec![],
+        })
     }
     async fn compile(&self, _draft: &PolicyDraft) -> Result<CompilationResult> {
-        Ok(CompilationResult { success: true, bytecode: Some(b"mock_openfga_bytecode".to_vec()), errors: vec![] })
+        Ok(CompilationResult {
+            success: true,
+            bytecode: Some(b"mock_openfga_bytecode".to_vec()),
+            errors: vec![],
+        })
     }
-    async fn simulate(&self, _draft: &PolicyDraft, _input: serde_json::Value) -> Result<SimulationResult> {
-        Ok(SimulationResult { allowed: true, evaluation_time_ms: 1, log_output: vec![] })
+    async fn simulate(
+        &self,
+        _draft: &PolicyDraft,
+        _input: serde_json::Value,
+    ) -> Result<SimulationResult> {
+        Ok(SimulationResult {
+            allowed: true,
+            evaluation_time_ms: 1,
+            log_output: vec![],
+        })
     }
 }
 
@@ -87,12 +132,27 @@ pub struct CompositePolicyCompiler;
 #[async_trait::async_trait]
 impl PolicyCompiler for CompositePolicyCompiler {
     async fn validate(&self, _draft: &PolicyDraft) -> Result<ValidationResult> {
-        Ok(ValidationResult { is_valid: true, errors: vec![] })
+        Ok(ValidationResult {
+            is_valid: true,
+            errors: vec![],
+        })
     }
     async fn compile(&self, _draft: &PolicyDraft) -> Result<CompilationResult> {
-        Ok(CompilationResult { success: true, bytecode: Some(b"mock_composite_bytecode".to_vec()), errors: vec![] })
+        Ok(CompilationResult {
+            success: true,
+            bytecode: Some(b"mock_composite_bytecode".to_vec()),
+            errors: vec![],
+        })
     }
-    async fn simulate(&self, _draft: &PolicyDraft, _input: serde_json::Value) -> Result<SimulationResult> {
-        Ok(SimulationResult { allowed: true, evaluation_time_ms: 1, log_output: vec![] })
+    async fn simulate(
+        &self,
+        _draft: &PolicyDraft,
+        _input: serde_json::Value,
+    ) -> Result<SimulationResult> {
+        Ok(SimulationResult {
+            allowed: true,
+            evaluation_time_ms: 1,
+            log_output: vec![],
+        })
     }
 }

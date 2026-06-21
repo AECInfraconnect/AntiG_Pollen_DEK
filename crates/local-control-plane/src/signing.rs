@@ -62,11 +62,15 @@ fn fingerprint(key: &SigningKey) -> String {
 
 #[cfg(unix)]
 fn write_private(path: &PathBuf, bytes: &[u8]) -> Result<()> {
-    use std::os::unix::fs::OpenOptionsExt;
     use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
     let mut f = std::fs::OpenOptions::new()
-        .write(true).create(true).truncate(true).mode(0o600)
-        .open(path).context("create key file 0600")?;
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(path)
+        .context("create key file 0600")?;
     f.write_all(bytes)?;
     Ok(())
 }

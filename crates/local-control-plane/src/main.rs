@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State, Request},
+    extract::{Path, Request, State},
     http::StatusCode,
     middleware::Next,
     response::Response,
@@ -14,8 +14,8 @@ use tracing::info;
 
 mod auth;
 mod bundle;
-mod policy;
 mod compiler;
+mod policy;
 mod push;
 mod registry;
 mod signing;
@@ -23,7 +23,6 @@ mod store;
 mod telemetry;
 
 use signing::LocalSigner;
-
 
 #[derive(Clone)]
 pub struct AppState {
@@ -50,7 +49,9 @@ pub async fn local_tenant_guard(
             if parts.len() > 3 && parts[3] != "local" {
                 return Err((
                     StatusCode::BAD_REQUEST,
-                    Json(serde_json::json!({"error": "Local Admin Dashboard only supports tenant_id=local"})),
+                    Json(
+                        serde_json::json!({"error": "Local Admin Dashboard only supports tenant_id=local"}),
+                    ),
                 ));
             }
         }
@@ -68,9 +69,14 @@ async fn main() -> anyhow::Result<()> {
     let store = Arc::new(store::SqliteStore::new(&db_url).await?);
 
     let data_dir = std::path::PathBuf::from(
-        std::env::var("DEK_LCP_DATA").unwrap_or_else(|_| "./pollen-local-data".into()));
+        std::env::var("DEK_LCP_DATA").unwrap_or_else(|_| "./pollen-local-data".into()),
+    );
     let signer = Arc::new(LocalSigner::load_or_create(&data_dir)?);
-    info!("local control-plane signing key: {} (pub {})", signer.key_id, signer.public_key_b64());
+    info!(
+        "local control-plane signing key: {} (pub {})",
+        signer.key_id,
+        signer.public_key_b64()
+    );
 
     let auth_disabled = std::env::var("DEK_LCP_AUTH_DISABLE").unwrap_or_default() == "1";
     if auth_disabled {
@@ -100,8 +106,14 @@ async fn main() -> anyhow::Result<()> {
         .merge(telemetry::router())
         .merge(bundle_routes())
         .route("/v1/push", axum::routing::get(push::sse_handler))
-        .layer(axum::middleware::from_fn_with_state(state.clone(), local_tenant_guard))
-        .layer(axum::middleware::from_fn_with_state(state.clone(), auth::require_token));
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            local_tenant_guard,
+        ))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            auth::require_token,
+        ));
 
     let app = Router::new()
         .route("/health", axum::routing::get(|| async { "ok" }))
@@ -121,10 +133,22 @@ async fn main() -> anyhow::Result<()> {
 
 pub fn bundle_routes() -> Router<AppState> {
     Router::new()
-        .route("/v1/tenants/:tenant/devices/:device/bundles/manifest", axum::routing::get(get_manifest))
-        .route("/v1/tenants/:tenant/devices/:device/bundles/artifacts/:sha", axum::routing::get(get_artifact))
-        .route("/v1/tenants/:tenant/devices/:device/trusted-keys", axum::routing::get(get_trusted_keys))
-        .route("/v1/tenants/:tenant/devices/:device/config", axum::routing::get(get_mock_config))
+        .route(
+            "/v1/tenants/:tenant/devices/:device/bundles/manifest",
+            axum::routing::get(get_manifest),
+        )
+        .route(
+            "/v1/tenants/:tenant/devices/:device/bundles/artifacts/:sha",
+            axum::routing::get(get_artifact),
+        )
+        .route(
+            "/v1/tenants/:tenant/devices/:device/trusted-keys",
+            axum::routing::get(get_trusted_keys),
+        )
+        .route(
+            "/v1/tenants/:tenant/devices/:device/config",
+            axum::routing::get(get_mock_config),
+        )
 }
 
 async fn get_mock_config(
@@ -133,11 +157,19 @@ async fn get_mock_config(
 ) -> impl axum::response::IntoResponse {
     let mut combined_cedar = String::new();
 
-    if let Ok(Some(manifest_val)) = st.policy_store.get_policy_raw(&tenant, "bundle:latest").await {
-        if let Ok(manifest) = serde_json::from_value::<dek_control_plane_api::bundle::PollenPolicyBundleManifestV2>(manifest_val) {
+    if let Ok(Some(manifest_val)) = st
+        .policy_store
+        .get_policy_raw(&tenant, "bundle:latest")
+        .await
+    {
+        if let Ok(manifest) = serde_json::from_value::<
+            dek_control_plane_api::bundle::PollenPolicyBundleManifestV2,
+        >(manifest_val)
+        {
             for artifact in manifest.artifacts {
                 if artifact.adapter_id == "cedar" {
-                    if let Ok(Some(bytes)) = st.policy_store.get_blob(&tenant, &artifact.path).await {
+                    if let Ok(Some(bytes)) = st.policy_store.get_blob(&tenant, &artifact.path).await
+                    {
                         if let Ok(text) = String::from_utf8(bytes) {
                             combined_cedar.push_str(&text);
                             combined_cedar.push('\n');
@@ -182,15 +214,31 @@ async fn get_trusted_keys(State(st): State<AppState>) -> impl axum::response::In
     }]}))
 }
 
-async fn get_manifest(Path((tenant, _device)): Path<(String, String)>, State(st): State<AppState>) -> impl axum::response::IntoResponse {
-    match st.policy_store.get_policy_raw(&tenant, "bundle:latest").await {
+async fn get_manifest(
+    Path((tenant, _device)): Path<(String, String)>,
+    State(st): State<AppState>,
+) -> impl axum::response::IntoResponse {
+    match st
+        .policy_store
+        .get_policy_raw(&tenant, "bundle:latest")
+        .await
+    {
         Ok(Some(val)) => (StatusCode::OK, Json(val)),
-        Ok(None) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"no bundle"}))),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error":"no bundle"})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
     }
 }
 
-async fn get_artifact(Path((tenant, _device, sha)): Path<(String, String, String)>, State(st): State<AppState>) -> impl axum::response::IntoResponse {
+async fn get_artifact(
+    Path((tenant, _device, sha)): Path<(String, String, String)>,
+    State(st): State<AppState>,
+) -> impl axum::response::IntoResponse {
     if sha == "network_guardrails.json" {
         let signed_bytes = serde_json::to_vec(&serde_json::json!([])).unwrap();
         let sig_b64 = st.signer.sign_b64(&signed_bytes);
@@ -203,9 +251,12 @@ async fn get_artifact(Path((tenant, _device, sha)): Path<(String, String, String
                 "public_key_fingerprint": st.signer.public_key_b64(),
             }]
         });
-        return (axum::http::StatusCode::OK, serde_json::to_vec(&signed_payload).unwrap());
+        return (
+            axum::http::StatusCode::OK,
+            serde_json::to_vec(&signed_payload).unwrap(),
+        );
     }
-    
+
     let path = format!("artifacts/{sha}");
     match st.policy_store.get_blob(&tenant, &path).await {
         Ok(Some(bytes)) => (axum::http::StatusCode::OK, bytes),

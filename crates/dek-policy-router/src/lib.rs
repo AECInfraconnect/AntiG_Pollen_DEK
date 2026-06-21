@@ -360,16 +360,24 @@ impl PolicyRouter {
             let available = self.evaluator_ids();
             match EngineSelector::resolve(method, &payload, &available) {
                 Some(engine) => {
-                    tracing::info!("auto-selected engine '{}' (kind inferred from request)", engine);
+                    tracing::info!(
+                        "auto-selected engine '{}' (kind inferred from request)",
+                        engine
+                    );
                     to_evaluate.push(engine);
                 }
                 None => {
                     // fail-closed: ไม่มี engine ที่เหมาะ + build ไม่มี -> deny
                     return Ok(PolicyDecision {
-                        evaluator_id: "router_autoselect".into(), evaluator_type: "router".into(),
-                        required: true, status: "success".into(), decision: "deny".into(), allow: false,
+                        evaluator_id: "router_autoselect".into(),
+                        evaluator_type: "router".into(),
+                        required: true,
+                        status: "success".into(),
+                        decision: "deny".into(),
+                        allow: false,
                         reason: "no suitable policy engine available for request".into(),
-                        effects: serde_json::json!({}), obligations: vec![],
+                        effects: serde_json::json!({}),
+                        obligations: vec![],
                         metadata: serde_json::json!({ "auto_select": "none_available" }),
                     });
                 }
