@@ -70,6 +70,7 @@ fn deny_all_rule() -> CompiledNetworkRules {
 pub mod wfp_backend {
     use super::*;
     use dek_windows_wfp::WfpFilterManager;
+    use dek_enforcement_api::NetworkEnforcer as ApiNetworkEnforcer;
 
     pub struct WfpEnforcer {
         mgr: WfpFilterManager,
@@ -104,6 +105,7 @@ pub mod wfp_backend {
 pub mod nefilter_backend {
     use super::*;
     use dek_macos_nefilter::NeFilterClient;
+    use dek_enforcement_api::NetworkEnforcer as ApiNetworkEnforcer;
 
     pub struct NeFilterEnforcer {
         client: NeFilterClient,

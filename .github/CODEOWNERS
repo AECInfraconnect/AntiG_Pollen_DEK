@@ -1,0 +1,5 @@
+* @AECInfraconnect/core-maintainers
+/crates/dek-windows-wfp/ @AECInfraconnect/windows-experts
+/crates/dek-macos-nefilter/ @AECInfraconnect/macos-experts
+/plugins/ @AECInfraconnect/plugin-reviewers
+/ui/ @AECInfraconnect/frontend-team

@@ -1,0 +1,16 @@
+[package]
+name = "dek-enforcement-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+dek-domain-schema = { path = "../dek-domain-schema" }
+anyhow.workspace = true
+async-trait = "0.1"
+
+[lints]
+workspace = true

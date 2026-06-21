@@ -8,8 +8,10 @@ description = "Windows Filtering Platform (WFP) adapter for Pollen DEK network g
 
 [dependencies]
 dek-domain-schema = { path = "../dek-domain-schema" }
-anyhow.workspace = true
-tracing.workspace = true
+dek-enforcement-api = { path = "../dek-enforcement-api" }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+async-trait = "0.1"
 serde.workspace = true
 serde_json.workspace = true
 
