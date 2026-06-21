@@ -290,7 +290,15 @@ mod tests {
         };
         let client = mtls
             .build_client(None)
-            .expect("build mtls client from disk identity");
+            .unwrap_or_else(|e| {
+                let mut msg = format!("build mtls client from disk identity: {e:?}");
+                let mut source = e.source();
+                while let Some(s) = source {
+                    msg.push_str(&format!("\nCaused by: {s:?}"));
+                    source = s.source();
+                }
+                panic!("{msg}");
+            });
         let renew_url = format!("http://{addr}/spire/svid/renew");
 
         let spiffe = fetch_and_install_svid(
@@ -358,7 +366,7 @@ mod tests {
         let mut p = CertificateParams::new(vec!["Pollen Test Root CA".to_string()]).unwrap();
         p.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
         p.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
-        let key_pair = rcgen::KeyPair::generate().unwrap();
+        let key_pair = rcgen::KeyPair::generate_for(&rcgen::PKCS_ECDSA_P256_SHA256).unwrap();
         let cert = p.self_signed(&key_pair).unwrap();
         (cert, key_pair)
     }
@@ -366,7 +374,7 @@ mod tests {
     fn make_client(ca: &rcgen::Certificate, ca_key: &rcgen::KeyPair, cn: &str) -> (String, String) {
         use rcgen::CertificateParams;
         let p = CertificateParams::new(vec![cn.to_string()]).unwrap();
-        let key_pair = rcgen::KeyPair::generate().unwrap();
+        let key_pair = rcgen::KeyPair::generate_for(&rcgen::PKCS_ECDSA_P256_SHA256).unwrap();
         let cert = p.signed_by(&key_pair, ca, ca_key).unwrap();
         (cert.pem(), key_pair.serialize_pem())
     }
@@ -380,7 +388,7 @@ mod tests {
         use rcgen::CertificateParams;
         let mut p = CertificateParams::new(vec![cn.to_string()]).unwrap();
         p.not_after = not_after;
-        let key_pair = rcgen::KeyPair::generate().unwrap();
+        let key_pair = rcgen::KeyPair::generate_for(&rcgen::PKCS_ECDSA_P256_SHA256).unwrap();
         p.signed_by(&key_pair, ca, ca_key).unwrap().pem()
     }
 
