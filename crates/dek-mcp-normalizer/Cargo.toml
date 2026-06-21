@@ -2,6 +2,7 @@
 name = "dek-mcp-normalizer"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
@@ -11,3 +12,4 @@ uuid = { version = "1.10.0", features = ["v4"] }
 
 [lints]
 workspace = true
+

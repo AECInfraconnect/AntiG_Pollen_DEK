@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use dek_domain_schema::{
     CompiledNetworkRules, NetworkConditions, NetworkDestination, NetworkFallback,
     NetworkGuardrailEffect, NetworkTargets,
@@ -80,3 +83,4 @@ fn test_fail_closed_watchdog() {
     // Should fail and trigger fail closed
     assert!(result.is_err());
 }
+

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::Result;
 use std::path::Path;
 
@@ -75,3 +78,4 @@ pub fn export_diagnostics(redact: bool) -> Result<()> {
     println!("✓ Diagnostics exported to {}", dest.display());
     Ok(())
 }
+

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use axum::{
     extract::State,
     routing::post,
@@ -93,3 +96,4 @@ pub fn router() -> Router<AppState> {
         .route("/v1/pdp/simulate", post(simulate_pdp))
         .route("/v1/pdp/sandbox", post(sandbox_simulate))
 }
+

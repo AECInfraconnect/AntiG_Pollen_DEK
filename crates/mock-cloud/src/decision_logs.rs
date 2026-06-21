@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use crate::state::AppState;
 use askama::Template;
 use axum::{
@@ -78,3 +81,4 @@ pub async fn view_decision_logs(State(state): State<AppState>) -> impl IntoRespo
     let tpl = DecisionLogsTemplate { logs };
     Html(tpl.render().unwrap_or_else(|e| format!("Template render error: {}", e)))
 }
+

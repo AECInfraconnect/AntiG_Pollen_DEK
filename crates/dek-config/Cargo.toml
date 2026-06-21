@@ -2,6 +2,7 @@
 name = "dek-config"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 serde.workspace = true
@@ -15,3 +16,4 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [lints]
 workspace = true
+

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! admission.rs — global + per-tenant concurrency limiting (backpressure).
 //!
 //! Bounds in-flight requests so a burst (or one noisy tenant) can't exhaust
@@ -89,3 +92,4 @@ mod tests {
         assert!(ac.try_admit("tenant-b").is_some(), "tenant-b isolated");
     }
 }
+

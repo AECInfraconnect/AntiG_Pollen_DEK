@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![warn(clippy::print_stdout, clippy::print_stderr)]
 #![deny(clippy::unwrap_used, clippy::expect_used)]
 use anyhow::Result;
@@ -787,3 +790,4 @@ async fn handle_filter_response(
         (StatusCode::OK, Json(payload)).into_response()
     }
 }
+

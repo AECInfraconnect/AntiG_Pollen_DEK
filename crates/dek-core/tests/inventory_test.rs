@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -37,3 +40,4 @@ fn test_no_unwrap_or_expect_in_production_code() {
         }
     }
 }
+

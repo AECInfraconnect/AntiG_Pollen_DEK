@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! telemetry.rs — R3: full contract telemetry surface (§5).
 //!
 //! The DEK flusher (R2.1) POSTs typed telemetry to split endpoints. This mirrors
@@ -94,3 +97,4 @@ async fn ingest_events_tenant(
 ) -> impl IntoResponse {
     handle(s, p, "events").await
 }
+

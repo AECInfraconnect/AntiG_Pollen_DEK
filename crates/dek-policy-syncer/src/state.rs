@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! state.rs — fail-safe EnforcementState + the PURE freshness decision.
 //!
 //! The heart of Phase 1. `evaluate_state` is a pure function (fully unit
@@ -200,3 +203,4 @@ mod tests {
         assert!(s.reason().starts_with("max_bundle_age_exceeded"));
     }
 }
+

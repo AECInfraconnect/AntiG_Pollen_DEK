@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! Phase 5 — contract integration matrix (in-process, deterministic, CI-friendly).
 //!
 //! Exercises the policy-syncer contract end-to-end WITHOUT spawning binaries:
@@ -165,3 +168,4 @@ async fn s5_v1_keys_chain_of_trust() {
     assert!(delta.added.contains(&"key-2".to_string()), "next key merged after chain-of-trust verify");
     assert_eq!(merged.usable_keys(now()).count(), 2);
 }
+

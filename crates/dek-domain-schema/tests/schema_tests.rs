@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use dek_domain_schema::tenant::Tenant;
 
 #[test]
@@ -28,3 +31,4 @@ fn test_invalid_tenant() {
     let tenant: Result<Tenant, _> = serde_json::from_str(json_str);
     assert!(tenant.is_err());
 }
+

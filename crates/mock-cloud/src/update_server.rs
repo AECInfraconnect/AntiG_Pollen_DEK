@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -70,3 +73,4 @@ async fn get_update_artifact(
     // For tests, we just return dummy content.
     (StatusCode::OK, "DUMMY_ARTIFACT_DATA")
 }
+

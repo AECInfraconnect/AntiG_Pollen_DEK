@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 pub mod redactor;
 pub mod routing;
 pub mod spooler;
@@ -261,3 +264,4 @@ impl CloudTelemetrySink {
         }
     }
 }
+

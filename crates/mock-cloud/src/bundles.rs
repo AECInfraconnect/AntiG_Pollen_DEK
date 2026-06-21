@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use crate::state::AppState;
 use crate::BUNDLE_SEED;
 use axum::{
@@ -201,3 +204,4 @@ async fn get_network_guardrails_artifact(
         }]
     })))
 }
+

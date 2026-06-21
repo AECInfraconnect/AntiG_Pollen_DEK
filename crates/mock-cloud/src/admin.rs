@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use crate::state::AppState;
 use askama::Template;
 use axum::{
@@ -225,3 +228,4 @@ pub async fn admin_network_publish(
         (axum::http::StatusCode::BAD_REQUEST, axum::Json(serde_json::json!({ "error": "missing rules[]" })))
     }
 }
+

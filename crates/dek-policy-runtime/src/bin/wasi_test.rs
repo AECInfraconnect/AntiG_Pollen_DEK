@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![allow(unused)]
 use std::io::Cursor;
 use wasmtime::*;
@@ -17,3 +20,4 @@ fn main() {
     let bytes = stdout.contents();
     println!("bytes len: {}", bytes.len());
 }
+

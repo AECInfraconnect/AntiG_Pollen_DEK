@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -22,3 +25,4 @@ pub struct McpServer {
     pub tools: Vec<McpTool>,
     pub status: String,
 }
+

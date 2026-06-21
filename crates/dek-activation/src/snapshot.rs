@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use dek_auth::{Verifier, VerifierConfig};
 use dek_policy_router::PolicyRouter;
 use dek_wasm_host::WasmtimePluginHost;
@@ -53,3 +56,4 @@ impl RuntimeSnapshot {
         }
     }
 }
+

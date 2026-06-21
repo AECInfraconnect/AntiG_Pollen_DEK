@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use super::ServiceManager;
 use anyhow::{Context, Result};
 use std::fs;
@@ -103,3 +106,4 @@ impl ServiceManager for OsServiceManager {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 }
+

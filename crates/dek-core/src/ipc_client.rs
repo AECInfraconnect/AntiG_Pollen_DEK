@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! ipc_client.rs — minimal client for the local DEK IPC endpoint.
 //!
 //! Used by the probation health-probe (and reusable by `dekctl health`).
@@ -66,3 +69,4 @@ async fn health_roundtrip(addr: &str) -> Result<bool> {
         IpcResponse::HealthStatus { status, .. } if status == "HEALTHY"
     ))
 }
+

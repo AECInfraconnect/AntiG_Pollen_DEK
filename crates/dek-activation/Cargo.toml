@@ -2,6 +2,7 @@
 name = "dek-activation"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
@@ -23,3 +24,4 @@ jsonwebtoken = "9.3.1"
 
 [lints]
 workspace = true
+

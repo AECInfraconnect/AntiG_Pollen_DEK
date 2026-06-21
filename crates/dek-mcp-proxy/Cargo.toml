@@ -2,6 +2,7 @@
 name = "dek-mcp-proxy"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 dek-policy-runtime = { path = "../dek-policy-runtime" }
@@ -43,3 +44,4 @@ hyper-util = { version = "0.1", features = ["tokio"] }
 
 [lints]
 workspace = true
+

@@ -1,0 +1,21 @@
+[package]
+name = "dek-load-test"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+[dependencies]
+tokio = { workspace = true, features = ["full"] }
+reqwest = { workspace = true }
+clap = { version = "4.4", features = ["derive"] }
+futures = "0.3"
+hdrhistogram = "7.5"
+serde_json.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

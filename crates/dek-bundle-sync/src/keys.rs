@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! keys.rs — trusted bundle-signing keys with rotation support.
 //!
 //! Phase 2: replaces the single pinned key with a SET of trusted keys so the
@@ -267,3 +270,4 @@ mod tests {
         assert_eq!(out, VerifyOutcome::NoValidSignature);
     }
 }
+

@@ -38,8 +38,29 @@ Pollen DEK shifts from a purely cooperative policy enforcement to a machine-leve
   - Implements coarse L3/L4 network egress guardrails.
   - Enforces traffic policies at the kernel level, catching and blocking unauthorized traffic even if a rogue or misconfigured application attempts to bypass the Layer 1 proxy.
 - **Windows & macOS (Phase 1):** 
-  - **No transparent kernel interception** is performed (e.g., no WFP callouts on Windows or Network Extensions on Mac). This deliberate architectural decision eliminates the risk of system-wide BSODs or kernel panics.
-  - **Opt-in Redirect Options:** Enforcement at this layer is limited to opt-in traffic redirection, such as configuring system-wide proxy settings or injecting per-application proxy environment variables (`HTTP_PROXY`, `HTTPS_PROXY`).
+  - **eBPF Acceleration**: Bypass TCP overhead for extreme throughput.
+- **WFP (Windows Filtering Platform) Support**: High-performance local proxy on Windows.
+- **WASM Policy Evaluation**: Dynamic Open Policy Agent (OPA) integration for Edge decisions.
+
+## Architecture
+
+Pollen DEK acts as a secure boundary and router, intercepting requests and delegating decisions to local or remote Policy Decision Points (PDPs).
+
+## Open Source vs Enterprise Tiering
+
+This repository follows a tiered licensing model:
+
+| Component | Description | License |
+|-----------|-------------|---------|
+| `dek-pdp-sdk` | Plugin SDK for building custom PDP adapters | Apache-2.0 |
+| Core Runtime & CLI | `dek-core`, `dek-cli`, `dek-agent`, `dek-updater` | Apache-2.0 |
+| Example PDP Adapters | `dek-cedar`, `dek-openfga`, `dek-opa` | Apache-2.0 |
+| Sample Policies | Examples under `examples/policies/` | Apache-2.0 |
+| Advanced OS Integrations | eBPF (Linux), WFP (Windows), NE (macOS) | Custom / Enterprise |
+
+The `dek-pdp-sdk` provides an extension point allowing community members to build and plug in custom PDPs into the Pollen DEK runtime seamlessly via the `dek-router-builder`. See `crates/dek-pdp-sdk` for more details.
+
+## Quick Start
 
 > [!WARNING]
 > **Enforcement Ceiling:** It is critical to understand that Windows and macOS currently have a lower enforcement ceiling than Linux. While Linux guarantees network-level egress enforcement via eBPF regardless of application behavior, Windows and macOS rely strictly on Layer 1 App-layer MCP proxies and cooperative opt-in network redirects.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! bundle_loop.rs — periodic unified bundle-sync pipeline + binary auto-update.
 //!
 //! Lifted verbatim from `main.rs::spawn_bundle_sync_task`, made `pub`.
@@ -87,3 +90,4 @@ pub fn spawn_bundle_sync_task(
         .instrument(tracing::info_span!("bundle_sync")),
     )
 }
+

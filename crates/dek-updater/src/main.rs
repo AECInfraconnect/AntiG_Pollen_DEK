@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
@@ -229,3 +232,4 @@ fn verify_tuf_signature(new_exe: &PathBuf, metadata_path: &PathBuf) -> Result<()
 
     Ok(())
 }
+

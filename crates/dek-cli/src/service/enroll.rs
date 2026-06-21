@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! enroll.rs — `dekctl enroll`
 //!
 //! First-run onboarding. Orchestrates:
@@ -151,3 +154,4 @@ fn set_owner_only(path: &Path) {
         let _ = path; // installer applies ACLs on Windows
     }
 }
+

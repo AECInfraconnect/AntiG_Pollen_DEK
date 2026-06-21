@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use crate::tenant::TrustDomainStrategy;
 use url::Url;
 
@@ -119,3 +122,4 @@ pub fn validate_tenant_isolation(
         TrustDomainStrategy::Federated | TrustDomainStrategy::CustomerManaged => todo!(),
     }
 }
+

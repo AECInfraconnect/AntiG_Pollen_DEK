@@ -12,6 +12,10 @@ resolver = "2"
 [workspace.package]
 version = "1.0.0-beta.1"
 edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/AECInfraconnect/AntiG_Pollen_DEK"
+authors = ["AEC Infraconnect <info@aecinfraconnect.com>"]
+rust-version = "1.70"
 
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
@@ -24,6 +28,7 @@ tracing-subscriber = "0.3"
 async-trait = "0.1"
 arc-swap = "1.7"
 chrono = "0.4"
+dek-pdp-sdk = { path = "crates/dek-pdp-sdk" }
 
 [workspace.lints.clippy]
 unwrap_used = "deny"

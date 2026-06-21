@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use std::env;
 
 fn main() {
@@ -12,3 +15,4 @@ fn main() {
         println!("cargo:warning=Failed to build eBPF programs: {}", e);
     }
 }
+

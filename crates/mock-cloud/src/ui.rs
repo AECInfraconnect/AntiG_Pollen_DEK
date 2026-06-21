@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use axum::{
     response::{Html, IntoResponse},
     routing::get,
@@ -77,3 +80,4 @@ async fn ui_index() -> impl IntoResponse {
         </html>
     "#)
 }
+

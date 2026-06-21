@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! gate.rs — PEP-side fail-safe gate (cross-process).
 //!
 //! The PEP (dek-mcp-proxy / dek-ext-authz) runs as a SEPARATE process from the
@@ -49,3 +52,4 @@ pub fn invalidate_cache() {
         *g = None;
     }
 }
+

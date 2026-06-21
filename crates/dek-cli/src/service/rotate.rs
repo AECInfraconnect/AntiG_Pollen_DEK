@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::Result;
 use dek_ipc::{IpcRequest, IpcResponse};
 use tracing::{error, info};
@@ -15,3 +18,4 @@ pub async fn run(host: &str, port: u16) -> Result<()> {
     }
     Ok(())
 }
+

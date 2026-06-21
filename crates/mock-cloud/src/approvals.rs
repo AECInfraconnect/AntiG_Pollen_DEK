@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use crate::state::{AppState, ApprovalRequest, AuditLog};
 use axum::{
     extract::{Path, State},
@@ -101,3 +104,4 @@ pub async fn admin_approve_deny(
 
     Redirect::to("/mock/admin/approvals")
 }
+

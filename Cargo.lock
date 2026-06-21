@@ -1967,6 +1967,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-load-test"
+version = "1.0.0-beta.1"
+dependencies = [
+ "anyhow",
+ "clap",
+ "futures",
+ "hdrhistogram",
+ "reqwest 0.12.28",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "dek-macos-nefilter"
 version = "0.1.0"
 dependencies = [
@@ -2083,6 +2098,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-pdp-sdk"
+version = "1.0.0-beta.1"
+dependencies = [
+ "dek-policy-runtime",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tracing",
+]
+
+[[package]]
 name = "dek-policy-router"
 version = "0.1.0"
 dependencies = [
@@ -2157,6 +2182,7 @@ dependencies = [
  "dek-cedar",
  "dek-config",
  "dek-openfga",
+ "dek-pdp-sdk",
  "dek-policy-router",
  "dek-policy-runtime",
  "serde_json",
@@ -3121,6 +3147,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ba4ff7128dee98c7dc9794b6a411377e1404dba1c97deb8d1a55297bd25d8af"
 dependencies = [
  "hashbrown 0.14.5",
+]
+
+[[package]]
+name = "hdrhistogram"
+version = "7.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "765c9198f173dd59ce26ff9f95ef0aafd0a0fe01fb9d72841bc5066a4c06511d"
+dependencies = [
+ "base64 0.21.7",
+ "byteorder",
+ "crossbeam-channel",
+ "flate2",
+ "nom",
+ "num-traits",
 ]
 
 [[package]]

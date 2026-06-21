@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use std::path::PathBuf;
 
 pub fn get_config_dir() -> PathBuf {
@@ -127,3 +130,4 @@ pub fn get_active_bundle_path() -> PathBuf {
     }
     get_data_dir().join("active_bundle.json")
 }
+

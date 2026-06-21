@@ -2,6 +2,7 @@
 name = "dek-bundle-sync"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 serde.workspace = true
@@ -25,3 +26,4 @@ arc-swap = "1"
 thiserror = "1"
 [lints]
 workspace = true
+

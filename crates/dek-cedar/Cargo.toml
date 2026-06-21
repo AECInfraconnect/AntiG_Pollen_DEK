@@ -2,6 +2,7 @@
 name = "dek-cedar"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 dek-policy-runtime = { path = "../dek-policy-runtime" }
@@ -24,3 +25,4 @@ serde_json = { workspace = true }
 [[bench]]
 name = "authorize_bench"
 harness = false
+

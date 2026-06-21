@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use criterion::{criterion_group, criterion_main, Criterion};
 use dek_cedar::CedarAdapter;
@@ -40,3 +43,4 @@ permit(
 
 criterion_group!(benches, bench_authorize);
 criterion_main!(benches);
+

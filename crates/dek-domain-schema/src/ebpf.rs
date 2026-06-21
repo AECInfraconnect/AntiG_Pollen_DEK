@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -22,3 +25,4 @@ pub struct EbpfMapUpdate {
     pub value: Value,
     pub signature: Option<String>,
 }
+

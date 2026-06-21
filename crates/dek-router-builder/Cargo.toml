@@ -2,16 +2,24 @@
 name = "dek-router-builder"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 dek-policy-router = { path = "../dek-policy-router" }
-dek-cedar = { path = "../dek-cedar" }
-dek-openfga = { path = "../dek-openfga" }
+dek-cedar = { path = "../dek-cedar", optional = true }
+dek-openfga = { path = "../dek-openfga", optional = true }
 dek-policy-runtime = { path = "../dek-policy-runtime" }
+dek-pdp-sdk = { path = "../dek-pdp-sdk" }
 dek-config = { path = "../dek-config" }
 serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+
+[features]
+default = ["adapter-cedar", "adapter-opa", "adapter-openfga"]
+adapter-cedar = ["dep:dek-cedar"]
+adapter-opa = [] # OPA is just using dek-policy-runtime which we already depend on
+adapter-openfga = ["dep:dek-openfga"]
 
 [lints]
 workspace = true

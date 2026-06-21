@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use dek_config::DekConfig;
 
 fn main() {
@@ -35,3 +38,4 @@ fn main() {
         }
     }
 }
+

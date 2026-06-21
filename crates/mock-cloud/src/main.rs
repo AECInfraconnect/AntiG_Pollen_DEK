@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod admin;
 pub mod assertions;
@@ -487,3 +490,4 @@ async fn handle_push_stream() -> impl IntoResponse {
 
     Sse::new(stream).keep_alive(axum::response::sse::KeepAlive::new().interval(Duration::from_secs(15)))
 }
+

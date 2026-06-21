@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use dek_domain_schema::ebpf::{EbpfMapUpdate, UpdateSource};
 use dek_ebpfd::map_updater::MapUpdater;
 use serde_json::json;
@@ -131,3 +134,4 @@ fn test_out_of_band_requires_signature() {
     update.signature = Some("dummy-sig-123".to_string());
     assert!(updater.apply_update(update).is_ok());
 }
+

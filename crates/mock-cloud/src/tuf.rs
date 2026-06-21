@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::spire::is_device_revoked;
 use crate::state::AppState;
@@ -211,3 +214,4 @@ async fn get_tuf_artifact(
         )
     }
 }
+

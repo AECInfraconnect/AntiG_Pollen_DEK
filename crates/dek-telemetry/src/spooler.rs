@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! spooler.rs — durable, bounded telemetry spool (SQLite-backed).
 //!
 //! Production hardening (vs. previous):
@@ -244,3 +247,4 @@ mod tests {
         assert_eq!(batch.len(), 2);
     }
 }
+

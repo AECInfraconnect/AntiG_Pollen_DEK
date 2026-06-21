@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! scale_config.rs — freshness/sync + SaaS-scale tunables.
 //!
 //! These live in `DekConfig` and arrive in the SIGNED bundle/config from the
@@ -92,3 +95,4 @@ mod tests {
         assert_eq!(sc.pdp_timeout_ms, 200); // default preserved
     }
 }
+

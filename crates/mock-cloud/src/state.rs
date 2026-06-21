@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
@@ -114,3 +117,4 @@ impl AppState {
         });
     }
 }
+

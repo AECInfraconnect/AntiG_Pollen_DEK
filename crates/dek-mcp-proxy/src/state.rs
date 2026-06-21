@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! state.rs — P2 refactor of dek-mcp-proxy shared state.
 //!
 //! Replaces `RwLock<DekMetadata>` + `RwLock<PolicyRouter>` (cloned on every
@@ -105,3 +108,4 @@ impl AppState {
 //
 // stdio-wrapper: use the same dek_auth::Verifier + PolicySnapshot pattern so the
 // two PEPs enforce identically (kills the duplicated JWT/bundle-load logic, B3).
+

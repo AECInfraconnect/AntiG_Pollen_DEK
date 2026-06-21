@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::Result;
 use dek_domain_schema::CompiledNetworkRules;
 use tracing::{info, warn};
@@ -46,3 +49,4 @@ impl NeFilterClient {
         Ok(())
     }
 }
+

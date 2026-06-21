@@ -2,6 +2,7 @@
 name = "dek-policy-syncer"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 
 # Orchestrates the policy sync lifecycle (pull+verify+activate) and owns the
 # fail-safe EnforcementState (freshness gate). Reuses dek-bundle-sync for
@@ -30,3 +31,4 @@ axum = "0.7"
 ed25519-dalek = { version = "2.1", features = ["rand_core"] }
 base64 = "0.22"
 tokio = { version = "1", features = ["full", "test-util"] }
+

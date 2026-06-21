@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! svid_renewal.rs — keep the device's X.509-SVID fresh.
 //!
 //! SPIRE issues short-lived SVIDs. The join token from enrollment is one-time,
@@ -388,3 +391,4 @@ mod tests {
         csr.serialize_pem_with_signer(&ca).unwrap()
     }
 }
+

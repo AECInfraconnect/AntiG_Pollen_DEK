@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 use anyhow::{Context, Result};
 use rustls::{
     server::{WebPkiClientVerifier, ServerConfig},
@@ -65,3 +68,4 @@ pub fn load_private_key(path: &str) -> Result<PrivateKeyDer<'static>> {
     let mut reader = BufReader::new(file);
     private_key(&mut reader)?.context("No private key found")
 }
+

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 //! dek-policy-syncer — orchestrates the policy sync lifecycle and owns the
 //! fail-safe EnforcementState.
 //!
@@ -392,3 +395,4 @@ fn parse_rfc3339_to_unix(s: &str) -> Option<i64> {
     let days = era * 146_097 + doe - 719_468;
     Some(days * 86_400 + h * 3_600 + mi * 60 + sec)
 }
+

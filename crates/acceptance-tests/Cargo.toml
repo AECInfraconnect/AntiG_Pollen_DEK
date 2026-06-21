@@ -2,6 +2,7 @@
 name = "acceptance-tests"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 publish = false
 
 [dependencies]
@@ -18,3 +19,4 @@ reqwest = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 sysinfo = "0.30.12"
+

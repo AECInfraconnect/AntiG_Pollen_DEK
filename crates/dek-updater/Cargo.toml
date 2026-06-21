@@ -2,6 +2,7 @@
 name = "dek-updater"
 version = "0.1.0"
 edition = "2024"
+license.workspace = true
 
 [dependencies]
 anyhow = "1.0"
@@ -24,3 +25,4 @@ workspace = true
 name = "dek-updater"
 path = "src/main.rs"
 test = false
+
