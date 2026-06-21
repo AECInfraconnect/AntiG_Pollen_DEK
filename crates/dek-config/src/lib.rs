@@ -49,7 +49,7 @@ impl MtlsConfig {
                 }
                 Err(e) => {
                     tracing::error!("Identity::from_pem failed: {:?}", e);
-                    panic!("Identity::from_pem failed: {:?}", e);
+                    return Err(anyhow::anyhow!("Identity::from_pem failed: {:?}", e));
                 }
             }
         }
