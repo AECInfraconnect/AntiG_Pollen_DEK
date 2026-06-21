@@ -602,7 +602,8 @@ async fn handle_mcp_request(
             .agent_id
             .clone()
             .unwrap_or_else(|| "unknown".into()),
-        score: 100, // ใน Phase ถัดไปจะโหลดจาก Redis / DB
+        score: 1.0, // ใน Phase ถัดไปจะโหลดจาก Redis / DB
+        reasons: vec![],
     };
     match dek_agent_observer::trust::enforce_trust(&mock_trust) {
         dek_agent_observer::trust::TrustAction::KillSwitch => {
