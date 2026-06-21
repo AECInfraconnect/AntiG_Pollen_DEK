@@ -24,5 +24,6 @@ pub struct Policy {
     pub r#match: PolicyMatch,
     pub conditions: HashMap<String, serde_json::Value>,
     pub obligations: Vec<String>,
+    pub template: Option<crate::policy_template::PolicyTemplate>,
     pub version: String,
 }

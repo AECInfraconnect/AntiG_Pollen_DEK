@@ -1,318 +1,373 @@
-use crate::state::{AppState, DeviceStatus};
+use crate::state::AppState;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::get,
+    routing::{get, post, patch},
     Json, Router,
 };
-use serde_json::{json, Value};
+use dek_domain_schema::*;
+use serde_json::json;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/v1/tenants", get(list_tenants).post(create_tenant))
-        .route(
-            "/v1/tenants/:tenant_id",
-            get(get_tenant).patch(patch_tenant),
-        )
-        .route("/v1/tenants/:tenant_id/devices", get(list_devices))
-        .route(
-            "/v1/tenants/:tenant_id/devices/:device_id",
-            get(get_device_info).patch(patch_device),
-        )
-        .route(
-            "/v1/tenants/:tenant_id/agents",
-            get(list_agents).post(create_agent),
-        )
-        .route(
-            "/v1/tenants/:tenant_id/agents/:agent_id",
-            get(get_agent).patch(patch_agent),
-        )
-        .route(
-            "/v1/tenants/:tenant_id/entities",
-            get(list_entities).post(create_entity),
-        )
-        .route(
-            "/v1/tenants/:tenant_id/entities/:entity_id",
-            get(get_entity),
-        )
-        .route(
-            "/v1/tenants/:tenant_id/resources",
-            get(list_resources).post(create_resource),
-        )
-        .route(
-            "/v1/tenants/:tenant_id/resources/:resource_id",
-            get(get_resource),
-        )
-        .route(
-            "/v1/tenants/:tenant_id/relationships",
-            get(list_relationships).post(create_relationship),
-        )
+        // Tenants
+        .route("/v1/registry/tenants", get(list_tenants).post(create_tenant))
+        .route("/v1/registry/tenants/:id", get(get_tenant).patch(patch_tenant))
+        
+        // Principals
+        .route("/v1/registry/principals", get(list_principals).post(create_principal))
+        .route("/v1/registry/principals/:id", get(get_principal).patch(patch_principal))
+        
+        // Devices
+        .route("/v1/registry/devices", get(list_devices).post(create_device))
+        .route("/v1/registry/devices/:id", get(get_device).patch(patch_device))
+
+        // Agents
+        .route("/v1/registry/agents", get(list_agents).post(create_agent))
+        .route("/v1/registry/agents/:id", get(get_agent).patch(patch_agent))
+
+        // MCP Servers
+        .route("/v1/registry/mcp_servers", get(list_mcp_servers).post(create_mcp_server))
+        .route("/v1/registry/mcp_servers/:id", get(get_mcp_server).patch(patch_mcp_server))
+
+        // Tools
+        .route("/v1/registry/tools", get(list_tools).post(create_tool))
+        .route("/v1/registry/tools/:id", get(get_tool).patch(patch_tool))
+
+        // Resources
+        .route("/v1/registry/resources", get(list_resources).post(create_resource))
+        .route("/v1/registry/resources/:id", get(get_resource).patch(patch_resource))
+
+        // Relationships
+        .route("/v1/registry/relationships", get(list_relationships).post(create_relationship))
+
+        // Policies
+        .route("/v1/registry/policies", get(list_policies).post(create_policy))
+        .route("/v1/registry/policies/:id", get(get_policy).patch(patch_policy))
+
+        // PEP Deployments
+        .route("/v1/registry/pep_deployments", get(list_pep_deployments).post(create_pep_deployment))
+        .route("/v1/registry/pep_deployments/:id", get(get_pep_deployment).patch(patch_pep_deployment))
 }
 
-// Tenenat
+// -----------------------------------------------------------------------------
+// Tenants
+// -----------------------------------------------------------------------------
 async fn list_tenants(State(state): State<AppState>) -> impl IntoResponse {
-    let tenants = state.tenants.lock().unwrap();
-    let res: Vec<Value> = tenants.values().cloned().collect();
-    (StatusCode::OK, Json(res))
+    let reg = state.registry.lock().unwrap();
+    let items: Vec<Tenant> = reg.tenants.values().cloned().collect();
+    (StatusCode::OK, Json(items))
 }
 
-async fn create_tenant(
-    State(state): State<AppState>,
-    Json(payload): Json<Value>,
-) -> impl IntoResponse {
-    let mut tenants = state.tenants.lock().unwrap();
-    let id = payload
-        .get("tenant_id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-    tenants.insert(id.to_string(), payload.clone());
+async fn create_tenant(State(state): State<AppState>, Json(payload): Json<Tenant>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    reg.tenants.insert(payload.tenant_id.clone(), payload.clone());
     (StatusCode::CREATED, Json(payload))
 }
 
-async fn get_tenant(
-    Path(tenant_id): Path<String>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let tenants = state.tenants.lock().unwrap();
-    if let Some(t) = tenants.get(&tenant_id) {
-        (StatusCode::OK, Json(t.clone()))
+async fn get_tenant(Path(id): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    if let Some(item) = reg.tenants.get(&id) {
+        (StatusCode::OK, Json(json!(item)))
     } else {
         (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
     }
 }
 
-async fn patch_tenant(
-    Path(tenant_id): Path<String>,
-    State(state): State<AppState>,
-    Json(payload): Json<Value>,
-) -> impl IntoResponse {
-    let mut tenants = state.tenants.lock().unwrap();
-    if let Some(t) = tenants.get_mut(&tenant_id) {
-        if let (Value::Object(mut base), Value::Object(new_data)) = (t.clone(), payload) {
-            base.extend(new_data);
-            *t = Value::Object(base);
-        }
-        (StatusCode::OK, Json(t.clone()))
+async fn patch_tenant(Path(id): Path<String>, State(state): State<AppState>, Json(payload): Json<Tenant>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    if reg.tenants.contains_key(&id) {
+        reg.tenants.insert(id.clone(), payload.clone());
+        (StatusCode::OK, Json(json!(payload)))
     } else {
         (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
     }
 }
 
+// -----------------------------------------------------------------------------
+// Principals
+// -----------------------------------------------------------------------------
+async fn list_principals(State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    let items: Vec<Principal> = reg.principals.values().cloned().collect();
+    (StatusCode::OK, Json(items))
+}
+
+async fn create_principal(State(state): State<AppState>, Json(payload): Json<Principal>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    reg.principals.insert(payload.principal_id.clone(), payload.clone());
+    (StatusCode::CREATED, Json(payload))
+}
+
+async fn get_principal(Path(id): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    if let Some(item) = reg.principals.get(&id) {
+        (StatusCode::OK, Json(json!(item)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
+    }
+}
+
+async fn patch_principal(Path(id): Path<String>, State(state): State<AppState>, Json(payload): Json<Principal>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    if reg.principals.contains_key(&id) {
+        reg.principals.insert(id.clone(), payload.clone());
+        (StatusCode::OK, Json(json!(payload)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
+    }
+}
+
+// -----------------------------------------------------------------------------
 // Devices
-async fn list_devices(
-    Path(tenant_id): Path<String>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let devices = state.devices.lock().unwrap();
-    let tenant_devices: Vec<DeviceStatus> = devices
-        .values()
-        .filter(|d| d.tenant_id == tenant_id)
-        .cloned()
-        .collect();
-    (StatusCode::OK, Json(tenant_devices))
+// -----------------------------------------------------------------------------
+async fn list_devices(State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    let items: Vec<DekDevice> = reg.devices.values().cloned().collect();
+    (StatusCode::OK, Json(items))
 }
 
-async fn get_device_info(
-    Path((tenant_id, device_id)): Path<(String, String)>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let devices = state.devices.lock().unwrap();
-    if let Some(dev) = devices.get(&device_id) {
-        if dev.tenant_id == tenant_id {
-            return (StatusCode::OK, Json(json!(dev.clone())));
-        }
+async fn create_device(State(state): State<AppState>, Json(payload): Json<DekDevice>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    reg.devices.insert(payload.device_id.clone(), payload.clone());
+    (StatusCode::CREATED, Json(payload))
+}
+
+async fn get_device(Path(id): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    if let Some(item) = reg.devices.get(&id) {
+        (StatusCode::OK, Json(json!(item)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
     }
-    (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" })))
 }
 
-#[derive(serde::Deserialize)]
-struct PatchDeviceReq {
-    profile: Option<String>,
-}
-
-async fn patch_device(
-    Path((tenant_id, device_id)): Path<(String, String)>,
-    State(state): State<AppState>,
-    Json(req): Json<PatchDeviceReq>,
-) -> impl IntoResponse {
-    let mut devices = state.devices.lock().unwrap();
-    if let Some(dev) = devices.get_mut(&device_id) {
-        if dev.tenant_id == tenant_id {
-            if let Some(p) = req.profile {
-                dev.profile = p;
-            }
-            return (StatusCode::OK, Json(json!(dev.clone())));
-        }
+async fn patch_device(Path(id): Path<String>, State(state): State<AppState>, Json(payload): Json<DekDevice>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    if reg.devices.contains_key(&id) {
+        reg.devices.insert(id.clone(), payload.clone());
+        (StatusCode::OK, Json(json!(payload)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
     }
-    (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" })))
 }
 
+// -----------------------------------------------------------------------------
 // Agents
-async fn list_agents(
-    Path(tenant_id): Path<String>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let agents = state.agents.lock().unwrap();
-    let res: Vec<Value> = agents
-        .values()
-        .filter(|a| a.get("tenant_id").and_then(|v| v.as_str()) == Some(&tenant_id))
-        .cloned()
-        .collect();
-    (StatusCode::OK, Json(res))
+// -----------------------------------------------------------------------------
+async fn list_agents(State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    let items: Vec<AiAgent> = reg.agents.values().cloned().collect();
+    (StatusCode::OK, Json(items))
 }
 
-async fn create_agent(
-    Path(tenant_id): Path<String>,
-    State(state): State<AppState>,
-    Json(mut payload): Json<Value>,
-) -> impl IntoResponse {
-    let mut agents = state.agents.lock().unwrap();
-    payload["tenant_id"] = json!(tenant_id);
-    let id = payload
-        .get("agent_id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-    agents.insert(id.to_string(), payload.clone());
+async fn create_agent(State(state): State<AppState>, Json(payload): Json<AiAgent>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    reg.agents.insert(payload.agent_id.clone(), payload.clone());
     (StatusCode::CREATED, Json(payload))
 }
 
-async fn get_agent(
-    Path((tenant_id, agent_id)): Path<(String, String)>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let agents = state.agents.lock().unwrap();
-    if let Some(a) = agents.get(&agent_id) {
-        if a.get("tenant_id").and_then(|v| v.as_str()) == Some(&tenant_id) {
-            return (StatusCode::OK, Json(a.clone()));
-        }
+async fn get_agent(Path(id): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    if let Some(item) = reg.agents.get(&id) {
+        (StatusCode::OK, Json(json!(item)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
     }
-    (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
 }
 
-async fn patch_agent(
-    Path((tenant_id, agent_id)): Path<(String, String)>,
-    State(state): State<AppState>,
-    Json(payload): Json<Value>,
-) -> impl IntoResponse {
-    let mut agents = state.agents.lock().unwrap();
-    if let Some(a) = agents.get_mut(&agent_id) {
-        if a.get("tenant_id").and_then(|v| v.as_str()) == Some(&tenant_id) {
-            if let (Value::Object(mut base), Value::Object(new_data)) = (a.clone(), payload) {
-                base.extend(new_data);
-                *a = Value::Object(base);
-            }
-            return (StatusCode::OK, Json(a.clone()));
-        }
+async fn patch_agent(Path(id): Path<String>, State(state): State<AppState>, Json(payload): Json<AiAgent>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    if reg.agents.contains_key(&id) {
+        reg.agents.insert(id.clone(), payload.clone());
+        (StatusCode::OK, Json(json!(payload)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
     }
-    (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
 }
 
-// Entities
-async fn list_entities(
-    Path(tenant_id): Path<String>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let entities = state.entities.lock().unwrap();
-    let res: Vec<Value> = entities
-        .values()
-        .filter(|e| e.get("tenant_id").and_then(|v| v.as_str()) == Some(&tenant_id))
-        .cloned()
-        .collect();
-    (StatusCode::OK, Json(res))
+// -----------------------------------------------------------------------------
+// MCP Servers
+// -----------------------------------------------------------------------------
+async fn list_mcp_servers(State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    let items: Vec<McpServer> = reg.mcp_servers.values().cloned().collect();
+    (StatusCode::OK, Json(items))
 }
 
-async fn create_entity(
-    Path(tenant_id): Path<String>,
-    State(state): State<AppState>,
-    Json(mut payload): Json<Value>,
-) -> impl IntoResponse {
-    let mut entities = state.entities.lock().unwrap();
-    payload["tenant_id"] = json!(tenant_id);
-    let id = payload
-        .get("entity_id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-    entities.insert(id.to_string(), payload.clone());
+async fn create_mcp_server(State(state): State<AppState>, Json(payload): Json<McpServer>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    reg.mcp_servers.insert(payload.server_id.clone(), payload.clone());
     (StatusCode::CREATED, Json(payload))
 }
 
-async fn get_entity(
-    Path((tenant_id, entity_id)): Path<(String, String)>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let entities = state.entities.lock().unwrap();
-    if let Some(e) = entities.get(&entity_id) {
-        if e.get("tenant_id").and_then(|v| v.as_str()) == Some(&tenant_id) {
-            return (StatusCode::OK, Json(e.clone()));
-        }
+async fn get_mcp_server(Path(id): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    if let Some(item) = reg.mcp_servers.get(&id) {
+        (StatusCode::OK, Json(json!(item)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
     }
-    (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
 }
 
+async fn patch_mcp_server(Path(id): Path<String>, State(state): State<AppState>, Json(payload): Json<McpServer>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    if reg.mcp_servers.contains_key(&id) {
+        reg.mcp_servers.insert(id.clone(), payload.clone());
+        (StatusCode::OK, Json(json!(payload)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Tools
+// -----------------------------------------------------------------------------
+async fn list_tools(State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    let items: Vec<Tool> = reg.tools.values().cloned().collect();
+    (StatusCode::OK, Json(items))
+}
+
+async fn create_tool(State(state): State<AppState>, Json(payload): Json<Tool>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    reg.tools.insert(payload.tool_id.clone(), payload.clone());
+    (StatusCode::CREATED, Json(payload))
+}
+
+async fn get_tool(Path(id): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    if let Some(item) = reg.tools.get(&id) {
+        (StatusCode::OK, Json(json!(item)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
+    }
+}
+
+async fn patch_tool(Path(id): Path<String>, State(state): State<AppState>, Json(payload): Json<Tool>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    if reg.tools.contains_key(&id) {
+        reg.tools.insert(id.clone(), payload.clone());
+        (StatusCode::OK, Json(json!(payload)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
+    }
+}
+
+// -----------------------------------------------------------------------------
 // Resources
-async fn list_resources(
-    Path(tenant_id): Path<String>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let resources = state.resources.lock().unwrap();
-    let res: Vec<Value> = resources
-        .values()
-        .filter(|r| r.get("tenant_id").and_then(|v| v.as_str()) == Some(&tenant_id))
-        .cloned()
-        .collect();
-    (StatusCode::OK, Json(res))
+// -----------------------------------------------------------------------------
+async fn list_resources(State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    let items: Vec<Resource> = reg.resources.values().cloned().collect();
+    (StatusCode::OK, Json(items))
 }
 
-async fn create_resource(
-    Path(tenant_id): Path<String>,
-    State(state): State<AppState>,
-    Json(mut payload): Json<Value>,
-) -> impl IntoResponse {
-    let mut resources = state.resources.lock().unwrap();
-    payload["tenant_id"] = json!(tenant_id);
-    let id = payload
-        .get("resource_id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-    resources.insert(id.to_string(), payload.clone());
+async fn create_resource(State(state): State<AppState>, Json(payload): Json<Resource>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    reg.resources.insert(payload.resource_id.clone(), payload.clone());
     (StatusCode::CREATED, Json(payload))
 }
 
-async fn get_resource(
-    Path((tenant_id, resource_id)): Path<(String, String)>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let resources = state.resources.lock().unwrap();
-    if let Some(r) = resources.get(&resource_id) {
-        if r.get("tenant_id").and_then(|v| v.as_str()) == Some(&tenant_id) {
-            return (StatusCode::OK, Json(r.clone()));
-        }
+async fn get_resource(Path(id): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    if let Some(item) = reg.resources.get(&id) {
+        (StatusCode::OK, Json(json!(item)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
     }
-    (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
 }
 
+async fn patch_resource(Path(id): Path<String>, State(state): State<AppState>, Json(payload): Json<Resource>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    if reg.resources.contains_key(&id) {
+        reg.resources.insert(id.clone(), payload.clone());
+        (StatusCode::OK, Json(json!(payload)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
+    }
+}
+
+// -----------------------------------------------------------------------------
 // Relationships
-async fn list_relationships(
-    Path(tenant_id): Path<String>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let relationships = state.relationships.lock().unwrap();
-    let res: Vec<Value> = relationships
-        .iter()
-        .filter(|r| r.get("tenant_id").and_then(|v| v.as_str()) == Some(&tenant_id))
-        .cloned()
-        .collect();
-    (StatusCode::OK, Json(res))
+// -----------------------------------------------------------------------------
+async fn list_relationships(State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    let items: Vec<Relationship> = reg.relationships.clone();
+    (StatusCode::OK, Json(items))
 }
 
-async fn create_relationship(
-    Path(tenant_id): Path<String>,
-    State(state): State<AppState>,
-    Json(mut payload): Json<Value>,
-) -> impl IntoResponse {
-    let mut relationships = state.relationships.lock().unwrap();
-    payload["tenant_id"] = json!(tenant_id);
-    relationships.push(payload.clone());
+async fn create_relationship(State(state): State<AppState>, Json(payload): Json<Relationship>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    reg.relationships.push(payload.clone());
     (StatusCode::CREATED, Json(payload))
+}
+
+// -----------------------------------------------------------------------------
+// Policies
+// -----------------------------------------------------------------------------
+async fn list_policies(State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    let items: Vec<Policy> = reg.policies.values().cloned().collect();
+    (StatusCode::OK, Json(items))
+}
+
+async fn create_policy(State(state): State<AppState>, Json(payload): Json<Policy>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    reg.policies.insert(payload.policy_id.clone(), payload.clone());
+    (StatusCode::CREATED, Json(payload))
+}
+
+async fn get_policy(Path(id): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    if let Some(item) = reg.policies.get(&id) {
+        (StatusCode::OK, Json(json!(item)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
+    }
+}
+
+async fn patch_policy(Path(id): Path<String>, State(state): State<AppState>, Json(payload): Json<Policy>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    if reg.policies.contains_key(&id) {
+        reg.policies.insert(id.clone(), payload.clone());
+        (StatusCode::OK, Json(json!(payload)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
+    }
+}
+
+// -----------------------------------------------------------------------------
+// PEP Deployments
+// -----------------------------------------------------------------------------
+async fn list_pep_deployments(State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    let items: Vec<PepDeployment> = reg.pep_deployments.values().cloned().collect();
+    (StatusCode::OK, Json(items))
+}
+
+async fn create_pep_deployment(State(state): State<AppState>, Json(payload): Json<PepDeployment>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    reg.pep_deployments.insert(payload.pep_deployment_id.clone(), payload.clone());
+    (StatusCode::CREATED, Json(payload))
+}
+
+async fn get_pep_deployment(Path(id): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
+    let reg = state.registry.lock().unwrap();
+    if let Some(item) = reg.pep_deployments.get(&id) {
+        (StatusCode::OK, Json(json!(item)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
+    }
+}
+
+async fn patch_pep_deployment(Path(id): Path<String>, State(state): State<AppState>, Json(payload): Json<PepDeployment>) -> impl IntoResponse {
+    let mut reg = state.registry.lock().unwrap();
+    if reg.pep_deployments.contains_key(&id) {
+        reg.pep_deployments.insert(id.clone(), payload.clone());
+        (StatusCode::OK, Json(json!(payload)))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
+    }
 }

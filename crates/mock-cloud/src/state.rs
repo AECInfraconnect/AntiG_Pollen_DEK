@@ -11,13 +11,7 @@ pub struct DeviceStatus {
     pub last_health: String,
 }
 
-#[derive(Clone, Debug, serde::Serialize)]
-pub struct LogEntry {
-    pub device_id: String,
-    pub timestamp: String,
-    pub action: String,
-    pub decision: String,
-}
+use dek_domain_schema::TelemetryEvent;
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct AuditLog {
@@ -41,6 +35,12 @@ pub struct RolloutConfig {
     pub canary_percentage: u8, // 0-100
 }
 
+#[derive(Clone, Debug)]
+pub struct ChaosConfig {
+    pub outage_enabled: bool,
+    pub global_latency_ms: u64,
+}
+
 #[derive(Clone)]
 pub struct AppState {
     pub revision: Arc<AtomicUsize>,
@@ -49,21 +49,33 @@ pub struct AppState {
     pub pending: Arc<Mutex<HashMap<String, u32>>>,
     /// device_id -> DeviceStatus
     pub devices: Arc<Mutex<HashMap<String, DeviceStatus>>>,
-    /// decision logs buffer
-    pub decision_logs: Arc<Mutex<VecDeque<LogEntry>>>,
+    /// telemetry events buffer
+    pub telemetry_events: Arc<Mutex<VecDeque<TelemetryEvent>>>,
     /// rollout config
     pub rollout: Arc<Mutex<RolloutConfig>>,
     /// admin audit logs
     pub audit_logs: Arc<Mutex<Vec<AuditLog>>>,
     /// Pending policy publications for maker-checker
     pub pending_policies: Arc<Mutex<HashMap<String, PolicyBundle>>>,
-    // New registries
-    pub tenants: Arc<Mutex<HashMap<String, serde_json::Value>>>,
-    pub agents: Arc<Mutex<HashMap<String, serde_json::Value>>>,
-    pub entities: Arc<Mutex<HashMap<String, serde_json::Value>>>,
-    pub resources: Arc<Mutex<HashMap<String, serde_json::Value>>>,
-    pub relationships: Arc<Mutex<Vec<serde_json::Value>>>,
     pub trusted_keys: Arc<Mutex<Vec<serde_json::Value>>>,
+    /// chaos testing settings
+    pub chaos_config: Arc<Mutex<ChaosConfig>>,
+    // Registry state for Phase 1
+    pub registry: Arc<Mutex<RegistryState>>,
+}
+
+#[derive(Clone, Default)]
+pub struct RegistryState {
+    pub tenants: HashMap<String, dek_domain_schema::Tenant>,
+    pub principals: HashMap<String, dek_domain_schema::Principal>,
+    pub devices: HashMap<String, dek_domain_schema::DekDevice>,
+    pub agents: HashMap<String, dek_domain_schema::AiAgent>,
+    pub mcp_servers: HashMap<String, dek_domain_schema::McpServer>,
+    pub tools: HashMap<String, dek_domain_schema::Tool>,
+    pub resources: HashMap<String, dek_domain_schema::Resource>,
+    pub relationships: Vec<dek_domain_schema::Relationship>,
+    pub policies: HashMap<String, dek_domain_schema::Policy>,
+    pub pep_deployments: HashMap<String, dek_domain_schema::PepDeployment>,
 }
 
 pub fn rand_hex(n_bytes: usize) -> String {
