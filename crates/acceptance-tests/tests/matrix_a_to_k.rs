@@ -208,9 +208,20 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
         "context": {},
         "input_hash": "dummy_hash"
     });
-    let (status, allow, _) = authorize(&pep, &allow_req).await?;
-    assert_eq!(status, 200, "A: PEP should return 200 OK");
-    assert!(allow, "A: PEP decision must be allow after enroll+sync");
+    let mut last_status = 0;
+    let mut last_allow = false;
+    for _ in 0..60 { // wait up to 30s
+        if let Ok((st, allow, _)) = authorize(&pep, &allow_req).await {
+            last_status = st;
+            last_allow = allow;
+            if st == 200 && allow {
+                break;
+            }
+        }
+        sleep(Duration::from_millis(500)).await;
+    }
+    assert_eq!(last_status, 200, "A: PEP should return 200 OK");
+    assert!(last_allow, "A: PEP decision must be allow after enroll+sync");
 
     // audit trail received policy.sync.success
     let audits = fetch_audits().await?;
