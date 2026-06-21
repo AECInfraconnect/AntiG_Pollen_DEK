@@ -1,0 +1,13 @@
+[package]
+name = "dek-ebpf-prog"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aya-bpf = "0.1.0"
+aya-log-ebpf = "0.1.0"
+dek-ebpf-common = { path = "../dek-ebpf-common" }
+network-types = "0.0.5"
+
+[features]
+default = []

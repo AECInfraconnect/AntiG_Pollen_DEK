@@ -28,6 +28,7 @@ use tracing::{debug, error, info, warn, Instrument};
 use uuid::Uuid;
 
 mod service_integration;
+mod ebpf;
 
 const IPC_READ_TIMEOUT_SECS: u64 = 5;
 const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
@@ -369,6 +370,11 @@ fn main() -> Result<()> {
 async fn core_main() -> Result<()> {
     tracing_subscriber::fmt::init();
     info!("Starting Pollen DEK Core Supervisor...");
+
+    // Load Layer 2 eBPF Guardrails (Linux only)
+    if let Err(e) = ebpf::load_and_attach() {
+        tracing::error!("Failed to initialize eBPF Layer 2 guardrails: {}", e);
+    }
 
     let pollen_cloud_url = get_env_var("POLLEN_CLOUD_URL", "https://127.0.0.1:43891");
     let ipc_listen_addr = get_env_var("DEK_IPC_ADDR", "127.0.0.1:43889");

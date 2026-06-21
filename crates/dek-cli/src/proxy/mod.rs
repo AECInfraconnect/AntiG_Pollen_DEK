@@ -1,0 +1,36 @@
+use anyhow::Result;
+
+#[cfg(windows)]
+mod windows;
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(target_os = "linux")]
+mod linux;
+
+pub fn enable_system_proxy() -> Result<()> {
+    #[cfg(windows)]
+    return windows::enable();
+    
+    #[cfg(target_os = "macos")]
+    return macos::enable();
+    
+    #[cfg(target_os = "linux")]
+    return linux::enable();
+    
+    #[allow(unreachable_code)]
+    Ok(())
+}
+
+pub fn disable_system_proxy() -> Result<()> {
+    #[cfg(windows)]
+    return windows::disable();
+    
+    #[cfg(target_os = "macos")]
+    return macos::disable();
+    
+    #[cfg(target_os = "linux")]
+    return linux::disable();
+    
+    #[allow(unreachable_code)]
+    Ok(())
+}
