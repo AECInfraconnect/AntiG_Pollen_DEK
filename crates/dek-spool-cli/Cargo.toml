@@ -1,0 +1,9 @@
+[package]
+name = "dek-spool-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dek-secure-spool = { path = "../dek-secure-spool" }
+uuid = { version = "1", features = ["v4", "serde"] }
+serde_json = "1"
