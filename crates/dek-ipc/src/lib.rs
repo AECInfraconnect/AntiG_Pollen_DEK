@@ -24,7 +24,11 @@ pub enum IpcRequest {
     ReloadConfig,
     Status,
     RotateIdentity,
-    FingerprintAction { action: String, payload: Option<Vec<u8>>, sig: Option<String> },
+    FingerprintAction {
+        action: String,
+        payload: Option<Vec<u8>>,
+        sig: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,6 +44,9 @@ pub enum IpcResponse {
         status: String,
     },
     ServiceStatus(ServiceStatus),
-    FingerprintStatus { version: u64, message: String },
+    FingerprintStatus {
+        version: u64,
+        message: String,
+    },
     Error(String),
 }

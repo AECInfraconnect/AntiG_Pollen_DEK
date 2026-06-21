@@ -8,20 +8,32 @@ pub struct FingerprintDb {
 
 impl FingerprintDb {
     pub fn from_baseline(base: FingerprintDefinition) -> Self {
-        let by_id = base.signatures.into_iter().map(|s| (s.id.clone(), s)).collect();
-        Self { version: base.definition_version, by_id }
+        let by_id = base
+            .signatures
+            .into_iter()
+            .map(|s| (s.id.clone(), s))
+            .collect();
+        Self {
+            version: base.definition_version,
+            by_id,
+        }
     }
 
     pub fn apply(&mut self, def: FingerprintDefinition) -> anyhow::Result<()> {
         match def.kind {
             DefinitionKind::Full => {
-                self.by_id = def.signatures.into_iter().map(|s| (s.id.clone(), s)).collect();
+                self.by_id = def
+                    .signatures
+                    .into_iter()
+                    .map(|s| (s.id.clone(), s))
+                    .collect();
             }
             DefinitionKind::Delta => {
                 if def.base_version != Some(self.version) {
                     anyhow::bail!(
                         "delta base {:?} != current {} — ต้องดึง full",
-                        def.base_version, self.version
+                        def.base_version,
+                        self.version
                     );
                 }
                 for sig in def.signatures {
@@ -99,7 +111,10 @@ mod tests {
 
     #[test]
     fn delta_rejects_wrong_base() {
-        let mut db = FingerprintDb { version: 5, by_id: Default::default() };
+        let mut db = FingerprintDb {
+            version: 5,
+            by_id: Default::default(),
+        };
         let bad = FingerprintDefinition {
             schema_version: "v2".into(),
             definition_version: 7,
