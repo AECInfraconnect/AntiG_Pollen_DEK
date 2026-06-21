@@ -20,7 +20,7 @@ network-types = "0.0.6"
 
 [[bin]]
 name = "dek-ebpf-prog"
-path = "src/lib.rs"
+path = "src/main.rs"
 
 [features]
 default = []
