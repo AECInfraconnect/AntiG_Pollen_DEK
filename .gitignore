@@ -1,3 +1,9 @@
 certs/
 target/
 **/*.rs.bk
+
+tmp_*/
+*_wiring.md
+*.bak
+*.orig
+/staging/
