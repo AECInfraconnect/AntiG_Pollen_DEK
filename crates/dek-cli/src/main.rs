@@ -83,6 +83,24 @@ enum Commands {
     },
     /// Print DEK capabilities matrix
     Capabilities,
+    /// Switch control-plane profile (local <-> cloud)
+    Profile {
+        #[command(subcommand)]
+        action: ProfileAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum ProfileAction {
+    /// Set profile: local (default url http://127.0.0.1:3000) or cloud
+    Set {
+        mode: String,
+        #[arg(long)] url: Option<String>,
+        #[arg(long)] tenant_id: Option<String>,
+        #[arg(long)] trusted_key: Option<String>,
+    },
+    /// Show current profile
+    Show,
 }
 
 #[derive(Subcommand)]
@@ -349,6 +367,13 @@ async fn main() -> Result<()> {
             });
             println!("{}", serde_json::to_string_pretty(&caps)?);
         }
+        Commands::Profile { action } => match action {
+            ProfileAction::Set { mode, url, tenant_id, trusted_key } => {
+                let m = mode.parse::<service::profile::ProfileMode>()?;
+                service::profile::set_profile(m, url, tenant_id, trusted_key)?;
+            }
+            ProfileAction::Show => service::profile::show_profile()?,
+        },
     }
     Ok(())
 }

@@ -23,6 +23,17 @@ pub trait RegistryStore: Send + Sync {
 
     async fn upsert_relationship(&self, relationship: Relationship) -> Result<Relationship>;
     async fn list_relationships(&self, tenant_id: &str) -> Result<Vec<Relationship>>;
+
+    async fn upsert_policy_raw(&self, tenant: &str, id: &str, data: &serde_json::Value) -> Result<()>;
+    async fn get_policy_raw(&self, tenant: &str, id: &str) -> Result<Option<serde_json::Value>>;
+    async fn put_blob(&self, tenant: &str, path: &str, bytes: &[u8]) -> Result<()>;
+    async fn get_blob(&self, tenant: &str, path: &str) -> Result<Option<Vec<u8>>>;
+}
+
+#[async_trait::async_trait]
+pub trait TelemetryStore: Send + Sync {
+    async fn put_telemetry(&self, tenant: &str, kind: &str, event_id: &str, data: &serde_json::Value) -> Result<()>;
+    async fn list_telemetry(&self, tenant: &str, kind: &str) -> Result<Vec<serde_json::Value>>;
 }
 
 pub struct SqliteStore {
@@ -259,5 +270,64 @@ impl RegistryStore for SqliteStore {
 
     async fn list_relationships(&self, tenant_id: &str) -> Result<Vec<Relationship>> {
         self.list_objects(tenant_id, "relationship").await
+    }
+
+    async fn upsert_policy_raw(&self, tenant: &str, id: &str, data: &serde_json::Value) -> Result<()> {
+        self.upsert_object(tenant, "policy", id, "active", "local", data).await
+    }
+
+    async fn get_policy_raw(&self, tenant: &str, id: &str) -> Result<Option<serde_json::Value>> {
+        self.get_object(tenant, "policy", id).await
+    }
+
+    async fn put_blob(&self, tenant: &str, path: &str, bytes: &[u8]) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO bundle_blobs (tenant_id, path, bytes) VALUES (?1, ?2, ?3) ON CONFLICT(tenant_id, path) DO UPDATE SET bytes=excluded.bytes"
+        )
+        .bind(tenant)
+        .bind(path)
+        .bind(bytes)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn get_blob(&self, tenant: &str, path: &str) -> Result<Option<Vec<u8>>> {
+        let row = sqlx::query("SELECT bytes FROM bundle_blobs WHERE tenant_id = ?1 AND path = ?2")
+            .bind(tenant)
+            .bind(path)
+            .fetch_optional(&self.pool)
+            .await?;
+        if let Some(row) = row {
+            let bytes: Vec<u8> = row.try_get("bytes")?;
+            Ok(Some(bytes))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl TelemetryStore for SqliteStore {
+    async fn put_telemetry(&self, tenant: &str, kind: &str, event_id: &str, data: &serde_json::Value) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO telemetry_events (tenant_id, event_type, event_id, data_json, created_at)
+             VALUES (?1,?2,?3,?4,?5)
+             ON CONFLICT(tenant_id,event_id) DO UPDATE SET data_json=?4"
+        )
+        .bind(tenant).bind(kind).bind(event_id)
+        .bind(serde_json::to_string(data)?)
+        .bind(chrono::Utc::now().to_rfc3339())
+        .execute(&self.pool).await?;
+        Ok(())
+    }
+    async fn list_telemetry(&self, tenant: &str, kind: &str) -> Result<Vec<serde_json::Value>> {
+        let rows = sqlx::query(
+            "SELECT data_json FROM telemetry_events WHERE tenant_id=?1 AND event_type=?2 ORDER BY created_at DESC LIMIT 1000")
+            .bind(tenant).bind(kind).fetch_all(&self.pool).await?;
+        Ok(rows.into_iter().filter_map(|r| {
+            let j: String = r.try_get("data_json").ok()?;
+            serde_json::from_str(&j).ok()
+        }).collect())
     }
 }

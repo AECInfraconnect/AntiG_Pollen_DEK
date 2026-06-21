@@ -77,6 +77,7 @@ impl PolicySyncer {
         cloud_url: String,
         pinned_b64: String,
     ) -> Arc<Self> {
+        tracing::info!("DEBUG SYNCR: PolicySyncer::new called with pinned_b64: {}", pinned_b64);
         let audit = AuditTrail::new(telemetry.clone(), device_id.clone(), tenant_id.clone());
         let set = keymgr::load_or_bootstrap(&pinned_b64);
         bundle_agent.update_keys(set);
@@ -149,8 +150,10 @@ impl PolicySyncer {
                 self.audit.activated(&version, "full");
 
                 let expires = read_manifest_expiry_unix(&manifest_path);
+                // Fix B: If sync succeeded but manifest has no expires_at, treat as distant future, not cold start.
+                let fallback_expiry = parse_rfc3339_to_unix("2036-01-01T00:00:00Z").unwrap_or(-1);
                 self.bundle_expires
-                    .store(expires.unwrap_or(-1), Ordering::SeqCst);
+                    .store(expires.unwrap_or(fallback_expiry), Ordering::SeqCst);
                 self.last_sync.store(now_unix(), Ordering::SeqCst);
                 self.bundle_version.store(Arc::new(Some(version.clone())));
                 self.recompute_state();

@@ -24,6 +24,7 @@ chrono = { version = "0.4", features = ["serde"] }
 hex = "0.4"
 arc-swap = "1"
 thiserror = "1"
+dek-control-plane-api = { version = "0.1.0", path = "../dek-control-plane-api" }
 [lints]
 workspace = true
 

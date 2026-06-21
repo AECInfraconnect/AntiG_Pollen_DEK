@@ -38,39 +38,45 @@ pub fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
     }
 
     if let Some(openfga) = payload.get("openfga") {
-        match registry.build_adapter("openfga", openfga) {
-            Ok(adapter) => router.register_evaluator("openfga", adapter),
-            Err(e) => {
-                if registry.get("openfga").is_none() {
-                    warn!("OpenFGA adapter requested but not compiled in this build.");
-                } else {
-                    error!("Failed to initialize OpenFGA Adapter: {}", e);
+        if !openfga.is_null() {
+            match registry.build_adapter("openfga", openfga) {
+                Ok(adapter) => router.register_evaluator("openfga", adapter),
+                Err(e) => {
+                    if registry.get("openfga").is_none() {
+                        warn!("OpenFGA adapter requested but not compiled in this build.");
+                    } else {
+                        error!("Failed to initialize OpenFGA Adapter: {}", e);
+                    }
                 }
             }
         }
     }
 
     if let Some(cedar) = payload.get("cedar") {
-        match registry.build_adapter("cedar", cedar) {
-            Ok(adapter) => router.register_evaluator("cedar", adapter),
-            Err(e) => {
-                if registry.get("cedar").is_none() {
-                    warn!("Cedar adapter requested but not compiled in this build.");
-                } else {
-                    error!("Failed to initialize Cedar Adapter: {}", e);
+        if !cedar.is_null() {
+            match registry.build_adapter("cedar", cedar) {
+                Ok(adapter) => router.register_evaluator("cedar", adapter),
+                Err(e) => {
+                    if registry.get("cedar").is_none() {
+                        warn!("Cedar adapter requested but not compiled in this build.");
+                    } else {
+                        error!("Failed to initialize Cedar Adapter: {}", e);
+                    }
                 }
             }
         }
     }
 
     if let Some(wasm) = payload.get("opa_wasm") {
-        match registry.build_adapter("opa_wasm", wasm) {
-            Ok(adapter) => router.register_evaluator("opa_wasm", adapter),
-            Err(e) => {
-                if registry.get("opa_wasm").is_none() {
-                    warn!("OPA adapter requested but not compiled in this build.");
-                } else {
-                    error!("Failed to initialize WASM Policy Runtime: {}", e);
+        if !wasm.is_null() {
+            match registry.build_adapter("opa_wasm", wasm) {
+                Ok(adapter) => router.register_evaluator("opa_wasm", adapter),
+                Err(e) => {
+                    if registry.get("opa_wasm").is_none() {
+                        warn!("OPA adapter requested but not compiled in this build.");
+                    } else {
+                        error!("Failed to initialize WASM Policy Runtime: {}", e);
+                    }
                 }
             }
         }

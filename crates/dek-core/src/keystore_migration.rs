@@ -9,6 +9,11 @@ use std::path::Path;
 use tracing::{error, info, warn};
 
 pub async fn run_migration(bootstrap: &BootstrapConfig, pollen_cloud_url: &str) -> bool {
+    if pollen_cloud_url.starts_with("http://") {
+        info!("Plain HTTP mode detected (Local/Dev). Skipping mTLS keystore migration.");
+        return true;
+    }
+
     info!("Starting Keystore Migration and Validation...");
     let keystore = get_keystore();
 

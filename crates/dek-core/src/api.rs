@@ -16,21 +16,25 @@ use serde_json::Value;
 use tracing::{error, info};
 
 use dek_policy_syncer::EnforcementState;
+use dek_telemetry::CloudTelemetrySink;
 
 #[derive(Clone)]
 struct ApiState {
     snapshot: Arc<ArcSwap<RuntimeSnapshot>>,
     enforcement: Arc<ArcSwap<EnforcementState>>,
+    telemetry: Option<Arc<CloudTelemetrySink>>,
 }
 
 pub async fn start_sidecar_api(
     snapshot: Arc<ArcSwap<RuntimeSnapshot>>,
     enforcement: Arc<ArcSwap<EnforcementState>>,
+    telemetry: Option<Arc<CloudTelemetrySink>>,
     port: u16,
 ) -> anyhow::Result<()> {
     let state = ApiState {
         snapshot,
         enforcement,
+        telemetry,
     };
 
     let app = Router::new()
@@ -150,7 +154,7 @@ async fn check(
         latency_ms: latency,
     };
 
-    let mut json_resp = serde_json::to_value(response).unwrap_or_else(|_| serde_json::json!({}));
+    let mut json_resp = serde_json::to_value(&response).unwrap_or_else(|_| serde_json::json!({}));
     if has_require_approval {
         if let Some(obj) = json_resp.as_object_mut() {
             obj.insert(
@@ -165,6 +169,32 @@ async fn check(
                 }),
             );
         }
+    }
+
+    if let Some(telemetry) = &state.telemetry {
+        let event = serde_json::json!({
+            "event_type": "decision",
+            "schema_version": "1.0",
+            "event_id": response.decision_id,
+            "trace_id": "",
+            "span_id": "",
+            "tenant_id": req.context.get("tenant_id").and_then(|v| v.as_str()).unwrap_or("local").to_string(),
+            "device_id": "api-sidecar",
+            "spiffe_id": "",
+            "pep_type": "api",
+            "agent_id": "dek",
+            "principal_id": req.principal,
+            "action": req.action,
+            "resource_id": req.resource,
+            "decision": if res.allow { "allow" } else { "deny" },
+            "reason": res.reason,
+            "latency_ms": latency,
+            "policy_bundle_id": "active",
+            "policy_bundle_version": "v1",
+            "evaluator_type": res.evaluator_type,
+            "effects": response.effects,
+        });
+        telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);
     }
 
     (StatusCode::OK, Json(json_resp))
@@ -222,7 +252,7 @@ async fn batch_check(
         });
         let latency = start.elapsed().as_millis() as u64;
 
-        responses.push(DecisionResponse {
+        let response = DecisionResponse {
             decision_id: uuid::Uuid::new_v4().to_string(),
             allow: res.allow,
             reason_code: if res.allow {
@@ -230,14 +260,42 @@ async fn batch_check(
             } else {
                 "DENIED_BY_POLICY".into()
             },
-            reason: res.reason,
+            reason: res.reason.clone(),
             obligations: vec![],
-            effects: res.effects,
+            effects: res.effects.clone(),
             policy_bundle_id: "active".into(),
             policy_bundle_version: "v1".into(),
             evaluator_results: vec![],
             latency_ms: latency,
-        });
+        };
+
+        if let Some(telemetry) = &state.telemetry {
+            let event = serde_json::json!({
+                "event_type": "decision",
+                "schema_version": "1.0",
+                "event_id": response.decision_id.clone(),
+                "trace_id": "",
+                "span_id": "",
+                "tenant_id": req.context.get("tenant_id").and_then(|v| v.as_str()).unwrap_or("local").to_string(),
+                "device_id": "api-sidecar",
+                "spiffe_id": "",
+                "pep_type": "api",
+                "agent_id": "dek",
+                "principal_id": req.principal.clone(),
+                "action": req.action.clone(),
+                "resource_id": req.resource.clone(),
+                "decision": if res.allow { "allow" } else { "deny" },
+                "reason": res.reason.clone(),
+                "latency_ms": latency,
+                "policy_bundle_id": "active",
+                "policy_bundle_version": "v1",
+                "evaluator_type": res.evaluator_type.clone(),
+                "effects": res.effects.clone(),
+            });
+            telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);
+        }
+        
+        responses.push(response);
     }
 
     (StatusCode::OK, Json(responses))
