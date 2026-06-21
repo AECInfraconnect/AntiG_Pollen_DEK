@@ -116,3 +116,38 @@ pub struct DnsCaptureEvent {
     pub len: u16,
     pub data: [u8; DNS_PAYLOAD_MAX],
 }
+
+#[allow(unsafe_code)]
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for Ipv4LpmKey {}
+#[allow(unsafe_code)]
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for Ipv6LpmKey {}
+#[allow(unsafe_code)]
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for DekIp4Key {}
+#[allow(unsafe_code)]
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for DekIp6Key {}
+#[allow(unsafe_code)]
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for DekDnsCacheValue {}
+#[allow(unsafe_code)]
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for DekConn4Key {}
+#[allow(unsafe_code)]
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for DekConnDecisionValue {}
+#[allow(unsafe_code)]
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for DekMetrics {}
+#[allow(unsafe_code)]
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for PolicyVerdict {}
+#[allow(unsafe_code)]
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for EgressEvent {}
+#[allow(unsafe_code)]
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for DnsCaptureEvent {}
+
