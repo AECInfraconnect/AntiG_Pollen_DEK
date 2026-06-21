@@ -183,7 +183,7 @@ pub async fn spawn_ipc_server_task(
                                                         }
                                                     }
                                                 },
-                                                IpcRequest::FingerprintAction { action, payload, sig } => {
+                                                IpcRequest::FingerprintAction { action, payload: _payload, sig: _sig } => {
                                                     info!("Received FingerprintAction: {}", action);
                                                     // TODO: wire to global FingerprintService when it's persisted to disk
                                                     IpcResponse::FingerprintStatus { version: 0, message: format!("{} processed", action) }
