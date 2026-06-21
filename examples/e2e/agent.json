@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "schema_version": "v1",
+    "tenant_id": "local",
+    "workspace_id": "default",
+    "environment_id": "local",
+    "created_at": "2026-06-10T00:00:00Z",
+    "updated_at": "2026-06-10T00:00:00Z",
+    "created_by": "local-admin",
+    "updated_by": "local-admin",
+    "source": "manual",
+    "status": "active",
+    "tags": ["e2e"]
+  },
+  "agent_id": "agent-claude-desktop",
+  "name": "Claude Desktop Local",
+  "agent_type": "claude_desktop",
+  "vendor": "anthropic",
+  "runtime": { "runtime_name": "desktop", "version": "latest" },
+  "entrypoints": [{ "command": "claude", "args": [] }],
+  "declared_tools": ["tool-safe-search", "tool-read-secret"],
+  "declared_resources": ["resource-local-files"],
+  "identity": { "process_path": "/Applications/Claude.app" },
+  "trust_level": "medium",
+  "capabilities": ["mcp_client", "tool_call"],
+  "labels": {}
+}

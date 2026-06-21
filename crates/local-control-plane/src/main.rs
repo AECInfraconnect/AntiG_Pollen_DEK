@@ -13,6 +13,7 @@ use tracing::info;
 mod auth;
 mod bundle;
 mod policy;
+mod compiler;
 mod push;
 mod registry;
 mod signing;
@@ -26,7 +27,7 @@ use signing::LocalSigner;
 pub struct AppState {
     pub identity: ControlPlaneIdentity,
     pub registry_store: Arc<dyn store::RegistryStore>,
-    pub policy_store: Arc<dyn store::RegistryStore>,
+    pub policy_store: Arc<dyn store::PolicyStore>,
     pub telemetry_store: Arc<dyn store::TelemetryStore>,
     pub signer: Arc<LocalSigner>,
     pub build_number: Arc<AtomicU64>,

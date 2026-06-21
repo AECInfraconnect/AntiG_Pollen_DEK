@@ -110,8 +110,9 @@ impl Authorization for ExtAuthzService {
             agent: None,
             action,
             resource: dek_decision::ResourceRef {
-                kind: "url".into(),
-                id: resource_id,
+                resource_type: "url".into(),
+                resource_id,
+                uri: None,
             },
             context: policy_input.clone(),
             input_hash: "ext_authz_hash".into(),

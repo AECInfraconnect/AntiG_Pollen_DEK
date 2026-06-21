@@ -250,8 +250,9 @@ async fn main() -> Result<()> {
                         .clone()
                         .unwrap_or(normalized.request_type.clone()),
                     resource: dek_decision::ResourceRef {
-                        kind: "mcp_tool".into(),
-                        id: server_id.clone(),
+                        resource_type: "mcp_tool".into(),
+                        resource_id: server_id.clone(),
+                        uri: None,
                     },
                     context: policy_input.clone(),
                     input_hash: "mock_hash".into(),

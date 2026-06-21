@@ -7,7 +7,16 @@ use axum::{
     Json, Router,
 };
 use dek_control_plane_api::policy::*;
+use dek_control_plane_api::policy::*;
 use serde_json::json;
+
+fn not_found() -> (StatusCode, Json<serde_json::Value>) {
+    (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
+}
+
+fn internal_error(e: impl std::fmt::Display) -> (StatusCode, Json<serde_json::Value>) {
+    (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()})))
+}
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -23,43 +32,70 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant_id/policies/:policy_id/publish",
             post(publish_policy),
         )
+        .route(
+            "/v1/tenants/:tenant_id/policies/:policy_id/validate",
+            post(validate_policy),
+        )
+        .route(
+            "/v1/tenants/:tenant_id/policies/:policy_id/simulate",
+            post(simulate_policy),
+        )
 }
 
 async fn list_policies(
-    Path(_tenant_id): Path<String>,
-    State(_state): State<AppState>,
+    Path(tenant_id): Path<String>,
+    State(state): State<AppState>,
 ) -> impl IntoResponse {
-    // TODO: implement with policy store
-    (StatusCode::OK, Json(json!([])))
+    match state.policy_store.list_policies(&tenant_id).await {
+        Ok(items) => (StatusCode::OK, Json(json!(items))),
+        Err(e) => internal_error(e),
+    }
 }
 
 async fn create_policy(
-    Path(_tenant_id): Path<String>,
-    State(_state): State<AppState>,
-    Json(payload): Json<PolicyDraft>,
+    Path(tenant_id): Path<String>,
+    State(state): State<AppState>,
+    Json(mut payload): Json<PolicyDraft>,
 ) -> impl IntoResponse {
-    (StatusCode::CREATED, Json(json!(payload)))
+    payload.meta.tenant_id = tenant_id;
+    match state.policy_store.upsert_policy(payload.clone()).await {
+        Ok(item) => (StatusCode::CREATED, Json(json!(item))),
+        Err(e) => internal_error(e),
+    }
 }
 
-async fn get_policy() -> impl IntoResponse {
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({"error": "not implemented"})),
-    )
+async fn get_policy(
+    Path((tenant_id, policy_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    match state.policy_store.get_policy(&tenant_id, &policy_id).await {
+        Ok(Some(item)) => (StatusCode::OK, Json(json!(item))),
+        Ok(None) => not_found(),
+        Err(e) => internal_error(e),
+    }
 }
 
-async fn patch_policy() -> impl IntoResponse {
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({"error": "not implemented"})),
-    )
+async fn patch_policy(
+    Path((tenant_id, _policy_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+    Json(mut payload): Json<PolicyDraft>,
+) -> impl IntoResponse {
+    payload.meta.tenant_id = tenant_id;
+    match state.policy_store.upsert_policy(payload.clone()).await {
+        Ok(item) => (StatusCode::OK, Json(json!(item))),
+        Err(e) => internal_error(e),
+    }
 }
 
-async fn delete_policy() -> impl IntoResponse {
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({"error": "not implemented"})),
-    )
+async fn delete_policy(
+    Path((tenant_id, policy_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    match state.policy_store.delete_policy(&tenant_id, &policy_id).await {
+        Ok(true) => (StatusCode::NO_CONTENT, Json(json!({}))),
+        Ok(false) => not_found(),
+        Err(e) => internal_error(e),
+    }
 }
 
 async fn publish_policy(
@@ -128,3 +164,33 @@ async fn publish_policy(
         "manifest": built.manifest
     })))
 }
+
+async fn validate_policy(
+    Path((tenant_id, policy_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let _ = (tenant_id, policy_id, state);
+    // Mock validate implementation
+    (
+        StatusCode::OK,
+        Json(json!({ "is_valid": true, "errors": [] })),
+    )
+}
+
+async fn simulate_policy(
+    Path((tenant_id, policy_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+    Json(input): Json<serde_json::Value>,
+) -> impl IntoResponse {
+    let _ = (tenant_id, policy_id, state, input);
+    // Mock simulate implementation
+    (
+        StatusCode::OK,
+        Json(json!({
+            "allowed": true,
+            "evaluation_time_ms": 2,
+            "log_output": ["mock simulate"]
+        })),
+    )
+}
+

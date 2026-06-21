@@ -245,3 +245,48 @@ pub struct RelationshipRef {
     pub object_type: String,
     pub object_id: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum BlackboxProviderType {
+    OpenAiCompatible,
+    Ollama,
+    HuggingFaceEndpoint,
+    AzureOpenAi,
+    AnthropicCompatible,
+    LocalModelServer,
+    CustomHttp,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct BlackboxModelRef {
+    pub model_id: String,
+    pub display_name: String,
+    pub context_window: Option<u32>,
+    pub pii_allowed: bool,
+    pub max_latency_ms: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DataBoundary {
+    LocalOnly,
+    PrivateNetwork,
+    ExternalCloud,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct BlackboxAiProvider {
+    pub meta: ObjectMeta,
+    pub provider_id: String,
+    pub name: String,
+    pub provider_type: BlackboxProviderType,
+    pub endpoint: Option<String>,
+    pub model_catalog: Vec<BlackboxModelRef>,
+    pub supported_tasks: Vec<String>,
+    pub data_boundary: DataBoundary,
+    pub auth_ref: Option<String>,
+    pub risk_level: RiskLevel,
+    pub labels: HashMap<String, String>,
+}

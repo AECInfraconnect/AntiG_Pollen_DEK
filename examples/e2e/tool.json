@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "schema_version": "v1",
+    "tenant_id": "local",
+    "workspace_id": "default",
+    "environment_id": "local",
+    "created_at": "2026-06-10T00:00:00Z",
+    "updated_at": "2026-06-10T00:00:00Z",
+    "created_by": "local-admin",
+    "updated_by": "local-admin",
+    "source": "manual",
+    "status": "active",
+    "tags": ["e2e"]
+  },
+  "tool_id": "tool-read-secret",
+  "mcp_server_id": "mcp-local-files",
+  "name": "Read Secret File",
+  "description": "Reads local secret files",
+  "input_schema": { "type": "object", "properties": { "path": { "type": "string" } } },
+  "output_schema": null,
+  "side_effect_level": "local",
+  "data_access_level": "restricted",
+  "risk_level": "critical"
+}
