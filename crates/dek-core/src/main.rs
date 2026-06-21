@@ -31,6 +31,7 @@ mod service_integration;
 mod ebpf;
 mod keystore_migration;
 mod updater;
+mod probation;
 
 const IPC_READ_TIMEOUT_SECS: u64 = 5;
 const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
@@ -417,24 +418,14 @@ async fn core_main() -> Result<()> {
 
     // A/B Update Probation Check
     let config_dir = dek_config::paths::get_config_dir();
-    let marker_path = config_dir.join("update_pending.json");
-    if marker_path.exists() {
-        info!("Probation marker found. Entering A/B update probation period (15s)...");
+    let pending_update = probation::detect(&config_dir);
+    if pending_update.is_some() {
+        info!("A/B update marker detected — probation will run once services are up");
         
         #[cfg(target_os = "linux")]
         {
             let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Watchdog]);
         }
-
-        tokio::spawn(async move {
-            tokio::time::sleep(tokio::time::Duration::from_secs(15)).await;
-            info!("Probation period passed successfully. Committing update.");
-            let _ = std::fs::remove_file(&marker_path);
-            if let Ok(exe_path) = std::env::current_exe() {
-                let backup_path = exe_path.with_extension("bak");
-                let _ = std::fs::remove_file(&backup_path);
-            }
-        });
     }
 
     // Load Layer 2 eBPF Guardrails (Linux only)
@@ -517,7 +508,7 @@ async fn core_main() -> Result<()> {
 
     let ipc_handle = spawn_ipc_server_task(
         cancel_token.clone(),
-        ipc_listen_addr,
+        ipc_listen_addr.clone(),
         telemetry_sink.clone(),
         bundle_agent.clone(),
         metrics_client.clone(),
@@ -527,6 +518,31 @@ async fn core_main() -> Result<()> {
 
     // Signal readiness to OS Service Managers BEFORE blocking on cloud sync
     service_integration::notify_ready();
+
+    if let Some(marker) = pending_update {
+        let config_dir = config_dir.clone();
+        let cloud = pollen_cloud_url.clone();
+        let bootstrap = bootstrap.clone();
+        let bundle_path = dek_config::paths::get_active_bundle_path();
+        let ipc_addr = ipc_listen_addr.clone();
+
+        tokio::spawn(async move {
+            let probe = move || {
+                let addr = ipc_addr.clone();
+                async move { ipc_health_ok(&addr).await }
+            };
+            probation::finalize(
+                config_dir,
+                cloud,
+                bootstrap,
+                bundle_path,
+                probation::ProbationSettings::default(),
+                marker,
+                probe,
+            )
+            .await;
+        });
+    }
 
     #[cfg(target_os = "linux")]
     {
@@ -636,6 +652,30 @@ async fn core_main() -> Result<()> {
     }
 
     Ok(())
+}
+
+async fn ipc_health_ok(addr: &str) -> bool {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    use tokio::time::{timeout, Duration};
+    match timeout(Duration::from_secs(2), tokio::net::TcpStream::connect(addr)).await {
+        Ok(Ok(mut stream)) => {
+            let req = serde_json::to_string(&dek_ipc::IpcMessage {
+                version: "1.0".to_string(),
+                payload: dek_ipc::IpcRequest::HealthCheck,
+            }).unwrap();
+            
+            if stream.write_all(format!("{req}\n").as_bytes()).await.is_err() {
+                return false;
+            }
+            
+            let mut line = String::new();
+            if BufReader::new(&mut stream).read_line(&mut line).await.is_ok() {
+                return line.contains("HEALTHY");
+            }
+            false
+        }
+        _ => false,
+    }
 }
 
 #[cfg(test)]

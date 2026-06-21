@@ -1016,6 +1016,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-auth"
+version = "0.1.0"
+dependencies = [
+ "jsonwebtoken 9.3.1",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tracing",
+]
+
+[[package]]
 name = "dek-bundle-sync"
 version = "0.1.0"
 dependencies = [
@@ -1095,6 +1106,7 @@ dependencies = [
  "reqwest",
  "sd-notify",
  "self-replace",
+ "serde",
  "serde_json",
  "tokio",
  "tokio-retry",
@@ -1161,9 +1173,11 @@ name = "dek-mcp-proxy"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arc-swap",
  "async-trait",
  "axum",
  "base64 0.22.1",
+ "dek-auth",
  "dek-cedar",
  "dek-config",
  "dek-mcp-normalizer",
@@ -1172,7 +1186,6 @@ dependencies = [
  "dek-policy-runtime",
  "dek-router-builder",
  "dek-wasm-host",
- "jsonwebtoken",
  "notify",
  "serde",
  "serde_json",
@@ -1186,7 +1199,9 @@ name = "dek-mcp-stdio-wrapper"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arc-swap",
  "clap",
+ "dek-auth",
  "dek-cedar",
  "dek-config",
  "dek-mcp-normalizer",
@@ -2333,6 +2348,21 @@ dependencies = [
 
 [[package]]
 name = "jsonwebtoken"
+version = "9.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a87cc7a48537badeae96744432de36f4be2b4a34a05a5ef32e9dd8a1c169dde"
+dependencies = [
+ "base64 0.22.1",
+ "js-sys",
+ "pem",
+ "ring 0.17.14",
+ "serde",
+ "serde_json",
+ "simple_asn1",
+]
+
+[[package]]
+name = "jsonwebtoken"
 version = "10.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eba32bfb4ffdeaca3e34431072faf01745c9b26d25504aa7a6cf5684334fc4fc"
@@ -2698,7 +2728,7 @@ dependencies = [
  "axum-server",
  "base64 0.22.1",
  "ed25519-dalek",
- "jsonwebtoken",
+ "jsonwebtoken 10.4.0",
  "rand 0.10.1",
  "rand_core 0.6.4",
  "rsa",

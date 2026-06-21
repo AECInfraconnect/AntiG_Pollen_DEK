@@ -12,6 +12,8 @@ use dek_openfga::OpenFgaAdapter;
 use dek_policy_router::PolicyRouter;
 use dek_wasm_host::{PluginHost, WasmtimePluginHost};
 use serde_json::{json, Value};
+use arc_swap::ArcSwap;
+use dek_auth::{extract_bearer, AuthError, Verifier, VerifierConfig};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
@@ -22,16 +24,14 @@ struct DekMetadata {
     tenant_id: String,
     device_id: String,
     spiffe_id: Option<String>,
-    pub jwt_public_key_pem: Option<String>,
-    pub jwks: Option<jsonwebtoken::jwk::JwkSet>,
-    pub issuer_url: Option<String>,
 }
 
 struct AppState {
     plugin_host: WasmtimePluginHost,
-    router: RwLock<PolicyRouter>,
+    router: ArcSwap<PolicyRouter>,
     http_adapter: HttpTransportAdapter,
-    metadata: RwLock<DekMetadata>,
+    metadata: ArcSwap<DekMetadata>,
+    verifier: ArcSwap<Verifier>,
 }
 
 use dek_config::{BootstrapConfig, DekConfig};
@@ -66,10 +66,8 @@ async fn main() -> Result<()> {
         tenant_id: tenant_id.clone(),
         device_id: device_id.clone(),
         spiffe_id: None,
-        jwt_public_key_pem: None,
-        jwks: None,
-        issuer_url: None,
     };
+    let mut initial_verifier_cfg = VerifierConfig::default();
 
     // Attempt to load from staged bundle first
     let bundle_path_buf = dek_config::paths::get_active_bundle_path();
@@ -87,15 +85,20 @@ async fn main() -> Result<()> {
                 }
                 if let Some(jwt_cfg) = payload.get("jwt_config") {
                     if let Some(pem) = jwt_cfg.get("public_key_pem").and_then(|v| v.as_str()) {
-                        initial_metadata.jwt_public_key_pem = Some(pem.to_string());
+                        initial_verifier_cfg.public_key_pem = Some(pem.to_string());
                     }
                     if let Some(jwks_val) = jwt_cfg.get("jwks") {
-                        if let Ok(jwks) = serde_json::from_value::<jsonwebtoken::jwk::JwkSet>(jwks_val.clone()) {
-                            initial_metadata.jwks = Some(jwks);
+                        if let Ok(jwks) = serde_json::from_value(jwks_val.clone()) {
+                            initial_verifier_cfg.jwks = Some(jwks);
                         }
                     }
                     if let Some(issuer) = jwt_cfg.get("issuer_url").and_then(|v| v.as_str()) {
-                        initial_metadata.issuer_url = Some(issuer.to_string());
+                        initial_verifier_cfg.issuer = Some(issuer.to_string());
+                    }
+                    if let Some(aud_val) = jwt_cfg.get("audience") {
+                        if let Ok(aud) = serde_json::from_value(aud_val.clone()) {
+                            initial_verifier_cfg.audience = Some(aud);
+                        }
                     }
                 }
             }
@@ -129,9 +132,10 @@ async fn main() -> Result<()> {
 
     let state = Arc::new(AppState {
         plugin_host: WasmtimePluginHost::new(plugin_paths)?,
-        router: RwLock::new(router),
+        router: ArcSwap::from_pointee(router),
         http_adapter: HttpTransportAdapter,
-        metadata: RwLock::new(initial_metadata),
+        metadata: ArcSwap::from_pointee(initial_metadata),
+        verifier: ArcSwap::from_pointee(Verifier::new(initial_verifier_cfg)),
     });
 
     // Start background file watcher for hot-reloading
@@ -185,36 +189,43 @@ async fn main() -> Result<()> {
                                     );
 
                                     // Safely swap the router
-                                    let mut current_router = state_clone.router.write().await;
-                                    *current_router = new_router;
+                                    state_clone.router.store(Arc::new(new_router));
 
-                                    let mut metadata_lock = state_clone.metadata.write().await;
+                                    let mut metadata_clone = (**state_clone.metadata.load()).clone();
+                                    let mut verifier_cfg = VerifierConfig::default();
                                     if let Some(t) =
                                         payload.get("tenant_id").and_then(|v| v.as_str())
                                     {
-                                        metadata_lock.tenant_id = t.to_string();
+                                        metadata_clone.tenant_id = t.to_string();
                                     }
                                     if let Some(s) =
                                         payload.get("spiffe_id").and_then(|v| v.as_str())
                                     {
-                                        metadata_lock.spiffe_id = Some(s.to_string());
+                                        metadata_clone.spiffe_id = Some(s.to_string());
                                     }
                                     if let Some(jwt_cfg) = payload.get("jwt_config") {
                                         if let Some(pem) =
                                             jwt_cfg.get("public_key_pem").and_then(|v| v.as_str())
                                         {
-                                            metadata_lock.jwt_public_key_pem =
+                                            verifier_cfg.public_key_pem =
                                                 Some(pem.to_string());
                                         }
                                         if let Some(jwks_val) = jwt_cfg.get("jwks") {
-                                            if let Ok(jwks) = serde_json::from_value::<jsonwebtoken::jwk::JwkSet>(jwks_val.clone()) {
-                                                metadata_lock.jwks = Some(jwks);
+                                            if let Ok(jwks) = serde_json::from_value(jwks_val.clone()) {
+                                                verifier_cfg.jwks = Some(jwks);
                                             }
                                         }
                                         if let Some(issuer) = jwt_cfg.get("issuer_url").and_then(|v| v.as_str()) {
-                                            metadata_lock.issuer_url = Some(issuer.to_string());
+                                            verifier_cfg.issuer = Some(issuer.to_string());
+                                        }
+                                        if let Some(aud_val) = jwt_cfg.get("audience") {
+                                            if let Ok(aud) = serde_json::from_value(aud_val.clone()) {
+                                                verifier_cfg.audience = Some(aud);
+                                            }
                                         }
                                     }
+                                    state_clone.metadata.store(Arc::new(metadata_clone));
+                                    state_clone.verifier.store(Arc::new(Verifier::new(verifier_cfg)));
 
                                     info!("Hot-reloaded policies and metadata from disk successfully!");
                                 } else {
@@ -283,97 +294,45 @@ async fn handle_mcp_request(
 ) -> Response {
     info!("Intercepted MCP Request: {}", payload);
 
-    // JWT Extraction
-    let auth_header = headers
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "));
+    let auth_header = headers.get("Authorization").and_then(|h| h.to_str().ok());
+    
+    let metadata = (**state.metadata.load()).clone();
+    let verifier = state.verifier.load();
 
-    let metadata = state.metadata.read().await.clone();
-
-    let mut jwt_tenant_id = None;
-    let mut principal = None;
-
-    if let Some(token) = auth_header {
-        let mut decoding_key_opt = None;
-        let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
-        validation.validate_exp = false; // for mock
-        validation.validate_aud = false; // for mock
-
-        // 1. Primary: Use JWKS if available
-        if let Some(jwks) = &metadata.jwks {
-            if let Ok(header) = jsonwebtoken::decode_header(token) {
-                if let Some(kid) = header.kid {
-                    if let Some(jwk) = jwks.find(&kid) {
-                        match jsonwebtoken::DecodingKey::from_jwk(jwk) {
-                            Ok(key) => {
-                                decoding_key_opt = Some(key);
-                                // Optional: Configure validation based on issuer config if present
-                                if let Some(issuer) = &metadata.issuer_url {
-                                    validation.set_issuer(&[issuer]);
-                                }
-                            }
-                            Err(e) => warn!("Failed to create decoding key from JWK: {}", e),
-                        }
-                    } else {
-                        warn!("JWK not found for kid: {}", kid);
-                    }
-                } else {
-                    warn!("JWT header missing kid");
-                }
-            }
-        }
-
-        // 2. Fallback: Use static PEM if JWKS not available or failed
-        if decoding_key_opt.is_none() {
-            if let Some(pem) = &metadata.jwt_public_key_pem {
-                if let Ok(key) = jsonwebtoken::DecodingKey::from_rsa_pem(pem.as_bytes()) {
-                    decoding_key_opt = Some(key);
-                } else {
-                    warn!("Invalid RSA public key PEM configured");
-                }
-            }
-        }
-
-        if let Some(decoding_key) = decoding_key_opt {
-            // We enforce signature validation.
-            // But we accept any aud for now since it's a mock test environment.
-            validation.validate_exp = false; // For mock testing, ignore expiration
-            validation.validate_aud = false; // Ignore audience for now
-
-            match jsonwebtoken::decode::<Value>(token, &decoding_key, &validation) {
-                Ok(token_data) => {
-                    let claims = token_data.claims;
-                    jwt_tenant_id = claims
-                        .get("tenant_id")
-                        .or(claims.get("tenant"))
-                        .and_then(|s| s.as_str())
-                        .map(|s| s.to_string());
-                    principal = claims
-                        .get("sub")
-                        .and_then(|s| s.as_str())
-                        .map(|s| s.to_string());
-                }
-                Err(e) => {
-                    warn!("JWT Signature verification failed: {}", e);
-                }
-            }
-        } else {
-            warn!("No valid key (JWKS or PEM) available to verify signature");
-        }
-    }
-
-    let principal = match principal {
-        Some(p) => p,
-        None => {
-            warn!("Missing or invalid JWT signature in Authorization header");
+    let token = match extract_bearer(auth_header) {
+        Ok(t) => t,
+        Err(_) => {
+            warn!("missing bearer token");
             return (
                 StatusCode::UNAUTHORIZED,
-                Json(json!({ "error": "Missing or cryptographically invalid JWT token" })),
+                Json(json!({ "error": "Missing bearer token" })),
             )
                 .into_response();
         }
     };
+
+    let identity = match verifier.verify(token) {
+        Ok(id) => id,
+        Err(AuthError::NoKeyConfigured) => {
+            warn!("auth not configured");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Auth not configured" })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            warn!("jwt verification failed: {}", e);
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({ "error": "Invalid token" })),
+            )
+                .into_response();
+        }
+    };
+
+    let principal = identity.principal;
+    let jwt_tenant_id = identity.tenant_id;
 
     let final_tenant_id = jwt_tenant_id.unwrap_or(metadata.tenant_id);
 
@@ -403,7 +362,7 @@ async fn handle_mcp_request(
     policy_input["resource"] = json!("mcp_tool");
 
     // Evaluate against the Adaptive Policy Pipeline
-    let decision_result = state.router.read().await.authorize(policy_input).await;
+    let decision_result = state.router.load().authorize(policy_input).await;
 
     match decision_result {
         Ok(decision) => {

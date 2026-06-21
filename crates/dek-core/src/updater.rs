@@ -99,14 +99,16 @@ pub async fn run_update(
                 let script = format!(
                     "Start-Sleep -Seconds 2; Restart-Service -Name PollenDEK -Force"
                 );
-                let _ = std::process::Command::new("powershell")
+                // Use absolute path to prevent PATH hijacking
+                let powershell_path = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+                let _ = std::process::Command::new(powershell_path)
                     .args(&["-Command", &script])
                     .spawn();
             }
             #[cfg(unix)]
             {
-                // Trigger an asynchronous service restart via systemctl
-                let _ = std::process::Command::new("systemctl")
+                // Trigger an asynchronous service restart via systemctl (use absolute path to prevent PATH hijack)
+                let _ = std::process::Command::new("/usr/bin/systemctl")
                     .args(&["restart", "pollen-dek"])
                     .spawn();
             }

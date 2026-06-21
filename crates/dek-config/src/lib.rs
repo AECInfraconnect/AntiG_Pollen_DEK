@@ -114,6 +114,7 @@ pub struct JwtConfig {
     pub public_key_pem: Option<String>,
     pub jwks: Option<serde_json::Value>,
     pub issuer_url: Option<String>,
+    pub audience: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
