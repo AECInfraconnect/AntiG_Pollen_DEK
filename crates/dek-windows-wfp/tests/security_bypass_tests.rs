@@ -6,6 +6,7 @@ use dek_domain_schema::{
     NetworkGuardrailEffect, NetworkTargets,
 };
 use dek_windows_wfp::WfpFilterManager;
+use dek_enforcement_api::NetworkEnforcer;
 
 #[test]
 fn test_wfp_bypass_prevention_logic() {

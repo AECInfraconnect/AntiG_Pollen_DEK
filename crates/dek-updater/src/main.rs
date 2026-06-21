@@ -313,7 +313,7 @@ fn verify_tuf_signature(new_exe: &PathBuf, metadata: &serde_json::Value) -> Resu
     let signed = if metadata.get("signed").is_some() {
         &metadata["signed"]
     } else {
-        &metadata
+        metadata
     };
 
     // 1. Check expiration

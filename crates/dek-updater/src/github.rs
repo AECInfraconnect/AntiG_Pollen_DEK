@@ -112,13 +112,13 @@ fn download_file(url: &str, dir: &Path, filename: &str) -> Result<PathBuf> {
 }
 
 pub fn verify_sha256(archive_path: &Path, sum_path: &Path) -> Result<()> {
-    let filename = archive_path.file_name().unwrap().to_string_lossy();
+    let filename = archive_path.file_name().context("Failed to get file name")?.to_string_lossy();
     let sums = fs::read_to_string(sum_path)?;
     
     let mut expected_hash = None;
     for line in sums.lines() {
         if line.contains(filename.as_ref()) {
-            expected_hash = Some(line.split_whitespace().next().unwrap().to_string());
+            expected_hash = Some(line.split_whitespace().next().context("Missing hash in line")?.to_string());
             break;
         }
     }
@@ -134,7 +134,7 @@ pub fn verify_sha256(archive_path: &Path, sum_path: &Path) -> Result<()> {
             let mut found = None;
             for line in sums.lines() {
                 if line.contains(platform_str) {
-                    found = Some(line.split_whitespace().next().unwrap().to_string());
+                    found = Some(line.split_whitespace().next().context("Missing hash in line")?.to_string());
                     break;
                 }
             }

@@ -14,17 +14,18 @@ pub struct DekConfig {
     pub policy_config: Option<PolicyConfig>,
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let json = serde_json::json!({
         "policy_config": {
             "routes": [1, 2, 3]
         }
     });
     
-    let config: DekConfig = serde_json::from_value(json).unwrap();
+    let config: DekConfig = serde_json::from_value(json)?;
     println!("Parsed: {:?}", config);
     
-    let val = serde_json::to_value(&config.policy_config).unwrap();
-    println!("Serialized: {:?}", val);
+    let val = serde_json::to_value(&config.policy_config)?;
+    println!("Serialized policy_config: {}", val);
+    
+    Ok(())
 }
-

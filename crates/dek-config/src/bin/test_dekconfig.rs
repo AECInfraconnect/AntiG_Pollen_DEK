@@ -3,7 +3,7 @@
 
 use dek_config::DekConfig;
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let json = serde_json::json!({
         "device_id": "device-001",
         "tenant_id": "tenant-production-1",
@@ -30,12 +30,13 @@ fn main() {
 
     match serde_json::from_value::<DekConfig>(json) {
         Ok(config) => {
-            let val = serde_json::to_value(&config.policy_config).unwrap();
+            let val = serde_json::to_value(&config.policy_config)?;
             println!("Serialized policy_config: {}", val);
         }
         Err(e) => {
             println!("Error parsing DekConfig: {:?}", e);
         }
     }
+    Ok(())
 }
 

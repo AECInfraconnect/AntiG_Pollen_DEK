@@ -111,7 +111,7 @@ async fn main() -> Result<()> {
     // Drop the original sender so the receiver will close when tasks finish
     drop(tx);
 
-    let mut hist = Histogram::<u64>::new(3).unwrap();
+    let mut hist = Histogram::<u64>::new(3).map_err(|e| anyhow::anyhow!("Histogram error: {}", e))?;
     
     // Collect all latencies
     while let Some(latency) = rx.recv().await {
