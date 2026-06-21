@@ -1801,15 +1801,18 @@ dependencies = [
  "dek-cedar",
  "dek-config",
  "dek-decision",
+ "dek-domain-schema",
  "dek-ebpf-common",
  "dek-ebpfd",
  "dek-ipc",
  "dek-keystore",
  "dek-macos-nefilter",
+ "dek-metrics",
  "dek-openfga",
  "dek-policy-router",
  "dek-policy-runtime",
  "dek-policy-syncer",
+ "dek-resilience",
  "dek-router-builder",
  "dek-spire-node",
  "dek-telemetry",
@@ -1888,6 +1891,7 @@ name = "dek-enroll"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "dek-domain-schema",
  "dek-errors",
  "gethostname",
  "reqwest 0.12.28",
@@ -1906,6 +1910,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tonic 0.11.0",
+ "tracing",
 ]
 
 [[package]]
@@ -2077,6 +2082,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "dek-cedar",
+ "dek-errors",
  "dek-openfga",
  "dek-policy-runtime",
  "dek-resilience",
@@ -2173,6 +2179,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "dek-config",
+ "dek-errors",
  "hex",
  "keyring",
  "metrics",

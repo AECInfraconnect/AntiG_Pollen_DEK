@@ -13,7 +13,7 @@ use dek_domain_schema::network_guardrail::{
     NetworkGuardrailEffect, NetworkTargets,
 };
 use dek_policy_syncer::SyncOutcome;
-use std::sync::Arc;
+
 use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;

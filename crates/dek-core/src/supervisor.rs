@@ -204,11 +204,11 @@ impl Supervisor {
             Some(self.telemetry_sink.clone()),
             fresh_cfg,
             self.bootstrap.device_id.clone(),
-            tenant_id,
+            tenant_id.clone(),
             self.cloud_url.clone(),
             self.pinned_key.clone(),
         );
-        let (sync_tx, mut sync_rx) = tokio::sync::mpsc::channel::<dek_policy_syncer::SyncOutcome>(100);
+        let (sync_tx, sync_rx) = tokio::sync::mpsc::channel::<dek_policy_syncer::SyncOutcome>(100);
         let bundle_handle = syncer.clone().spawn(
             std::time::Duration::from_secs(self.bundle_interval),
             self.cancel.clone(),

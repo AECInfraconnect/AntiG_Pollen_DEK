@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use dek_config::MtlsConfig;
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fs;
@@ -321,11 +321,12 @@ impl BundleSyncAgent {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
-    use base64::Engine;
+    
     use tokio::sync::RwLock;
 
+    #[allow(dead_code)]
     fn dummy_agent(b64_key: &str) -> BundleSyncAgent {
-        let key_set = crate::keys::TrustedKeySet::from_single_pinned(&b64_key);
+        let key_set = crate::keys::TrustedKeySet::from_single_pinned(b64_key);
         BundleSyncAgent {
             cloud_url: "http://localhost".to_string(),
             tenant_id: "tenant".to_string(),

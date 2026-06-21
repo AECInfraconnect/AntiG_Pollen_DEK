@@ -11,6 +11,9 @@ dek-config = { path = "../dek-config" }
 dek-agent-connector = { path = "../dek-agent-connector" }
 dek-bundle-sync = { path = "../dek-bundle-sync" }
 dek-policy-syncer = { path = "../dek-policy-syncer" }
+dek-metrics = { path = "../dek-metrics" }
+dek-resilience = { path = "../dek-resilience" }
+dek-domain-schema = { path = "../dek-domain-schema" }
 dek-keystore = { path = "../dek-keystore" }
 dek-ipc = { path = "../dek-ipc" }
 dek-ebpf-common = { path = "../dek-ebpf-common" }
@@ -70,3 +73,18 @@ dek-macos-nefilter = { path = "../dek-macos-nefilter" }
 
 [lints]
 workspace = true
+
+[package.metadata.deb]
+maintainer = "Pollen DEK Team"
+copyright = "2026 Pollen"
+license-file = ["../../LICENSE", "4"]
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+    ["../../target/release/dek-core", "usr/bin/", "755"],
+    ["../../target/release/dek-mcp-proxy", "usr/bin/", "755"],
+    ["../../target/release/dek-updater", "usr/bin/", "755"],
+    ["../../packaging/linux/pollen-dek.service", "lib/systemd/system/pollen-dek.service", "644"]
+]
+maintainer-scripts = "../../packaging/linux/scripts"

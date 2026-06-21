@@ -33,7 +33,7 @@ pub async fn simulate_pdp(
 
     // Mock evaluation logic
     // 1. Check if principal and resource exist in tenant
-    if registry.principals.get(&req.principal_id).is_none() || registry.resources.get(&req.resource_id).is_none() {
+    if !registry.principals.contains_key(&req.principal_id) || !registry.resources.contains_key(&req.resource_id) {
         return Ok(Json(AccessDecision {
             decision: "Deny".to_string(),
             matching_policies: vec![],

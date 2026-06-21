@@ -1,4 +1,4 @@
-# Pollen DEK Installation Guide
+# Pollen DEK Installation Guide (v1.0.0-beta)
 
 ## System Requirements
 - OS: Windows 10/11, macOS 12+, or Ubuntu 20.04+
@@ -6,19 +6,19 @@
 - Privileges: Administrator/root access required
 
 ## Windows Installation
-1. Download `pollen-dek-windows-msi` from Releases.
-2. Run the MSI installer.
-3. The DEK Core Service will automatically start.
+1. Download `pollen-dek-x86_64-pc-windows-msvc.msi` from the GitHub Releases page.
+2. Double-click the MSI installer and follow the prompts.
+3. The `PollenDEKCore` service will be installed and started automatically in the background.
 
 ## Linux Installation
-1. Download the `.deb` or `.tar.gz` release.
-2. For `.deb`: `sudo dpkg -i pollen-dek_1.0.0_amd64.deb`
-3. The systemd service will automatically start.
+1. Download the `.deb` release matching your architecture (e.g., `pollen-dek-x86_64-unknown-linux-gnu.deb` or `aarch64`).
+2. Install via dpkg: `sudo dpkg -i pollen-dek-*.deb`
+3. The `pollen-dek.service` systemd service will be automatically enabled and started.
 
 ## macOS Installation
-1. Download the `.pkg` release.
+1. Download the `.pkg` release (e.g., `pollen-dek-x86_64-apple-darwin.pkg`).
 2. Run the installer package.
-3. The launchd agent will load automatically.
+3. The `ai.pollen.dek` launchd agent will load automatically.
 
 ## Verification
 Run `pollen-dekctl status` to verify installation and service health.

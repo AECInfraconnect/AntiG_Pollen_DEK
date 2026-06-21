@@ -10,7 +10,7 @@ pub enum NetworkGuardrailEffect {
     AllowOrDeny,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NetworkTargets {
     #[serde(default)]
     pub agents: Vec<String>,

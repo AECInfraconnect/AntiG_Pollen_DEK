@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 use reqwest::Client;
 use std::time::Duration;
 

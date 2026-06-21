@@ -94,7 +94,7 @@ fn test_lkg_fallback() {
     let v2 = create_test_manifest(2, Duration::days(1), "2", b"2");
 
     state.accept_manifest(v1.clone());
-    assert_eq!(state.current_manifest.as_ref().unwrap().bundle_version, "v1");
+    assert_eq!(state.current_manifest.as_ref().unwrap().bundle_version, "1.0.1");
 
     state.accept_manifest(v2.clone());
     assert_eq!(

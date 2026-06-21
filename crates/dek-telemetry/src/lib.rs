@@ -185,57 +185,51 @@ impl CloudTelemetrySink {
                 continue;
             }
 
-            let mut to_delete = Vec::new();
+            let mut payload_events = Vec::new();
+            let mut ids = Vec::new();
+
             for (id, event) in batch {
-                let bg_client = self.client.read().await.clone();
-                let bg_url = self.endpoint_url.clone();
+                payload_events.push(event);
+                ids.push(id);
+            }
 
-                let strategy = ExponentialBackoff::from_millis(500)
-                    .factor(2)
-                    .max_delay(Duration::from_secs(5))
-                    .take(3);
+            let payload = serde_json::json!({ "events": payload_events });
 
-                let res = Retry::spawn(strategy, || async {
-                    let c = bg_client.clone();
-                    match c.post(&bg_url).json(&event).send().await {
-                        Ok(res) if res.status().is_success() => Ok(()),
-                        Ok(res) if res.status().is_client_error() => {
-                            // Non-retryable error (e.g. 400 Bad Request)
-                            warn!(
-                                "[Telemetry] Cloud rejected event (4xx). Status: {}",
-                                res.status()
-                            );
-                            Err(anyhow::anyhow!("Non-retryable {}", res.status()))
-                        }
-                        Ok(res) => {
-                            // Retryable error (e.g. 500 Internal Server Error)
-                            warn!(
-                                "[Telemetry] Cloud rejected event (5xx). Status: {}",
-                                res.status()
-                            );
-                            Err(anyhow::anyhow!("Retryable {}", res.status()))
-                        }
-                        Err(e) => {
-                            // Network error (retryable)
-                            warn!("[Telemetry] Network error sending event: {}", e);
-                            Err(e.into())
-                        }
+            let bg_client = self.client.read().await.clone();
+            let bg_url = self.endpoint_url.clone();
+
+            let strategy = ExponentialBackoff::from_millis(500)
+                .factor(2)
+                .max_delay(Duration::from_secs(5))
+                .take(3);
+
+            let res = Retry::spawn(strategy, || async {
+                let c = bg_client.clone();
+                match c.post(&bg_url).json(&payload).send().await {
+                    Ok(res) if res.status().is_success() => Ok(()),
+                    Ok(res) if res.status().is_client_error() => {
+                        warn!("[Telemetry] Cloud rejected batch (4xx). Status: {}", res.status());
+                        Err(anyhow::anyhow!("Non-retryable {}", res.status()))
                     }
-                })
-                .await;
-
-                if res.is_ok() {
-                    to_delete.push(id);
-                } else if let Err(e) = res {
-                    let err_str = e.to_string();
-                    if err_str.contains("Non-retryable") {
-                        // Drop non-retryable event
-                        warn!("[Telemetry] Dropping non-retryable event id {}", id);
-                        to_delete.push(id);
-                    } else {
-                        // Stop processing batch on network/5xx failure, wait for next loop
-                        break;
+                    Ok(res) => {
+                        warn!("[Telemetry] Cloud rejected batch (5xx). Status: {}", res.status());
+                        Err(anyhow::anyhow!("Retryable {}", res.status()))
                     }
+                    Err(e) => {
+                        warn!("[Telemetry] Network error sending batch: {}", e);
+                        Err(e.into())
+                    }
+                }
+            })
+            .await;
+
+            let mut to_delete = Vec::new();
+            if res.is_ok() {
+                to_delete = ids;
+            } else if let Err(e) = res {
+                if e.to_string().contains("Non-retryable") {
+                    warn!("[Telemetry] Dropping non-retryable batch");
+                    to_delete = ids;
                 }
             }
 
