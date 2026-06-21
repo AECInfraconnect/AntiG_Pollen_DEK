@@ -112,11 +112,13 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_cedar_json_parse() {
+    fn test_cedar_json_parse() -> anyhow::Result<()> {
         let ctx_val = json!({ "ip": "127.0.0.1" });
-        let _ctx = Context::from_json_value(ctx_val, None).unwrap();
+        let _ctx = Context::from_json_value(ctx_val, None)?;
 
         let ent_val = serde_json::json!([]);
-        let _ents = Entities::from_json_value(ent_val, None).unwrap();
+        let _ents = Entities::from_json_value(ent_val, None)?;
+        
+        Ok(())
     }
 }

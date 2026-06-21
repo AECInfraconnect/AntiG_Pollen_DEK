@@ -27,10 +27,15 @@ pub mod daemon {
             info!("Created/Verified scoped cgroup at {}", cgroup_path);
         }
 
-        // Load BPF object (mock bytes for compilation)
-        let bpf_bytes: &[u8] = &[]; // include_bytes!(...) in reality
+        // Load BPF object
+        let bpf_path = std::env::var("DEK_EBPF_PROG_PATH")
+            .unwrap_or_else(|_| "/opt/pollen/dek-ebpf-prog".to_string());
+            
+        let bpf_bytes_vec = fs::read(&bpf_path).unwrap_or_default();
+        let bpf_bytes: &[u8] = &bpf_bytes_vec;
+        
         if bpf_bytes.is_empty() {
-            info!("eBPF byte code is empty (compile time placeholder). Skipping real attach.");
+            info!("eBPF byte code not found at {} (compile time placeholder). Skipping real attach.", bpf_path);
             return Ok(());
         }
 
@@ -68,16 +73,45 @@ pub mod daemon {
         info!("Attached cgroup/connect4 to {}", cgroup_path);
 
         // Start DNS Telemetry RingBuf Reader
-        task::spawn(async move {
-            info!("eBPFD DNS RingBuf Reader started");
-            // Placeholder: Read DNS_EVENTS RingBuf using async API.
-            // Parse payload with hickory-proto:
-            // if let Ok(msg) = Message::from_vec(&event.data[..event.len]) { ... }
-            // and log to Telemetry.
-            loop {
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+        if let Ok(dns_events_map) = bpf.take_map("DNS_EVENTS") {
+            if let Ok(mut ring_buf) = aya::maps::AsyncRingBuf::try_from(dns_events_map) {
+                task::spawn(async move {
+                    info!("eBPFD DNS RingBuf Reader started");
+                    use hickory_proto::op::Message;
+                    use bytes::Bytes;
+                    
+                    loop {
+                        if let Some(item) = ring_buf.next().await {
+                            // The item is a pointer to DnsCaptureEvent bytes
+                            if item.len() >= std::mem::size_of::<dek_ebpf_common::DnsCaptureEvent>() {
+                                let event: dek_ebpf_common::DnsCaptureEvent = unsafe { std::ptr::read_unaligned(item.as_ptr() as *const _) };
+                                let dlen = event.len as usize;
+                                if dlen <= event.data.len() {
+                                    if let Ok(msg) = Message::from_vec(&event.data[..dlen]) {
+                                        let queries = msg.queries();
+                                        for q in queries {
+                                            info!(
+                                                "DNS Query Captured [cgroup: {}]: {} ({:?})",
+                                                event.cgroup_id,
+                                                q.name(),
+                                                q.query_type()
+                                            );
+                                            // TODO: Log to telemetry endpoint
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                        }
+                    }
+                });
+            } else {
+                tracing::warn!("Failed to convert DNS_EVENTS map to AsyncRingBuf");
             }
-        });
+        } else {
+            tracing::warn!("DNS_EVENTS map not found in eBPF program");
+        }
 
         // Start Map Compiler & TTL Sweeper Loop
         task::spawn(async move {
