@@ -1,0 +1,149 @@
+{
+  "schema_version": "pollen.agent_signature_catalog.v2",
+  "catalog_version": "2026-06-21",
+  "signatures": [
+    {
+      "id": "claude_desktop",
+      "display_name": "Claude Desktop",
+      "agent_type": "desktop_agent",
+      "process_names": ["Claude", "Claude.exe"],
+      "config_paths": {
+        "macos": ["~/Library/Application Support/Claude/claude_desktop_config.json"],
+        "windows": ["%APPDATA%/Claude/claude_desktop_config.json"],
+        "linux": ["~/.config/Claude/claude_desktop_config.json"]
+      },
+      "config_parsers": ["mcp_servers_object"],
+      "control_strategies": ["mcp_stdio_wrapper", "mcp_http_proxy", "observe_only"]
+    },
+    {
+      "id": "cursor",
+      "display_name": "Cursor",
+      "agent_type": "ide_agent",
+      "process_names": ["Cursor", "Cursor.exe", "Cursor Helper"],
+      "config_paths": {
+        "all": ["~/.cursor/mcp.json", "{workspace}/.cursor/mcp.json"]
+      },
+      "config_parsers": ["mcp_servers_object"],
+      "control_strategies": ["mcp_stdio_wrapper", "mcp_http_proxy", "observe_only"]
+    },
+    {
+      "id": "vscode",
+      "display_name": "VS Code (Copilot/MCP)",
+      "agent_type": "ide_agent",
+      "process_names": ["Code", "Code.exe", "code"],
+      "config_paths": {
+        "all": ["{workspace}/.vscode/mcp.json", "~/.vscode/mcp.json"],
+        "macos": ["~/Library/Application Support/Code/User/mcp.json"],
+        "windows": ["%APPDATA%/Code/User/mcp.json"]
+      },
+      "config_parsers": ["mcp_servers_vscode"],
+      "control_strategies": ["mcp_stdio_wrapper", "mcp_http_proxy", "observe_only"]
+    },
+    {
+      "id": "windsurf",
+      "display_name": "Windsurf",
+      "agent_type": "ide_agent",
+      "process_names": ["Windsurf", "Windsurf.exe"],
+      "config_paths": {
+        "all": ["~/.codeium/windsurf/mcp_config.json"]
+      },
+      "config_parsers": ["mcp_servers_object"],
+      "control_strategies": ["mcp_stdio_wrapper", "mcp_http_proxy", "observe_only"]
+    },
+    {
+      "id": "cline",
+      "display_name": "Cline (VS Code)",
+      "agent_type": "ide_extension_agent",
+      "process_names": ["Code", "code"],
+      "config_paths": {
+        "macos": ["~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json"],
+        "windows": ["%APPDATA%/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json"]
+      },
+      "config_parsers": ["mcp_servers_object"],
+      "control_strategies": ["mcp_stdio_wrapper", "observe_only"]
+    },
+    {
+      "id": "zed",
+      "display_name": "Zed",
+      "agent_type": "ide_agent",
+      "process_names": ["zed", "Zed"],
+      "config_paths": {
+        "all": ["~/.config/zed/settings.json"]
+      },
+      "config_parsers": ["mcp_servers_zed"],
+      "control_strategies": ["observe_only"]
+    },
+    {
+      "id": "continue",
+      "display_name": "Continue.dev",
+      "agent_type": "ide_extension_agent",
+      "process_names": ["Code", "code", "idea"],
+      "config_paths": {
+        "all": ["~/.continue/config.json", "~/.continue/config.yaml"]
+      },
+      "config_parsers": ["mcp_servers_continue_array"],
+      "control_strategies": ["observe_only"]
+    },
+    {
+      "id": "claude_code",
+      "display_name": "Claude Code",
+      "agent_type": "cli_agent",
+      "process_names": ["claude"],
+      "config_paths": {
+        "all": ["{workspace}/.mcp.json", "~/.claude.json"]
+      },
+      "config_parsers": ["mcp_servers_object"],
+      "control_strategies": ["mcp_stdio_wrapper", "observe_only"]
+    },
+    {
+      "id": "ollama",
+      "display_name": "Ollama",
+      "agent_type": "local_model_server",
+      "process_names": ["ollama", "ollama.exe"],
+      "ports": [11434],
+      "config_parsers": ["ollama_api"],
+      "control_strategies": ["ollama_proxy", "network_egress_pep", "observe_only"]
+    },
+    {
+      "id": "lmstudio",
+      "display_name": "LM Studio",
+      "agent_type": "local_model_server",
+      "process_names": ["LM Studio", "lms"],
+      "ports": [1234],
+      "config_parsers": ["openai_compat_api"],
+      "control_strategies": ["network_egress_pep", "observe_only"]
+    },
+    {
+      "id": "vllm",
+      "display_name": "vLLM",
+      "agent_type": "local_model_server",
+      "process_names": ["vllm"],
+      "ports": [8000],
+      "control_strategies": ["network_egress_pep", "observe_only"]
+    },
+    {
+      "id": "llamacpp",
+      "display_name": "llama.cpp server",
+      "agent_type": "local_model_server",
+      "process_names": ["llama-server", "server"],
+      "ports": [8080],
+      "control_strategies": ["network_egress_pep", "observe_only"]
+    },
+    {
+      "id": "langgraph",
+      "display_name": "LangGraph/LangChain agent",
+      "agent_type": "framework_agent",
+      "process_names": ["python", "python3"],
+      "config_parsers": ["python_import_probe"],
+      "control_strategies": ["network_egress_pep", "observe_only"]
+    },
+    {
+      "id": "n8n",
+      "display_name": "n8n (AI workflow)",
+      "agent_type": "automation_agent",
+      "process_names": ["n8n", "node"],
+      "ports": [5678],
+      "control_strategies": ["network_egress_pep", "observe_only"]
+    }
+  ]
+}

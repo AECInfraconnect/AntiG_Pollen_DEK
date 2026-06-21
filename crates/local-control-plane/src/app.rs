@@ -8,9 +8,9 @@ use axum::{
 use tower_http::services::{ServeDir, ServeFile};
 
 use crate::{
-    agent_discovery_api, auth, bundle, connectors, discovery, observation_api, pdp_routing_api,
-    pdp_runtime_api, pep_capabilities_api, policy, policy_presets_api, policy_suggestions_api,
-    push, registry, state::AppState, telemetry,
+    agent_discovery_api, auth, bundle, connectors, discovery, observation_api, pdp_cloud_api,
+    pdp_routing_api, pdp_runtime_api, pep_capabilities_api, policy, policy_presets_api,
+    policy_suggestions_api, push, registry, state::AppState, telemetry,
 };
 
 pub async fn local_tenant_guard(
@@ -53,6 +53,7 @@ pub fn create_app(state: AppState, static_dir: &str) -> Router {
         .merge(connectors::router())
         .merge(pdp_runtime_api::router())
         .merge(pdp_routing_api::router())
+        .merge(pdp_cloud_api::router())
         .route(
             "/v1/tenants/:tenant/devices/:device/events",
             axum::routing::get(push::sse_handler),

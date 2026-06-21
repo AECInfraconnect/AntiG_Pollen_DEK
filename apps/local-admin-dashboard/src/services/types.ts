@@ -254,54 +254,96 @@ export interface BlackboxAiProvider {
 // ---- PDP Runtime & Routing ----
 export type PdpRuntimeCategory =
   | "local_engine"
-  | "external_connector"
+  | "remote_connector"
   | "pollen_cloud";
+
 export type PdpKind =
-  | "opa_server"
-  | "opa_wasm"
-  | "cedar_http"
+  | "policy_router"
   | "cedar_local"
-  | "openfga_server"
+  | "opa_wasm"
   | "wasm_plugin"
-  | "custom_http";
-export type PdpStatus =
-  | "initializing"
+  | "opa_server"
+  | "openfga_server"
+  | "cedar_http"
+  | "custom_http"
+  | "custom_grpc"
+  | "pollen_cloud_pdp";
+
+export type PdpRuntimeStatus =
+  | "installed"
+  | "not_configured"
+  | "loading"
   | "ready"
-  | "unreachable"
   | "degraded"
+  | "error"
   | "disabled";
+
+export interface PdpProbeResult {
+  ok: boolean;
+  effect: string;
+  reason: string;
+  latency_ms: number;
+  decision_id: string;
+  details: any;
+}
 
 export interface PdpRuntime {
   id: string;
   name: string;
   category: PdpRuntimeCategory;
   kind: PdpKind;
+  mode: string;
+  system_managed: boolean;
   enabled: boolean;
-  status: PdpStatus;
+  status: PdpRuntimeStatus;
+  capabilities: string[];
   endpoint?: string;
   auth_ref?: string;
-  capabilities: string[];
+  config_source: string;
+  active_bundle_id?: string;
+  active_bundle_hash?: string;
+  last_activated_at?: string;
+  last_probe?: PdpProbeResult;
   health?: any;
   created_at: string;
   updated_at: string;
 }
 
+export interface CloudPdpProfile {
+  tenant_id?: string;
+  device_id?: string;
+  pdp_endpoint?: string;
+  contract_version?: string;
+  auth_method?: string;
+  status: string;
+  manual_override_enabled: boolean;
+  health?: any;
+}
+
 export type PdpRouteMode =
+  | "local_only"
   | "local_primary_remote_fallback"
   | "remote_primary_local_fallback"
-  | "load_balanced"
-  | "shadow"
-  | "first_match_wins"
-  | "broadcast";
-export type PdpFailureBehavior = "deny" | "allow" | "passthrough";
+  | "cloud_primary_local_fallback"
+  | "shadow_remote"
+  | "mirror_audit_only"
+  | "strict_remote";
+
+export type PdpFailureBehavior =
+  | "deny"
+  | "fallback"
+  | "last_known_good"
+  | "allow"
+  | "not_applicable";
 
 export interface RouteMatch {
   agent_ids?: string[];
-  resource_ids?: string[];
+  tool_categories?: string[];
+  resource_types?: string[];
   protocols?: string[];
-  policy_tags?: string[];
-  sensitivity?: string;
-  environment?: string;
+  sensitivities?: string[];
+  environments?: string[];
+  risk_tiers?: string[];
 }
 
 export interface PdpRouteRule {
@@ -309,15 +351,20 @@ export interface PdpRouteRule {
   name: string;
   enabled: boolean;
   priority: number;
+  description?: string;
   match_cond: RouteMatch;
   mode: PdpRouteMode;
   primary_pdp_id: string;
   fallback_pdp_ids: string[];
   shadow_pdp_ids: string[];
+  required_pdp_ids?: string[];
   merge_strategy: string;
   failure_behavior: PdpFailureBehavior;
   timeout_ms: number;
   max_retries: number;
+  circuit_breaker_threshold?: number;
+  cooldown_secs?: number;
+  last_known_good_ttl_secs?: number;
 }
 
 export interface DiscoveryEvidenceV2 {

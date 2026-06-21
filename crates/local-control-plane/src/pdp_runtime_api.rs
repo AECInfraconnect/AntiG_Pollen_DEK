@@ -1,5 +1,5 @@
 use crate::error::{ApiError, ApiResult};
-use crate::pdp_models::{PdpKind, PdpRuntime};
+use crate::pdp_models::{PdpKind, PdpRuntime, PdpRuntimeCategory, PdpStatus, PdpProbeResult};
 use crate::state::AppState;
 use axum::{
     extract::{Path, State},
@@ -25,9 +25,81 @@ pub fn router() -> Router<AppState> {
             get(get_runtime).delete(delete_runtime),
         )
         .route(
-            "/v1/tenants/:tenant/pdp/runtimes/:id/health",
+            "/v1/tenants/:tenant/pdp/runtimes/:id/validate",
+            post(validate_runtime),
+        )
+        .route(
+            "/v1/tenants/:tenant/pdp/runtimes/:id/probe",
             post(probe_health),
         )
+}
+
+fn seeded_local_runtimes(now: &str) -> Vec<PdpRuntime> {
+    vec![
+        PdpRuntime {
+            id: "local.router".into(),
+            name: "Policy Router".into(),
+            category: PdpRuntimeCategory::LocalEngine,
+            kind: PdpKind::PolicyRouter,
+            mode: "router".into(),
+            system_managed: true,
+            enabled: true,
+            status: PdpStatus::Ready,
+            endpoint: None,
+            auth_ref: None,
+            capabilities: vec![],
+            config_source: "seeded".into(),
+            active_bundle_id: None,
+            active_bundle_hash: None,
+            last_activated_at: Some(now.into()),
+            last_probe: None,
+            health: None,
+            created_at: now.into(),
+            updated_at: now.into(),
+        },
+        PdpRuntime {
+            id: "local.cedar".into(),
+            name: "Cedar Local".into(),
+            category: PdpRuntimeCategory::LocalEngine,
+            kind: PdpKind::CedarLocal,
+            mode: "embedded".into(),
+            system_managed: true,
+            enabled: true,
+            status: PdpStatus::NotConfigured,
+            endpoint: None,
+            auth_ref: None,
+            capabilities: vec![],
+            config_source: "seeded".into(),
+            active_bundle_id: None,
+            active_bundle_hash: None,
+            last_activated_at: None,
+            last_probe: None,
+            health: None,
+            created_at: now.into(),
+            updated_at: now.into(),
+        },
+        PdpRuntime {
+            id: "local.opa_wasm".into(),
+            name: "WASM Plugin Runtime".into(),
+            category: PdpRuntimeCategory::LocalEngine,
+            kind: PdpKind::OpaWasm,
+            mode: "wasm".into(),
+            system_managed: true,
+            enabled: true,
+            status: PdpStatus::NotConfigured,
+            endpoint: None,
+            auth_ref: None,
+            capabilities: vec![],
+            config_source: "seeded".into(),
+            active_bundle_id: None,
+            active_bundle_hash: None,
+            last_activated_at: None,
+            last_probe: None,
+            health: None,
+            created_at: now.into(),
+            updated_at: now.into(),
+        },
+    ]
 }
 
 async fn list_runtimes(
@@ -39,7 +111,7 @@ async fn list_runtimes(
         .list_runtimes(&tenant)
         .await
         .map_err(ApiError::Internal)?;
-    let mut runtimes = vec![];
+    let mut runtimes = seeded_local_runtimes(&chrono::Utc::now().to_rfc3339());
     for val in list {
         if let Ok(c) = serde_json::from_value::<PdpRuntime>(val) {
             runtimes.push(c);
@@ -52,6 +124,10 @@ async fn get_runtime(
     Path((tenant, id)): Path<(String, String)>,
     State(st): State<AppState>,
 ) -> ApiResult<Json<PdpRuntime>> {
+    let seeded = seeded_local_runtimes(&chrono::Utc::now().to_rfc3339());
+    if let Some(rt) = seeded.into_iter().find(|r| r.id == id) {
+        return Ok(Json(rt));
+    }
     let opt = st
         .pdp_store
         .get_runtime(&tenant, &id)
@@ -103,29 +179,54 @@ async fn delete_runtime(
     }
 }
 
+async fn validate_runtime(
+    Path((_tenant, _id)): Path<(String, String)>,
+    State(_st): State<AppState>,
+) -> Json<serde_json::Value> {
+    // Stub implementation for validating local engine configuration/bundle/schemas
+    Json(serde_json::json!({
+        "ok": true,
+        "status": "ready",
+        "details": {},
+        "warnings": []
+    }))
+}
+
 async fn probe_health(
     Path((tenant, id)): Path<(String, String)>,
     State(st): State<AppState>,
-) -> Json<ProbeResult> {
-    let rt = match st.pdp_store.get_runtime(&tenant, &id).await {
-        Ok(Some(c)) => match serde_json::from_value::<PdpRuntime>(c) {
-            Ok(c) => c,
-            Err(_) => {
-                return Json(ProbeResult {
+) -> Json<PdpProbeResult> {
+    let seeded = seeded_local_runtimes(&chrono::Utc::now().to_rfc3339());
+    let rt = if let Some(rt) = seeded.into_iter().find(|r| r.id == id) {
+        rt
+    } else {
+        match st.pdp_store.get_runtime(&tenant, &id).await {
+            Ok(Some(c)) => match serde_json::from_value::<PdpRuntime>(c) {
+                Ok(c) => c,
+                Err(_) => {
+                    return Json(PdpProbeResult {
+                        ok: false,
+                        latency_ms: 0,
+                        effect: "error".into(),
+                        reason: "invalid config".into(),
+                        decision_id: "".into(),
+                        details: serde_json::json!({}),
+                    })
+                }
+            },
+            _ => {
+                return Json(PdpProbeResult {
                     ok: false,
                     latency_ms: 0,
-                    detail: "invalid config".into(),
+                    effect: "error".into(),
+                    reason: "pdp runtime not found".into(),
+                    decision_id: "".into(),
+                    details: serde_json::json!({}),
                 })
             }
-        },
-        _ => {
-            return Json(ProbeResult {
-                ok: false,
-                latency_ms: 0,
-                detail: "pdp runtime not found".into(),
-            })
         }
     };
+    
     let start = std::time::Instant::now();
 
     if let Some(endpoint) = rt.endpoint {
@@ -146,20 +247,23 @@ async fn probe_health(
                 .map(|r| r.status().is_success())
                 .unwrap_or(false),
         };
-        Json(ProbeResult {
+        Json(PdpProbeResult {
             ok,
             latency_ms: start.elapsed().as_millis() as u64,
-            detail: if ok {
-                "reachable".into()
-            } else {
-                "unreachable".into()
-            },
+            effect: if ok { "permit".into() } else { "deny".into() },
+            reason: if ok { "reachable".into() } else { "unreachable".into() },
+            decision_id: uuid::Uuid::new_v4().to_string(),
+            details: serde_json::json!({}),
         })
     } else {
-        Json(ProbeResult {
+        // Handle seeded local engines probe
+        Json(PdpProbeResult {
             ok: true,
-            latency_ms: 0,
-            detail: "built-in runtime".into(),
+            latency_ms: start.elapsed().as_millis() as u64,
+            effect: "permit".into(),
+            reason: "built-in runtime simulated response".into(),
+            decision_id: uuid::Uuid::new_v4().to_string(),
+            details: serde_json::json!({ "mode": rt.mode }),
         })
     }
 }

@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { PdpRuntimeApi, PdpRoutingApi } from "../../services/api";
 import type { PdpRuntime, PdpRouteRule } from "../../services/api";
+import { LocalEnginesTab } from "./LocalEnginesTab";
+import { CloudPdpTab } from "./CloudPdpTab";
+import { RoutingTab } from "./RoutingTab";
 
 export function PdpRuntimeRouting() {
   const [activeTab, setActiveTab] = useState<
@@ -166,52 +169,9 @@ export function PdpRuntimeRouting() {
       </div>
 
       <div className="pt-4">
-        {activeTab === "local" && (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              These are built-in engines provided by the DEK. They are read-only
-              and automatically managed.
-            </p>
-            <div className="rounded-md border">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs uppercase bg-muted/50">
-                  <tr>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Kind</th>
-                    <th className="px-4 py-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {localRuntimes.map((c) => (
-                    <tr key={c.id} className="border-b last:border-0">
-                      <td className="px-4 py-3 font-medium">{c.name}</td>
-                      <td className="px-4 py-3">
-                        <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs">
-                          {c.kind}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => handleTestRuntime(c.id)}
-                          className="px-3 py-1 bg-secondary text-secondary-foreground rounded text-xs hover:opacity-80"
-                        >
-                          Check Status
-                        </button>
-                        {testResults[c.id] && (
-                          <div
-                            className={`text-xs mt-1 ${testResults[c.id].ok ? "text-green-500" : "text-red-500"}`}
-                          >
-                            {testResults[c.id].ok ? "✓ ready" : "✗ error"}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        {activeTab === "local" && <LocalEnginesTab />}
+        {activeTab === "cloud" && <CloudPdpTab />}
+        {activeTab === "routing" && <RoutingTab />}
 
         {activeTab === "remote" && (
           <div className="space-y-6">
@@ -332,180 +292,7 @@ export function PdpRuntimeRouting() {
             </div>
           </div>
         )}
-
-        {activeTab === "cloud" && (
-          <div className="py-8 text-center text-muted-foreground">
-            <div className="inline-block p-4 bg-muted/50 rounded-full mb-4">
-              <svg
-                className="w-8 h-8 text-primary"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
-                />
-              </svg>
-            </div>
-            <h4 className="text-lg font-medium text-foreground mb-2">
-              Pollen Cloud PDP
-            </h4>
-            <p className="max-w-md mx-auto text-sm">
-              Connect this DEK to a fully managed Pollen Cloud PDP.
-              Configuration and routing will be synced automatically.
-            </p>
-            <button
-              disabled
-              className="mt-6 px-4 py-2 bg-primary/50 text-primary-foreground rounded opacity-50 cursor-not-allowed"
-            >
-              Coming Soon
-            </button>
-          </div>
-        )}
-
-        {activeTab === "routing" && (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Manage how authorization requests are routed to the available PDP
-              runtimes.
-            </p>
-            <div className="rounded-md border">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs uppercase bg-muted/50">
-                  <tr>
-                    <th className="px-4 py-3">Priority</th>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Mode</th>
-                    <th className="px-4 py-3">Primary PDP</th>
-                    <th className="px-4 py-3">Fallback</th>
-                    <th className="px-4 py-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {routes.map((r) => (
-                    <tr
-                      key={r.id}
-                      className="border-b last:border-0 hover:bg-muted/30"
-                    >
-                      <td className="px-4 py-3 font-mono">{r.priority}</td>
-                      <td className="px-4 py-3 font-medium">{r.name}</td>
-                      <td className="px-4 py-3">
-                        <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs">
-                          {r.mode}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs">
-                        {r.primary_pdp_id}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs">
-                        {r.fallback_pdp_ids?.join(", ")}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => handleDeleteRoute(r.id)}
-                          className="px-3 py-1 bg-red-500/10 text-red-500 rounded text-xs hover:opacity-80"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {routes.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="px-4 py-8 text-center text-muted-foreground"
-                      >
-                        No routes configured. Add one below.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-8 pt-6 border-t">
-              <h4 className="text-sm font-medium mb-4">Add New Route</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 p-4 rounded-lg">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium">Route Name</label>
-                  <input
-                    type="text"
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                    placeholder="e.g. Default Routing"
-                    value={newRouteName}
-                    onChange={(e) => setNewRouteName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium">Routing Mode</label>
-                  <select
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                    value={newRouteMode}
-                    onChange={(e) => setNewRouteMode(e.target.value as any)}
-                  >
-                    <option value="local_only">Local Only</option>
-                    <option value="local_primary_remote_fallback">
-                      Local Primary, Remote Fallback
-                    </option>
-                    <option value="remote_primary_local_fallback">
-                      Remote Primary, Local Fallback
-                    </option>
-                    <option value="strict_remote">Strict Remote</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium">Primary PDP ID</label>
-                  <input
-                    type="text"
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                    placeholder="e.g. local-cedar"
-                    value={newRoutePrimary}
-                    onChange={(e) => setNewRoutePrimary(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium">
-                    Fallback PDP IDs (comma separated)
-                  </label>
-                  <input
-                    type="text"
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                    placeholder="e.g. remote-opa"
-                    value={newRouteFallback}
-                    onChange={(e) => setNewRouteFallback(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium">
-                    Failure Behavior
-                  </label>
-                  <select
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                    value={newRouteFailure}
-                    onChange={(e) => setNewRouteFailure(e.target.value as any)}
-                  >
-                    <option value="deny">Deny</option>
-                    <option value="allow">Allow</option>
-                    <option value="fallback">Fallback</option>
-                  </select>
-                </div>
-                <div className="space-y-2 flex items-end">
-                  <button
-                    onClick={handleAddRoute}
-                    className="h-9 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 w-full"
-                  >
-                    Create Route
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+      </div>
       </div>
     </div>
   );

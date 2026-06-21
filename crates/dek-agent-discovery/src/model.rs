@@ -46,6 +46,7 @@ pub enum InferredAgentType {
     LocalModelServer,
     IdeExtension,
     CustomScriptAgent,
+    AutomationAgent,
     UnknownAiProcess,
 }
 
@@ -73,6 +74,9 @@ pub enum EvidenceSource {
     TokenUsage,
     UserConfirmation,
     CliAgent,
+    Container,
+    PortProbe,
+    PythonFramework,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -218,6 +222,10 @@ pub struct ControlBindingPlan {
 pub struct TelemetryPlan {
     pub events_endpoint: String,
     pub metrics_endpoint: String,
+    pub capture_tool_calls: bool,
+    pub capture_arguments: bool,
+    pub redact_env_keys: Vec<String>,
+    pub risk_signals: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
