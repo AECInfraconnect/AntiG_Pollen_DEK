@@ -3,88 +3,185 @@
 <head>
     <title>Pollen Cloud - Dashboard</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; padding: 2rem; }
-        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 1000px; margin: 0 auto; }
-        h2, h3 { color: #1a1a1a; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
-        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #f8f9fa; }
-        .badge { padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.85em; font-weight: bold; }
-        .badge.active { background: #e6f4ea; color: #1e8e3e; }
-        .badge.revoked { background: #fce8e6; color: #d93025; }
-        .btn-danger { background: #d93025; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
-        .btn-danger:hover { background: #b3261e; }
-        .card { background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-color: #f8fafc;
+            --primary: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border: #334155;
+            --text-muted: #94a3b8;
+        }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2rem;
+        }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+        .header h1 { margin: 0; font-size: 1.75rem; font-weight: 600; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: var(--panel-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); margin: 0.5rem 0; }
+        .stat-label { color: var(--text-muted); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; }
+        .panel { background: var(--panel-bg); border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
+        .panel-header { background: rgba(0,0,0,0.2); padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); font-weight: 600; }
+        .panel-content { padding: 1.5rem; overflow-x: auto; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { color: var(--text-muted); font-weight: 500; font-size: 0.875rem; }
+        tr:last-child td { border-bottom: none; }
+        
+        .badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .bg-success { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid var(--success); }
+        .bg-danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+        .bg-warning { background: rgba(245, 158, 11, 0.2); color: var(--warning); border: 1px solid var(--warning); }
+        .bg-primary { background: rgba(59, 130, 246, 0.2); color: var(--primary); border: 1px solid var(--primary); }
+
+        .btn-sm { background: var(--danger); color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+        .btn-sm:hover { opacity: 0.8; }
+        
+        .log-row { font-family: monospace; font-size: 0.875rem; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Pollen Cloud Control Plane (Mock)</h2>
-        
-        <h3>Device Fleet</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Device ID</th>
-                    <th>Profile</th>
-                    <th>Status</th>
-                    <th>Last Health Check</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for device in devices %}
-                <tr>
-                    <td>{{ device.id }}</td>
-                    <td>{{ device.profile }}</td>
-                    <td>
-                        {% if device.revoked %}
-                            <span class="badge revoked">Revoked</span>
-                        {% else %}
-                            <span class="badge active">Active</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ device.last_health }}</td>
-                    <td>
-                        {% if !device.revoked %}
-                        <form method="POST" action="/admin/devices/{{ device.id }}/revoke" style="display:inline;">
-                            <button type="submit" class="btn-danger">Revoke</button>
-                        </form>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% else %}
-                <tr><td colspan="5">No devices enrolled.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="header">
+        <h1>Pollen Cloud Dashboard</h1>
+        <div><span class="badge bg-success">Control Plane: Online</span></div>
+    </div>
 
-        <h3>Recent Decision Logs</h3>
-        <div class="card">
-            Total logs ingested: {{ telemetry_count }}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Active Devices</div>
+            <div class="stat-value">{{ devices.len() }}</div>
         </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Device ID</th>
-                    <th>Timestamp</th>
-                    <th>Action</th>
-                    <th>Decision</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for log in recent_logs %}
-                <tr>
-                    <td>{{ log.device_id }}</td>
-                    <td>{{ log.timestamp }}</td>
-                    <td>{{ log.action }}</td>
-                    <td>{{ log.decision }}</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="4">No logs yet.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="stat-card">
+            <div class="stat-label">Total Telemetry</div>
+            <div class="stat-value">{{ telemetry_count }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Active Bundle</div>
+            <div class="stat-value">v{{ current_version }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Canary Bundle</div>
+            <div class="stat-value">{{ canary_info }}</div>
+        </div>
+    </div>
+
+    <div class="main-grid">
+        <div class="panel">
+            <div class="panel-header">Device Fleet</div>
+            <div class="panel-content">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Device ID</th>
+                            <th>Tenant ID</th>
+                            <th>Profile</th>
+                            <th>Last Health</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in devices %}
+                        <tr>
+                            <td>{{ d.id }}</td>
+                            <td>{{ d.tenant_id }}</td>
+                            <td><span class="badge bg-primary">{{ d.profile }}</span></td>
+                            <td class="text-muted">{{ d.last_health }}</td>
+                            <td>
+                                {% if d.revoked %}
+                                    <span class="badge bg-danger">Revoked</span>
+                                {% else %}
+                                    <span class="badge bg-success">Active</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if !d.revoked %}
+                                <form method="POST" action="/admin/devices/{{ d.id }}/revoke" style="margin:0;">
+                                    <button class="btn-sm" type="submit">Revoke</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if devices.is_empty() %}
+                        <tr><td colspan="6" style="text-align:center; color: var(--text-muted);">No devices enrolled.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">Audit Logs (Governance)</div>
+            <div class="panel-content" style="max-height: 400px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in audits %}
+                        <tr class="log-row">
+                            <td style="color: var(--warning);">{{ a.action }}</td>
+                            <td>{{ a.details }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% if audits.is_empty() %}
+                        <tr><td colspan="2" style="text-align:center; color: var(--text-muted);">No audit logs.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel" style="margin-top: 2rem;">
+        <div class="panel-header">Recent Decision Logs (Telemetry)</div>
+        <div class="panel-content" style="max-height: 400px; overflow-y: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Device ID</th>
+                        <th>Action</th>
+                        <th>Decision</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in recent_logs %}
+                    <tr class="log-row">
+                        <td style="color: var(--text-muted);">{{ l.timestamp }}</td>
+                        <td>{{ l.device_id }}</td>
+                        <td>{{ l.action }}</td>
+                        <td>
+                            {% if l.decision == "Permit" %}
+                                <span style="color: var(--success);">PERMIT</span>
+                            {% else if l.decision == "Deny" %}
+                                <span style="color: var(--danger);">DENY</span>
+                            {% else %}
+                                <span style="color: var(--warning);">{{ l.decision }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if recent_logs.is_empty() %}
+                    <tr><td colspan="4" style="text-align:center; color: var(--text-muted);">No telemetry ingested yet.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </body>
 </html>
