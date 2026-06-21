@@ -20,7 +20,7 @@
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 #[derive(Debug, Deserialize)]
 struct ProbationMarker {
@@ -105,7 +105,7 @@ fn restart_service() -> Result<()> {
         .status()
         .context("spawn systemctl")?;
     if !status.success() {
-        error!("systemctl restart returned {:?}", status.code());
+        tracing::error!("systemctl restart returned {:?}", status.code());
     }
     Ok(())
 }
