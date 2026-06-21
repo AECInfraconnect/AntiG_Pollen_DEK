@@ -20,20 +20,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Ajv CLI
-        run: npm install -g ajv-cli
+      - name: Install Ajv CLI & Formats
+        run: npm install -g ajv-cli ajv-formats
+
       - name: Validate schemas
         run: |
           for file in docs/contracts/schemas/*.schema.json; do
-            if [ -f "$file" ]; then
-              ajv compile -s "$file" || exit 1
-            fi
+            echo "Validating schema $file"
+            ajv compile -s "$file" -c ajv-formats || exit 1
           done
 
       - name: Validate sample payloads against schemas
         run: |
-          ajv validate -s docs/contracts/schemas/telemetry-event.schema.json -d crates/mock-cloud/tests/fixtures/decision_event.json
-          ajv validate -s docs/contracts/schemas/dek-device.schema.json -d crates/mock-cloud/tests/fixtures/device_register.json
+          ajv validate -c ajv-formats -s docs/contracts/schemas/telemetry-event.schema.json -d crates/mock-cloud/tests/fixtures/decision_event.json
+          ajv validate -c ajv-formats -s docs/contracts/schemas/dek-device.schema.json -d crates/mock-cloud/tests/fixtures/device_register.json
 
   validate_openapi:
     name: Validate OpenAPI Spec
