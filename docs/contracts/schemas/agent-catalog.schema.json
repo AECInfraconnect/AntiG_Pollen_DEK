@@ -9,13 +9,32 @@
         "type": "object",
         "properties": {
           "id": { "type": "string" },
-          "name": { "type": "string" },
-          "capabilities": {
+          "type": { "type": "string" },
+          "owner_binding": { "type": "string" },
+          "device_binding": { "type": "string" },
+          "trust_level": { "type": "integer" },
+          "allowed_pep_modes": {
+            "type": "array",
+            "items": { "enum": ["full", "shadow", "canary", "observe_only"] }
+          },
+          "policy_route_tags": {
             "type": "array",
             "items": { "type": "string" }
+          },
+          "data_sensitivity_tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "mtls_requirements": {
+            "type": "object",
+            "properties": {
+              "required": { "type": "boolean" },
+              "svid_required": { "type": "boolean" },
+              "jwt_required": { "type": "boolean" }
+            }
           }
         },
-        "required": ["id", "name"]
+        "required": ["id", "type", "trust_level"]
       }
     }
   },
