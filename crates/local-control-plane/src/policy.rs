@@ -318,12 +318,8 @@ async fn validate_policy(
                 if !text.contains("package ") {
                     errors.push("Rego syntax error: Missing package declaration".to_string());
                 }
-            } else if language == "openfga" {
-                if !text.contains("model") && !text.contains("type ") {
-                    errors.push(
-                        "OpenFGA syntax error: Missing model or type definitions".to_string(),
-                    );
-                }
+            } else if language == "openfga" && !text.contains("model") && !text.contains("type ") {
+                errors.push("OpenFGA syntax error: Missing model or type definitions".to_string());
             }
         }
         PolicySource::Template {

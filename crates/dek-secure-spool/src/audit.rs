@@ -56,6 +56,6 @@ mod tests {
 
         // แก้ payload หลังบันทึก → chain พัง
         e1.payload_json = "decision:allow".into();
-        assert_eq!(verify_chain(&vec![e0, e1]), Err(1));
+        assert_eq!(verify_chain(&[e0, e1]), Err(1));
     }
 }

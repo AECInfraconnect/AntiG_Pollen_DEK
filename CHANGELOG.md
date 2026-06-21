@@ -53,7 +53,6 @@ Major feature release: AI Agent Observability, Shadow AI Detection, and the Obse
 
 ### Fixed
 
-
 - Made Local Control Plane and mock-cloud bundle manifest endpoints accept the GET method used by bundle syncers and local E2E tests.
 - Made Wasmtime cache initialization non-fatal when the host default cache configuration is unavailable or invalid.
 - Stabilized Local Admin Dashboard Playwright tests on Windows and CI by starting Vite explicitly for frontend-only E2E and using a real external server only when requested.
