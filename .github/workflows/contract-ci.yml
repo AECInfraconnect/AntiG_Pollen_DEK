@@ -1,0 +1,85 @@
+name: contract-ci
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/**'
+      - '.spectral.yaml'
+      - '.github/workflows/contract-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/**'
+      - '.spectral.yaml'
+
+jobs:
+  validate-build-and-drift:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint:openapi
+      - run: npm run lint:asyncapi
+      - run: npm run validate:schemas
+      - run: npm run check:generated
+
+  breaking-change-gate:
+    runs-on: ubuntu-latest
+    needs: validate-build-and-drift
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install oasdiff
+        run: |
+          curl -L https://github.com/oasdiff/oasdiff/releases/latest/download/oasdiff_linux_amd64.tar.gz -o /tmp/oasdiff.tar.gz
+          tar -xzf /tmp/oasdiff.tar.gz -C /tmp
+          sudo mv /tmp/oasdiff /usr/local/bin/oasdiff
+
+      - name: Generate current spec
+        working-directory: contracts
+        run: npm ci && npm run build
+
+      - name: Export base spec
+        run: |
+          git show origin/${{ github.base_ref }}:contracts/generated/openapi/pollen.v1.yaml > /tmp/base.yaml || true
+
+      - name: Breaking change check
+        if: hashFiles('/tmp/base.yaml') != ''
+        run: |
+          oasdiff breaking /tmp/base.yaml contracts/generated/openapi/pollen.v1.yaml --fail-on ERR
+
+  docs-must-change:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check docs update for contract changes
+        shell: bash
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -E '^contracts/(spec|schemas|catalog)/' >/dev/null; then
+            if ! echo "$CHANGED" | grep -E '^contracts/(CHANGELOG.md|COMPATIBILITY.md|docs/)' >/dev/null; then
+              echo "Contract source changed, but CHANGELOG/COMPATIBILITY/docs were not updated."
+              exit 1
+            fi
+          fi

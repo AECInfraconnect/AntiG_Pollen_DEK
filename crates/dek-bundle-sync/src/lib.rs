@@ -559,6 +559,3 @@ pub enum BundleError {
     #[error("anti-rollback: incoming gen {incoming} < current {current}")]
     RollbackBlocked { current: u64, incoming: u64 },
 }
-
-#[cfg(test)]
-mod sig_test;

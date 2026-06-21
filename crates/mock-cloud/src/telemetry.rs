@@ -33,6 +33,7 @@ pub fn router() -> Router<AppState> {
         .route("/v1/telemetry/traces", post(ingest_traces))
         .route("/v1/telemetry/ebpf-events", post(ingest_ebpf_events))
         .route("/v1/metrics", post(ingest_metrics))
+        .route("/v1/telemetry/batches", post(ingest_batches))
         // legacy/tenant-scoped alias kept for back-compat
         .route(
             "/v1/tenants/:tenant_id/telemetry/events",
@@ -142,6 +143,33 @@ async fn ingest_events_tenant(
     Json(p): Json<TelemetryPayload>,
 ) -> impl IntoResponse {
     handle(s, p, "events").await
+}
+
+#[derive(serde::Deserialize)]
+pub struct TelemetryBatchRequest {
+    pub schema_version: String,
+    pub tenant_id: String,
+    pub device_id: String,
+    pub batch_id: String,
+    pub events: Vec<dek_domain_schema::TelemetryEvent>,
+}
+
+async fn ingest_batches(
+    State(s): State<AppState>,
+    Json(p): Json<TelemetryBatchRequest>,
+) -> impl IntoResponse {
+    let mut logs = s.telemetry_events.lock().unwrap();
+    let mut n = 0;
+    for event in p.events {
+        logs.push_front(event);
+        if logs.len() > 2000 {
+            logs.pop_back();
+        }
+        n += 1;
+    }
+    drop(logs);
+    
+    (StatusCode::OK, Json(serde_json::json!({ "status": "ingested", "kind": "batches", "count": n })))
 }
 
 #[derive(serde::Deserialize)]

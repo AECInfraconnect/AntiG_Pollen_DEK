@@ -132,8 +132,8 @@ pub fn verify_bundle(_manifest: &PollenPolicyBundle, _public_b64: &str) -> bool 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route(
-            "/v1/tenants/:tenant/devices/:device/bundles/manifest",
-            axum::routing::get(get_manifest),
+            "/v1/tenants/:tenant/devices/:device/bundles/latest",
+            axum::routing::post(get_manifest),
         )
         .route(
             "/v1/tenants/:tenant/devices/:device/bundles/artifacts/:sha",
@@ -215,7 +215,9 @@ async fn get_trusted_keys(State(st): State<AppState>) -> ApiResult<Json<serde_js
 async fn get_manifest(
     Path((tenant, _device)): Path<(String, String)>,
     State(st): State<AppState>,
+    body: Option<Json<serde_json::Value>>,
 ) -> ApiResult<Json<serde_json::Value>> {
+    let _ = body;
     match st
         .policy_store
         .get_policy_raw(&tenant, "bundle:latest")

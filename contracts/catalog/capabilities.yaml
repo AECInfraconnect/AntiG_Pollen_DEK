@@ -1,0 +1,32 @@
+version: 1
+capabilities:
+  - id: contract.discovery.v1
+    owner: platform
+    description: Supports /.well-known/pollen-contract discovery.
+  - id: bundle.signed-envelope.v1
+    owner: bundle
+    description: Supports signed bundle envelope { manifest, signatures }.
+  - id: sse.bundle-ready.v1
+    owner: cloud
+    description: Supports BundleReady event over SSE.
+  - id: telemetry.batch.v1
+    owner: telemetry
+    description: Supports batched telemetry ingestion.
+  - id: policy.opa-wasm.v1
+    owner: policy
+    description: Supports OPA WASM policy artifacts.
+  - id: policy.cedar.v1
+    owner: policy
+    description: Supports Cedar policy artifacts.
+  - id: policy.openfga.v1
+    owner: policy
+    description: Supports OpenFGA model and tuple artifacts.
+  - id: os.l4.ebpf.v1
+    owner: dek-ebpfd
+    description: Supports Linux L4 enforcement using eBPF.
+  - id: os.l4.wfp.v1
+    owner: dek-windows-wfp
+    description: Supports Windows L4 enforcement using WFP.
+  - id: os.l4.nefilter.v1
+    owner: dek-macos-nefilter
+    description: Supports macOS metadata-first NetworkExtension filtering.

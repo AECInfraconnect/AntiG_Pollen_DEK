@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.pollen.dev/schemas/decision-result.v1.schema.json",
+  "title": "PollenDecisionResultV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "trace_id", "decision", "reason", "matched_policy_ids", "latency_ms"],
+  "properties": {
+    "request_id": { "type": "string" },
+    "trace_id": { "type": "string" },
+    "decision": { "type": "string", "enum": ["Allow", "Deny", "Redact", "Mask", "Warn", "RequireApproval", "BreakGlassAllow"] },
+    "reason": { "type": "string" },
+    "matched_policy_ids": { "type": "array", "items": { "type": "string" } },
+    "matched_route_id": { "type": "string" },
+    "latency_ms": { "type": "integer" },
+    "selected_engine": { "type": "string" },
+    "enforcement_plane": { "type": "string" }
+  }
+}

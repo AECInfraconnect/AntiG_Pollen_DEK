@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.pollen.dev/schemas/bundle-signature.v1.schema.json",
+  "title": "PollenBundleSignatureV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["key_id", "alg", "signature", "signed_at"],
+  "properties": {
+    "key_id": { "type": "string", "minLength": 1 },
+    "alg": {
+      "type": "string",
+      "enum": ["ed25519", "ecdsa-p256-sha256", "cosign-bundle-v1"]
+    },
+    "signature": { "type": "string", "contentEncoding": "base64" },
+    "signed_at": { "type": "string", "format": "date-time" },
+    "signer": { "type": "string" },
+    "certificate_chain_ref": { "type": "string" }
+  }
+}

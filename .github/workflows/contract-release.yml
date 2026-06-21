@@ -1,0 +1,52 @@
+name: contract-release
+
+on:
+  push:
+    tags:
+      - 'contracts-v*'
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release-contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+
+      - run: npm ci
+      - run: npm run test
+
+      - name: Package artifacts
+        run: |
+          mkdir -p dist
+          cp generated/openapi/pollen.v1.yaml dist/
+          cp generated/asyncapi/pollen-sse.v1.yaml dist/
+          tar -czf dist/schemas.tar.gz schemas
+          tar -czf dist/catalog.tar.gz catalog
+          tar -czf dist/pollen-contract-rust.tar.gz generated/rust/pollen-contract
+          tar -czf dist/pollen-contract-typescript.tgz generated/typescript
+          cp CHANGELOG.md COMPATIBILITY.md dist/
+          cd dist && sha256sum * > SHA256SUMS
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign checksums with keyless signing
+        run: |
+          cosign sign-blob --yes --output-signature dist/SHA256SUMS.sig dist/SHA256SUMS
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: contracts/dist/*
