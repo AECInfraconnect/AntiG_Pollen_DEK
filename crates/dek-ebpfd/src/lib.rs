@@ -266,11 +266,11 @@ mod linux {
 
     fn parse_dns(cgroup_id: u64, payload: &[u8]) -> Option<DnsObservation> {
         let msg = Message::from_vec(payload).ok()?;
-        let q = msg.queries().first()?;
-        let is_response = msg.header().message_type() == MessageType::Response;
+        let q = msg.queries.first()?;
+        let is_response = msg.message_type == MessageType::Response;
 
         let mut answers = Vec::new();
-        for rec in msg.answers() {
+        for rec in msg.answers.iter() {
             let ttl = rec.ttl().max(MIN_TTL_FLOOR_SECS);
             match rec.data() {
                 Some(RData::A(a)) => answers.push(ResolvedRecord {
