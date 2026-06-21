@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use tracing::{error, info};
 
 pub async fn run(reason: &str) -> Result<()> {

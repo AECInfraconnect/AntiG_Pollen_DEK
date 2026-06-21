@@ -99,15 +99,17 @@ impl Supervisor {
         let pinned_key =
             pinned_key_override.unwrap_or_else(|| bootstrap.pinned_bundle_public_key.clone());
 
+        let tenant_id = bootstrap.tenant_id.as_deref().unwrap_or("unknown_tenant");
         let bundle_agent = Arc::new(BundleSyncAgent::new(
             &cloud_url,
+            tenant_id,
             &bootstrap.device_id,
             &bootstrap.mtls,
             &pinned_key,
             client_key_override.as_deref(),
         )?);
         let telemetry_sink = Arc::new(CloudTelemetrySink::new(
-            &format!("{cloud_url}/telemetry"),
+            &format!("{}/v1/tenants/{}/devices/{}/telemetry", cloud_url.trim_end_matches('/'), tenant_id, bootstrap.device_id),
             &bootstrap.mtls,
             client_key_override.as_deref(),
         )?);
@@ -190,7 +192,7 @@ impl Supervisor {
         let renew_handle = crate::svid_renewal::spawn_svid_renewal_task(
             self.cancel.clone(),
             crate::svid_renewal::RenewalConfig {
-                renew_url: format!("{}/spire/svid/renew", self.cloud_url.trim_end_matches('/')),
+                renew_url: format!("{}/v1/tenants/{}/devices/{}/spire/svid/renew", self.cloud_url.trim_end_matches('/'), self.bootstrap.tenant_id.as_deref().unwrap_or("unknown_tenant"), self.bootstrap.device_id),
                 device_id: self.bootstrap.device_id.clone(),
                 mtls: self.bootstrap.mtls.clone(),
             },
