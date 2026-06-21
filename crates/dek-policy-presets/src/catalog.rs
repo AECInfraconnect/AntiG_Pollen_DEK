@@ -154,7 +154,8 @@ when {
   context.control_level in ["enforce", "strict_deny"] &&
   context.current_spend_usd > {{daily_limit_usd}}
 };
-"#.into(),
+"#
+            .into(),
             entrypoint: None,
         },
         test_cases: vec![],
@@ -166,7 +167,9 @@ fn mcp_allowlist_preset() -> PolicyPreset {
         preset_id: "openfga.mcp_tool_allowlist".into(),
         version: "1.0.0".into(),
         display_name: "MCP Tool Allowlist".into(),
-        description: "Allow execution only if user is explicitly granted access to the tool in OpenFGA.".into(),
+        description:
+            "Allow execution only if user is explicitly granted access to the tool in OpenFGA."
+                .into(),
         category: PresetCategory::ToolPermission,
         language: PresetLanguage::OpenFga,
         recommended_pep_types: vec!["mcp_proxy".into()],
@@ -185,7 +188,8 @@ fn mcp_allowlist_preset() -> PolicyPreset {
 # OpenFGA implicit model. 
 # The remote PEP will perform a check: 
 # tuple_key: { user: input.principal, relation: "can_invoke", object: input.resource }
-"#.into(),
+"#
+            .into(),
             entrypoint: None,
         },
         test_cases: vec![],
@@ -209,7 +213,12 @@ mod tests {
                     source = source.replace(&token, "0"); // Dummy numeric/string
                 }
                 let res = cedar_policy::PolicySet::from_str(&source);
-                assert!(res.is_ok(), "Failed to compile Cedar preset {}: {:?}", preset.preset_id, res.err());
+                assert!(
+                    res.is_ok(),
+                    "Failed to compile Cedar preset {}: {:?}",
+                    preset.preset_id,
+                    res.err()
+                );
             }
         }
     }
