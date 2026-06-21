@@ -13,6 +13,7 @@ export function Simulator() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [targetPep, setTargetPep] = useState<string>("auto");
 
   useEffect(() => {
     PolicyApi.list().then(data => {
@@ -97,6 +98,7 @@ export function Simulator() {
       resource,
       principal,
       context: ctx,
+      target_pep: targetPep === "auto" ? undefined : targetPep,
     };
 
     try {
@@ -148,6 +150,19 @@ export function Simulator() {
                   {!['cedar', 'rego', 'open_fga'].includes(policies.find(p => p.policy_id === selectedPolicyId)?.policy_type || '') && "Gateway PEP"}
                 </div>
               )}
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Target PEP for Deployment Test</label>
+              <select 
+                value={targetPep} 
+                onChange={e => setTargetPep(e.target.value)}
+                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="auto">Auto-Detect (Default)</option>
+                <option value="mcp_proxy">MCP Proxy PEP</option>
+                <option value="ext_authz">Envoy / L7 Proxy PEP</option>
+                <option value="stdio_wrapper">STDIO Agent Wrapper</option>
+              </select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Principal ID</label>
