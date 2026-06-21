@@ -10,8 +10,23 @@ pub struct A2AMessage {
     pub signature: String,
 }
 
+use dek_control_plane_api::capability::{CapabilityMaturity, RuntimeCapability};
+
 pub struct IATPBroker {
     pub is_active: bool,
+}
+
+impl IATPBroker {
+    pub fn capability() -> RuntimeCapability {
+        RuntimeCapability {
+            capability_id: "a2a.mediator".into(),
+            name: "IATP Mediator".into(),
+            pep_type: "a2a_mediator".into(),
+            maturity: CapabilityMaturity::Stub,
+            supported_os: vec!["linux".into(), "macos".into(), "windows".into()],
+            limitations: vec!["Cryptographic signature validation is mocked".into()],
+        }
+    }
 }
 
 impl Default for IATPBroker {

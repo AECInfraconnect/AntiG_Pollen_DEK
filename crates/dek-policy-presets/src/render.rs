@@ -16,6 +16,27 @@ pub struct RenderedPreset {
 }
 
 pub fn render(preset: &PolicyPreset, req: &PresetApplyRequest) -> anyhow::Result<RenderedPreset> {
+    // Validate unknown params
+    for key in req.params.keys() {
+        if !preset.parameters.iter().any(|p| p.key == *key) {
+            return Err(anyhow::anyhow!("Unknown parameter: {}", key));
+        }
+    }
+
+    // Validate required and allowed values
+    for param in &preset.parameters {
+        if let Some(val) = req.params.get(&param.key) {
+            // Check allowed values
+            if let Some(allowed) = &param.allowed_values {
+                if !allowed.contains(val) {
+                    return Err(anyhow::anyhow!("Value {} for parameter {} is not in allowed values", val, param.key));
+                }
+            }
+        } else if param.required {
+            return Err(anyhow::anyhow!("Missing required parameter: {}", param.key));
+        }
+    }
+
     let mut source = preset.template.source.clone();
 
     for (key, value) in &req.params {
@@ -96,9 +117,117 @@ pub fn to_policy_draft(
         },
         compile_options: PolicyCompileOptions {
             optimization_level: None,
-            fail_on_warnings: Some(false),
+            fail_on_warnings: Some(true),
         },
     };
 
     Ok(draft)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{ControlLevel, PresetCategory, PresetLanguage, PresetParameter, PresetTemplate};
+    use std::collections::HashMap;
+
+    fn mock_preset() -> PolicyPreset {
+        PolicyPreset {
+            preset_id: "test".into(),
+            version: "1".into(),
+            display_name: "Test".into(),
+            description: "Test".into(),
+            category: PresetCategory::ShadowAi,
+            language: PresetLanguage::Rego,
+            recommended_pep_types: vec![],
+            supported_control_levels: vec![],
+            default_control_level: ControlLevel::ObserveOnly,
+            risk_tags: vec![],
+            owasp_tags: vec![],
+            parameters: vec![
+                PresetParameter {
+                    key: "req_param".into(),
+                    label: "Req".into(),
+                    description: "Req".into(),
+                    param_type: "string".into(),
+                    required: true,
+                    default_value: serde_json::Value::Null,
+                    allowed_values: None,
+                },
+                PresetParameter {
+                    key: "enum_param".into(),
+                    label: "Enum".into(),
+                    description: "Enum".into(),
+                    param_type: "string".into(),
+                    required: false,
+                    default_value: serde_json::Value::Null,
+                    allowed_values: Some(vec![serde_json::json!("A"), serde_json::json!("B")]),
+                },
+            ],
+            template: PresetTemplate {
+                source: "hello {{req_param}}".into(),
+                entrypoint: None,
+            },
+            test_cases: vec![],
+        }
+    }
+
+    #[test]
+    fn test_missing_required_param() {
+        let preset = mock_preset();
+        let req = PresetApplyRequest {
+            targets: Default::default(),
+            control_level: ControlLevel::ObserveOnly,
+            params: HashMap::new(),
+        };
+        let res = render(&preset, &req);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err().to_string(), "Missing required parameter: req_param");
+    }
+
+    #[test]
+    fn test_unknown_param() {
+        let preset = mock_preset();
+        let mut params = HashMap::new();
+        params.insert("req_param".into(), serde_json::json!("val"));
+        params.insert("unknown".into(), serde_json::json!("val"));
+        let req = PresetApplyRequest {
+            targets: Default::default(),
+            control_level: ControlLevel::ObserveOnly,
+            params,
+        };
+        let res = render(&preset, &req);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err().to_string(), "Unknown parameter: unknown");
+    }
+
+    #[test]
+    fn test_invalid_enum_val() {
+        let preset = mock_preset();
+        let mut params = HashMap::new();
+        params.insert("req_param".into(), serde_json::json!("val"));
+        params.insert("enum_param".into(), serde_json::json!("C"));
+        let req = PresetApplyRequest {
+            targets: Default::default(),
+            control_level: ControlLevel::ObserveOnly,
+            params,
+        };
+        let res = render(&preset, &req);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err().to_string(), "Value \"C\" for parameter enum_param is not in allowed values");
+    }
+
+    #[test]
+    fn test_valid_render() {
+        let preset = mock_preset();
+        let mut params = HashMap::new();
+        params.insert("req_param".into(), serde_json::json!("world"));
+        params.insert("enum_param".into(), serde_json::json!("A"));
+        let req = PresetApplyRequest {
+            targets: Default::default(),
+            control_level: ControlLevel::ObserveOnly,
+            params,
+        };
+        let res = render(&preset, &req).unwrap();
+        assert_eq!(res.content, "hello world");
+    }
 }

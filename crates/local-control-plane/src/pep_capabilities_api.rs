@@ -31,39 +31,59 @@ pub struct PepCapabilityCheckRequest {
 
 async fn list_capabilities(Path(_tenant): Path<String>) -> ApiResult<Json<serde_json::Value>> {
     Ok(Json(serde_json::json!({
-        "schema_version": "pep-capabilities-list.v1",
+        "schema_version": "pep-capabilities-list.v2",
         "capabilities": [
             {
                 "pep_type": "linux_ebpf",
                 "status": "available",
-                "mode": "enforce"
+                "mode": "enforce",
+                "maturity": "enforce_beta"
             },
             {
                 "pep_type": "windows_wfp",
                 "status": "not_available",
                 "mode": "observe_only",
+                "maturity": "stub",
                 "reason": "not running on windows"
             },
             {
                 "pep_type": "macos_nefilter",
                 "status": "not_available",
                 "mode": "observe_only",
+                "maturity": "stub",
                 "reason": "not running on macOS"
             },
             {
                 "pep_type": "http_gateway",
                 "status": "available",
-                "mode": "enforce"
+                "mode": "enforce",
+                "maturity": "production"
             },
             {
                 "pep_type": "mcp_proxy",
                 "status": "available",
-                "mode": "enforce"
+                "mode": "enforce",
+                "maturity": "production"
             },
             {
                 "pep_type": "stdio_wrapper",
                 "status": "available",
-                "mode": "enforce"
+                "mode": "enforce",
+                "maturity": "production"
+            },
+            {
+                "pep_type": "execution_sandbox",
+                "status": "available",
+                "mode": "observe_only",
+                "maturity": "stub",
+                "reason": "Currently mocks success without actual isolation"
+            },
+            {
+                "pep_type": "a2a_mediator",
+                "status": "available",
+                "mode": "observe_only",
+                "maturity": "stub",
+                "reason": "Cryptographic signature validation is mocked"
             }
         ]
     })))
@@ -94,18 +114,35 @@ async fn check_capabilities(
                 "pep_type": "linux_ebpf",
                 "status": if req.target_os == "linux" { "available" } else { "not_available" },
                 "mode": if req.target_os == "linux" { "enforce" } else { "observe_only" },
+                "maturity": "enforce_beta",
                 "reason": if req.target_os != "linux" { "not running on linux" } else { "" }
             },
             {
                 "pep_type": "windows_wfp",
                 "status": if req.target_os == "windows" { "available" } else { "not_available" },
                 "mode": if req.target_os == "windows" { "enforce" } else { "observe_only" },
+                "maturity": "stub",
                 "reason": if req.target_os != "windows" { "not running on windows" } else { "" }
             },
             {
                 "pep_type": "mcp_proxy",
                 "status": "available",
-                "mode": "enforce"
+                "mode": "enforce",
+                "maturity": "production"
+            },
+            {
+                "pep_type": "execution_sandbox",
+                "status": "available",
+                "mode": "observe_only",
+                "maturity": "stub",
+                "reason": "Currently mocks success without actual isolation"
+            },
+            {
+                "pep_type": "a2a_mediator",
+                "status": "available",
+                "mode": "observe_only",
+                "maturity": "stub",
+                "reason": "Cryptographic signature validation is mocked"
             }
         ]
     })))
