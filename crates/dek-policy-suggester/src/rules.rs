@@ -34,3 +34,25 @@ impl RuleEngine {
         Ok(all_suggestions)
     }
 }
+
+pub struct LowTrustRule {
+    pub threshold: i32,
+}
+
+impl SuggestionRule for LowTrustRule {
+    fn evaluate(&self, _events: &[AgentObservationEvent]) -> Result<Vec<PolicySuggestion>> {
+        // ในสถานการณ์จริงจะวิเคราะห์จาก TrustScore ของ Agent
+        // สำหรับ Phase A จะจำลองการทำงานคืนค่า PolicySuggestion
+        let suggestion = PolicySuggestion {
+            suggestion_id: uuid::Uuid::new_v4().to_string(),
+            tenant_id: "default".into(),
+            target_agent_id: Some("suspicious_agent".into()),
+            action_type: crate::model::ActionType::RestrictMcpTool,
+            tool_name: Some("*".into()),
+            reason: "Agent trust score dropped below threshold".into(),
+            confidence: 0.85,
+            generated_at: "2026-06-21T00:00:00Z".into(),
+        };
+        Ok(vec![suggestion])
+    }
+}
