@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, ShieldAlert } from "lucide-react";
 
+import { TelemetryApi } from "../services/api";
 
 export function Alerts() {
   const [denyCount, setDenyCount] = useState(0);
@@ -9,16 +10,15 @@ export function Alerts() {
     // Poll telemetry logs periodically to check for Deny decisions in the last minute
     const checkAlerts = async () => {
       try {
-        const res = await fetch("http://localhost:3000/v1/tenants/local/telemetry?limit=100");
-        if (!res.ok) return;
-        const data = await res.json();
+        const data = await TelemetryApi.listDecisionLogs();
         
         const oneMinuteAgo = new Date(Date.now() - 60000);
         let recentDenies = 0;
         
         for (const item of data) {
           const timestamp = new Date(item.timestamp);
-          if (timestamp > oneMinuteAgo && item.decision?.decision === "Deny") {
+          const decisionStr = item.payload?.decision?.toString().toLowerCase();
+          if (timestamp > oneMinuteAgo && (decisionStr === "deny" || decisionStr === "false")) {
             recentDenies++;
           }
         }
