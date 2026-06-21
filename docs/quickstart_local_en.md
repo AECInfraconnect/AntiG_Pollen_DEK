@@ -140,7 +140,15 @@ curl -s http://127.0.0.1:3000/v1/tenants/local/telemetry/decision-logs
 # -> { "count": 1, "decisions": [ { ... "payload": { "decision": "allow" } } ] }
 ```
 
-View them in the dashboard under **Audit & Decision Logs**. You can also explore **Agent Discovery** to see locally running AI tools or the **Cost Ledger** to view estimated token spend and auto-generated policy suggestions.
+View them in the dashboard under **Audit & Decision Logs**. You can also explore:
+
+- **Auto Discovery** — see locally running AI agents detected by process scanning
+- **Shadow AI Inbox** — alerts for unrecognized/unmanaged AI activity
+- **Policy Suggestions** — auto-generated policy recommendations based on observations
+- **Cost Ledger** — estimated token spend across all observed AI APIs
+- **Policy Presets** — deploy common guardrails (Block Shadow AI, Cost Budget, etc.) in one click
+- **Blackbox AI Providers** — manage registered external AI providers
+- **Alerts** — system-wide security and compliance notifications
 
 ## What just happened
 

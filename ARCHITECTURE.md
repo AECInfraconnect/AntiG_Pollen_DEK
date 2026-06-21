@@ -62,10 +62,17 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 - `dek-agent-discovery` — background OS process scanning and heuristic fingerprinting to find Shadow AI and local agents.
 - `dek-agent-observer` — token usage tracking, budget management, local cost estimation, trust scoring via `AgentBaseline`, and telemetry shipping for AI APIs.
 - `dek-policy-suggester` — automatic Rego/Cedar policy generation based on observed cost thresholds and agent trust scoring (`LowTrustRule`).
+- `dek-agent-connector` — agent connection management and lifecycle handling.
 - `dek-control-plane-api` — Contract Hub: shared contract (bundle manifest, telemetry envelope, registry objects, policy drafts, identity modes). Exposes `/.well-known/pollen-contract` to serve TypeSpec-generated OpenAPI contracts and supported schema definitions to consumers.
 - `local-control-plane` — Axum + SQLite + local signing; registry/policy/bundle/telemetry/push. Implements the complete `Observe -> Suggest -> Enforce` Governance Loop. Supports Connector config/testing and Dry-run Simulator engine.
-- `apps/local-admin-dashboard` — React/Vite UI (registry, policies, decision logs, simulator, and connector configuration).
+- `apps/local-admin-dashboard` — React/Vite UI with 19 pages: registry (agents, servers, tools, resources, entities, relationships, blackbox AI), policies (enforcer, presets, simulator), observability (auto discovery, shadow AI, suggestions, cost ledger, alerts), and operations (bundles, decision logs, settings).
 - `mock-cloud` — reference Cloud implementing the same contract for offline testing.
+
+**Interop & Preview**
+
+- `dek-a2a-mediator` — Inter-Agent Trust Protocol (IATP) mediator for Google A2A protocol communication between trusted agents. Manages trust negotiation, capability exchange, and secure message routing.
+- `dek-execution-sandbox` — isolated, short-lived tool execution environments for untrusted or unverified agent code. Enforces resource limits and network isolation.
+- `dek-policy-presets` — pre-built Rego/Cedar/OpenFGA policy templates (e.g. "Block Shadow AI", "Enforce Cost Budget", "Require MCP Tool Approval") for zero-config deployment via the dashboard.
 
 ## Decision data flow
 
