@@ -157,10 +157,8 @@ pub async fn spawn_ipc_server_task(
                                                     }
                                                 },
                                                 IpcRequest::RotateIdentity => {
-                                                    // TODO: trigger actual SPIRE rotation. For now, mock success.
-                                                    IpcResponse::RotateStatus {
-                                                        status: "Rotation initiated".to_string(),
-                                                    }
+                                                    // TODO: trigger actual SPIRE rotation.
+                                                    IpcResponse::Error("rotation not yet supported".to_string())
                                                 }
                                             };
                                             let res_msg = IpcMessage { version: req_msg.version, payload: res };

@@ -166,3 +166,20 @@ pub async fn admin_policies_rollback(
     (axum::http::StatusCode::OK, axum::Json(serde_json::json!({"status": "rolled_back"})))
 }
 
+pub async fn admin_network_publish(
+    State(state): State<AppState>,
+    axum::Json(body): axum::Json<serde_json::Value>,
+) -> impl IntoResponse {
+    if let Some(rules) = body.get("rules").and_then(|r| r.as_array()) {
+        *state.network_rules.lock().unwrap() = rules.clone();
+        state.audit_logs.lock().unwrap().push(crate::state::AuditLog {
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            actor: "admin".to_string(),
+            action: "network-publish".to_string(),
+            details: format!("set {} network rule(s)", rules.len()),
+        });
+        (axum::http::StatusCode::OK, axum::Json(serde_json::json!({ "published": rules.len() })))
+    } else {
+        (axum::http::StatusCode::BAD_REQUEST, axum::Json(serde_json::json!({ "error": "missing rules[]" })))
+    }
+}

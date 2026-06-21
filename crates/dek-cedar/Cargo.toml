@@ -11,6 +11,16 @@ anyhow.workspace = true
 tracing.workspace = true
 async-trait = "0.1.89"
 cedar-policy = "4.11.0"
+moka = { version = "0.12", features = ["sync"] }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["async_tokio"] }
+tokio = { workspace = true, features = ["full", "rt", "macros"] }
+serde_json = { workspace = true }
+
+[[bench]]
+name = "authorize_bench"
+harness = false

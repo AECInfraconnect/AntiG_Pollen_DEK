@@ -40,7 +40,7 @@ pub fn router() -> Router<AppState> {
             get(get_malformed_bundle),
         )
         .route(
-            "/v1/tenants/:tenant_id/bundles/artifacts/network_guardrails.json",
+            "/v1/tenants/:tenant_id/devices/:device_id/bundles/artifacts/network_guardrails.json",
             get(get_network_guardrails_artifact),
         )
 }
@@ -182,31 +182,22 @@ async fn get_malformed_bundle(
 }
 
 async fn get_network_guardrails_artifact(
-    Path(_tenant_id): Path<String>,
-    State(_state): State<AppState>,
+    Path((_tenant_id, _device_id)): Path<(String, String)>,
+    State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let mock_policy = json!({
-        "policy_id": "pol-net-001",
-        "policy_type": "NETWORK_EGRESS_GUARDRAIL",
-        "version": 1,
-        "risk_tier": "high",
-        "targets": {
-            "devices": ["*"]
-        },
-        "conditions": {
-            "destinations": [
-                {
-                    "type": "domain",
-                    "value": "malicious.example.com"
-                }
-            ]
-        },
-        "effect": "DENY",
-        "fallback": {
-            "cloud_unavailable": "FAIL_CLOSED",
-            "policy_stale": "FAIL_CLOSED"
-        }
-    });
+    let rules: Vec<serde_json::Value> = state.network_rules.lock().unwrap().clone();
+    let signed = serde_json::Value::Array(rules);
+    let signed_bytes = serde_json::to_vec(&signed).unwrap();
+    let active_seed = state.active_seed.lock().unwrap();
+    let sk = SigningKey::from_bytes(active_seed.as_slice().try_into().unwrap());
+    let sig = sk.sign(&signed_bytes);
 
-    (StatusCode::OK, Json(json!([mock_policy])))
+    use base64::Engine;
+    (StatusCode::OK, Json(serde_json::json!({
+        "signed": signed,
+        "signatures": [{
+            "keyid": "bootstrap",
+            "sig": base64::prelude::BASE64_STANDARD.encode(sig.to_bytes())
+        }]
+    })))
 }

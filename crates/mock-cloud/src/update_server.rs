@@ -15,7 +15,7 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn get_update_metadata(
-    Path(channel): Path<String>,
+    Path(_channel): Path<String>,
     State(_state): State<AppState>,
 ) -> impl IntoResponse {
     let now = chrono::Utc::now();
