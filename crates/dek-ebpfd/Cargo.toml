@@ -17,3 +17,6 @@ aya = { version = "0.13", features = ["async_tokio"] }
 aya-log = "0.2"
 dek-ebpf-common = { path = "../dek-ebpf-common" }
 
+[build-dependencies]
+aya-build = "=0.1.2"
+

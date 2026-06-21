@@ -64,6 +64,16 @@ impl BundleSyncAgent {
         })
     }
 
+    /// Safely parses the pinned public key, ensuring it exactly matches the expected length for an Ed25519 key (32 bytes).
+    fn parse_pinned_key(&self) -> Result<VerifyingKey> {
+        use base64::Engine;
+        let public_key_bytes = base64::prelude::BASE64_STANDARD.decode(&self.pinned_public_key)
+            .context("Failed to base64-decode pinned public key")?;
+        let key_array: [u8; 32] = public_key_bytes.as_slice().try_into()
+            .map_err(|_| anyhow::anyhow!("Pinned public key has incorrect length (expected 32 bytes)"))?;
+        VerifyingKey::from_bytes(&key_array).context("Invalid Ed25519 public key structure")
+    }
+
     pub async fn update_mtls(&self, mtls: &MtlsConfig) -> Result<()> {
         let new_client = mtls.build_client(None)?;
         let mut client_lock = self.client.write().await;
@@ -96,20 +106,46 @@ impl BundleSyncAgent {
             
             let metadata: serde_json::Value = res.json().await?;
             
+            // Parse pinned key once per file safely
+            let verifying_key = self.parse_pinned_key()?;
+
             // Verify signature using pinned public key (simplified for TUF-lite)
             let signatures = metadata.get("signatures").and_then(|s| s.as_array()).context("Missing signatures")?;
             let mut valid_sig = false;
             for sig in signatures {
-                let sig_b64 = sig.get("sig").and_then(|s| s.as_str()).context("Missing sig b64")?;
+                let sig_b64 = match sig.get("sig").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => {
+                        warn!("[BundleSync] Missing sig b64, skipping signature entry");
+                        continue;
+                    }
+                };
                 
                 use base64::Engine;
-                let public_key_bytes = base64::prelude::BASE64_STANDARD.decode(&self.pinned_public_key)?;
-                let signature_bytes = base64::prelude::BASE64_STANDARD.decode(sig_b64)?;
+                let signature_bytes = match base64::prelude::BASE64_STANDARD.decode(sig_b64) {
+                    Ok(b) => b,
+                    Err(e) => {
+                        warn!("[BundleSync] Base64 decode failed for signature: {}", e);
+                        continue;
+                    }
+                };
 
-                let verifying_key = VerifyingKey::from_bytes(public_key_bytes.as_slice().try_into().unwrap())?;
-                let signature = Signature::from_bytes(signature_bytes.as_slice().try_into().unwrap());
+                let signature_array: [u8; 64] = match signature_bytes.as_slice().try_into() {
+                    Ok(arr) => arr,
+                    Err(_) => {
+                        warn!("[BundleSync] Signature length invalid (expected 64 bytes), skipping");
+                        continue;
+                    }
+                };
+                let signature = Signature::from_bytes(&signature_array);
                 
-                let signed_bytes = serde_json::to_vec(&metadata["signed"]).unwrap();
+                // Note on canonicalization: 
+                // `serde_json::Value` uses a BTreeMap to hold objects if not compiled with `preserve_order`.
+                // This means the keys are deterministically sorted. The Pollen Cloud must sign the
+                // exact same canonical representation (sorted keys, no spaces) for the signature to match.
+                let signed_bytes = serde_json::to_vec(&metadata["signed"])
+                    .context("Failed to serialize 'signed' payload to bytes")?;
+
                 if verifying_key.verify(&signed_bytes, &signature).is_ok() {
                     valid_sig = true;
                     break;
@@ -235,5 +271,52 @@ impl BundleSyncAgent {
         );
 
         Ok((dek_config, bundle_path))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::Engine;
+    use tokio::sync::RwLock;
+
+    fn dummy_agent(b64_key: &str) -> BundleSyncAgent {
+        BundleSyncAgent {
+            cloud_url: "http://localhost".to_string(),
+            tenant_id: "tenant".to_string(),
+            device_id: "device".to_string(),
+            pinned_public_key: b64_key.to_string(),
+            client: RwLock::new(reqwest::Client::new()),
+        }
+    }
+
+    #[test]
+    fn test_parse_pinned_key_valid() {
+        use ed25519_dalek::SigningKey;
+
+        let signing_key = SigningKey::from_bytes(&[1; 32]);
+        let verifying_key = signing_key.verifying_key();
+        
+        let b64_key = base64::prelude::BASE64_STANDARD.encode(verifying_key.as_bytes());
+        let agent = dummy_agent(&b64_key);
+
+        assert!(agent.parse_pinned_key().is_ok());
+    }
+
+    #[test]
+    fn test_parse_pinned_key_malformed_length() {
+        let b64_key = base64::prelude::BASE64_STANDARD.encode(b"too_short_key");
+        let agent = dummy_agent(&b64_key);
+
+        let res = agent.parse_pinned_key();
+        assert!(res.is_err(), "Malformed key should fail-close without panicking");
+        assert!(res.unwrap_err().to_string().contains("incorrect length"));
+    }
+
+    #[test]
+    fn test_parse_pinned_key_invalid_base64() {
+        let agent = dummy_agent("NOT_BASE_64_&&&!!");
+        let res = agent.parse_pinned_key();
+        assert!(res.is_err(), "Invalid base64 should fail-close without panicking");
     }
 }
