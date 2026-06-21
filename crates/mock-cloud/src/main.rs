@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
@@ -131,7 +131,7 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n"
         })])),
         chaos_config: Arc::new(Mutex::new(crate::state::ChaosConfig {
             outage_enabled: false,
-            global_latency_ms: 0,
+            global_latency_ms: 0_i64,
         })),
         approvals: Arc::new(Mutex::new(HashMap::new())),
     };

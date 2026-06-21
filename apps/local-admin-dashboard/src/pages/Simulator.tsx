@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PlayCircle, CheckCircle2, XCircle } from "lucide-react";
 import { PolicyApi } from "../services/api";
+import type { PolicyDraft } from "../services/types";
 
 export function Simulator() {
+  const [policies, setPolicies] = useState<PolicyDraft[]>([]);
+  const [selectedPolicyId, setSelectedPolicyId] = useState<string>("");
   const [action, setAction] = useState("read");
   const [resource, setResource] = useState("document:123");
   const [principal, setPrincipal] = useState("user:alice");
@@ -11,7 +14,21 @@ export function Simulator() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    PolicyApi.list().then(data => {
+      setPolicies(data);
+      if (data.length > 0) {
+        setSelectedPolicyId(data[0].policy_id);
+      }
+    }).catch(console.error);
+  }, []);
+
   const handleSimulate = async () => {
+    if (!selectedPolicyId) {
+      setError("Please select a policy to simulate");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
@@ -33,7 +50,7 @@ export function Simulator() {
     };
 
     try {
-      const res = await PolicyApi.simulate(payload);
+      const res = await PolicyApi.simulate(selectedPolicyId, payload);
       setResult(res);
     } catch (e: any) {
       setError(e.message || String(e));
@@ -50,7 +67,7 @@ export function Simulator() {
             <PlayCircle className="h-6 w-6 text-primary" /> Policy Simulator
           </h2>
           <p className="text-muted-foreground">
-            Evaluate requests against the current compiled policy bundle.
+            Evaluate requests against a policy draft using dry-run mode.
           </p>
         </div>
       </div>
@@ -60,6 +77,19 @@ export function Simulator() {
           <h3 className="font-medium">Request Context</h3>
           
           <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Target Policy</label>
+              <select 
+                value={selectedPolicyId} 
+                onChange={e => setSelectedPolicyId(e.target.value)}
+                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                {policies.length === 0 && <option value="">No policies available</option>}
+                {policies.map(p => (
+                  <option key={p.policy_id} value={p.policy_id}>{p.name} ({p.policy_id})</option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Principal ID</label>
               <input value={principal} onChange={e => setPrincipal(e.target.value)}
@@ -85,7 +115,7 @@ export function Simulator() {
 
             <button 
               onClick={handleSimulate}
-              disabled={loading}
+              disabled={loading || policies.length === 0}
               className="w-full flex justify-center items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               <PlayCircle className="h-4 w-4" />
@@ -105,13 +135,13 @@ export function Simulator() {
             )}
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center text-muted-foreground animate-pulse">
-                Evaluating policies...
+                Evaluating policy...
               </div>
             )}
             {result && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-lg">
-                  {result.allow ? (
+                  {result.allowed ? (
                     <span className="flex items-center gap-2 text-emerald-400"><CheckCircle2 className="h-5 w-5"/> ALLOW</span>
                   ) : (
                     <span className="flex items-center gap-2 text-red-400"><XCircle className="h-5 w-5"/> DENY</span>

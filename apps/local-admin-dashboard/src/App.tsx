@@ -13,6 +13,7 @@ import { Entities } from "./pages/Entities";
 import { Relationships } from "./pages/Relationships";
 import { BlackboxAI } from "./pages/BlackboxAI";
 import { Settings } from "./pages/Settings";
+import { Alerts } from "./pages/Alerts";
 
 function App() {
   return (
@@ -31,7 +32,7 @@ function App() {
           <Route path="simulator" element={<Simulator />} />
           <Route path="bundles" element={<Bundles />} />
           <Route path="audit" element={<DecisionLogs />} />
-          <Route path="alerts" element={<div className="glass p-6 rounded-xl"><h1>Alerts (WIP)</h1></div>} />
+          <Route path="alerts" element={<Alerts />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

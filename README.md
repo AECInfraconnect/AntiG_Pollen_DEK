@@ -3,6 +3,7 @@
 [![CI](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/ci.yml/badge.svg)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/tag/AECInfraconnect/AntiG_Pollen_DEK?include_prereleases)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases)
+[![Compatibility](https://img.shields.io/badge/Compatibility-Matrix-success.svg)](contracts/COMPATIBILITY.md)
 
 **Pollen DEK** is an Apache-2.0 runtime that **enforces and observes AI-agent, MCP,
 API, and tool-call activity at the desktop/edge** — a Policy Enforcement Point

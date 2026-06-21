@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use arc_swap::ArcSwap;
@@ -109,7 +109,7 @@ async fn check(
             policy_bundle_id: "active".into(),
             policy_bundle_version: "v1".into(),
             evaluator_results: vec![],
-            latency_ms: 0,
+            latency_ms: 0_i64,
         };
         return (
             StatusCode::OK,
@@ -138,7 +138,7 @@ async fn check(
                 metadata: serde_json::json!({}),
             });
 
-    let latency = start.elapsed().as_millis() as u64;
+    let latency = start.elapsed().as_millis() as i64;
 
     let has_require_approval = res.obligations.iter().any(|o| o == "require_approval");
     let allow = res.allow && !has_require_approval;
@@ -251,7 +251,7 @@ async fn batch_check(
                 policy_bundle_id: "active".into(),
                 policy_bundle_version: "v1".into(),
                 evaluator_results: vec![],
-                latency_ms: 0,
+                latency_ms: 0_i64,
             });
             continue;
         }
@@ -274,7 +274,7 @@ async fn batch_check(
                 metadata: serde_json::json!({}),
             }
         });
-        let latency = start.elapsed().as_millis() as u64;
+        let latency = start.elapsed().as_millis() as i64;
 
         let response = DecisionResponse {
             decision_id: uuid::Uuid::new_v4().to_string(),

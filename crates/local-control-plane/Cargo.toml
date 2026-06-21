@@ -31,9 +31,13 @@ dek-policy-intent = { version = "1.0.0-beta.1", path = "../dek-policy-intent" }
 dek-bundle-format = { version = "1.0.0-beta.1", path = "../dek-bundle-format" }
 dek-policy-compiler = { version = "1.0.0-beta.1", path = "../dek-policy-compiler" }
 pollen-contract = { path = "../../contracts/generated/rust/pollen-contract" }
+dek-policy-router = { path = "../dek-policy-router" }
+dek-plugin-sdk = { path = "../dek-plugin-sdk" }
+dek-cedar = { path = "../dek-cedar" }
+dek-policy-runtime = { path = "../dek-policy-runtime" }
+reqwest = { workspace = true, features = ["json"] }
 
 [dev-dependencies]
-reqwest = { workspace = true, features = ["json"] }
 tempfile = "3.27.0"
 
 [lints]

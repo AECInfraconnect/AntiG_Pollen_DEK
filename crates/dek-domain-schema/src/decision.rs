@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use schemars::JsonSchema;
@@ -66,7 +66,7 @@ pub struct EvaluatorResult {
     pub evaluator: String,
     pub decision: String,
     pub reason: String,
-    pub latency_ms: u64,
+    pub latency_ms: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

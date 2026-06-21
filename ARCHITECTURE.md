@@ -38,7 +38,7 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 **Decision / PEP**
 
 - `dek-mcp-proxy` — MCP authorize endpoint; emits decision telemetry; obligations (require_approval / step_up_mfa).
-- `dek-policy-router` — route matching + **adaptive engine selection** (`engine_selector`), circuit breakers, per-tenant admission, failover, break-glass.
+- `dek-policy-router` — route matching + **adaptive engine selection** (`engine_selector`), circuit breakers, per-tenant admission, failover (with `ManualOverride` logic and `auto_recovery_delay`), break-glass. Supports `evaluate_dry_run` for simulation.
 - `dek-policy-runtime` — `PolicyRuntime` trait + Wasmtime runtime.
 - Adapters: `dek-cedar`, `dek-openfga`, OPA via Wasm — built on `dek-pdp-sdk`, feature-gated by `dek-router-builder`.
 - `dek-plugin-sdk` / `dek-plugin-host` — transform plugins (e.g. `dek-pii-wasm`).
@@ -58,9 +58,9 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 
 **Control planes**
 
-- `dek-control-plane-api` — shared contract (bundle manifest, telemetry envelope, registry objects, policy drafts, identity modes).
-- `local-control-plane` — Axum + SQLite + local signing; registry/policy/bundle/telemetry/push.
-- `apps/local-admin-dashboard` — React/Vite UI (registry, policies, decision logs).
+- `dek-control-plane-api` — Contract Hub: shared contract (bundle manifest, telemetry envelope, registry objects, policy drafts, identity modes).
+- `local-control-plane` — Axum + SQLite + local signing; registry/policy/bundle/telemetry/push. Supports Connector config/testing and Dry-run Simulator engine.
+- `apps/local-admin-dashboard` — React/Vite UI (registry, policies, decision logs, simulator, and connector configuration).
 - `mock-cloud` — reference Cloud implementing the same contract for offline testing.
 
 ## Decision data flow

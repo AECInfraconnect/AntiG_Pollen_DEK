@@ -14,6 +14,32 @@
     "matched_route_id": { "type": "string" },
     "latency_ms": { "type": "integer" },
     "selected_engine": { "type": "string" },
-    "enforcement_plane": { "type": "string" }
+    "enforcement_plane": { "type": "string" },
+    "adapter_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["engine", "decision"],
+        "properties": {
+          "engine":     { "type": "string" },
+          "decision":   { "type": "string", "enum": ["Allow","Deny","Redact","Mask","Warn","RequireApproval","BreakGlassAllow"] },
+          "reason":     { "type": "string" },
+          "latency_ms": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "obligations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type"],
+        "properties": {
+          "type":       { "type": "string" },
+          "parameters": { "type": "object", "additionalProperties": true }
+        }
+      }
+    }
   }
 }

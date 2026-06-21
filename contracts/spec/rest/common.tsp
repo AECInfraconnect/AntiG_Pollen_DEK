@@ -13,17 +13,14 @@ model PollenHeaders {
   tenantId?: string;
 }
 
-model ErrorEnvelope {
-  schema_version: "error-envelope.v1";
-  error: PollenError;
-}
-
+@error
 model PollenError {
   code: string;
   message: string;
-  correlation_id?: string;
-  details?: Record<unknown>;
+  trace_id?: string;
 }
+
+model NotModifiedResponse { @statusCode statusCode: 304; }
 
 model Page<T> {
   items: T[];

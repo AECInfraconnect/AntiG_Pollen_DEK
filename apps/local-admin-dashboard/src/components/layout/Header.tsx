@@ -1,7 +1,9 @@
-import { Bell, Search, Moon, Sun } from "lucide-react";
+import { Bell, Search, Moon, Sun, Languages } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export function Header() {
+  const { i18n } = useTranslation();
   const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
@@ -11,6 +13,12 @@ export function Header() {
       document.documentElement.classList.remove("dark");
     }
   }, [isDark]);
+
+  const toggleLanguage = () => {
+    const nextLang = i18n.language === "en" ? "th" : "en";
+    i18n.changeLanguage(nextLang);
+    localStorage.setItem("i18nextLng", nextLang);
+  };
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card/50 px-6 backdrop-blur-xl">
@@ -25,6 +33,13 @@ export function Header() {
         </div>
       </div>
       <div className="flex items-center gap-4">
+        <button
+          onClick={toggleLanguage}
+          className="flex items-center gap-1 rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-xs font-semibold"
+        >
+          <Languages className="h-5 w-5" />
+          <span className="uppercase">{i18n.language}</span>
+        </button>
         <button
           onClick={() => setIsDark(!isDark)}
           className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

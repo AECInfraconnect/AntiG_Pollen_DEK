@@ -56,9 +56,14 @@ export class ControlPlaneClient {
     return this.fetchApi(`/policies/${policyId}/publish`, { method: 'POST' });
   }
 
-  async simulatePolicy(req: any): Promise<any> {
-    return this.fetchApi('/policies/simulate', { method: 'POST', body: JSON.stringify(req) });
+  async simulatePolicy(policyId: string, req: any): Promise<any> {
+    return this.fetchApi(`/policies/${policyId}/simulate`, { method: 'POST', body: JSON.stringify(req) });
   }
+
+  // Connectors
+  async listConnectors(): Promise<any[]> { return this.fetchApi('/connectors'); }
+  async upsertConnector(cfg: any): Promise<any> { return this.fetchApi('/connectors', { method: 'POST', body: JSON.stringify(cfg) }); }
+  async testConnector(id: string): Promise<any> { return this.fetchApi(`/connectors/${id}/test`, { method: 'POST' }); }
 
   // Bundles
   async listBundles(): Promise<any[]> {
@@ -109,7 +114,7 @@ export const PolicyApi = {
   list: () => defaultClient.listPolicies(),
   create: (draft: PolicyDraft) => defaultClient.createPolicy(draft),
   publish: (policyId: string) => defaultClient.publishPolicy(policyId),
-  simulate: (req: any) => defaultClient.simulatePolicy(req),
+  simulate: (policyId: string, req: any) => defaultClient.simulatePolicy(policyId, req),
 };
 
 export const BundleApi = {
@@ -120,3 +125,10 @@ export const BundleApi = {
 export const TelemetryApi = {
   listDecisionLogs: () => defaultClient.listDecisionLogs(),
 };
+
+export const ConnectorApi = {
+  list: () => defaultClient.listConnectors(),
+  upsert: (cfg: any) => defaultClient.upsertConnector(cfg),
+  test: (id: string) => defaultClient.testConnector(id),
+};
+

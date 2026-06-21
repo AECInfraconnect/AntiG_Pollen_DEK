@@ -4,6 +4,24 @@ All notable changes to Pollen DEK are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the project uses semantic-ish
 versioning with pre-release tags (e.g. `1.0.0-beta.1`).
 
+## [1.0.0-beta.5] — 2026-06
+
+Pollen DEK beta 5 brings major stability and edge functionality improvements.
+
+### Added
+
+- **Dry-run Simulation Engine** — Simulate policies locally without enforcement or side effects via the Local Admin Dashboard.
+- **Audit Export** — Export decision logs as CSV and JSON directly from the dashboard.
+- **Connector Health Tests** — Configure and test connectivity to external PDPs (OPA, Cedar, OpenFGA) via the Settings page.
+- **Failover Overrides & Auto-Recovery** — Support for `ManualOverride` pool selection and `auto_recovery_delay` for circuit breakers.
+- **Internationalization (i18n)** — Local Admin Dashboard now supports English and Thai natively via `react-i18next`.
+- **Contract Hub** — Strict enforcement of `DecisionResult` schema with `adapter_results` and `obligations`.
+
+### Changed
+- Refactored `latency_ms` to `i64` to match typify types and schema definitions.
+- Restored `PollenError` standard envelope across API specs.
+- Enforced MSRV of Rust 1.85 to support edition 2024 features safely.
+
 ## [1.0.0-beta.1] — 2026-06
 
 First public beta. Pollen DEK can be downloaded, installed on Linux/macOS/Windows,

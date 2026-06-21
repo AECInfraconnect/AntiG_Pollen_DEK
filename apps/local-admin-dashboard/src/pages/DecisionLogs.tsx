@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Activity, RefreshCw, ShieldCheck, ShieldX, ShieldAlert } from "lucide-react";
+import { Activity, RefreshCw, ShieldCheck, ShieldX, ShieldAlert, Download } from "lucide-react";
 import { TelemetryApi } from "../services/api";
 import type { TelemetryEventEnvelope, DecisionResult, DecisionEffect } from "../services/api";
 
@@ -39,6 +39,42 @@ export function DecisionLogs() {
   const allowCount = events.filter((e) => (e.payload as DecisionResult)?.decision === "allow").length;
   const denyCount = events.filter((e) => (e.payload as DecisionResult)?.decision === "deny").length;
 
+  const exportJSON = () => {
+    const dataStr = JSON.stringify(decisions.map(d => d.env), null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "decision_logs.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportCSV = () => {
+    const header = ["Timestamp", "Event ID", "Request ID", "Decision", "Reason", "Matched Policies", "Latency (ms)"];
+    const rows = decisions.map(({ env, d }) => [
+      new Date(env.timestamp).toISOString(),
+      env.event_id,
+      d?.request_id ?? "",
+      d?.decision ?? "",
+      d?.reason?.replace(/"/g, '""') ?? "",
+      d?.matched_policy_ids?.join(";") ?? "",
+      String(d?.latency_ms ?? 0)
+    ]);
+    
+    const csvContent = [header, ...rows]
+      .map(e => e.map(field => `"${field}"`).join(","))
+      .join("\n");
+      
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "decision_logs.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -48,9 +84,17 @@ export function DecisionLogs() {
           </h2>
           <p className="text-muted-foreground">Every authorization decision the DEK enforced (local workspace).</p>
         </div>
-        <button onClick={load} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50">
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportCSV} disabled={decisions.length === 0} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50 disabled:opacity-50">
+            <Download className="h-4 w-4" /> CSV
+          </button>
+          <button onClick={exportJSON} disabled={decisions.length === 0} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50 disabled:opacity-50">
+            <Download className="h-4 w-4" /> JSON
+          </button>
+          <button onClick={load} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50">
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

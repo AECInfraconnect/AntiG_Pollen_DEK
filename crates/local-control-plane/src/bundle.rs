@@ -54,12 +54,24 @@ pub async fn build_signed_bundle(
     // Snapshot
     let snap_bytes = serde_json::to_vec(registry_snap)?;
     let snap_sha256 = hex::encode(Sha256::digest(&snap_bytes));
-    blobs.push((format!("registry/{}", snap_sha256), snap_bytes));
+    let snap_path = format!("registry/{}", snap_sha256);
+    blobs.push((snap_path.clone(), snap_bytes));
+    artifacts.push(BundleArtifact {
+        r#type: "registry_snapshot".to_string(),
+        sha256: snap_sha256,
+        path: snap_path,
+    });
 
     // Router
     let router_bytes = serde_json::to_vec(router_config)?;
     let router_sha256 = hex::encode(Sha256::digest(&router_bytes));
-    blobs.push((format!("router/{}", router_sha256), router_bytes));
+    let router_path = format!("router/{}", router_sha256);
+    blobs.push((router_path.clone(), router_bytes));
+    artifacts.push(BundleArtifact {
+        r#type: "router_config".to_string(),
+        sha256: router_sha256,
+        path: router_path,
+    });
 
     for ca in compiled {
         let sha = hex::encode(Sha256::digest(&ca.bytes));

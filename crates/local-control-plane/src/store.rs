@@ -95,6 +95,14 @@ pub trait TelemetryStore: Send + Sync {
     async fn list_telemetry(&self, tenant: &str, kind: &str) -> Result<Vec<serde_json::Value>>;
 }
 
+#[async_trait::async_trait]
+pub trait ConnectorStore: Send + Sync {
+    async fn upsert(&self, tenant: &str, id: &str, data: &serde_json::Value) -> Result<()>;
+    async fn get(&self, tenant: &str, id: &str) -> Result<Option<serde_json::Value>>;
+    async fn list(&self, tenant: &str) -> Result<Vec<serde_json::Value>>;
+    async fn delete(&self, tenant: &str, id: &str) -> Result<bool>;
+}
+
 pub struct SqliteStore {
     pool: SqlitePool,
 }
@@ -539,5 +547,25 @@ impl TelemetryStore for SqliteStore {
                 serde_json::from_str(&j).ok()
             })
             .collect())
+    }
+}
+
+#[async_trait::async_trait]
+impl ConnectorStore for SqliteStore {
+    async fn upsert(&self, tenant: &str, id: &str, data: &serde_json::Value) -> Result<()> {
+        self.upsert_object(tenant, "connector", id, "active", "local", data)
+            .await
+    }
+
+    async fn get(&self, tenant: &str, id: &str) -> Result<Option<serde_json::Value>> {
+        self.get_object(tenant, "connector", id).await
+    }
+
+    async fn list(&self, tenant: &str) -> Result<Vec<serde_json::Value>> {
+        self.list_objects(tenant, "connector").await
+    }
+
+    async fn delete(&self, tenant: &str, id: &str) -> Result<bool> {
+        self.delete_object(tenant, "connector", id).await
     }
 }

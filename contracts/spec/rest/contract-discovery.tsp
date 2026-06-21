@@ -11,8 +11,10 @@ model ContractDiscoveryResponse {
   capabilities: string[];
 }
 
+@tag("Discovery")
 @route("/.well-known/pollen-contract")
 interface ContractDiscoveryApi {
+  @doc("Discover contract capabilities and supported protocol versions.")
   @get
-  getDiscovery(...PollenHeaders): ContractDiscoveryResponse | ErrorEnvelope;
+  getDiscovery(...PollenHeaders): ContractDiscoveryResponse | PollenError;
 }

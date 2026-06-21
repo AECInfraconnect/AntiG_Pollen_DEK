@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use serde::{Deserialize, Serialize};
@@ -72,7 +72,7 @@ pub struct DecisionResult {
     pub matched_route_id: String,
     pub adapter_results: Vec<AdapterDecisionResult>,
     pub obligations: Vec<serde_json::Value>,
-    pub latency_ms: u64,
+    pub latency_ms: i64,
     pub selected_engine: Option<String>,
     pub enforcement_plane: Option<String>,
 }
@@ -269,7 +269,7 @@ pub struct DecisionResponse {
     pub policy_bundle_id: String,
     pub policy_bundle_version: String,
     pub evaluator_results: Vec<EvaluatorResult>,
-    pub latency_ms: u64,
+    pub latency_ms: i64,
 }
 
 #[cfg(test)]
