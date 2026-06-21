@@ -1,10 +1,12 @@
 pub mod agent;
 pub mod bundle;
+pub mod capabilities;
 pub mod decision;
 pub mod dek_device;
 pub mod ebpf;
 pub mod entity;
 pub mod mcp_server;
+pub mod network_guardrail;
 pub mod pep_deployment;
 pub mod policy;
 pub mod policy_template;
@@ -19,11 +21,13 @@ pub mod tool;
 
 pub use agent::*;
 pub use bundle::*;
+pub use capabilities::*;
 pub use decision::*;
 pub use dek_device::*;
 pub use ebpf::*;
 pub use entity::*;
 pub use mcp_server::*;
+pub use network_guardrail::*;
 pub use pep_deployment::*;
 pub use policy::*;
 pub use policy_template::*;

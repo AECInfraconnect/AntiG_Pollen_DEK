@@ -9,6 +9,7 @@ pub struct DeviceStatus {
     pub profile: String,
     pub revoked: bool,
     pub last_health: String,
+    pub capabilities: dek_domain_schema::EnforcementCapabilities,
 }
 
 use dek_domain_schema::TelemetryEvent;

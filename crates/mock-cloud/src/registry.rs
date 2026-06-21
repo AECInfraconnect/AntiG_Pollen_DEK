@@ -22,6 +22,7 @@ pub fn router() -> Router<AppState> {
         // Devices
         .route("/v1/registry/devices", get(list_devices).post(create_device))
         .route("/v1/registry/devices/:id", get(get_device).patch(patch_device))
+        .route("/v1/registry/devices/:id/capabilities", post(register_capabilities))
 
         // Agents
         .route("/v1/registry/agents", get(list_agents).post(create_agent))
@@ -150,6 +151,20 @@ async fn patch_device(Path(id): Path<String>, State(state): State<AppState>, Jso
         (StatusCode::OK, Json(json!(payload)))
     } else {
         (StatusCode::NOT_FOUND, Json(json!({"error": "not found"})))
+    }
+}
+
+async fn register_capabilities(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(payload): Json<dek_domain_schema::DeviceRegistrationRequest>,
+) -> impl IntoResponse {
+    let mut devices = state.devices.lock().unwrap();
+    if let Some(dev) = devices.get_mut(&id) {
+        dev.capabilities = payload.capabilities.clone();
+        (StatusCode::OK, Json(json!({"status": "updated", "capabilities": dev.capabilities})))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "device not found"})))
     }
 }
 
