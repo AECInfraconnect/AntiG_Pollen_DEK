@@ -24,6 +24,17 @@ jobs:
         continue-on-error: true
         run: cargo audit
 
+  geiger:
+    name: Cargo Geiger
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: cargo-bins/cargo-binstall@732870f031d2fb36309d0deaf36abcc704a7be65 # main
+      - name: Install cargo-geiger
+        run: cargo binstall -y cargo-geiger
+      - name: Run cargo geiger
+        run: cargo geiger --workspace
+
   deny:
     name: Cargo Deny
     runs-on: ubuntu-latest

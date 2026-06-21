@@ -35,23 +35,15 @@ const groups = [
     ]
   },
   {
-    title: "Data & Context",
-    items: [
-      { name: "Data Resources", href: "/resources", icon: Database },
-      { name: "Identity & Network", href: "/identities", icon: Network }
-    ]
-  },
-  {
-    title: "Security & Guardrails",
+    title: "Security & Policies",
     items: [
       { name: "Policy Presets", href: "/policy-presets", icon: ShieldCheck },
       { name: "Policy Suggestions", href: "/policy-suggestions", icon: Lightbulb },
-      { name: "Policy Enforcer", href: "/policies", icon: FileKey },
-      { name: "Simulator", href: "/simulator", icon: Activity }
+      { name: "Active Policies", href: "/policies", icon: FileKey }
     ]
   },
   {
-    title: "Monitoring & Activity",
+    title: "Monitoring & Audit",
     items: [
       { name: "Alerts & Shadow AI", href: "/alerts", icon: ShieldAlert },
       { name: "Audit Logs", href: "/audit", icon: Activity },
@@ -59,11 +51,14 @@ const groups = [
     ]
   },
   {
-    title: "System & Settings",
+    title: "System Settings",
     items: [
-      { name: "Deployments", href: "/bundles", icon: Server },
+      { name: "Identities", href: "/identities", icon: Network },
+      { name: "Data Resources", href: "/resources", icon: Database },
+      { name: "Simulator", href: "/simulator", icon: Activity },
+      { name: "Bundles & Sync", href: "/bundles", icon: Server },
       { name: "Auto Discovery", href: "/discovery", icon: Search },
-      { name: "Settings", href: "/settings", icon: SettingsIcon }
+      { name: "Global Settings", href: "/settings", icon: SettingsIcon }
     ]
   }
 ];
@@ -101,9 +96,9 @@ export function Sidebar() {
                       to={item.href}
                       className={cn(
                         isActive
-                          ? "bg-primary/10 text-primary font-semibold"
-                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                        "group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-200"
+                          ? "bg-primary/10 text-primary font-semibold shadow-[0_0_15px_rgba(124,58,237,0.15)]"
+                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground hover-glow",
+                        "group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-300"
                       )}
                     >
                       <item.icon

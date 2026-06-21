@@ -3,6 +3,7 @@
 
 #![warn(clippy::print_stdout, clippy::print_stderr)]
 #![deny(clippy::unwrap_used, clippy::expect_used)]
+#![forbid(unsafe_code)]
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
