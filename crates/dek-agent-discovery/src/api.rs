@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 pub async fn run_scan(
     tenant: &str,
-    req: &serde_json::Value,
+    _req: &serde_json::Value,
 ) -> Result<Vec<DiscoveredAgentCandidate>> {
     let mut candidates = Vec::new();
     let config = DiscoveryConfig::default();

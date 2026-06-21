@@ -6,7 +6,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use dek_agent_observer::model::{AgentObservationEvent, CostLedgerEntry};
+use dek_agent_observer::model::AgentObservationEvent;
 use serde_json::json;
 
 pub fn router() -> Router<AppState> {
@@ -90,7 +90,7 @@ async fn ingest_observation(
 }
 
 async fn cost_summary(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     Path(tenant): Path<String>,
 ) -> impl IntoResponse {
     // A real implementation would query the cost_ledger table directly with SQL aggregation.
