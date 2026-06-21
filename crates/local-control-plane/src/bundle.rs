@@ -406,15 +406,15 @@ async fn deploy_to_pep(
 
     let data_dir = dek_config::paths::get_data_dir();
     let pep_dir = data_dir.join(format!("pep_{}", pep_id));
-    
+
     if let Err(e) = std::fs::create_dir_all(&pep_dir) {
         return Err(ApiError::Internal(e.into()));
     }
-    
+
     let bundle_path = pep_dir.join("active_bundle.json");
-    let bundle_str = serde_json::to_string_pretty(&val)
-        .map_err(|e| ApiError::Internal(e.into()))?;
-        
+    let bundle_str =
+        serde_json::to_string_pretty(&val).map_err(|e| ApiError::Internal(e.into()))?;
+
     if let Err(e) = std::fs::write(&bundle_path, bundle_str) {
         return Err(ApiError::Internal(e.into()));
     }
