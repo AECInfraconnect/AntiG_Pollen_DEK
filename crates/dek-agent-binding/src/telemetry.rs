@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::capability::CapabilityDescriptor;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TelemetrySpec {
@@ -32,14 +32,20 @@ pub struct ExportSpec {
 }
 
 pub fn derive_telemetry(cap: &CapabilityDescriptor) -> TelemetrySpec {
-    let redact_keys: Vec<String> = cap.data_reach.iter()
+    let redact_keys: Vec<String> = cap
+        .data_reach
+        .iter()
         .filter(|d| d.sensitivity == "high" || d.sensitivity == "critical")
         .filter_map(|d| d.path_pattern.clone())
         .collect();
 
     TelemetrySpec {
         agent_signature_id: cap.agent_signature_id.clone(),
-        layers: TelemetryLayers { transport: true, tool_exec: true, agentic: true },
+        layers: TelemetryLayers {
+            transport: true,
+            tool_exec: true,
+            agentic: true,
+        },
         otel_attributes: vec![
             "gen_ai.system".into(),
             "gen_ai.request.model".into(),
@@ -50,7 +56,9 @@ pub fn derive_telemetry(cap: &CapabilityDescriptor) -> TelemetrySpec {
         ],
         redaction: RedactionSpec {
             redact_keys,
-            redact_tool_args: cap.tool_capabilities.iter()
+            redact_tool_args: cap
+                .tool_capabilities
+                .iter()
                 .filter(|t| t.risk_class == "write" || t.risk_class == "exec")
                 .map(|t| t.tool_name.clone())
                 .collect(),

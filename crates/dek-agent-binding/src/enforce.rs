@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::capability::CapabilityDescriptor;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnforcementHooks {
@@ -32,16 +32,20 @@ pub struct ResourceLimits {
 }
 
 pub fn derive_enforcement(cap: &CapabilityDescriptor) -> EnforcementHooks {
-    let tool_guards = cap.tool_capabilities.iter().map(|t| ToolGuard {
-        tool_name: t.tool_name.clone(),
-        guard: match t.risk_class.as_str() {
-            "delete" | "exec" | "write" => GuardKind::RequireApproval,
-            _ => GuardKind::Allow,
-        },
-    }).collect();
+    let tool_guards = cap
+        .tool_capabilities
+        .iter()
+        .map(|t| ToolGuard {
+            tool_name: t.tool_name.clone(),
+            guard: match t.risk_class.as_str() {
+                "delete" | "exec" | "write" => GuardKind::RequireApproval,
+                _ => GuardKind::Allow,
+            },
+        })
+        .collect();
 
     let has_critical = cap.data_reach.iter().any(|d| d.sensitivity == "critical");
-    
+
     EnforcementHooks {
         agent_signature_id: cap.agent_signature_id.clone(),
         default_policy_refs: vec!["pollen.baseline.agent".into()],

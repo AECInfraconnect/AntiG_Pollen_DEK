@@ -44,14 +44,18 @@ pub struct EgressTarget {
 }
 
 pub fn capabilities_from_signature(sig: &AgentSignatureV2) -> CapabilityDescriptor {
-    let surfaces: Vec<Surface> = sig.control_strategies.iter().filter_map(|s| match s.as_str() {
-        "mcp_stdio_wrapper" => Some(Surface::McpStdio),
-        "ollama_proxy" | "network_egress_pep" => {
-            Some(Surface::OpenAiCompatApi { port: sig.ports.first().copied().unwrap_or(0) })
-        }
-        _ => None,
-    }).collect();
-    
+    let surfaces: Vec<Surface> = sig
+        .control_strategies
+        .iter()
+        .filter_map(|s| match s.as_str() {
+            "mcp_stdio_wrapper" => Some(Surface::McpStdio),
+            "ollama_proxy" | "network_egress_pep" => Some(Surface::OpenAiCompatApi {
+                port: sig.ports.first().copied().unwrap_or(0),
+            }),
+            _ => None,
+        })
+        .collect();
+
     CapabilityDescriptor {
         agent_signature_id: sig.id.clone(),
         interaction_surfaces: surfaces,
@@ -71,20 +75,32 @@ pub async fn probe_mcp_tools(surface: &Surface) -> anyhow::Result<Vec<ToolCapabi
                 "method": "tools/list",
                 "id": 1
             });
-            
-            let res = client.post(url)
-                .json(&req_body)
-                .send()
-                .await?;
-                
+
+            let res = client.post(url).json(&req_body).send().await?;
+
             let data: serde_json::Value = res.json().await?;
-            if let Some(tools) = data.get("result").and_then(|r| r.get("tools")).and_then(|t| t.as_array()) {
+            if let Some(tools) = data
+                .get("result")
+                .and_then(|r| r.get("tools"))
+                .and_then(|t| t.as_array())
+            {
                 let mut caps = Vec::new();
                 for t in tools {
-                    let name = t.get("name").and_then(|n| n.as_str()).unwrap_or("unknown").to_string();
-                    let desc = t.get("description").and_then(|d| d.as_str()).unwrap_or("").to_string();
-                    let schema = t.get("inputSchema").cloned().unwrap_or(serde_json::json!({}));
-                    
+                    let name = t
+                        .get("name")
+                        .and_then(|n| n.as_str())
+                        .unwrap_or("unknown")
+                        .to_string();
+                    let desc = t
+                        .get("description")
+                        .and_then(|d| d.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let schema = t
+                        .get("inputSchema")
+                        .cloned()
+                        .unwrap_or(serde_json::json!({}));
+
                     let risk_class = if name.contains("delete") || name.contains("remove") {
                         "delete".to_string()
                     } else if name.contains("exec") || name.contains("run") {
@@ -94,7 +110,7 @@ pub async fn probe_mcp_tools(surface: &Surface) -> anyhow::Result<Vec<ToolCapabi
                     } else {
                         "read".to_string()
                     };
-                    
+
                     caps.push(ToolCapability {
                         tool_name: name,
                         description: desc,

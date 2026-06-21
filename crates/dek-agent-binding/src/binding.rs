@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use dek_fingerprint_defs::model::AgentSignatureV2;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentBinding {
@@ -45,7 +45,7 @@ impl AgentBinding {
         let enforcement = crate::enforce::derive_enforcement(&capabilities);
         let telemetry = crate::telemetry::derive_telemetry(&capabilities);
         let now = chrono::Utc::now().to_rfc3339();
-        
+
         Self {
             binding_id: uuid::Uuid::new_v4().to_string(),
             agent_instance_id: candidate_id.into(),
@@ -66,9 +66,14 @@ impl AgentBinding {
     }
 
     pub fn reevaluate(&mut self, observed_tools: &[String]) -> Vec<String> {
-        let known: std::collections::HashSet<_> =
-            self.capabilities.tool_capabilities.iter().map(|t| &t.tool_name).collect();
-        observed_tools.iter()
+        let known: std::collections::HashSet<_> = self
+            .capabilities
+            .tool_capabilities
+            .iter()
+            .map(|t| &t.tool_name)
+            .collect();
+        observed_tools
+            .iter()
             .filter(|t| !known.contains(*t))
             .map(|t| format!("capability_drift:new_tool:{t}"))
             .collect()
@@ -84,7 +89,10 @@ impl AgentBinding {
             (Discovered, Suspended) => self.lifecycle = next_state,
             (_, Deprovisioned) => self.lifecycle = next_state,
             (curr, next) => {
-                return Err(format!("Invalid lifecycle transition from {:?} to {:?}", curr, next));
+                return Err(format!(
+                    "Invalid lifecycle transition from {:?} to {:?}",
+                    curr, next
+                ));
             }
         }
         self.last_seen = chrono::Utc::now().to_rfc3339();
@@ -135,7 +143,10 @@ mod tests {
     fn reevaluate_detects_drift() {
         let sig = test_signature("cursor");
         let b = AgentBinding::from_discovery(&sig, "c", "t", "d");
-        let drift = { let mut bb = b.clone(); bb.reevaluate(&["unknown_tool".into()]) };
+        let drift = {
+            let mut bb = b.clone();
+            bb.reevaluate(&["unknown_tool".into()])
+        };
         assert!(drift.iter().any(|d| d.contains("capability_drift")));
     }
 }
