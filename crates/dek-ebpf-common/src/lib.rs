@@ -150,4 +150,3 @@ unsafe impl aya::Pod for EgressEvent {}
 #[allow(unsafe_code)]
 #[cfg(feature = "user")]
 unsafe impl aya::Pod for DnsCaptureEvent {}
-
