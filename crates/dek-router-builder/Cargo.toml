@@ -8,7 +8,9 @@ license.workspace = true
 dek-policy-router = { path = "../dek-policy-router" }
 dek-cedar = { path = "../dek-cedar", optional = true }
 dek-openfga = { path = "../dek-openfga", optional = true }
+dek-opa-wasm = { path = "../dek-opa-wasm", optional = true }
 dek-policy-runtime = { path = "../dek-policy-runtime" }
+dek-plugin-host = { path = "../dek-plugin-host" }
 dek-pdp-sdk = { path = "../dek-pdp-sdk" }
 dek-config = { path = "../dek-config" }
 serde_json.workspace = true
@@ -18,7 +20,7 @@ tracing-subscriber.workspace = true
 [features]
 default = ["adapter-cedar", "adapter-opa", "adapter-openfga"]
 adapter-cedar = ["dep:dek-cedar"]
-adapter-opa = [] # OPA is just using dek-policy-runtime which we already depend on
+adapter-opa = ["dep:dek-opa-wasm"]
 adapter-openfga = ["dep:dek-openfga"]
 
 [lints]

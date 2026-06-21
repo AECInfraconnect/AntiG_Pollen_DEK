@@ -13,8 +13,14 @@ pub struct PluginHost {
     transform_plugins: HashMap<String, Arc<dyn TransformPlugin>>,
 }
 
-struct EvaluatorAdapter {
+pub struct EvaluatorAdapter {
     evaluator: Arc<dyn PolicyEvaluator>,
+}
+
+impl EvaluatorAdapter {
+    pub fn new(evaluator: Arc<dyn PolicyEvaluator>) -> Self {
+        Self { evaluator }
+    }
 }
 
 #[async_trait::async_trait]
@@ -44,11 +50,12 @@ impl PolicyRuntime for EvaluatorAdapter {
                         "deny".into()
                     },
                     allow: is_allow,
-                reason: decision.reason,
-                effects: decision.effects,
-                obligations: decision.obligations,
-                metadata: decision.metadata,
-            }),
+                    reason: decision.reason,
+                    effects: decision.effects,
+                    obligations: decision.obligations,
+                    metadata: decision.metadata,
+                })
+            }
             Err(PluginError::Unavailable(msg)) => Err(PolicyError::Unavailable(msg)),
             Err(e) => Err(PolicyError::Eval(e.to_string())),
         }
@@ -76,7 +83,7 @@ impl PluginHost {
         let id = evaluator.identity().id.clone();
         self.policy_evaluators.insert(id.clone(), evaluator.clone());
 
-        let adapter = EvaluatorAdapter { evaluator };
+        let adapter = EvaluatorAdapter::new(evaluator);
         self.router.register_evaluator(&id, Box::new(adapter));
     }
 

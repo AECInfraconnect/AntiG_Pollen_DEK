@@ -16,6 +16,7 @@ tracing = { workspace = true }
 dek-config = { path = "../dek-config" }
 dek-policy-router = { path = "../dek-policy-router" }
 dek-router-builder = { path = "../dek-router-builder" }
+dek-plugin-host = { path = "../dek-plugin-host" }
 dek-openfga = { path = "../dek-openfga" }
 dek-cedar = { path = "../dek-cedar" }
 dek-auth = { path = "../dek-auth" }
