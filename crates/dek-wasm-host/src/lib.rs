@@ -1,9 +1,10 @@
 use anyhow::{Context, Result};
 use serde_json::Value;
 use std::collections::HashMap;
-use wasi_common::pipe::{ReadPipe, WritePipe};
 use wasmtime::*;
+use wasmtime_wasi::preview1;
 use wasmtime_wasi::WasiCtxBuilder;
+use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
 
 pub trait PluginHost {
     fn invoke(&self, plugin_id: &str, input: Value) -> Result<Value>;
@@ -55,18 +56,18 @@ impl PluginHost for WasmtimePluginHost {
             .ok_or_else(|| anyhow::anyhow!("Unknown or uninitialized plugin: {}", plugin_id))?;
 
         let input_str = serde_json::to_string(&input)?;
-        let stdin = ReadPipe::from(input_str.as_bytes());
-        let stdout = WritePipe::new_in_memory();
+        let stdin = MemoryInputPipe::new(bytes::Bytes::from(input_str.into_bytes()));
+        let stdout = MemoryOutputPipe::new(10 * 1024 * 1024);
 
         let mut builder = WasiCtxBuilder::new();
-        builder.stdin(Box::new(stdin.clone()));
-        builder.stdout(Box::new(stdout.clone()));
+        builder.stdin(stdin.clone());
+        builder.stdout(stdout.clone());
         builder.inherit_stderr();
-        let wasi = builder.build();
+        let wasi = builder.build_p1();
 
         let mut store = Store::new(&self.engine, wasi);
         let mut linker = Linker::new(&self.engine);
-        wasmtime_wasi::add_to_linker(&mut linker, |s| s)?;
+        preview1::add_to_linker_sync(&mut linker, |s| s)?;
 
         // Instantiate and run _start
         let instance = linker.instantiate(&mut store, module)?;
@@ -74,10 +75,7 @@ impl PluginHost for WasmtimePluginHost {
         func.call(&mut store, ())?;
 
         // Read output produced by WASI guest via memory pipe
-        let out_bytes = stdout
-            .try_into_inner()
-            .expect("Failed to extract stdout cursor")
-            .into_inner();
+        let out_bytes = stdout.contents();
         let output_str = String::from_utf8_lossy(&out_bytes);
 
         let output_val: Value = serde_json::from_str(&output_str)?;

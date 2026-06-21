@@ -7,7 +7,8 @@
 //! - Telemetry emission and Prometheus metrics push (OTLP/Pushgateway)
 
 use anyhow::{Context, Result};
-use backoff::{future::retry, ExponentialBackoff};
+use tokio_retry::{Retry, RetryIf};
+use tokio_retry::strategy::ExponentialBackoff;
 use dek_config::{BootstrapConfig, DekConfig};
 use dek_ipc::{IpcMessage, IpcRequest, IpcResponse};
 use dek_telemetry::CloudTelemetrySink;
@@ -45,39 +46,36 @@ async fn fetch_config_with_retry(
     );
 
     info!("Fetching Operational Config from Pollen Cloud...");
-    let backoff = ExponentialBackoff {
-        max_elapsed_time: Some(Duration::from_secs(120)),
-        initial_interval: Duration::from_secs(2),
-        max_interval: Duration::from_secs(30),
-        multiplier: 2.0,
-        ..ExponentialBackoff::default()
-    };
+    let strategy = ExponentialBackoff::from_millis(2000)
+        .factor(2)
+        .max_delay(Duration::from_secs(30))
+        .take(10); // roughly 120s max
 
-    let config = retry(backoff, || async {
+    let config = RetryIf::spawn(strategy, || async {
         match DekConfig::fetch_from_cloud(&bootstrap, pollen_cloud_url).await {
             Ok(c) => Ok(c),
             Err(e) => {
                 warn!("Failed to fetch operational config: {}. Retrying...", e);
                 counter!("dek_core_config_fetch_errors_total").increment(1);
-
-                if let Some(reqwest_err) = e.downcast_ref::<reqwest::Error>() {
-                    if let Some(status) = reqwest_err.status() {
-                        if status.is_client_error() {
-                            error!(
-                                "Fatal HTTP client error fetching config: {}. Aborting startup.",
-                                status
-                            );
-                            return Err(backoff::Error::permanent(e));
-                        }
-                    }
-                    if reqwest_err.is_builder() || reqwest_err.is_request() {
-                        return Err(backoff::Error::permanent(e));
-                    }
-                }
-
-                Err(backoff::Error::transient(e))
+                Err(e)
             }
         }
+    }, |e: &anyhow::Error| {
+        if let Some(reqwest_err) = e.downcast_ref::<reqwest::Error>() {
+            if let Some(status) = reqwest_err.status() {
+                if status.is_client_error() {
+                    error!(
+                        "Fatal HTTP client error fetching config: {}. Aborting startup.",
+                        status
+                    );
+                    return false;
+                }
+            }
+            if reqwest_err.is_builder() || reqwest_err.is_request() {
+                return false;
+            }
+        }
+        true
     })
     .await?;
     info!("Loaded Operational Config for tenant: {}", config.tenant_id);
@@ -102,15 +100,12 @@ fn spawn_metrics_push_task(
                     _ = sleep(Duration::from_secs(10)) => {
                         let metrics_text = prometheus_handle.render();
 
-                        let backoff = ExponentialBackoff {
-                            max_elapsed_time: Some(Duration::from_secs(8)),
-                            initial_interval: Duration::from_millis(500),
-                            max_interval: Duration::from_secs(2),
-                            multiplier: 2.0,
-                            ..ExponentialBackoff::default()
-                        };
+                        let strategy = ExponentialBackoff::from_millis(500)
+                            .factor(2)
+                            .max_delay(Duration::from_secs(2))
+                            .take(4);
 
-                        let res = retry(backoff, || async {
+                        let res = Retry::spawn(strategy, || async {
                             let client = metrics_client.read().await.clone();
                             let push_res = client
                                 .post(&metrics_push_url)
@@ -122,11 +117,11 @@ fn spawn_metrics_push_task(
                                 Ok(r) if r.status().is_success() => Ok(()),
                                 Ok(r) => {
                                     warn!("Failed to push metrics, status: {}", r.status());
-                                    Err(backoff::Error::transient(anyhow::anyhow!("HTTP Status: {}", r.status())))
+                                    Err(anyhow::anyhow!("HTTP Status: {}", r.status()))
                                 },
                                 Err(e) => {
                                     warn!("Error pushing metrics: {}", e);
-                                    Err(backoff::Error::transient(anyhow::anyhow!("Request error: {}", e)))
+                                    Err(anyhow::anyhow!("Request error: {}", e))
                                 }
                             }
                         }).await;

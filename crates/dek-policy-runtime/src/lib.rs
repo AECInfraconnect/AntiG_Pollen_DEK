@@ -71,9 +71,10 @@ impl PolicyRuntime for MockPolicyRuntime {
     }
 }
 
-use wasi_common::pipe::{ReadPipe, WritePipe};
 use wasmtime::*;
+use wasmtime_wasi::preview1;
 use wasmtime_wasi::WasiCtxBuilder;
+use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
 
 /// The actual WASM runtime host
 pub struct WasmtimePolicyRuntime {
@@ -100,18 +101,18 @@ impl WasmtimePolicyRuntime {
 impl PolicyRuntime for WasmtimePolicyRuntime {
     async fn evaluate(&self, input: serde_json::Value) -> Result<PolicyDecision> {
         let input_str = serde_json::to_string(&input)?;
-        let stdin = ReadPipe::from(input_str.as_bytes());
-        let stdout = WritePipe::new_in_memory();
+        let stdin = MemoryInputPipe::new(bytes::Bytes::from(input_str.into_bytes()));
+        let stdout = MemoryOutputPipe::new(10 * 1024 * 1024); // 10MB capacity
 
         let mut builder = WasiCtxBuilder::new();
-        builder.stdin(Box::new(stdin.clone()));
-        builder.stdout(Box::new(stdout.clone()));
+        builder.stdin(stdin.clone());
+        builder.stdout(stdout.clone());
         builder.inherit_stderr(); // For debugging
-        let wasi = builder.build();
+        let wasi = builder.build_p1();
 
         let mut store = Store::new(&self.engine, wasi);
         let mut linker = Linker::new(&self.engine);
-        wasmtime_wasi::add_to_linker(&mut linker, |s| s)?;
+        preview1::add_to_linker_sync(&mut linker, |s| s)?;
 
         // Run plugin from pre-compiled module (thread-safe, concurrent)
         let instance = linker.instantiate(&mut store, &self.module)?;
@@ -123,10 +124,7 @@ impl PolicyRuntime for WasmtimePolicyRuntime {
         match func.call(&mut store, ()) {
             Ok(_) => {
                 // Read result from stdout memory pipe
-                let out_bytes = stdout
-                    .try_into_inner()
-                    .expect("Failed to extract stdout cursor")
-                    .into_inner();
+                let out_bytes = stdout.contents();
 
                 let output_str = String::from_utf8_lossy(&out_bytes);
 

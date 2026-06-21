@@ -1,5 +1,6 @@
 use anyhow::Result;
-use backoff::{future::retry, ExponentialBackoff};
+use tokio_retry::Retry;
+use tokio_retry::strategy::ExponentialBackoff;
 use dek_config::MtlsConfig;
 use serde_json::Value;
 use std::sync::Arc;
@@ -24,15 +25,12 @@ impl CloudTelemetrySink {
 
         tokio::spawn(async move {
             while let Some(event) = rx.recv().await {
-                let backoff = ExponentialBackoff {
-                    max_elapsed_time: Some(Duration::from_secs(60)),
-                    initial_interval: Duration::from_millis(500),
-                    max_interval: Duration::from_secs(5),
-                    multiplier: 2.0,
-                    ..ExponentialBackoff::default()
-                };
+                let strategy = ExponentialBackoff::from_millis(500)
+                    .factor(2)
+                    .max_delay(Duration::from_secs(5))
+                    .take(7);
 
-                let res = retry(backoff, || async {
+                let res = Retry::spawn(strategy, || async {
                     let c = bg_client.read().await.clone();
                     match c.post(&bg_url).json(&event).send().await {
                         Ok(res) if res.status().is_success() => Ok(()),
@@ -41,14 +39,11 @@ impl CloudTelemetrySink {
                                 "[Telemetry] Failed to send event. Status: {}. Retrying...",
                                 res.status()
                             );
-                            Err(backoff::Error::transient(anyhow::anyhow!(
-                                "Status {}",
-                                res.status()
-                            )))
+                            Err(anyhow::anyhow!("Status {}", res.status()))
                         }
                         Err(e) => {
                             warn!("[Telemetry] Request error: {}. Retrying...", e);
-                            Err(backoff::Error::transient(e.into()))
+                            Err(e.into())
                         }
                     }
                 })

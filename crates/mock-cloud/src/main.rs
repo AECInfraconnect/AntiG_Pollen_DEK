@@ -16,15 +16,28 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::info;
 
+use axum::extract::State;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+#[derive(Clone)]
+struct AppState {
+    revision: Arc<AtomicUsize>,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     info!("Starting Mock Pollen Cloud Server with MTLS...");
 
+    let state = AppState {
+        revision: Arc::new(AtomicUsize::new(1)),
+    };
+
     let app = Router::new()
         .route("/telemetry", post(ingest_telemetry))
         .route("/bundles/latest", get(get_latest_bundle))
-        .route("/config/:device_id", get(get_config));
+        .route("/config/:device_id", get(get_config))
+        .with_state(state);
 
     // Load server certificate and key
     let certs = load_certs("../../certs/server.crt")?;
@@ -112,8 +125,9 @@ async fn ingest_telemetry(Json(payload): Json<Value>) -> Json<Value> {
 use ed25519_dalek::{Signer, SigningKey};
 use rand_core::OsRng;
 
-async fn get_latest_bundle() -> Json<Value> {
-    info!("CLOUD: Device requested latest bundle.");
+async fn get_latest_bundle(State(state): State<AppState>) -> Json<Value> {
+    let rev = state.revision.fetch_add(1, Ordering::SeqCst);
+    info!("CLOUD: Device requested latest bundle. Returning revision {}", rev);
 
     // Generate real ED25519 keypair for mock
     let mut csprng = OsRng;
@@ -128,13 +142,15 @@ async fn get_latest_bundle() -> Json<Value> {
             "target/wasm32-wasip1/debug/dummy_policy.wasm"
         };
 
+    let store_id = format!("store_rev_{}", rev);
+
     let payload = json!({
         "openfga": {
             "endpoint": "http://127.0.0.1:8080",
-            "store_id": "store_123"
+            "store_id": store_id
         },
         "cedar": {
-            "policy_src": "permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n);"
+            "policy_src": format!("permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n); // rev {}", rev)
         },
         "opa_wasm": {
             "policy_path": wasm_path
@@ -149,16 +165,20 @@ async fn get_latest_bundle() -> Json<Value> {
     let b64_sig = base64::prelude::BASE64_STANDARD.encode(signature.to_bytes());
 
     Json(json!({
-        "bundle_id": "bnd-mcp-authz-002",
-        "version": "1.0.4",
+        "bundle_id": format!("bnd-mcp-authz-{:03}", rev),
+        "version": format!("1.0.{}", rev),
         "signature": b64_sig,
         "public_key": b64_pubkey,
         "payload": payload
     }))
 }
 
-async fn get_config(Path(device_id): Path<String>) -> Json<Value> {
-    info!("CLOUD: Device {} requested config.", device_id);
+async fn get_config(
+    Path(device_id): Path<String>,
+    State(state): State<AppState>
+) -> Json<Value> {
+    let rev = state.revision.fetch_add(1, Ordering::SeqCst);
+    info!("CLOUD: Device {} requested config. Returning revision {}", device_id, rev);
 
     // Dynamically resolve WASM path based on debug vs release
     let wasm_path =
@@ -167,6 +187,8 @@ async fn get_config(Path(device_id): Path<String>) -> Json<Value> {
         } else {
             "target/wasm32-wasip1/debug/dummy_policy.wasm"
         };
+
+    let store_id = format!("store_rev_{}", rev);
 
     Json(json!({
         "device_id": device_id,
@@ -179,10 +201,10 @@ async fn get_config(Path(device_id): Path<String>) -> Json<Value> {
         "policy_config": {
             "openfga": {
                 "endpoint": "http://127.0.0.1:8080",
-                "store_id": "store_123"
+                "store_id": store_id
             },
             "cedar": {
-                "policy_src": "permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n);"
+                "policy_src": format!("permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n); // rev {}", rev)
             },
             "opa_wasm": {
                 "policy_path": wasm_path

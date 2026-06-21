@@ -7,7 +7,7 @@ edition = "2021"
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
-wasmtime = "14.0.0"
-wasmtime-wasi = "14.0.0"
-cap-std = "2.0.0"
-wasi-common = "=14.0.0"
+wasmtime = "21.0.0"
+wasmtime-wasi = "21.0.0"
+cap-std = "3.0.0"
+bytes = "1.11.1"

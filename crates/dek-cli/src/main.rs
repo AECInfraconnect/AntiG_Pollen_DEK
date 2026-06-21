@@ -56,9 +56,12 @@ enum AgentCommands {
     },
 }
 
+use futures::{SinkExt, StreamExt};
+use tokio_util::codec::{Framed, LinesCodec};
+
 async fn send_ipc_request(host: &str, port: u16, req_payload: IpcRequest) -> Result<IpcResponse> {
     let addr = format!("{}:{}", host, port);
-    let mut stream = TcpStream::connect(&addr)
+    let stream = TcpStream::connect(&addr)
         .await
         .with_context(|| format!("Failed to connect to DEK Core at {}", addr))?;
 
@@ -67,14 +70,16 @@ async fn send_ipc_request(host: &str, port: u16, req_payload: IpcRequest) -> Res
         payload: req_payload,
     };
 
-    let mut req_bytes = serde_json::to_vec(&req)?;
-    req_bytes.push(b'\n'); // NDJSON delimiter
-    stream.write_all(&req_bytes).await?;
+    let mut framed = Framed::new(stream, LinesCodec::new_with_max_length(64 * 1024));
+    let req_str = serde_json::to_string(&req)?;
+    framed.send(req_str).await?;
 
-    let mut buf = vec![0; 4096];
-    let n = stream.read(&mut buf).await?;
-    let res_msg: dek_ipc::IpcMessage<IpcResponse> = serde_json::from_slice(&buf[..n])?;
-    Ok(res_msg.payload)
+    if let Some(Ok(line)) = framed.next().await {
+        let res_msg: dek_ipc::IpcMessage<IpcResponse> = serde_json::from_str(&line)?;
+        Ok(res_msg.payload)
+    } else {
+        anyhow::bail!("No response received from DEK Core")
+    }
 }
 
 #[tokio::main]
