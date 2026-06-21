@@ -49,7 +49,10 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let static_dir = cfg.dashboard_dir.to_string_lossy().to_string();
-    let app = app::create_app(state, &static_dir);
+    let app = app::create_app(state.clone(), &static_dir);
+
+    // 3.2 Observe -> Suggest -> Enforce Loop
+    let _ = local_control_plane::governance::start_governance_loop(state).await;
 
     let listener = TcpListener::bind(&cfg.bind_addr).await?;
     info!("Local Control Plane listening on http://{}", cfg.bind_addr);

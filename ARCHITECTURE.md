@@ -33,16 +33,16 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 - `dek-bundle-sync` — TUF-lite fetch + signature verification (chain of trust).
 - `dek-activation` — atomic bundle activation, hydration, LKG fallback.
 - `dek-auth` — authentication and session handling primitives used by MCP proxy and activation.
-- `dek-secure-spool` — durable disk-backed queueing for telemetry and audit events before shipping.
+- `dek-secure-spool` — durable disk-backed queueing for telemetry and audit events before shipping, protected by a tamper-evident SHA-256 hash chain (`AuditEntry`).
 
 **Decision / PEP**
 
-- `dek-mcp-proxy` — MCP authorize endpoint; emits decision telemetry; obligations (require_approval / step_up_mfa).
+- `dek-mcp-proxy` — MCP authorize endpoint; extracts parameter-level context, integrates `content-guard` heuristics, and evaluates TrustAction (`KillSwitch`, `RequireApproval`); emits decision telemetry and obligations.
 - `dek-policy-router` — route matching + **adaptive engine selection** (`engine_selector`), circuit breakers, per-tenant admission, failover (with `ManualOverride` logic and `auto_recovery_delay`), break-glass. Supports `evaluate_dry_run` for simulation.
 - `dek-policy-runtime` — `PolicyRuntime` trait + Wasmtime runtime.
 - Adapters: `dek-cedar`, `dek-openfga`, OPA via Wasm — built on `dek-pdp-sdk`, feature-gated by `dek-router-builder`.
-- `dek-plugin-sdk` / `dek-plugin-host` — transform plugins (e.g. `dek-pii-wasm`).
-- `dek-resilience` — circuit breakers, admission control, and system overload protections.
+- `dek-plugin-sdk` / `dek-plugin-host` — transform plugins (e.g. `dek-pii-wasm`). Includes `content-guard` heuristic detectors for prompt injection.
+- `dek-resilience` — rate limit token-buckets, circuit breakers, admission control, and system overload protections.
 - `dek-capability-registry` — dynamically detects and honestly advertises supported OS-native enforcement modes (e.g., `linux-ebpf`, `windows-wfp`, `macos-nefilter`) safely without panicking on unsupported systems.
 
 **Network enforcement (OS)**
@@ -60,10 +60,10 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 **Control planes & Observers**
 
 - `dek-agent-discovery` — background OS process scanning and heuristic fingerprinting to find Shadow AI and local agents.
-- `dek-agent-observer` — token usage tracking, local cost estimation, and telemetry shipping for AI APIs.
-- `dek-policy-suggester` — automatic Rego policy generation based on observed cost thresholds and agent behavior.
+- `dek-agent-observer` — token usage tracking, budget management, local cost estimation, trust scoring via `AgentBaseline`, and telemetry shipping for AI APIs.
+- `dek-policy-suggester` — automatic Rego/Cedar policy generation based on observed cost thresholds and agent trust scoring (`LowTrustRule`).
 - `dek-control-plane-api` — Contract Hub: shared contract (bundle manifest, telemetry envelope, registry objects, policy drafts, identity modes). Exposes `/.well-known/pollen-contract` to serve TypeSpec-generated OpenAPI contracts and supported schema definitions to consumers.
-- `local-control-plane` — Axum + SQLite + local signing; registry/policy/bundle/telemetry/push. Supports Connector config/testing and Dry-run Simulator engine.
+- `local-control-plane` — Axum + SQLite + local signing; registry/policy/bundle/telemetry/push. Implements the complete `Observe -> Suggest -> Enforce` Governance Loop. Supports Connector config/testing and Dry-run Simulator engine.
 - `apps/local-admin-dashboard` — React/Vite UI (registry, policies, decision logs, simulator, and connector configuration).
 - `mock-cloud` — reference Cloud implementing the same contract for offline testing.
 

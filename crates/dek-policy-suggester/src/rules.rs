@@ -2,12 +2,12 @@ use crate::model::PolicySuggestion;
 use anyhow::Result;
 use dek_agent_observer::model::AgentObservationEvent;
 
-pub trait SuggestionRule {
+pub trait SuggestionRule: Send + Sync {
     fn evaluate(&self, events: &[AgentObservationEvent]) -> Result<Vec<PolicySuggestion>>;
 }
 
 pub struct RuleEngine {
-    rules: Vec<Box<dyn SuggestionRule>>,
+    rules: Vec<Box<dyn SuggestionRule + Send + Sync>>,
 }
 
 impl Default for RuleEngine {
@@ -21,7 +21,7 @@ impl RuleEngine {
         Self { rules: Vec::new() }
     }
 
-    pub fn add_rule(&mut self, rule: Box<dyn SuggestionRule>) {
+    pub fn add_rule(&mut self, rule: Box<dyn SuggestionRule + Send + Sync>) {
         self.rules.push(rule);
     }
 
