@@ -415,6 +415,28 @@ async fn core_main() -> Result<()> {
     });
     info!("Starting Pollen DEK Core Supervisor...");
 
+    // A/B Update Probation Check
+    let config_dir = dek_config::paths::get_config_dir();
+    let marker_path = config_dir.join("update_pending.json");
+    if marker_path.exists() {
+        info!("Probation marker found. Entering A/B update probation period (15s)...");
+        
+        #[cfg(target_os = "linux")]
+        {
+            let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Watchdog]);
+        }
+
+        tokio::spawn(async move {
+            tokio::time::sleep(tokio::time::Duration::from_secs(15)).await;
+            info!("Probation period passed successfully. Committing update.");
+            let _ = std::fs::remove_file(&marker_path);
+            if let Ok(exe_path) = std::env::current_exe() {
+                let backup_path = exe_path.with_extension("bak");
+                let _ = std::fs::remove_file(&backup_path);
+            }
+        });
+    }
+
     // Load Layer 2 eBPF Guardrails (Linux only)
     if let Err(e) = ebpf::load_and_attach() {
         tracing::error!("Failed to initialize eBPF Layer 2 guardrails: {}", e);
@@ -505,6 +527,22 @@ async fn core_main() -> Result<()> {
 
     // Signal readiness to OS Service Managers BEFORE blocking on cloud sync
     service_integration::notify_ready();
+
+    #[cfg(target_os = "linux")]
+    {
+        tokio::spawn(async move {
+            if let Ok(timeout) = sd_notify::watchdog_enabled(false, &mut std::env::vars()) {
+                if timeout > std::time::Duration::ZERO {
+                    let interval = timeout / 2;
+                    info!("Systemd Watchdog enabled. Pinging every {:?}", interval);
+                    loop {
+                        let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Watchdog]);
+                        tokio::time::sleep(interval).await;
+                    }
+                }
+            }
+        });
+    }
 
     // Spawn the cloud sync and background tasks into a separate tokio task
     // so that the IPC Server remains healthy and responsive immediately!

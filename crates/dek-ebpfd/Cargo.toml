@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-aya = "0.12"
-aya-log = "0.1"
+aya = "0.13"
+aya-log = "0.2"
 dek-ebpf-common = { path = "../dek-ebpf-common" }
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"

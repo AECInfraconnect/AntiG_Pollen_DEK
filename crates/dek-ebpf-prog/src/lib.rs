@@ -2,7 +2,7 @@
 #![no_main]
 
 use aya_bpf::{
-    macros::{cgroup_sock_addr, map},
+    macros::{cgroup_sock_addr, cgroup_skb, map},
     maps::{HashMap, LpmTrie, RingBuf},
     programs::SockAddrContext,
 };
@@ -24,6 +24,32 @@ static CGROUP_POLICY_MAP: HashMap<u64, PolicyVerdict> =
 
 #[map]
 static EVENTS: RingBuf = RingBuf::with_byte_size(256 * 1024, 0);
+
+#[map]
+static DNS_EVENTS: RingBuf = RingBuf::with_byte_size(256 * 1024, 0);
+
+#[cgroup_skb]
+pub fn dek_dns_capture(ctx: aya_bpf::programs::SkBuffContext) -> i32 {
+    let _ = try_capture(&ctx); // error ไม่ทำให้ดรอป
+    1 // 1 = allow/pass เสมอ (observe ไม่ใช่ enforce)
+}
+
+fn try_capture(ctx: &aya_bpf::programs::SkBuffContext) -> Result<(), ()> {
+    // Basic skeleton for UDP/53 capture. 
+    // In production, we'd parse Ethernet -> IP -> UDP -> Payload
+    // For now we just mock the payload copy.
+    let dlen = 512; // MOCK
+    if let Some(mut ev) = DNS_EVENTS.reserve::<dek_ebpf_common::DnsCaptureEvent>(0) {
+        let p = ev.as_mut_ptr() as *mut dek_ebpf_common::DnsCaptureEvent;
+        unsafe {
+            (*p).cgroup_id = ctx.cgroup_id();
+            (*p).len = dlen as u16;
+            // ctx.load_bytes(L4_PAYLOAD_OFF, &mut (*p).data[..dlen as usize])?;
+        }
+        ev.submit(0);
+    }
+    Ok(())
+}
 
 #[cgroup_sock_addr(connect4)]
 pub fn dek_connect4(ctx: SockAddrContext) -> i32 {

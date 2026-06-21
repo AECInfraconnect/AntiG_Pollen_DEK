@@ -56,25 +56,69 @@ pub async fn run_update(
         fs::set_permissions(&temp_path, fs::Permissions::from_mode(0o755)).ok();
     }
 
-    // Phase 2: Perform self-replace
+    // Phase 2: Perform self-replace with A/B Rollback Support
+    info!("Preparing A/B Update: backing up current binary...");
+    let exe_path = std::env::current_exe()?;
+    let backup_path = exe_path.with_extension("bak");
+    
+    // Copy current executable to backup
+    if let Err(e) = fs::copy(&exe_path, &backup_path) {
+        error!("Failed to create backup at {:?}: {}", backup_path, e);
+        let _ = fs::remove_file(&temp_path);
+        return Err(e.into());
+    }
+
     info!("Applying update via self-replace...");
     match self_replace::self_replace(&temp_path) {
         Ok(_) => {
-            info!("Binary replaced successfully. The new version will run on next restart.");
             let _ = fs::remove_file(&temp_path);
             
-            // Wait for 2 seconds to allow logs to flush
-            tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+            // Phase 3: Write Probation Marker File
+            let config_dir = dek_config::paths::get_config_dir();
+            let marker_path = config_dir.join("update_pending.json");
             
-            // Optionally, we could exit here to trigger a restart via service manager
-            // std::process::exit(0);
+            let marker_data = serde_json::json!({
+                "target_version": "pending",
+                "backup_path": backup_path.to_string_lossy().to_string(),
+                "timestamp": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
+            });
+            
+            fs::write(&marker_path, serde_json::to_string_pretty(&marker_data)?)?;
+            info!("Marker written to {:?}. Update staged.", marker_path);
+
+            // Phase 4: Request Service Restart
+            info!("Requesting service manager to restart pollen-dek...");
+            
+            // Wait briefly to allow logs to flush
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            
+            #[cfg(windows)]
+            {
+                // Trigger an asynchronous service restart by spawning a detached powershell script
+                // We use Start-Process to decouple from the dying process tree
+                let script = format!(
+                    "Start-Sleep -Seconds 2; Restart-Service -Name PollenDEK -Force"
+                );
+                let _ = std::process::Command::new("powershell")
+                    .args(&["-Command", &script])
+                    .spawn();
+            }
+            #[cfg(unix)]
+            {
+                // Trigger an asynchronous service restart via systemctl
+                let _ = std::process::Command::new("systemctl")
+                    .args(&["restart", "pollen-dek"])
+                    .spawn();
+            }
+
+            // Exit cleanly so the service manager can immediately begin the restart process
+            std::process::exit(0);
         }
         Err(e) => {
             error!("Self-replace failed: {}", e);
             let _ = fs::remove_file(&temp_path);
+            let _ = fs::remove_file(&backup_path); // Cleanup backup on failure
             return Err(e.into());
         }
     }
-
-    Ok(())
 }
