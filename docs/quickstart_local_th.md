@@ -129,7 +129,7 @@ curl -s -X POST http://127.0.0.1:43890/v1/authorize \
 curl -s http://127.0.0.1:3000/v1/tenants/local/telemetry/decision-logs
 ```
 
-ดูใน dashboard หน้า **Audit & Decision Logs** ได้เช่นกัน
+ดูใน dashboard หน้า **Audit & Decision Logs** ได้เช่นกัน นอกจากนี้คุณยังสามารถดูหน้า **Agent Discovery** เพื่อดูเครื่องมือ AI ที่ทำงานอยู่ในเครื่อง และ **Cost Ledger** เพื่อดูค่าใช้จ่ายโทเค็นที่ถูกประเมินพร้อมคำแนะนำนโยบายที่สร้างให้อัตโนมัติ
 
 ## เกิดอะไรขึ้น
 
