@@ -70,10 +70,12 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 ## Decision data flow
 
 1. App sends a `DecisionRequest` to the DEK PEP on `127.0.0.1:43890`.
-2. `dek-policy-router` matches a route; if no engine is pinned, `engine_selector` picks one (Cedar/OPA/OpenFGA/eBPF) by decision kind — choosing only engines compiled into this build.
-3. The selected evaluator(s) run (behind circuit breakers + admission control).
-4. Transform plugins (e.g. PII redaction) apply to obligations/effects.
-5. The decision is enforced and emitted as a signed telemetry envelope; network rules are split across kernel and user-mode planes by the complexity guard.
+2. Content Guard scans tool parameters for prompt-injection or PII leakage, then Rate + Trust limiters enforce quotas and calculate anomaly scores.
+3. `dek-policy-router` matches a route; if no engine is pinned, `engine_selector` picks one (Cedar/OPA/OpenFGA/eBPF) by decision kind — choosing only engines compiled into this build. Parameter-level data is loaded into the decision context.
+4. The selected evaluator(s) run (behind circuit breakers + admission control).
+5. Transform plugins (e.g. PII redaction) apply to obligations/effects.
+6. The decision is enforced and emitted as a signed telemetry envelope; network rules are split across kernel and user-mode planes by the complexity guard.
+7. Observer records the decision and suggests new policies via the governance loop.
 
 ## Failure posture (fail-closed everywhere)
 

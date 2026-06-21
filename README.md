@@ -98,6 +98,9 @@ dek-cli update --channel beta
                 │ enforce + observe │
                 │ shadow AI scanner │
                 │ cost/token ledger │
+                │ rate + trust gate │
+                │ content guard     │
+                │ policy suggester  │
                 └───────────────────┘
 ```
 
