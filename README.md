@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/ci.yml/badge.svg)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/tag/AECInfraconnect/AntiG_Pollen_DEK?include_prereleases)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases)
+[![Release](https://img.shields.io/github/v/tag/AECInfraconnect/AntiG_Pollen_DEK?include_prereleases&label=release)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases)
 [![Compatibility](https://img.shields.io/badge/Compatibility-Matrix-success.svg)](contracts/COMPATIBILITY.md)
 
 **Pollen DEK** is an Apache-2.0 runtime that **enforces and observes AI-agent, MCP,
@@ -16,21 +16,75 @@ only the endpoint + trust store, never the enforcement code.
 
 ---
 
-## Why
+## Features
+
+### Enforcement & Policy
 
 - **Enforce, don't just observe** — allow/deny/redact MCP tool calls and network
-  egress against signed policy, fail-closed by default. Context-aware parameter-level enforcement natively supported.
-- **Shadow AI Discovery & Cost Control** — Automatically detects local unmanaged AI agents via process heuristics and tracks estimated token costs, with automatic policy generation based on budget thresholds.
-- **Trust & Resilience** — Calculates real-time Agent Trust Scores, enabling dynamic kill-switches or `RequireApproval` obligations when anomalous behavior occurs. Rate limit token-buckets protect downstream endpoints.
-- **Content Guard** — Inspects payload parameters for prompt-injections, PII leakage, and malicious content before policy evaluation even triggers.
-- **Tamper-Evident Audit** — All telemetry and decisions are securely queued locally with a SHA-256 hash chain before shipping, proving audit log integrity.
+  egress against signed policy, fail-closed by default.
+- **Parameter-level access control** — field-level restrictions on tool call
+  parameters, enforced natively by the MCP proxy.
 - **Policy your way** — Cedar (ABAC/RBAC), OPA/Rego (complex logic), OpenFGA
   (ReBAC); the router auto-selects the right engine per request.
-- **Kernel-grade network control** — eBPF on Linux today (with dynamic DNS LRU caching and runtime modes); Windows WFP / macOS
-  System Extension in progress. Complex rules are kept out of the kernel to avoid
-  instability (kernel handles only simple, exact matches).
+- **Policy Presets** — pre-built Rego/Cedar/OpenFGA policy templates for
+  zero-config quickstart; deploy common guardrails in one click.
+- **Dry-run Simulation** — test draft policies with what-if scenarios from the
+  dashboard without affecting live traffic.
+
+### AI Agent Observability
+
+- **Shadow AI Discovery** — automatically detects unmanaged AI agents via OS
+  process scanning and heuristic fingerprinting (Ollama, vLLM, Claude Desktop,
+  GitHub Copilot, Cursor, and more).
+- **Token & Cost Ledger** — tracks estimated token costs across all observed AI
+  APIs via a configurable price catalog, with per-agent breakdowns.
+- **Policy Suggestion Engine** — auto-generates Rego/Cedar policies based on
+  observed cost thresholds, Shadow AI detections, and agent behavior anomalies.
+- **Governance Loop** — fully integrated Observe → Suggest → Enforce cycle runs
+  end-to-end.
+
+### Security & Trust
+
+- **Trust Scoring** — calculates real-time Agent Trust Scores via `AgentBaseline`,
+  enabling dynamic `KillSwitch` or `RequireApproval` obligations on anomaly.
+- **Content Guard** — inspects payloads for prompt injection, PII leakage, and
+  malicious content before policy evaluation triggers.
+- **Rate Limiting** — token-bucket rate limiters per agent protect downstream
+  endpoints from overuse and abuse.
+- **Tamper-Evident Audit** — all decisions are securely queued locally with a
+  SHA-256 hash chain before shipping, proving audit log integrity.
+- **Kernel-grade network control** — eBPF on Linux (with DNS LRU caching and
+  runtime modes); Windows WFP / macOS System Extension in progress.
+
+### Platform
+
 - **Local-first, Cloud-ready** — same schema, bundle format, and telemetry
-  envelope in both modes. Built on OpenAPI, TypeSpec, and a shared `Contract Hub` for `/.well-known/pollen-contract` discovery.
+  envelope in both modes. Built on OpenAPI, TypeSpec, and a shared Contract Hub
+  for `/.well-known/pollen-contract` discovery.
+- **A2A Mediator (Preview)** — Inter-Agent Trust Protocol mediator for Google A2A
+  protocol communication between trusted agents.
+- **Execution Sandbox (Preview)** — isolated, short-lived tool execution
+  environments for untrusted code.
+- **Plugin / Adapter SDK** — `dek-pdp-sdk` for custom policy engines;
+  `dek-plugin-sdk` for transform plugins (e.g. PII redaction). Bundled adapters
+  are feature-gated.
+- **Internationalization** — Dashboard supports English and Thai natively.
+
+---
+
+## Dashboard
+
+The **Local Admin Dashboard** (React/Vite) provides 19 pages for full control:
+
+| Category | Pages |
+|----------|-------|
+| **Overview** | Overview dashboard |
+| **Registry** | Agents, MCP Servers, Tools, Resources, Entities, Relationships, Blackbox AI Providers |
+| **Policy** | Policy Enforcer, Policy Presets, Simulator |
+| **Observability** | Auto Discovery, Shadow AI Inbox, Policy Suggestions, Cost Ledger, Alerts |
+| **Operations** | Bundles, Decision Logs (with CSV/JSON export), Settings (connectors, profiles) |
+
+---
 
 ## Quickstart
 
@@ -101,17 +155,26 @@ dek-cli update --channel beta
                 │ rate + trust gate │
                 │ content guard     │
                 │ policy suggester  │
+                │ policy presets    │
+                │ A2A mediator      │
+                │ exec sandbox      │
                 └───────────────────┘
 ```
 
 Full detail: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
-## Plugin / Adapter SDK
+## Crate Landscape (56 crates)
 
-Policy engines are adapters built on **`dek-pdp-sdk`** (Apache-2.0); bundled
-adapters (Cedar/OPA/OpenFGA) are feature-gated, and you can add your own without
-touching the core. Transform plugins (e.g. PII redaction via `dek-pii-wasm`) and
-telemetry sinks plug in the same way. See **[examples/policies](examples/policies/)**.
+| Layer | Key Crates |
+|-------|-----------|
+| **Control** | `dek-core`, `dek-config`, `dek-policy-syncer`, `dek-bundle-sync`, `dek-activation`, `dek-auth`, `dek-secure-spool` |
+| **Decision** | `dek-mcp-proxy`, `dek-policy-router`, `dek-policy-runtime`, `dek-cedar`, `dek-openfga`, `dek-opa-wasm`, `dek-resilience` |
+| **Observability** | `dek-agent-discovery`, `dek-agent-observer`, `dek-policy-suggester`, `dek-telemetry` |
+| **Network** | `dek-ebpfd`, `dek-ebpf-common`, `dek-windows-wfp`, `dek-macos-nefilter` |
+| **Identity** | `dek-spire-node`, `dek-enroll` |
+| **Interop** | `dek-a2a-mediator`, `dek-execution-sandbox`, `dek-agent-connector`, `dek-mcp-normalizer`, `dek-mcp-stdio-wrapper` |
+| **SDK** | `dek-pdp-sdk`, `dek-plugin-sdk`, `dek-plugin-host`, `dek-policy-presets` |
+| **Control Planes** | `dek-control-plane-api`, `local-control-plane`, `mock-cloud` |
 
 ## Documentation
 

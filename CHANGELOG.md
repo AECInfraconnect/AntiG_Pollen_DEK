@@ -4,9 +4,55 @@ All notable changes to Pollen DEK are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the project uses semantic-ish
 versioning with pre-release tags (e.g. `1.0.0-beta.1`).
 
+## [1.0.0-beta.10] -- 2026-06-20
+
+### Fixed
+
+- Fixed `sha256sum` failing on directories in release asset checksums; now uses `find -type f`.
+- Fixed Sigstore cosign signing to correctly handle nested release artifact directories.
+
+## [1.0.0-beta.9] -- 2026-06-20
+
+### Fixed
+
+- Fixed gitleaks binary OS incompatibility in release gate workflow (Linux binary on macOS).
+
+## [1.0.0-beta.8] -- 2026-06-20
+
+### Changed
+
+- Migrated `rcgen` certificate generation API to v0.13 (`CertificateParams::self_signed()` / `signed_by()` new signatures).
+
+## [1.0.0-beta.7] -- 2026-06-20
+
+Major feature release: AI Agent Observability, Shadow AI Detection, and the Observe → Suggest → Enforce Governance Loop.
+
+### Added
+
+- **AI Agent Auto-Discovery** — `dek-agent-discovery` crate: background OS process scanning with heuristic fingerprinting to detect Shadow AI agents (Ollama, vLLM, Claude, GitHub Copilot, etc.) and local MCP server configurations.
+- **Agent Observer & Cost Ledger** — `dek-agent-observer` crate: token usage tracking, estimated cost calculation via configurable price catalog, and agent trust scoring (`AgentBaseline`) with anomaly detection.
+- **Policy Suggestion Engine** — `dek-policy-suggester` crate: automatic Rego/Cedar policy generation based on observed agent behavior, cost threshold alerts ($25/day default), and Shadow AI blocking rules.
+- **Content Guard** — `dek-mcp-proxy` now inspects payload parameters for prompt injection patterns, PII leakage, and malicious content before policy evaluation.
+- **Rate Limiting & Trust Scoring** — `dek-resilience` crate: token-bucket rate limiters per agent, real-time trust scores with dynamic `KillSwitch` and `RequireApproval` obligations.
+- **Tamper-Evident Audit Spool** — `dek-secure-spool` upgraded with SHA-256 hash chain (`AuditEntry`) for cryptographic audit log integrity.
+- **A2A Mediator (Preview)** — `dek-a2a-mediator` crate: Inter-Agent Trust Protocol (IATP) mediator for Google A2A protocol communication.
+- **Execution Sandbox (Preview)** — `dek-execution-sandbox` crate: isolated, short-lived tool execution environments.
+- **Policy Presets** — `dek-policy-presets` crate: pre-built Rego/Cedar/OpenFGA policy templates for zero-config quickstart.
+- **Dashboard Pages** — Auto Discovery, Shadow AI Inbox, Policy Suggestions, Cost Ledger, Policy Presets, Blackbox AI Providers, Alerts.
+- **Parameter-Level Access Control** — MCP proxy now enforces field-level restrictions on tool call parameters.
+- **Identity Propagation** — SPIFFE-based token forwarding and token exchange for secure inter-service impersonation.
+
+### Changed
+
+- Governance Loop now fully integrated: Observe → Suggest → Enforce cycle runs end-to-end.
+- `local-control-plane` extended with observation API, discovery scan endpoints, and policy suggestion generation.
+- Dashboard upgraded with connector configuration/testing UI and enhanced error handling.
+- Strict clippy linting enforced project-wide (`unwrap_used`, `expect_used`, `panic`, `todo` all denied).
+
 ## [1.0.0-beta.6] -- 2026-06
 
 ### Fixed
+
 
 - Made Local Control Plane and mock-cloud bundle manifest endpoints accept the GET method used by bundle syncers and local E2E tests.
 - Made Wasmtime cache initialization non-fatal when the host default cache configuration is unavailable or invalid.
@@ -98,6 +144,10 @@ control plane (exercised via `mock-cloud` until Pollen Cloud is GA).
 - See [ARCHITECTURE.md](ARCHITECTURE.md) and the security model for the full
   capability matrix.
 
+[1.0.0-beta.10]: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/tag/v1.0.0-beta.10
+[1.0.0-beta.9]: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/tag/v1.0.0-beta.9
+[1.0.0-beta.8]: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/tag/v1.0.0-beta.8
+[1.0.0-beta.7]: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/tag/v1.0.0-beta.7
 [1.0.0-beta.6]: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/tag/v1.0.0-beta.6
 [1.0.0-beta.5]: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/tag/v1.0.0-beta.5
 [1.0.0-beta.1]: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/tag/v1.0.0-beta.1
