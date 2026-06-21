@@ -29,6 +29,7 @@ async fn main() -> Result<()> {
     dek_config::logging::init_logging("dek-mcp-proxy").unwrap_or_else(|e| {
         eprintln!("Failed to initialize logging: {}", e);
     });
+    metrics_exporter_prometheus::PrometheusBuilder::new().install_recorder().unwrap();
     info!("Starting Pollen DEK MCP Proxy...");
 
     let bootstrap = BootstrapConfig::load_or_default("bootstrap.json")?;
@@ -454,6 +455,9 @@ async fn handle_mcp_request(
     let start_time = std::time::Instant::now();
     // Evaluate against the Adaptive Policy Pipeline
     let decision_result = snapshot.router.authorize(decision_input.clone()).await;
+    
+    let duration = start_time.elapsed().as_secs_f64();
+    metrics::histogram!("dek_proxy_request_duration_seconds").record(duration);
 
     // Shadow evaluation if shadow_snapshot exists
     if let Some(shadow_snap) = state.shadow_snapshot.load_full() {
@@ -473,6 +477,11 @@ async fn handle_mcp_request(
 
     match decision_result {
         Ok(decision) => {
+            if decision.allow {
+                metrics::counter!("dek_proxy_requests_total", "decision" => "allow").increment(1);
+            } else {
+                metrics::counter!("dek_proxy_requests_total", "decision" => "deny").increment(1);
+            }
             info!("Final Pipeline Decision: {:?}", decision);
             
             let response = dek_decision::DecisionResponse {
@@ -534,6 +543,7 @@ async fn handle_mcp_request(
             }
         }
         Err(e) => {
+            metrics::counter!("dek_proxy_requests_total", "decision" => "error").increment(1);
             error!("Policy Evaluation Error: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -552,16 +562,23 @@ async fn handle_authorize(
     Json(payload): Json<Value>,
 ) -> Response {
     let snapshot = state.snapshot.load();
+    let start_time = std::time::Instant::now();
     let decision_result = snapshot.router.authorize(payload).await;
+    let duration = start_time.elapsed().as_secs_f64();
+    metrics::histogram!("dek_proxy_request_duration_seconds").record(duration);
+    
     match decision_result {
         Ok(decision) => {
             if decision.allow {
+                metrics::counter!("dek_proxy_requests_total", "decision" => "allow").increment(1);
                 (StatusCode::OK, Json(decision)).into_response()
             } else {
+                metrics::counter!("dek_proxy_requests_total", "decision" => "deny").increment(1);
                 (StatusCode::FORBIDDEN, Json(decision)).into_response()
             }
         }
         Err(e) => {
+            metrics::counter!("dek_proxy_requests_total", "decision" => "error").increment(1);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": e.to_string() })),

@@ -1,6 +1,13 @@
-# Pollen DEK (Data Enrichment Kit)
+# Pollen DEK - Desktop Enforcement Kit
 
 Pollen DEK is an extensible, highly concurrent and robust edge computing proxy node written in Rust. It serves as a secure, local interception point for traffic and events routing between applications and the Pollen Cloud.
+
+## AI Central Control and Observability Plane for Enterprise
+
+Pollen DEK provides a centralized governance, telemetry, and metrics gathering solution tailored for AI and MCP (Model Context Protocol) interactions across the enterprise. 
+- **Universal Observability**: Captures deep telemetry, performance metrics, and policy decisions locally and streams them directly to Pollen Cloud.
+- **Enterprise Governance**: Enforces dynamic policies over LLM tool-calling and API invocations to ensure compliance and security boundaries.
+- **Supply-Chain Security**: Distributed as a trusted artifact with full CycloneDX SBOMs, `cargo auditable` provenance, and cosign keyless (OIDC) signatures.
 
 ## Architecture
 
@@ -8,6 +15,7 @@ Pollen DEK is an extensible, highly concurrent and robust edge computing proxy n
 - **dek-policy-router**: Acts as an API proxy forwarding payloads to WebAssembly components based on dynamic policies.
 - **dek-policy-runtime**: WASI-based runtime embedded via Wasmtime for executing isolated, dynamic WebAssembly modules.
 - **dek-telemetry**: Streams telemetry and Prometheus metrics back to Pollen Cloud.
+- **dek-metrics**: Shared metrics bootstrap crate offering global Prometheus recording and resilient pushing.
 - **dek-openfga** and **dek-cedar**: Integrations for fine-grained authorization with external stores (OpenFGA) and Cedar policy engine.
 - **mock-cloud**: A mock Pollen Cloud for development and testing.
 

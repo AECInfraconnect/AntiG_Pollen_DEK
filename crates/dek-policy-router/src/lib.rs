@@ -124,11 +124,7 @@ impl PolicyRouter {
                 match evaluator.evaluate(payload.clone()).await {
                     Ok(res) => {
                         let latency = start_time.elapsed().as_millis() as f64;
-                        let meter = opentelemetry::global::meter("dek-policy-router");
-                        let histogram = meter.f64_histogram("dek_policy_eval_latency_ms").init();
-                        histogram.record(latency, &[
-                            opentelemetry::KeyValue::new("evaluator", ev_id.clone())
-                        ]);
+                        metrics::histogram!("dek_policy_eval_latency_ms", "evaluator" => ev_id.clone()).record(latency);
 
                         tracing::info!("Evaluator {} returned: {}", ev_id, res.decision);
 
@@ -159,9 +155,7 @@ impl PolicyRouter {
                         }
                     }
                     Err(dek_policy_runtime::PolicyError::Unavailable(msg)) => {
-                        let meter = opentelemetry::global::meter("dek-policy-router");
-                        let counter = meter.u64_counter("dek_pdp_unavailable_total").init();
-                        counter.add(1, &[opentelemetry::KeyValue::new("evaluator", ev_id.clone())]);
+                        metrics::counter!("dek_pdp_unavailable_total", "evaluator" => ev_id.clone()).increment(1);
 
                         tracing::warn!("required PDP unavailable: {msg}; failing closed");
                         combined_decision.allow = false;
@@ -170,6 +164,7 @@ impl PolicyRouter {
                         break;
                     }
                     Err(e) => {
+                        metrics::counter!("dek_pdp_error_total", "evaluator" => ev_id.clone()).increment(1);
                         tracing::warn!("PDP error: {e}; failing closed");
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();

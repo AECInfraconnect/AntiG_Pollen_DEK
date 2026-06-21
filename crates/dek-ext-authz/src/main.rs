@@ -147,6 +147,7 @@ impl Authorization for ExtAuthzService {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt().with_writer(std::io::stderr).init();
+    metrics_exporter_prometheus::PrometheusBuilder::new().install_recorder().unwrap();
     info!("Starting Pollen DEK Envoy ext_authz Server...");
 
     let bootstrap = BootstrapConfig::load_or_default("bootstrap.json").unwrap_or_else(|_| BootstrapConfig {
