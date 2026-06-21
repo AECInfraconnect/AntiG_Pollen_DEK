@@ -12,6 +12,7 @@ serde_json = "1.0"
 tracing = "0.1"
 tokio = { version = "1.0", features = ["full"] }
 dek-agent-observer = { path = "../dek-agent-observer" }
+dek-control-plane-api = { path = "../dek-control-plane-api" }
 
 [lints]
 workspace = true

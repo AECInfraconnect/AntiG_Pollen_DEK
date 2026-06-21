@@ -20,10 +20,25 @@ pub trait SandboxEnvironment: Send + Sync {
     fn terminate(&mut self) -> Result<()>;
 }
 
+use dek_control_plane_api::capability::{CapabilityMaturity, RuntimeCapability};
+
 /// A basic implementation of WASM-based sandboxing environment.
 /// This paves the way for ASI05 Execution Sandboxing.
 pub struct WasmSandbox {
     pub is_running: bool,
+}
+
+impl WasmSandbox {
+    pub fn capability() -> RuntimeCapability {
+        RuntimeCapability {
+            capability_id: "sandbox.wasmtime".into(),
+            name: "WASM Execution Sandbox".into(),
+            pep_type: "execution_sandbox".into(),
+            maturity: CapabilityMaturity::Stub,
+            supported_os: vec!["linux".into(), "macos".into(), "windows".into()],
+            limitations: vec!["Currently mocks success without actual isolation".into()],
+        }
+    }
 }
 
 impl Default for WasmSandbox {

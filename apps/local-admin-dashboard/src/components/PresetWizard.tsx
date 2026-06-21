@@ -59,18 +59,28 @@ export function PresetWizard({ preset, onClose }: { preset: any; onClose: () => 
           <section className="space-y-3">
             <h4 className="font-medium flex items-center gap-2"><Shield className="h-4 w-4" /> Control Level</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {levels.map(lvl => (
-                <button
-                  key={lvl.id}
-                  onClick={() => setControlLevel(lvl.id)}
-                  className={`p-3 rounded-lg border text-left transition-all ${
-                    controlLevel === lvl.id ? "bg-primary/10 border-primary ring-1 ring-primary" : "hover:bg-muted/50"
-                  }`}
-                >
-                  <div className="font-medium text-sm">{lvl.name}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{lvl.desc}</div>
-                </button>
-              ))}
+              {levels.map(lvl => {
+                const recCap = capabilities.find(c => c.pep_type === recommendedPep);
+                const isStub = recCap && recCap.maturity === 'stub';
+                const disabled = isStub && (lvl.id === "enforce" || lvl.id === "strict_deny");
+                
+                return (
+                  <button
+                    key={lvl.id}
+                    disabled={disabled}
+                    onClick={() => setControlLevel(lvl.id)}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      controlLevel === lvl.id ? "bg-primary/10 border-primary ring-1 ring-primary" : "hover:bg-muted/50"
+                    } ${disabled ? "opacity-50 cursor-not-allowed bg-muted" : ""}`}
+                  >
+                    <div className="font-medium text-sm flex items-center justify-between">
+                      {lvl.name}
+                      {disabled && <AlertTriangle className="h-3 w-3 text-yellow-500" />}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">{lvl.desc}</div>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
@@ -82,7 +92,18 @@ export function PresetWizard({ preset, onClose }: { preset: any; onClose: () => 
               <div className="space-y-2">
                 {capabilities.map(cap => (
                   <div key={cap.pep_type} className="flex items-center justify-between text-sm p-2 rounded bg-background border">
-                    <span>{cap.pep_type}</span>
+                    <div className="flex items-center gap-2">
+                      <span>{cap.pep_type}</span>
+                      {cap.maturity && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider ${
+                          cap.maturity === 'stub' ? 'bg-yellow-500/20 text-yellow-600' :
+                          cap.maturity === 'production' ? 'bg-green-500/20 text-green-600' :
+                          'bg-blue-500/20 text-blue-600'
+                        }`}>
+                          {cap.maturity.replace('_', ' ')}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       {cap.status === "available" ? (
                         <span className="text-green-500 flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Available ({cap.mode})</span>
