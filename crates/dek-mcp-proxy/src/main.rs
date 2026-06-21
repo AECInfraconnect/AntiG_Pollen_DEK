@@ -58,6 +58,7 @@ async fn main() -> Result<()> {
         jwks: None,
         issuer_url: None,
         audience: None,
+        enterprise_profile: dek_config::EnterpriseProfile::default(),
     };
 
     // Attempt to load from staged bundle first
@@ -92,6 +93,11 @@ async fn main() -> Result<()> {
                         }
                     }
                 }
+                if let Some(prof_val) = payload.get("enterprise_profile") {
+                    if let Ok(prof) = serde_json::from_value(prof_val.clone()) {
+                        initial_metadata.enterprise_profile = prof;
+                    }
+                }
             }
         }
     } else {
@@ -121,9 +127,9 @@ async fn main() -> Result<()> {
     }
 
     let plugin_host = Arc::new(WasmtimePluginHost::new(plugin_paths)?);
+    let initial_prof = initial_metadata.enterprise_profile.clone();
     let initial_snapshot = RuntimeSnapshot::new(0, "initial".into(), 0, Arc::new(router), initial_metadata, plugin_host.clone());
 
-    // Init telemetry
     let telemetry_db = dek_config::paths::get_data_dir().join("telemetry.db");
     let telemetry = dek_telemetry::CloudTelemetrySink::new(
         "https://telemetry.pollen-cloud.internal",
@@ -131,6 +137,10 @@ async fn main() -> Result<()> {
         None,
         &telemetry_db.to_string_lossy(),
     ).ok();
+
+    if let Some(ref tel) = telemetry {
+        tel.set_enterprise_profile(initial_prof);
+    }
 
     let state = AppState::new(
         HttpTransportAdapter,
@@ -223,6 +233,14 @@ async fn main() -> Result<()> {
                                         if let Some(aud_val) = jwt_cfg.get("audience") {
                                             if let Ok(aud) = serde_json::from_value(aud_val.clone()) {
                                                 metadata_clone.audience = Some(aud);
+                                            }
+                                        }
+                                    }
+                                    if let Some(prof_val) = payload.get("enterprise_profile") {
+                                        if let Ok(prof) = serde_json::from_value(prof_val.clone()) {
+                                            metadata_clone.enterprise_profile = prof;
+                                            if let Some(ref tel) = state_clone.telemetry {
+                                                tel.set_enterprise_profile(metadata_clone.enterprise_profile.clone());
                                             }
                                         }
                                     }

@@ -104,12 +104,13 @@ impl Supervisor {
             &pinned_key,
             client_key_override.as_deref(),
         )?);
-        let telemetry_db = dek_config::paths::get_data_dir().join("telemetry-core.db");
+        let telemetry_url = format!("{}/v1/tenants/{}/devices/{}/telemetry", cloud_url.trim_end_matches('/'), tenant_id, bootstrap.device_id);
+        let data_dir = dek_config::paths::get_data_dir();
         let telemetry_sink = CloudTelemetrySink::new(
-            &format!("{}/v1/tenants/{}/devices/{}/telemetry", cloud_url.trim_end_matches('/'), tenant_id, bootstrap.device_id),
+            &telemetry_url,
             &bootstrap.mtls,
             client_key_override.as_deref(),
-            &telemetry_db.to_string_lossy(),
+            &data_dir.join("telemetry.db").to_string_lossy(),
         )?;
         let metrics_client = Arc::new(RwLock::new(
             bootstrap

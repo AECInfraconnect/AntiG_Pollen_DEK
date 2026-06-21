@@ -1,0 +1,19 @@
+[package]
+name = "pollen-dek-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+dek-activation = { path = "../crates/dek-activation" }
+serde_json = "1.0"
+
+[[bin]]
+name = "bundle_parser"
+path = "fuzz_targets/bundle_parser.rs"
+test = false
+doc = false

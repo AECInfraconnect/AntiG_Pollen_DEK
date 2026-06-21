@@ -1,33 +1,30 @@
-# Runbook: Disaster Recovery
+# Pollen DEK Disaster Recovery Runbook
 
-## Objective
-To recover the Pollen DEK from severe states such as corrupted bundles, failed binary updates, or persistent crash loops.
+## Overview
+This runbook provides the procedure for recovering a Pollen DEK node in the event of severe failure, cryptographic compromise, or persistent crash loop.
 
-## Scenario A: Failed Binary Update (Crash Loop)
-If `dek-updater` failed to swap correctly or the new binary panics immediately:
-1. **Stop Service**
-   ```powershell
-   Stop-Service PollenDEK -Force
-   ```
-2. **Restore Backup Binary**
-   ```powershell
-   Rename-Item -Path "C:\Program Files\PollenDEK\dek-core.exe.bak" -NewName "dek-core.exe"
-   ```
-3. **Restart Service**
-   ```powershell
-   Start-Service PollenDEK
-   ```
+## Scenario 1: Cryptographic Compromise (Spire or Core Keys Leaked)
+1. In the Pollen Cloud Management console, locate the affected Device ID.
+2. Click **Revoke Device Identity**. This will blacklist the device's mTLS certificate and SVID.
+3. On the compromised endpoint, stop the Pollen DEK Core service:
+   - **Linux**: `systemctl stop pollen-dek-core`
+   - **Windows**: `Stop-Service PollenDEKCore`
+4. Wipe the local Keystore and Data Directory:
+   - Delete all contents of `/etc/pollen-dek/` or `C:\ProgramData\PollenDEK\`.
+5. Generate a new enrollment token from the Cloud Management Console.
+6. Run `dek-enroll` with the new token to establish a fresh cryptographic identity.
 
-## Scenario B: Bad Policy Bundle
-If a corrupted bundle is causing all requests to fail:
-1. **Rollback Bundle via CLI**
-   ```powershell
-   dekctl rollback --target previous
-   ```
-2. **Verify Policies**
-   ```powershell
-   dekctl test-policy --input test.json
-   ```
+## Scenario 2: Persistent Crash Loop (Poison Pill Bundle)
+If a bad policy bundle causes `dek-core` or `dek-mcp-proxy` to panic repeatedly:
+1. DEK includes a fallback to the `shadow_bundle.json` if `active_bundle.json` fails probation.
+2. If probation failed to catch it, manually trigger a rollback:
+   `dek-cli rollback --device <device_id>` (This sends an emergency override via Cloud).
+3. If the device cannot reach the Cloud:
+   - On the local device, execute: `dek-cli local-rollback` (Requires LocalAdmin role or physical access).
+   - This copies `lkg_bundle.json` over `active_bundle.json` and restarts the service.
 
-## Escalation
-If the system cannot be recovered, perform a clean uninstall and re-enroll using the `install_and_enroll.md` runbook.
+## Scenario 3: Loss of Connectivity to Control Plane
+DEK is designed to operate seamlessly without the control plane (offline-first).
+- Policies will continue evaluating using the cached `active_bundle.json`.
+- Telemetry will spool to the local SQLite database (`telemetry.db`).
+- **Action**: Ensure telemetry database size doesn't exhaust disk space. By default, it truncates old events when exceeding 1GB.
