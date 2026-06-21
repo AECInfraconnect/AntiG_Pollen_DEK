@@ -16,18 +16,36 @@ decision logs back — all on `localhost`.
 
 ## 1. Build
 
+For Linux/macOS or PowerShell 7+:
 ```bash
 cargo build --workspace
 cd apps/local-admin-dashboard && npm install && npm run build && cd -
 ```
 
+For Windows PowerShell (older versions):
+```powershell
+cargo build --workspace
+cd apps/local-admin-dashboard; npm install; npm run build; cd ../..
+```
+
 ## 2. Start the Local Control Plane
 
+For Linux/macOS or bash/Zsh:
 ```bash
 # data dir holds the local bundle-signing key (created 0600 on first run)
 DEK_LCP_DATA=./pollen-local-data \
 DEK_LCP_DB="sqlite://./pollen-local.db?mode=rwc" \
+DEK_LCP_AUTH_DISABLE=1 \
   ./target/debug/local-control-plane
+```
+
+For Windows PowerShell:
+```powershell
+# data dir holds the local bundle-signing key (created 0600 on first run)
+$env:DEK_LCP_DATA="./pollen-local-data"
+$env:DEK_LCP_DB="sqlite://./pollen-local.db?mode=rwc"
+$env:DEK_LCP_AUTH_DISABLE="1"
+.\target\debug\local-control-plane.exe
 ```
 
 It logs the bundle-signing public key on startup:
@@ -39,21 +57,43 @@ local control-plane signing key: local-ab12cd34 (pub Base64EncodedKey==)
 
 ## 3. Point the DEK at the Local Control Plane
 
-```bash
-# grab the trust key (or copy it from the log above)
-curl -s http://127.0.0.1:3000/v1/tenants/local/devices/_/trusted-keys
+> **Note for Windows Users:** Keep the terminal from Step 2 open, and open a **NEW terminal window or tab** for Step 3 and beyond. 
 
-dek-cli profile set local --url http://127.0.0.1:3000 --trusted-key "Base64EncodedKey=="
-dek-cli profile show     # confirm mode=local, tenant_id=local
+For Linux/macOS or bash/Zsh:
+```bash
+# copy the trust key from the control plane log above (looks like 'pub Base64EncodedKey==')
+# (Optional for bash/Zsh) you can fetch it with curl if auth is disabled:
+# curl -s http://127.0.0.1:3000/v1/tenants/local/devices/_/trusted-keys
+
+./target/debug/dek-cli profile set local --url http://127.0.0.1:3000 --trusted-key "Base64EncodedKey=="
+./target/debug/dek-cli profile show     # confirm mode=local, tenant_id=local
 ```
 
-## 4. Enroll + run the DEK
+For Windows PowerShell:
+```powershell
+# Copy the trust key from the control plane log above (looks like 'pub Base64EncodedKey==')
+.\target\debug\dek-cli.exe profile set local --url http://127.0.0.1:3000 --trusted-key "Base64EncodedKey=="
+.\target\debug\dek-cli.exe profile show     # confirm mode=local, tenant_id=local
+```
 
+## 4. Run the DEK
+
+*(Note: In local mode, `profile set local` already bootstraps the configuration, so we skip `dek-cli enroll`)*
+
+For Linux/macOS or bash/Zsh:
 ```bash
-dek-cli enroll --cloud-url http://127.0.0.1:3000
-./target/debug/dek-core &     # PEP on :43890
-dek-cli doctor                # checks certs / connectivity / permissions
-dek-cli status                # enrollment + sync + enforcement state
+./target/debug/dek-core &     # PEP on :43890 (runs in background)
+./target/debug/dek-cli doctor                # checks certs / connectivity / permissions
+./target/debug/dek-cli status                # enrollment + sync + enforcement state
+```
+
+For Windows PowerShell:
+```powershell
+# dek-core blocks the terminal, so we use Start-Process to run it in the background
+Start-Process .\target\debug\dek-core.exe -NoNewWindow
+# Or just run it in a 3rd terminal window.
+.\target\debug\dek-cli.exe doctor
+.\target\debug\dek-cli.exe status
 ```
 
 ## 5. Author → publish a policy
@@ -104,10 +144,18 @@ So the DEK never knows whether it's talking to Local or Cloud.
 
 ## Switching to Pollen Cloud (later)
 
+For Linux/macOS or bash/Zsh:
 ```bash
-dek-cli profile set cloud --url https://cloud.<your-cloud-domain> --tenant-id your-tenant
-dek-cli enroll --cloud-url https://cloud.<your-cloud-domain>
+./target/debug/dek-cli profile set cloud --url https://cloud.<your-cloud-domain> --tenant-id your-tenant
+./target/debug/dek-cli enroll --cloud-url https://cloud.<your-cloud-domain>
 # restart dek-core — same enforcement, multi-tenant control plane
+```
+
+For Windows PowerShell:
+```powershell
+.\target\debug\dek-cli.exe profile set cloud --url https://cloud.<your-cloud-domain> --tenant-id your-tenant
+.\target\debug\dek-cli.exe enroll --cloud-url https://cloud.<your-cloud-domain>
+# restart dek-core
 ```
 
 ## Guardrails (always on)
@@ -118,6 +166,8 @@ dek-cli enroll --cloud-url https://cloud.<your-cloud-domain>
 
 ## Troubleshooting
 
-- `dek-cli doctor` reports cert/connectivity/permission problems and how to fix them.
-- No decisions logged? Confirm `dek-core` is running and `dek-cli status` shows a recently synced bundle.
-- Bundle rejected? The pinned trust key probably doesn't match the Local CP's key — re-run step 3 with the current `public_b64`.
+- **Dashboard shows HTTP 404:** The local control plane can't find the web UI files. Stop it (`Ctrl+C`), set `$env:DEK_DASHBOARD_DIR=".\apps\local-admin-dashboard\dist"` (Windows) or `export DEK_DASHBOARD_DIR="./apps/local-admin-dashboard/dist"` (Linux/mac), and restart `local-control-plane`.
+- **`bootstrap already exists` error:** If you accidentally ran `dek-cli enroll` or have leftover configs from previous runs, stop `dek-core`, delete the config folder (`C:\ProgramData\PollenDEK` on Windows or `~/.pollen-dek` / `/etc/pollen-dek` on Linux), and repeat Step 3.
+- **`dek-cli doctor`** reports cert/connectivity/permission problems and how to fix them.
+- **No decisions logged?** Confirm `dek-core` is running and `dek-cli status` shows a recently synced bundle.
+- **Bundle rejected?** The pinned trust key probably doesn't match the Local CP's key — re-run step 3 with the current `public_b64`.

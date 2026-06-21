@@ -52,7 +52,13 @@ export class ControlPlaneClient {
       }
     });
     if (!res.ok) {
-      throw new Error(await res.text());
+      let errText = await res.text();
+      try {
+        const json = JSON.parse(errText);
+        if (json.message) errText = json.message;
+        else if (json.error) errText = json.error;
+      } catch (e) {}
+      throw new Error(errText || `HTTP Error ${res.status}: ${res.statusText}`);
     }
     return res.json();
   }
@@ -70,6 +76,12 @@ export class ControlPlaneClient {
   async listPolicies(): Promise<PolicyDraft[]> { return this.fetchApi('/policies'); }
   async createPolicy(draft: PolicyDraft): Promise<PolicyDraft> {
     return this.fetchApi('/policies', { method: 'POST', body: JSON.stringify(draft) });
+  }
+  async updatePolicy(policyId: string, draft: PolicyDraft): Promise<PolicyDraft> {
+    return this.fetchApi(`/policies/${policyId}`, { method: 'PATCH', body: JSON.stringify(draft) });
+  }
+  async deletePolicy(policyId: string): Promise<void> {
+    return this.fetchApi(`/policies/${policyId}`, { method: 'DELETE' });
   }
   async publishPolicy(policyId: string): Promise<{ published: boolean; bundle_id: string; build_number: number }> {
     return this.fetchApi(`/policies/${policyId}/publish`, { method: 'POST' });
@@ -132,6 +144,8 @@ export const RegistryApi = {
 export const PolicyApi = {
   list: () => defaultClient.listPolicies(),
   create: (draft: PolicyDraft) => defaultClient.createPolicy(draft),
+  update: (policyId: string, draft: PolicyDraft) => defaultClient.updatePolicy(policyId, draft),
+  delete: (policyId: string) => defaultClient.deletePolicy(policyId),
   publish: (policyId: string) => defaultClient.publishPolicy(policyId),
   simulate: (policyId: string, req: any) => defaultClient.simulatePolicy(policyId, req),
 };

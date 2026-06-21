@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FileKey, Plus, UploadCloud, X } from "lucide-react";
+import { FileKey, Plus, UploadCloud, X, Eye, Pencil, Trash2 } from "lucide-react";
 import { PolicyApi } from "../services/api";
 import type { PolicyDraft, PolicyType } from "../services/api";
 
@@ -22,7 +22,7 @@ const STATUS_BADGE: Record<string, string> = {
 export function Policies() {
   const [policies, setPolicies] = useState<PolicyDraft[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showEditor, setShowEditor] = useState(false);
+  const [editorState, setEditorState] = useState<{ mode: 'create' | 'edit' | 'view', policy?: PolicyDraft } | null>(null);
   const [publishing, setPublishing] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -30,6 +30,19 @@ export function Policies() {
     PolicyApi.list().then(setPolicies).catch(console.error).finally(() => setLoading(false));
 
   useEffect(() => { reload(); }, []);
+
+  const onDelete = async (policyId: string) => {
+    if (!confirm(`Are you sure you want to delete policy ${policyId}?`)) return;
+    try {
+      await PolicyApi.delete(policyId);
+      setToast(`Deleted ${policyId}`);
+      reload();
+    } catch (e) {
+      setToast(`Delete failed: ${String(e)}`);
+    } finally {
+      setTimeout(() => setToast(null), 5000);
+    }
+  };
 
   const onPublish = async (policyId: string) => {
     setPublishing(policyId);
@@ -57,7 +70,7 @@ export function Policies() {
           </p>
         </div>
         <button
-          onClick={() => setShowEditor(true)}
+          onClick={() => setEditorState({ mode: 'create' })}
           className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
         >
           <Plus className="h-4 w-4" /> New Policy
@@ -106,14 +119,39 @@ export function Policies() {
                   </td>
                   <td className="px-6 py-4 text-muted-foreground">{targetCount} target(s)</td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => onPublish(p.policy_id)}
-                      disabled={publishing === p.policy_id}
-                      className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <UploadCloud className="h-3.5 w-3.5" />
-                      {publishing === p.policy_id ? "Publishing..." : "Publish"}
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => setEditorState({ mode: 'view', policy: p })}
+                        title="View Policy"
+                        className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium hover:bg-muted/50"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setEditorState({ mode: 'edit', policy: p })}
+                        disabled={p.meta.source === 'cloud_sync' || p.meta.created_by !== 'local-admin'}
+                        title="Edit Policy"
+                        className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium hover:bg-muted/50 disabled:opacity-50"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => onDelete(p.policy_id)}
+                        disabled={p.meta.source === 'cloud_sync' || p.meta.created_by !== 'local-admin'}
+                        title="Delete Policy"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-red-500/30 text-red-400 px-2 py-1.5 text-xs font-medium hover:bg-red-500/10 disabled:opacity-50 disabled:border-muted"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => onPublish(p.policy_id)}
+                        disabled={publishing === p.policy_id}
+                        className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted/50 disabled:opacity-50"
+                      >
+                        <UploadCloud className="h-3.5 w-3.5" />
+                        {publishing === p.policy_id ? "Publishing..." : "Publish"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -122,37 +160,51 @@ export function Policies() {
         </table>
       </div>
 
-      {showEditor && <PolicyEditor onClose={() => setShowEditor(false)} onCreated={() => { setShowEditor(false); reload(); }} />}
+      {editorState && (
+        <PolicyEditor 
+          mode={editorState.mode} 
+          policy={editorState.policy} 
+          onClose={() => setEditorState(null)} 
+          onCreated={() => { setEditorState(null); reload(); }} 
+        />
+      )}
     </div>
   );
 }
 
-function PolicyEditor({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState<PolicyType>("cedar");
-  const [text, setText] = useState('permit(principal, action, resource);');
+function PolicyEditor({ mode, policy, onClose, onCreated }: { mode: 'create' | 'edit' | 'view'; policy?: PolicyDraft; onClose: () => void; onCreated: () => void }) {
+  const [name, setName] = useState(policy?.name ?? "");
+  const [type, setType] = useState<PolicyType>(policy?.policy_type ?? "cedar");
+  const initialText = policy?.source?.kind === "raw_text" ? policy.source.text : 'permit(principal, action, resource);';
+  const [text, setText] = useState(initialText);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const readOnly = mode === 'view';
   const langFor: Record<string, string> = { cedar: "cedar", rego: "rego", open_fga: "fga" };
 
   const save = async () => {
     setSaving(true); setError(null);
     const now = new Date().toISOString();
-    const policy_id = `pol-${Date.now()}`;
+    const policy_id = policy?.policy_id ?? `pol-${Date.now()}`;
     const draft: PolicyDraft = {
-      meta: {
+      meta: policy?.meta ?? {
         schema_version: "1.0", tenant_id: "local", workspace_id: "default", environment_id: "local",
         created_at: now, updated_at: now, created_by: "local-admin", updated_by: "local-admin",
         source: "manual", status: "draft", tags: [],
       },
-      policy_id, name, description: undefined, policy_type: type,
-      targets: { agent_ids: [], tool_ids: [], resource_ids: [], entity_ids: [], route_ids: [] },
+      policy_id, name, description: policy?.description, policy_type: type,
+      targets: policy?.targets ?? { agent_ids: [], tool_ids: [], resource_ids: [], entity_ids: [], route_ids: [] },
       source: { kind: "raw_text", language: langFor[type] ?? "text", text },
-      compile_options: { fail_on_warnings: true },
+      compile_options: policy?.compile_options ?? { fail_on_warnings: true },
     };
     try {
-      await PolicyApi.create(draft);
+      if (mode === 'edit') {
+        draft.meta.updated_at = now;
+        await PolicyApi.update(policy_id, draft);
+      } else {
+        await PolicyApi.create(draft);
+      }
       onCreated();
     } catch (e) {
       setError(String(e));
@@ -165,20 +217,20 @@ function PolicyEditor({ onClose, onCreated }: { onClose: () => void; onCreated: 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="glass w-full max-w-2xl rounded-xl border p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">New Policy</h3>
+          <h3 className="text-lg font-semibold">{mode === 'create' ? 'New Policy' : mode === 'edit' ? 'Edit Policy' : 'View Policy'}</h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="policy-name" className="text-xs font-medium text-muted-foreground">Name</label>
-            <input id="policy-name" value={name} onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-md border bg-transparent px-3 py-2 text-sm" placeholder="e.g. pol-net-deny" />
+            <input id="policy-name" value={name} onChange={(e) => setName(e.target.value)} disabled={readOnly}
+              className="mt-1 w-full rounded-md border bg-transparent px-3 py-2 text-sm disabled:opacity-50" placeholder="e.g. pol-net-deny" />
           </div>
           <div>
             <label htmlFor="policy-engine" className="text-xs font-medium text-muted-foreground">Engine</label>
-            <select id="policy-engine" value={type} onChange={(e) => setType(e.target.value as PolicyType)}
-              className="mt-1 w-full rounded-md border bg-transparent px-3 py-2 text-sm">
+            <select id="policy-engine" value={type} onChange={(e) => setType(e.target.value as PolicyType)} disabled={readOnly || mode === 'edit'}
+              className="mt-1 w-full rounded-md border bg-transparent px-3 py-2 text-sm disabled:opacity-50">
               <option value="cedar">Cedar</option>
               <option value="rego">OPA / Rego</option>
               <option value="open_fga">OpenFGA</option>
@@ -188,18 +240,22 @@ function PolicyEditor({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
         <div>
           <label htmlFor="policy-source" className="text-xs font-medium text-muted-foreground">Policy source (compiled on the control plane, not the DEK)</label>
-          <textarea id="policy-source" value={text} onChange={(e) => setText(e.target.value)} rows={10}
-            className="mt-1 w-full rounded-md border bg-black/30 px-3 py-2 font-mono text-xs" spellCheck={false} />
+          <textarea id="policy-source" value={text} onChange={(e) => setText(e.target.value)} rows={10} disabled={readOnly}
+            className="mt-1 w-full rounded-md border bg-black/30 px-3 py-2 font-mono text-xs disabled:opacity-50" spellCheck={false} />
         </div>
 
         {error && <div className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</div>}
 
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-md border px-4 py-2 text-sm hover:bg-muted/50">Cancel</button>
-          <button onClick={save} disabled={saving || !name}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-            {saving ? "Saving..." : "Save draft"}
+          <button onClick={onClose} className="rounded-md border px-4 py-2 text-sm hover:bg-muted/50">
+            {readOnly ? "Close" : "Cancel"}
           </button>
+          {!readOnly && (
+            <button onClick={save} disabled={saving || !name}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+              {saving ? "Saving..." : "Save"}
+            </button>
+          )}
         </div>
       </div>
     </div>
