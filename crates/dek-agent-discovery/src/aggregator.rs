@@ -46,16 +46,29 @@ pub fn aggregate_evidence(
                         name = "MCP Capable Agent".to_string();
                     }
                     if let Some(transport) = ev.data.get("transport").and_then(|v| v.as_str()) {
-                        let server_name = ev.data.get("server_name").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
-                        let command = ev.data.get("command_template").and_then(|v| v.as_array()).and_then(|arr| arr.first()).and_then(|v| v.as_str()).map(|s| s.to_string());
-                        
+                        let server_name = ev
+                            .data
+                            .get("server_name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown")
+                            .to_string();
+                        let command = ev
+                            .data
+                            .get("command_template")
+                            .and_then(|v| v.as_array())
+                            .and_then(|arr| arr.first())
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
+
                         mcp_servers.push(DiscoveredMcpServerRef {
                             server_name: server_name.clone(),
                             transport: transport.to_string(),
                             command,
                         });
-                        
-                        if let Some(env_keys) = ev.data.get("env_key_names").and_then(|v| v.as_array()) {
+
+                        if let Some(env_keys) =
+                            ev.data.get("env_key_names").and_then(|v| v.as_array())
+                        {
                             for key in env_keys {
                                 if let Some(k) = key.as_str() {
                                     if !redacted_env_keys.contains(&k.to_string()) {
@@ -98,7 +111,7 @@ pub fn aggregate_evidence(
                             url: key_url.clone(),
                             protocol: "sse".into(),
                         });
-                        
+
                         mcp_servers.push(DiscoveredMcpServerRef {
                             server_name: "sse_server".into(),
                             transport: "sse".into(),
@@ -116,7 +129,7 @@ pub fn aggregate_evidence(
 
         let mut control_bindings = Vec::new();
         let cand_id = format!("cand_{}", uuid::Uuid::new_v4());
-        
+
         for server in &mcp_servers {
             let binding_id = format!("bind_{}", uuid::Uuid::new_v4());
             if server.transport == "stdio" {

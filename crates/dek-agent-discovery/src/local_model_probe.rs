@@ -93,7 +93,8 @@ pub async fn probe_local_models() -> Result<Vec<DiscoveryEvidenceV2>> {
         if let Ok(res) = client.get(&url).send().await {
             // MCP SSE might return 405 Method Not Allowed on GET, or 200 with text/event-stream
             if res.status().is_success() || res.status().as_u16() == 405 {
-                let is_sse = res.headers()
+                let is_sse = res
+                    .headers()
                     .get(reqwest::header::CONTENT_TYPE)
                     .and_then(|v| v.to_str().ok())
                     .map(|s| s.contains("text/event-stream"))

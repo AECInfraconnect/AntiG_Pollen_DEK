@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-
 use crate::state::AppState;
 use axum::{
     extract::Path,
@@ -40,9 +39,17 @@ impl Default for CloudPdpProfile {
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/v1/tenants/:tenant/pdp/cloud", get(get_cloud_profile).patch(update_cloud_profile).delete(disconnect_cloud_profile))
+        .route(
+            "/v1/tenants/:tenant/pdp/cloud",
+            get(get_cloud_profile)
+                .patch(update_cloud_profile)
+                .delete(disconnect_cloud_profile),
+        )
         .route("/v1/tenants/:tenant/pdp/cloud/login", post(cloud_login))
-        .route("/v1/tenants/:tenant/pdp/cloud/discover", post(cloud_discover))
+        .route(
+            "/v1/tenants/:tenant/pdp/cloud/discover",
+            post(cloud_discover),
+        )
         .route("/v1/tenants/:tenant/pdp/cloud/probe", post(cloud_probe))
 }
 

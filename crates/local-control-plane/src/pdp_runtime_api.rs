@@ -1,5 +1,5 @@
 use crate::error::{ApiError, ApiResult};
-use crate::pdp_models::{PdpKind, PdpRuntime, PdpRuntimeCategory, PdpStatus, PdpProbeResult};
+use crate::pdp_models::{PdpKind, PdpProbeResult, PdpRuntime, PdpRuntimeCategory, PdpStatus};
 use crate::state::AppState;
 use axum::{
     extract::{Path, State},
@@ -226,7 +226,7 @@ async fn probe_health(
             }
         }
     };
-    
+
     let start = std::time::Instant::now();
 
     if let Some(endpoint) = rt.endpoint {
@@ -251,7 +251,11 @@ async fn probe_health(
             ok,
             latency_ms: start.elapsed().as_millis() as u64,
             effect: if ok { "permit".into() } else { "deny".into() },
-            reason: if ok { "reachable".into() } else { "unreachable".into() },
+            reason: if ok {
+                "reachable".into()
+            } else {
+                "unreachable".into()
+            },
             decision_id: uuid::Uuid::new_v4().to_string(),
             details: serde_json::json!({}),
         })
