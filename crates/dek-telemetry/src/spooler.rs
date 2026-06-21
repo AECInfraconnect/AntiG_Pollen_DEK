@@ -99,7 +99,7 @@ impl Spooler {
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
-        std::fs::write(&path, &key_bytes)?;
+        std::fs::write(&path, key_bytes)?;
 
         #[cfg(unix)]
         {
