@@ -1,4 +1,4 @@
-import type { AiAgent, McpServer, Tool, Resource, Entity, Relationship, PolicyDraft, TelemetryEventEnvelope, BlackboxAiProvider, DiscoveryCandidate, PolicySuggestion } from './types';
+import type { AiAgent, McpServer, Tool, Resource, Entity, Relationship, PolicyDraft, TelemetryEventEnvelope, BlackboxAiProvider, DiscoveryCandidate, PolicySuggestion, ConnectorConfig, SimulationRequest, SimulationResult } from './types';
 export type * from './types';
 import type { components } from '../../../../contracts/generated/typescript/api';
 
@@ -87,27 +87,27 @@ export class ControlPlaneClient {
     return this.fetchApi(`/policies/${policyId}/publish`, { method: 'POST' });
   }
 
-  async simulatePolicy(policyId: string, req: any): Promise<any> {
+  async simulatePolicy(policyId: string, req: SimulationRequest): Promise<SimulationResult> {
     return this.fetchApi(`/policies/${policyId}/simulate`, { method: 'POST', body: JSON.stringify(req) });
   }
 
   // Connectors
-  async listConnectors(): Promise<any[]> { return this.fetchApi('/connectors'); }
-  async upsertConnector(cfg: any): Promise<any> { return this.fetchApi('/connectors', { method: 'POST', body: JSON.stringify(cfg) }); }
-  async testConnector(id: string): Promise<any> { return this.fetchApi(`/connectors/${id}/test`, { method: 'POST' }); }
+  async listConnectors(): Promise<ConnectorConfig[]> { return this.fetchApi('/connectors'); }
+  async upsertConnector(cfg: ConnectorConfig): Promise<ConnectorConfig> { return this.fetchApi('/connectors', { method: 'POST', body: JSON.stringify(cfg) }); }
+  async testConnector(id: string): Promise<unknown> { return this.fetchApi(`/connectors/${id}/test`, { method: 'POST' }); }
 
   // Bundles
-  async listBundles(): Promise<any[]> {
+  async listBundles(): Promise<unknown[]> {
     return this.fetchApi('/bundles');
   }
   
-  async pushSync(): Promise<any> {
+  async pushSync(): Promise<unknown> {
     // Note: the mock server push is a stream, but we might just hit a sync endpoint.
     // Assuming /bundles/sync or just let the dashboard know it triggers a reload
     return this.fetchApi('/bundles/sync', { method: 'POST' });
   }
 
-  async deployToPep(pepId: string, bundleId: string): Promise<any> {
+  async deployToPep(pepId: string, bundleId: string): Promise<unknown> {
     return this.fetchApi(`/peps/${pepId}/deploy`, { 
       method: 'POST', 
       body: JSON.stringify({ bundle_id: bundleId }) 
@@ -125,7 +125,7 @@ export class ControlPlaneClient {
     return this.fetchApi('/discovery/candidates').then((data: any) => data.candidates ?? data).catch(() => []); // Mock fallback if endpoint not exist
   }
 
-  async triggerDiscoveryScan(): Promise<any> {
+  async triggerDiscoveryScan(): Promise<unknown> {
     return this.fetchApi('/discovery/scans', { method: 'POST', body: JSON.stringify({}) });
   }
 
@@ -135,12 +135,12 @@ export class ControlPlaneClient {
     return data.items ?? data;
   }
   
-  async generatePolicySuggestions(): Promise<any> {
+  async generatePolicySuggestions(): Promise<unknown> {
     return this.fetchApi('/policy-suggestions/generate', { method: 'POST' });
   }
 
   // Cost
-  async getCostSummary(): Promise<any> {
+  async getCostSummary(): Promise<unknown> {
     return this.fetchApi('/observations/costs');
   }
 
@@ -162,7 +162,6 @@ export const switchProfile = (profile: 'local' | 'mock-cloud') => {
   window.location.reload();
 };
 
-// Proxy objects for backward compatibility with existing code
 export const RegistryApi = {
   listAgents: () => defaultClient.listAgents(),
   listMcpServers: () => defaultClient.listMcpServers(),
@@ -190,7 +189,7 @@ export const PolicyApi = {
   update: (policyId: string, draft: PolicyDraft) => defaultClient.updatePolicy(policyId, draft),
   delete: (policyId: string) => defaultClient.deletePolicy(policyId),
   publish: (policyId: string) => defaultClient.publishPolicy(policyId),
-  simulate: (policyId: string, req: any) => defaultClient.simulatePolicy(policyId, req),
+  simulate: (policyId: string, req: SimulationRequest) => defaultClient.simulatePolicy(policyId, req),
 };
 
 export const BundleApi = {
@@ -205,7 +204,7 @@ export const TelemetryApi = {
 
 export const ConnectorApi = {
   list: () => defaultClient.listConnectors(),
-  upsert: (cfg: any) => defaultClient.upsertConnector(cfg),
+  upsert: (cfg: ConnectorConfig) => defaultClient.upsertConnector(cfg),
   test: (id: string) => defaultClient.testConnector(id),
 };
 

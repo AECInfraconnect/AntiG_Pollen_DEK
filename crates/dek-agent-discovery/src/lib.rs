@@ -1,4 +1,8 @@
+#![deny(clippy::unwrap_used)]
+
 pub mod api;
+pub mod config;
+pub mod error;
 pub mod fingerprint;
 pub mod mcp_config;
 pub mod model;

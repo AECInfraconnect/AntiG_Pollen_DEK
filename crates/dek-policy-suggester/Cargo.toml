@@ -19,6 +19,7 @@ dek-control-plane-api = { path = "../dek-control-plane-api" }
 dek-domain-schema = { path = "../dek-domain-schema" }
 dek-agent-discovery = { path = "../dek-agent-discovery" }
 dek-agent-observer = { path = "../dek-agent-observer" }
+thiserror.workspace = true
 
 [lints]
 workspace = true

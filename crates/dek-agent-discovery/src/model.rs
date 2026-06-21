@@ -34,7 +34,7 @@ pub struct DiscoveredAgentCandidate {
     pub labels: BTreeMap<String, String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum InferredAgentType {
     DesktopAgent,
