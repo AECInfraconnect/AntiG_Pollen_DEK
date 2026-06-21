@@ -13,6 +13,8 @@ serde_json.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 rcgen = "0.11"
+jsonwebtoken = "10.4.0"
+base64 = { version = "0.22.1", features = ["alloc"] }
 
 [lints]
 workspace = true

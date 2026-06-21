@@ -241,7 +241,7 @@ async fn s5_v1_keys_chain_of_trust() {
 
     let client = reqwest::Client::new();
     let url = format!("http://{addr}/v1/keys");
-    let (merged, delta) = dek_policy_syncer::keys::fetch_and_merge(&client, &url, &current)
+    let (merged, delta) = dek_policy_syncer::keys::fetch_and_merge(&client, &url, None, &current)
         .await
         .unwrap();
     assert!(

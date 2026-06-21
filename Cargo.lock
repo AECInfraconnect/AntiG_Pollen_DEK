@@ -1850,6 +1850,7 @@ dependencies = [
  "arc-swap",
  "axum 0.7.9",
  "base64 0.22.1",
+ "chrono",
  "dek-activation",
  "dek-agent-connector",
  "dek-bundle-sync",
@@ -2302,7 +2303,9 @@ name = "dek-spire-node"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "dek-config",
+ "jsonwebtoken 10.4.0",
  "rcgen 0.11.3",
  "reqwest 0.12.28",
  "serde",
@@ -4233,19 +4236,23 @@ name = "local-control-plane"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-stream",
  "async-trait",
  "axum 0.7.9",
  "base64 0.22.1",
  "chrono",
  "dek-control-plane-api",
  "ed25519-dalek",
+ "futures-util",
  "getrandom 0.2.17",
  "hex",
+ "rand 0.8.6",
  "serde",
  "serde_json",
  "sha2 0.10.9",
  "sqlx",
  "tokio",
+ "tokio-stream",
  "tower-http 0.5.2",
  "tracing",
  "tracing-subscriber",
@@ -7281,6 +7288,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

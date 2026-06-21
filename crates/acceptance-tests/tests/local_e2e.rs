@@ -88,6 +88,7 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
             .current_dir(workspace_dir())
             .env("DEK_LCP_DATA", &lcp_data)
             .env("DEK_LCP_DB", "sqlite::memory:")
+            .env("DEK_LCP_AUTH_DISABLE", "1")
             .env("RUST_LOG", "info")
             .env_remove("DEK_PINNED_KEY_OVERRIDE")
             .spawn().context("spawn local-control-plane")?,
@@ -205,7 +206,7 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
         "decision-log: expected at least one decision recorded in local-cp"
     );
     let has_allow = decisions.iter().any(|d| {
-        d.pointer("/decision").and_then(|v| v.as_str()) == Some("allow") ||
+        d.pointer("/payload/decision").and_then(|v| v.as_str()) == Some("allow") ||
         d.pointer("/mcp/verdict").and_then(|v| v.as_str()) == Some("allow")
     });
     anyhow::ensure!(has_allow, "decision-log: expected an 'allow' decision; got {decisions:?}");

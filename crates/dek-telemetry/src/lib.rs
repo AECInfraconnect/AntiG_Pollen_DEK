@@ -65,6 +65,7 @@ pub struct CloudTelemetrySink {
     client: Arc<tokio::sync::RwLock<reqwest::Client>>,
     endpoint_url: String,
     enterprise_profile: Arc<std::sync::RwLock<dek_config::EnterpriseProfile>>,
+    api_token: Option<String>,
 }
 
 impl CloudTelemetrySink {
@@ -73,6 +74,7 @@ impl CloudTelemetrySink {
         mtls: &MtlsConfig,
         client_key_override: Option<&[u8]>,
         db_path: &str,
+        api_token: Option<String>,
     ) -> Result<Arc<Self>> {
         let client = Arc::new(tokio::sync::RwLock::new(
             mtls.build_client(client_key_override)?,
@@ -88,6 +90,7 @@ impl CloudTelemetrySink {
             enterprise_profile: Arc::new(std::sync::RwLock::new(
                 dek_config::EnterpriseProfile::default(),
             )),
+            api_token,
         });
 
         // Initialize OTLP Metrics Provider
@@ -208,9 +211,15 @@ impl CloudTelemetrySink {
                     .max_delay(Duration::from_secs(5))
                     .take(3);
 
+                let sink_token = self.api_token.clone();
+
                 let res = Retry::spawn(strategy, || async {
                     let c = bg_client.clone();
-                    match c.post(&url).json(&payload).send().await {
+                    let mut req = c.post(&url).json(&payload);
+                    if let Some(t) = &sink_token {
+                        req = req.header("Authorization", format!("Bearer {}", t));
+                    }
+                    match req.send().await {
                         Ok(res) if res.status().is_success() => Ok(()),
                         Ok(res) if res.status().is_client_error() => {
                             warn!(

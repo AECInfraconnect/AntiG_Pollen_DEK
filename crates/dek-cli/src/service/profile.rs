@@ -36,6 +36,7 @@ pub fn set_profile(
     url: Option<String>,
     tenant_id: Option<String>,
     trusted_key_b64: Option<String>,
+    token: Option<String>,
 ) -> Result<()> {
     let bootstrap_path = paths::get_bootstrap_path();
     let path_str = bootstrap_path.to_string_lossy().into_owned();
@@ -67,6 +68,10 @@ pub fn set_profile(
             // Cloud trust root is normally seeded during enrollment / trusted-keys
             // fetch; we keep the existing pinned key if none provided.
         }
+    }
+
+    if let Some(t) = token {
+        cfg.local_api_token = Some(t);
     }
 
     let json = serde_json::to_string_pretty(&cfg)?;

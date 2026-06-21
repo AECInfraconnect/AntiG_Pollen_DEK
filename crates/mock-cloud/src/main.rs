@@ -10,6 +10,7 @@ pub mod compiler;
 pub mod decision_logs;
 pub mod fixtures;
 pub mod keys;
+pub mod jwt_svid_endpoint;
 pub mod mtls;
 pub mod pdp;
 pub mod registry;

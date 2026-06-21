@@ -119,6 +119,9 @@ async fn publish_policy(
         st.policy_store.put_blob(&tenant, &path, &bytes).await.unwrap();
     }
 
+    // 5. Broadcast to SSE for hot-reload
+    let _ = st.bundle_tx.send(built.manifest.bundle_id.clone());
+
     (StatusCode::OK, Json(json!({
         "published": true,
         "bundle_id": built.manifest.bundle_id,

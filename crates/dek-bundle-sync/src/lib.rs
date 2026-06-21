@@ -47,6 +47,7 @@ pub struct BundleSyncAgent {
     device_id: String,
     key_set: std::sync::Arc<arc_swap::ArcSwap<crate::keys::TrustedKeySet>>,
     client: RwLock<reqwest::Client>,
+    api_token: Option<String>,
 }
 
 impl BundleSyncAgent {
@@ -57,6 +58,7 @@ impl BundleSyncAgent {
         mtls: &MtlsConfig,
         pinned_public_key: &str,
         client_key_override: Option<&[u8]>,
+        api_token: Option<String>,
     ) -> Result<Self> {
         let client = mtls.build_client(client_key_override)?;
         tracing::info!("DEBUG BUNDLESYNC: new called with pinned_public_key: {}", pinned_public_key);
@@ -68,7 +70,16 @@ impl BundleSyncAgent {
                 crate::keys::TrustedKeySet::from_single_pinned(pinned_public_key),
             )),
             client: RwLock::new(client),
+            api_token,
         })
+    }
+
+    fn get(&self, client: &reqwest::Client, url: &str) -> reqwest::RequestBuilder {
+        let mut req = client.get(url);
+        if let Some(token) = &self.api_token {
+            req = req.header("Authorization", format!("Bearer {}", token));
+        }
+        req
     }
 
     pub fn update_keys(&self, set: crate::keys::TrustedKeySet) {
@@ -111,7 +122,7 @@ impl BundleSyncAgent {
                 "{}/v1/tenants/{}/devices/{}/bundles/metadata/{}.json",
                 self.cloud_url, self.tenant_id, self.device_id, role
             );
-            let res = client.get(&url).send().await?;
+            let res = self.get(&client, &url).send().await?;
             if !res.status().is_success() {
                 error!(
                     "[BundleSync] Failed to fetch {}.json: HTTP {}",
@@ -199,7 +210,7 @@ impl BundleSyncAgent {
                 "{}/v1/tenants/{}/devices/{}/bundles/artifacts/{}",
                 self.cloud_url, self.tenant_id, self.device_id, hash
             );
-            let res = client.get(&url).send().await?;
+            let res = self.get(&client, &url).send().await?;
             if !res.status().is_success() {
                 return Err(anyhow::anyhow!("Artifact fetch failed for hash {}", hash));
             }
@@ -239,7 +250,7 @@ impl BundleSyncAgent {
             "{}/v1/tenants/{}/devices/{}/config",
             self.cloud_url, self.tenant_id, self.device_id
         );
-        let res = client.get(&config_url).send().await?;
+        let res = self.get(&client, &config_url).send().await?;
         let dek_config: DekConfig = res.json().await.context("Failed to parse DekConfig")?;
 
         let mut config_val = json!({});
@@ -306,7 +317,7 @@ impl BundleSyncAgent {
         info!("[BundleSync] Local Mode detected, fetching manifest directly...");
         let manifest_url = format!("{}/v1/tenants/{}/devices/{}/bundles/manifest", self.cloud_url, self.tenant_id, self.device_id);
         
-        let res = client.get(&manifest_url).send().await?;
+        let res = self.get(&client, &manifest_url).send().await?;
         if !res.status().is_success() {
             return Err(anyhow::anyhow!("Manifest fetch failed: HTTP {}", res.status()));
         }
@@ -352,7 +363,7 @@ impl BundleSyncAgent {
         for artifact in &manifest.artifacts {
             let hash = &artifact.sha256;
             let url = format!("{}/v1/tenants/{}/devices/{}/bundles/artifacts/{}", self.cloud_url, self.tenant_id, self.device_id, hash);
-            let res = client.get(&url).send().await?;
+            let res = self.get(&client, &url).send().await?;
             if !res.status().is_success() {
                 return Err(anyhow::anyhow!("Artifact fetch failed for hash {}", hash));
             }
@@ -374,7 +385,7 @@ impl BundleSyncAgent {
         
         // Fetch config
         let config_url = format!("{}/v1/tenants/{}/devices/{}/config", self.cloud_url, self.tenant_id, self.device_id);
-        let res = client.get(&config_url).send().await?;
+        let res = self.get(&client, &config_url).send().await?;
         let dek_config: DekConfig = res.json().await.context("Failed to parse DekConfig")?;
         
         let mut config_val = json!({});
@@ -406,7 +417,7 @@ impl BundleSyncAgent {
             self.cloud_url, self.tenant_id, self.device_id
         );
         let client = self.client.read().await.clone();
-        let res = client.get(&url).send().await?;
+        let res = self.get(&client, &url).send().await?;
         if !res.status().is_success() {
             return Err(anyhow::anyhow!(
                 "Failed to fetch network_guardrails.json: HTTP {}",

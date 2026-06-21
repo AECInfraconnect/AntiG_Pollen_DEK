@@ -17,6 +17,7 @@ mod reload_coordinator;
 mod service_integration;
 mod supervisor;
 mod svid_renewal;
+mod svid_renewal_failclosed;
 mod updater;
 
 fn main() -> anyhow::Result<()> {

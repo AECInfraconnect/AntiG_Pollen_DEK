@@ -64,6 +64,8 @@ pub struct BootstrapConfig {
     pub spiffe_id: Option<String>,
     #[serde(default)]
     pub tenant_id: Option<String>,
+    #[serde(default)]
+    pub local_api_token: Option<String>,
 }
 
 impl BootstrapConfig {
@@ -98,6 +100,7 @@ impl BootstrapConfig {
                 cloud_url: String::new(),
                 spiffe_id: None,
                 tenant_id: None,
+                local_api_token: None,
             };
             let json_str = serde_json::to_string_pretty(&default_config)?;
             if let Some(parent) = p.parent() {

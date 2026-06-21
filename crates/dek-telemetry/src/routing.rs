@@ -21,12 +21,11 @@
 /// dek-domain-schema::TelemetryEvent `#[serde(tag = "event_type", ...)]`).
 pub fn endpoint_for(event: &serde_json::Value) -> &'static str {
     match event.get("event_type").and_then(|v| v.as_str()) {
-        Some("decision") => "/v1/telemetry/decision-logs",
-        Some("security") => "/v1/telemetry/security-events",
+        Some("decision") | Some("decision_log") => "/v1/telemetry/decision-logs",
+        Some("security") | Some("security_event") => "/v1/telemetry/security-events",
         Some("trace") => "/v1/telemetry/traces",
-        Some("ebpf_guardrail") => "/v1/telemetry/ebpf-events",
-        Some("metric") => "/v1/metrics",
-        // os_guardrail, os_lifecycle, audit (policy.*), heartbeat, unknown
+        Some("ebpf_guardrail") | Some("os_guardrail_event") => "/v1/telemetry/ebpf-events",
+        Some("metric") | Some("runtime_metric") => "/v1/metrics",
         _ => "/v1/telemetry/events",
     }
 }
@@ -59,7 +58,15 @@ mod tests {
             "/v1/telemetry/decision-logs"
         );
         assert_eq!(
+            endpoint_for(&json!({"event_type":"decision_log"})),
+            "/v1/telemetry/decision-logs"
+        );
+        assert_eq!(
             endpoint_for(&json!({"event_type":"security"})),
+            "/v1/telemetry/security-events"
+        );
+        assert_eq!(
+            endpoint_for(&json!({"event_type":"security_event"})),
             "/v1/telemetry/security-events"
         );
         assert_eq!(
@@ -70,7 +77,12 @@ mod tests {
             endpoint_for(&json!({"event_type":"ebpf_guardrail"})),
             "/v1/telemetry/ebpf-events"
         );
+        assert_eq!(
+            endpoint_for(&json!({"event_type":"os_guardrail_event"})),
+            "/v1/telemetry/ebpf-events"
+        );
         assert_eq!(endpoint_for(&json!({"event_type":"metric"})), "/v1/metrics");
+        assert_eq!(endpoint_for(&json!({"event_type":"runtime_metric"})), "/v1/metrics");
         // unknown / audit -> generic events
         assert_eq!(
             endpoint_for(&json!({"event_type":"os_lifecycle"})),

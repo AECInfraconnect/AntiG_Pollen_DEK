@@ -168,6 +168,7 @@ async fn main() -> Result<()> {
         &bootstrap.mtls,
         None,
         &telemetry_db.to_string_lossy(),
+        None,
     )
     .ok();
 
@@ -605,18 +606,28 @@ async fn handle_mcp_request(
             if let Some(telemetry) = &state.telemetry {
                 let event = json!({
                     "schema_version": "1.0",
+                    "event_id": uuid::Uuid::new_v4().to_string(),
                     "event_type": "decision_log",
-                    "device_id": metadata.device_id.clone(),
-                    "tenant_id": final_tenant_id.clone(),
                     "timestamp": chrono::Utc::now().to_rfc3339(),
+                    "tenant_id": final_tenant_id.clone(),
+                    "workspace_id": "default",
+                    "environment_id": "local",
+                    "device_id": metadata.device_id.clone(),
+                    "redaction_applied": true,
                     "compliance_tags": if compliance_tags.is_empty() { serde_json::Value::Null } else { json!(compliance_tags) },
-                    "mcp": {
+                    "payload": {
+                        "request_id": decision_req.request_id.clone(),
+                        "trace_id": decision_req.request_id.clone(),
+                        "decision": if decision.allow { "allow" } else { "deny" },
+                        "reason": decision.reason.clone(),
+                        "matched_policy_ids": [],
+                        "matched_route_id": serde_json::Value::Null,
+                        "adapter_results": [],
+                        "obligations": [],
+                        "latency_ms": 0,
                         "principal": principal.clone(),
                         "tool": normalized.tool_name.clone().unwrap_or_default(),
-                        "method": normalized.request_type.clone(),
-                        "verdict": if decision.allow { "allow" } else { "deny" },
-                        "reason": decision.reason.clone(),
-                        "request_id": decision_req.request_id.clone(),
+                        "method": normalized.request_type.clone()
                     }
                 });
                 telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);

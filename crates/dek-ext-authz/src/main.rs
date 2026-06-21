@@ -203,6 +203,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             cloud_url: "".into(),
             spiffe_id: None,
             tenant_id: None,
+            local_api_token: None,
         });
 
     let mut router = PolicyRouter::new();

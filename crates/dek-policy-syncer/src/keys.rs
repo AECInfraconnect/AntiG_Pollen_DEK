@@ -71,9 +71,14 @@ pub fn persist(set: &TrustedKeySet) -> Result<()> {
 pub async fn fetch_and_merge(
     client: &reqwest::Client,
     keys_url: &str,
+    api_token: Option<&str>,
     current: &TrustedKeySet,
 ) -> Result<(TrustedKeySet, RotationDelta)> {
-    let res = client.get(keys_url).send().await.context("GET /v1/keys")?;
+    let mut req = client.get(keys_url);
+    if let Some(t) = api_token {
+        req = req.header("Authorization", format!("Bearer {}", t));
+    }
+    let res = req.send().await.context("GET /v1/keys")?;
     if !res.status().is_success() {
         anyhow::bail!("keys fetch failed: HTTP {}", res.status());
     }
