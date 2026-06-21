@@ -238,7 +238,13 @@ async fn main() -> Result<()> {
         tel.set_enterprise_profile(initial_prof);
     }
 
-    let state = AppState::new(HttpTransportAdapter, initial_snapshot, telemetry, admission);
+    let state = AppState::new(
+        HttpTransportAdapter,
+        initial_snapshot,
+        telemetry,
+        admission,
+        Arc::new(dek_resilience::rate_limit::RateLimiter::new(100.0, 10.0)),
+    );
 
     // Start background file watcher for hot-reloading
     let state_clone = state.clone();
@@ -583,6 +589,51 @@ async fn handle_mcp_request(
     };
 
     let decision_input = serde_json::to_value(&decision_req).unwrap_or(policy_input);
+
+    let rate_key = format!(
+        "{}:{}",
+        normalized.agent_id.as_deref().unwrap_or("unknown"),
+        normalized.tool_name.as_deref().unwrap_or("unknown")
+    );
+
+    // Mock Trust Score check for Phase A
+    let mock_trust = dek_agent_observer::trust::TrustScore {
+        agent_id: normalized
+            .agent_id
+            .clone()
+            .unwrap_or_else(|| "unknown".into()),
+        score: 100, // ใน Phase ถัดไปจะโหลดจาก Redis / DB
+    };
+    match dek_agent_observer::trust::enforce_trust(&mock_trust) {
+        dek_agent_observer::trust::TrustAction::KillSwitch => {
+            metrics::counter!("dek_proxy_requests_total", "decision" => "deny", "reason" => "kill_switch").increment(1);
+            tracing::error!(agent = %mock_trust.agent_id, "request denied by trust kill-switch");
+            let body = serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": payload.get("id").unwrap_or(&serde_json::Value::Null),
+                "error": { "code": -32000, "message": "Access Denied: Agent trust score too low" }
+            });
+            return (axum::http::StatusCode::FORBIDDEN, axum::Json(body)).into_response();
+        }
+        dek_agent_observer::trust::TrustAction::RequireApproval => {
+            // จะถูกแปลงเป็น obligation ในขั้นตอน response
+            tracing::info!(agent = %mock_trust.agent_id, "agent requires human approval");
+        }
+        dek_agent_observer::trust::TrustAction::Normal => {}
+    }
+    if state.rate_limiter.check(&rate_key) == dek_resilience::rate_limit::RateDecision::Throttled {
+        metrics::counter!("dek_proxy_requests_total", "decision" => "deny", "reason" => "rate_limit").increment(1);
+        tracing::warn!(tenant = %final_tenant_id, agent = %normalized.agent_id.as_deref().unwrap_or("unknown"), "request denied by rate limiter");
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": payload.get("id").unwrap_or(&serde_json::Value::Null),
+            "error": {
+                "code": -32000,
+                "message": "Access Denied: Rate limit exceeded"
+            }
+        });
+        return (axum::http::StatusCode::TOO_MANY_REQUESTS, axum::Json(body)).into_response();
+    }
 
     let start_time = std::time::Instant::now();
     // Evaluate against the Adaptive Policy Pipeline

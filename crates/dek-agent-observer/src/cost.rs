@@ -49,6 +49,41 @@ pub fn calculate_cost(
         timestamp: event.timestamp.clone(),
     })
 }
+#[derive(Debug, Clone)]
+pub struct BudgetPolicy {
+    pub agent_id: String,
+    pub daily_cost_cap_usd: f64,
+    pub daily_token_cap: i64,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum BudgetDecision {
+    WithinBudget,
+    CostExceeded,
+    TokenExceeded,
+}
+
+/// รวมยอดวันนี้จาก ledger แล้วเทียบ cap
+pub fn check_budget(policy: &BudgetPolicy, todays_entries: &[CostLedgerEntry]) -> BudgetDecision {
+    let spent: f64 = todays_entries
+        .iter()
+        .filter(|e| e.agent_id == policy.agent_id)
+        .map(|e| e.total_cost)
+        .sum();
+    let tokens: i64 = todays_entries
+        .iter()
+        .filter(|e| e.agent_id == policy.agent_id)
+        .map(|e| e.total_tokens)
+        .sum();
+
+    if spent >= policy.daily_cost_cap_usd {
+        BudgetDecision::CostExceeded
+    } else if tokens >= policy.daily_token_cap {
+        BudgetDecision::TokenExceeded
+    } else {
+        BudgetDecision::WithinBudget
+    }
+}
 
 #[cfg(test)]
 mod tests {

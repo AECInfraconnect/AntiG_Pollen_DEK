@@ -2129,6 +2129,7 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "dek-activation",
+ "dek-agent-observer",
  "dek-auth",
  "dek-cedar",
  "dek-config",

@@ -8,3 +8,4 @@ pub mod error;
 pub mod ingest;
 pub mod model;
 pub mod otel;
+pub mod trust;
