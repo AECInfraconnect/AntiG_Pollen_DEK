@@ -277,6 +277,7 @@ pub fn process_json(value: &mut Value, detector: &DeterministicDetector) {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub extern "C" fn _start() {
     let mut input = String::new();
