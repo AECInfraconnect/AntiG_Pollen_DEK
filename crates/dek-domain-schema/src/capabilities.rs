@@ -3,12 +3,21 @@
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum EnforcementLevel {
+    KernelEnforced,
+    RedirectAdvisory,
+    ObserveOnly,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct EnforcementCapabilities {
     pub mcp_http_pep: bool,
     pub mcp_stdio_pep: bool,
     pub network_filter_user_mode: bool,
     pub network_filter_kernel: bool,
+    pub network_enforcement_level: EnforcementLevel,
     pub dns_filter: bool,
     pub process_attribution: bool,
     pub ebpf_guardrail: bool,
@@ -22,21 +31,29 @@ impl EnforcementCapabilities {
             mcp_http_pep: true,
             mcp_stdio_pep: true,
             #[cfg(windows)]
-            network_filter_user_mode: false,
+            network_filter_user_mode: true,
             #[cfg(windows)]
-            network_filter_kernel: true, // WFP
+            network_filter_kernel: false, // WFP (Current implementation is user-mode)
+            #[cfg(windows)]
+            network_enforcement_level: EnforcementLevel::RedirectAdvisory,
             #[cfg(target_os = "macos")]
             network_filter_user_mode: true, // NetworkExtension
             #[cfg(target_os = "macos")]
             network_filter_kernel: false,
+            #[cfg(target_os = "macos")]
+            network_enforcement_level: EnforcementLevel::RedirectAdvisory,
             #[cfg(target_os = "linux")]
             network_filter_user_mode: false,
             #[cfg(target_os = "linux")]
             network_filter_kernel: true, // eBPF
+            #[cfg(target_os = "linux")]
+            network_enforcement_level: EnforcementLevel::KernelEnforced,
             #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
             network_filter_user_mode: false,
             #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
             network_filter_kernel: false,
+            #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
+            network_enforcement_level: EnforcementLevel::ObserveOnly,
             dns_filter: true,
             process_attribution: true,
             #[cfg(target_os = "linux")]
