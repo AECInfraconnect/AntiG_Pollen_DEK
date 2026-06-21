@@ -4,7 +4,12 @@
 use crate::model::*;
 
 pub fn builtin_presets() -> Vec<PolicyPreset> {
-    vec![shadow_ai_preset(), require_approval_preset()]
+    vec![
+        shadow_ai_preset(),
+        require_approval_preset(),
+        cost_budget_preset(),
+        mcp_allowlist_preset(),
+    ]
 }
 
 pub fn get_builtin_preset(id: &str) -> Option<PolicyPreset> {
@@ -107,5 +112,105 @@ when {
             entrypoint: None,
         },
         test_cases: vec![],
+    }
+}
+
+fn cost_budget_preset() -> PolicyPreset {
+    PolicyPreset {
+        preset_id: "cedar.cost_budget_enforcement".into(),
+        version: "1.0.0".into(),
+        display_name: "Cost Budget Enforcement".into(),
+        description: "Deny execution if tool usage exceeds daily token budget.".into(),
+        category: PresetCategory::CostBudget,
+        language: PresetLanguage::Cedar,
+        recommended_pep_types: vec!["mcp_proxy".into()],
+        supported_control_levels: vec![
+            ControlLevel::ObserveOnly,
+            ControlLevel::Warn,
+            ControlLevel::Enforce,
+            ControlLevel::StrictDeny,
+        ],
+        default_control_level: ControlLevel::ObserveOnly,
+        risk_tags: vec!["Financial Risk".into()],
+        owasp_tags: vec!["LLM09".into()],
+        parameters: vec![PresetParameter {
+            key: "daily_limit_usd".into(),
+            label: "Daily Limit (USD)".into(),
+            description: "Maximum daily USD spend per user".into(),
+            param_type: "number".into(),
+            required: true,
+            default_value: serde_json::json!(10),
+            allowed_values: None,
+        }],
+        template: PresetTemplate {
+            source: r#"
+@preset("cedar.cost_budget_enforcement")
+forbid (
+  principal,
+  action == Pollen::Action::"tool.invoke",
+  resource
+)
+when {
+  context.control_level in ["enforce", "strict_deny"] &&
+  context.current_spend_usd > {{daily_limit_usd}}
+};
+"#.into(),
+            entrypoint: None,
+        },
+        test_cases: vec![],
+    }
+}
+
+fn mcp_allowlist_preset() -> PolicyPreset {
+    PolicyPreset {
+        preset_id: "openfga.mcp_tool_allowlist".into(),
+        version: "1.0.0".into(),
+        display_name: "MCP Tool Allowlist".into(),
+        description: "Allow execution only if user is explicitly granted access to the tool in OpenFGA.".into(),
+        category: PresetCategory::ToolPermission,
+        language: PresetLanguage::OpenFga,
+        recommended_pep_types: vec!["mcp_proxy".into()],
+        supported_control_levels: vec![
+            ControlLevel::ObserveOnly,
+            ControlLevel::Warn,
+            ControlLevel::Enforce,
+            ControlLevel::StrictDeny,
+        ],
+        default_control_level: ControlLevel::ObserveOnly,
+        risk_tags: vec!["Unauthorized Access".into()],
+        owasp_tags: vec!["LLM01".into(), "LLM02".into()],
+        parameters: vec![],
+        template: PresetTemplate {
+            source: r#"
+# OpenFGA implicit model. 
+# The remote PEP will perform a check: 
+# tuple_key: { user: input.principal, relation: "can_invoke", object: input.resource }
+"#.into(),
+            entrypoint: None,
+        },
+        test_cases: vec![],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_cedar_presets_compile() {
+        let presets = builtin_presets();
+        for preset in presets {
+            if matches!(preset.language, PresetLanguage::Cedar) {
+                // If it has parameters, we might need to replace them with dummy values
+                let mut source = preset.template.source.clone();
+                for param in &preset.parameters {
+                    let token = format!("{{{{{}}}}}", param.key);
+                    source = source.replace(&token, "0"); // Dummy numeric/string
+                }
+                let res = cedar_policy::PolicySet::from_str(&source);
+                assert!(res.is_ok(), "Failed to compile Cedar preset {}: {:?}", preset.preset_id, res.err());
+            }
+        }
     }
 }
