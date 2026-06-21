@@ -5,12 +5,15 @@ This directory contains simple generic policies for each of the supported Policy
 ## Supported PDPs
 
 ### 1. AWS Cedar (`cedar.example.txt`)
+
 AWS Cedar is a policy language and evaluation engine for identity-based and resource-based access control.
 
 ### 2. Open Policy Agent / OPA (`opa.example.rego`)
+
 OPA is a general-purpose policy engine. Policies are written in Rego. Pollen DEK executes OPA policies as compiled WebAssembly (WASM) modules.
 
 ### 3. OpenFGA (`openfga.example.json`)
+
 OpenFGA is a Relationship-Based Access Control (ReBAC) engine inspired by Google Zanzibar.
 
 ## Usage

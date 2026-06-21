@@ -1,1 +1,7 @@
 POLLEN_DEK_RELEASE_READINESS_PLAN.md
+node_modules
+target
+.git
+**/node_modules/**
+**/target/**
+**/.git/**

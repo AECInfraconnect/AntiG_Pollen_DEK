@@ -87,6 +87,7 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 ## Identity Propagation
 
 When an agent authenticates with the DEK gateway, identity must propagate to backend MCP servers. Pollen DEK utilizes SPIFFE for this purpose:
+
 - **Token Forwarding**: Passes the original agent token directly if the backend and agent share the same trust domain.
 - **Token Exchange**: DEK can exchange the incoming agent token for a short-lived SPIFFE JWT-SVID (via `dek-spire-node`) bound specifically to the target MCP server. This implements secure impersonation and enforces least-privilege without exposing long-lived credentials.
 

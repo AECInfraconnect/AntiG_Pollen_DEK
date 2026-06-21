@@ -18,3 +18,14 @@ We welcome contributions from the community!
 
 All contributions must include a DCO sign-off in the commit message.
 You can use `git commit -s` to append it automatically.
+
+## Branch Protection and CI Gates
+
+To prevent CI breakages and maintain code quality, the `main` branch is strictly protected:
+
+1. **Pre-push Hooks**: All contributors MUST run `setup-hooks.sh` (or `setup-hooks.ps1` on Windows) to install local git hooks. This enforces formatting, linting, and contract validation before pushing.
+2. **Branch Protection Rules (GitHub)**:
+   - Require a pull request before merging.
+   - Require status checks to pass before merging (Scorecard, Lint, Test, Security).
+   - Require linear history.
+   - Do not allow bypassing the above settings.
