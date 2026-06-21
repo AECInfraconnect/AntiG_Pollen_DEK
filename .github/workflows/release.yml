@@ -172,6 +172,22 @@ jobs:
             fi
           done
 
+      - name: Verify Signatures (Self-Check)
+        working-directory: release_artifacts
+        run: |
+          # Verify that we correctly signed our own artifacts before publishing
+          # This acts as an integrity check to prevent releasing unsigned binaries
+          for file in *.tar.gz; do
+            if [ -f "$file" ]; then
+              cosign verify-blob \
+                --certificate "$file.pem" \
+                --signature "$file.sig" \
+                --certificate-identity-regexp "^https://github.com/AECInfraconnect/AntiG_Pollen_DEK/.*" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+                "$file"
+            fi
+          done
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -184,11 +200,11 @@ jobs:
 # 1. Verify Checksums:
 #    sha256sum -c SHA256SUMS
 #
-# 2. Verify Cosign Keyless Signatures (Assuming github.com/YourOrg/PollenDEK):
+# 2. Verify Cosign Keyless Signatures:
 #    cosign verify-blob \
 #      --certificate pollen-dek-linux-amd64.tar.gz.pem \
 #      --signature pollen-dek-linux-amd64.tar.gz.sig \
-#      --certificate-identity-regexp "https://github.com/.*/PollenDEK/.*" \
+#      --certificate-identity-regexp "^https://github.com/AECInfraconnect/AntiG_Pollen_DEK/.*" \
 #      --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
 #      pollen-dek-linux-amd64.tar.gz
 #
