@@ -1,6 +1,15 @@
-import type { AiAgent, McpServer, Tool, Resource, Entity, Relationship, PolicyDraft, TelemetryEventEnvelope, BlackboxAiProvider, DiscoveryCandidate, PolicySuggestion, ConnectorConfig, SimulationRequest, SimulationResult } from './types';
+import type { AiAgent, McpServer, Tool, Resource, Entity, Relationship, PolicyDraft, TelemetryEventEnvelope, BlackboxAiProvider, DiscoveryCandidate, PolicySuggestion, SimulationRequest, SimulationResult } from './types';
 export type * from './types';
 import type { components } from '../../../../contracts/generated/typescript/api';
+
+export interface ConnectorConfig {
+  id: string;
+  kind: string;
+  endpoint: string;
+  store_id?: string;
+  health_interval_secs: number;
+  mtls_enabled: boolean;
+}
 
 export type ContractDiscoveryResponse = components['schemas']['ContractDiscoveryResponse'];
 

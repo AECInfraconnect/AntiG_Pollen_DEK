@@ -5,7 +5,9 @@ import type { ContractDiscoveryResponse } from "../services/api";
 export function Settings() {
   const [profile, setProfile] = useState<'local' | 'mock-cloud'>('local');
   const [connectors, setConnectors] = useState<any[]>([]);
+  const [newConnectorKind, setNewConnectorKind] = useState('opa');
   const [newConnectorUrl, setNewConnectorUrl] = useState('http://localhost:8181');
+  const [newConnectorStoreId, setNewConnectorStoreId] = useState('');
   const [testResults, setTestResults] = useState<Record<string, any>>({});
   const [discovery, setDiscovery] = useState<ContractDiscoveryResponse | null>(null);
   const [discoveryError, setDiscoveryError] = useState<string | null>(null);
@@ -45,9 +47,10 @@ export function Settings() {
     if (!newConnectorUrl) return;
     try {
       await ConnectorApi.upsert({
-        id: `opa-${Date.now()}`,
-        kind: 'opa',
+        id: `${newConnectorKind}-${Date.now()}`,
+        kind: newConnectorKind,
         endpoint: newConnectorUrl,
+        store_id: newConnectorKind === 'openfga' ? newConnectorStoreId : undefined,
         health_interval_secs: 30,
         mtls_enabled: false
       });
@@ -170,20 +173,47 @@ export function Settings() {
         <h3 className="text-lg font-medium">PDP Connectors</h3>
         
         <div className="space-y-4">
-          <div className="flex gap-2 max-w-md">
-            <input 
-              type="text" 
-              placeholder="http://localhost:8181"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={newConnectorUrl}
-              onChange={(e) => setNewConnectorUrl(e.target.value)}
-            />
-            <button 
-              onClick={handleAddConnector}
-              className="h-10 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90"
-            >
-              Add OPA
-            </button>
+          <div className="flex flex-col gap-2 max-w-xl">
+            <div className="flex gap-2">
+              <select
+                className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm w-32"
+                value={newConnectorKind}
+                onChange={(e) => {
+                  setNewConnectorKind(e.target.value);
+                  if (e.target.value === 'opa') setNewConnectorUrl('http://localhost:8181');
+                  else if (e.target.value === 'openfga') setNewConnectorUrl('http://localhost:8080');
+                  else if (e.target.value === 'cedar') setNewConnectorUrl('http://localhost:8081');
+                }}
+              >
+                <option value="opa">OPA</option>
+                <option value="openfga">OpenFGA</option>
+                <option value="cedar">Cedar</option>
+              </select>
+              <input 
+                type="text" 
+                placeholder="http://localhost:8181"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={newConnectorUrl}
+                onChange={(e) => setNewConnectorUrl(e.target.value)}
+              />
+              <button 
+                onClick={handleAddConnector}
+                className="h-10 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 whitespace-nowrap"
+              >
+                Add Connector
+              </button>
+            </div>
+            {newConnectorKind === 'openfga' && (
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="Store ID (e.g. 01H...)"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={newConnectorStoreId}
+                  onChange={(e) => setNewConnectorStoreId(e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
           <div className="rounded-md border">
@@ -201,7 +231,10 @@ export function Settings() {
                   <tr key={c.id} className="border-b last:border-0">
                     <td className="px-4 py-3 font-medium">{c.id}</td>
                     <td className="px-4 py-3">{c.kind}</td>
-                    <td className="px-4 py-3">{c.endpoint}</td>
+                    <td className="px-4 py-3">
+                      <div>{c.endpoint}</div>
+                      {c.store_id && <div className="text-xs text-muted-foreground mt-1">Store ID: {c.store_id}</div>}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {testResults[c.id] && (

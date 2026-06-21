@@ -12,6 +12,7 @@ pub struct ConnectorConfig {
     pub id: String,
     pub kind: ConnectorKind, // Opa | Cedar | OpenFga
     pub endpoint: String,
+    pub store_id: Option<String>,
     pub health_interval_secs: u32,
     pub mtls_enabled: bool,
 }
@@ -94,6 +95,13 @@ async fn test_connection(
     let start = std::time::Instant::now();
     let ok = match cfg.kind {
         ConnectorKind::Cedar => true,
+        ConnectorKind::OpenFga => reqwest::Client::new()
+            .get(format!("{}/healthz", cfg.endpoint.trim_end_matches('/')))
+            .timeout(std::time::Duration::from_secs(3))
+            .send()
+            .await
+            .map(|r| r.status().is_success())
+            .unwrap_or(false),
         _ => reqwest::Client::new()
             .get(format!("{}/health", cfg.endpoint.trim_end_matches('/')))
             .timeout(std::time::Duration::from_secs(3))
