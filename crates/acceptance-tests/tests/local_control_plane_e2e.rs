@@ -54,14 +54,16 @@ async fn wait_http(url: &str, tries: u32) -> Result<()> {
 }
 
 async fn setup_local_cp() -> Result<Proc> {
-    assert!(
-        Command::new("cargo")
-            .args(["build", "--workspace"])
-            .status()
-            .await?
-            .success(),
-        "workspace build failed"
-    );
+    if std::env::var("DEK_SKIP_HARNESS_BUILD").is_err() {
+        assert!(
+            Command::new("cargo")
+                .args(["build", "--workspace"])
+                .status()
+                .await?
+                .success(),
+            "workspace build failed"
+        );
+    }
 
     let dash_dir = workspace_dir()
         .join("apps")

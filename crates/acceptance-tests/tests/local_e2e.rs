@@ -140,14 +140,16 @@ async fn authorize(
 #[ignore = "full local dual-mode e2e: author -> publish -> enforce -> decision-log"]
 async fn local_e2e_author_publish_enforce_log() -> Result<()> {
     // ---- build once ----
-    assert!(
-        Command::new("cargo")
-            .args(["build", "--workspace"])
-            .status()
-            .await?
-            .success(),
-        "workspace build failed"
-    );
+    if std::env::var("DEK_SKIP_HARNESS_BUILD").is_err() {
+        assert!(
+            Command::new("cargo")
+                .args(["build", "--workspace"])
+                .status()
+                .await?
+                .success(),
+            "workspace build failed"
+        );
+    }
 
     // ---- start local control plane (single-user, tenant=local) ----
     let lcp_data = std::env::temp_dir().join(format!("lcp-e2e-{}", std::process::id()));
