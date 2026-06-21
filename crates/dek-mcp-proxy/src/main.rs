@@ -588,7 +588,7 @@ async fn handle_mcp_request(
         input_hash: "mock_hash".into(),
     };
 
-    let decision_input = serde_json::to_value(&decision_req).unwrap_or(policy_input);
+    let decision_input = serde_json::to_value(&decision_req).unwrap_or(policy_input.clone());
 
     let rate_key = format!(
         "{}:{}",
@@ -654,6 +654,33 @@ async fn handle_mcp_request(
         return (axum::http::StatusCode::FORBIDDEN, axum::Json(body)).into_response();
     }
     // โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+
+    // Phase 2: Content Guard (Prompt Injection / DLP)
+    let scan_target = policy_input
+        .get("params")
+        .unwrap_or(&serde_json::Value::Null)
+        .to_string();
+    let guard = content_guard::scan(&content_guard::GuardInput { text: scan_target });
+    let mut extra_obligations = Vec::new();
+    if guard.injection_detected {
+        match guard.recommended.as_str() {
+            "deny" => {
+                metrics::counter!("dek_proxy_requests_total", "decision" => "deny", "reason" => "prompt_injection").increment(1);
+                tracing::warn!(tenant = %final_tenant_id, agent = %normalized.agent_id.as_deref().unwrap_or("unknown"), "request denied by content guard (prompt injection)");
+                let body = serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": payload.get("id").unwrap_or(&serde_json::Value::Null),
+                    "error": { "code": -32000, "message": "Access Denied: Prompt injection or policy override detected" }
+                });
+                return (axum::http::StatusCode::FORBIDDEN, axum::Json(body)).into_response();
+            }
+            "redact" => {
+                extra_obligations.push("redact_content".to_string());
+            }
+            _ => {}
+        }
+    }
+
     let decision_result = snapshot.router.authorize(decision_input.clone()).await;
 
     let duration = start_time.elapsed().as_secs_f64();
@@ -693,7 +720,22 @@ async fn handle_mcp_request(
                     "DENY".into()
                 },
                 reason: decision.reason.clone(),
-                obligations: vec![],
+                obligations: {
+                    let mut obs = Vec::new();
+                    for ext_ob in extra_obligations {
+                        obs.push(dek_decision::Obligation {
+                            kind: ext_ob,
+                            parameters: serde_json::json!({}),
+                        });
+                    }
+                    for o in decision.obligations.clone() {
+                        obs.push(dek_decision::Obligation {
+                            kind: o,
+                            parameters: serde_json::json!({}),
+                        });
+                    }
+                    obs
+                },
                 effects: decision.effects.clone(),
                 policy_bundle_id: "bundle".into(),
                 policy_bundle_version: "v1".into(),
