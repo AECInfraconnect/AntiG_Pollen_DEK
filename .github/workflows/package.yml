@@ -27,8 +27,28 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo install cargo-wix
       - run: cargo build --release --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd
-      - run: cargo wix --no-build -p dek-core
+      - run: cargo wix --no-build -p dek-core -i packaging/windows/pollen-dek.wxs
       - uses: actions/upload-artifact@v4
         with:
           name: pollen-dek-windows-msi
           path: target/wix/*.msi
+
+  build-macos-pkg:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd
+      - name: Build macOS PKG
+        run: |
+          mkdir -p target/pkg/root/usr/local/bin
+          mkdir -p target/pkg/root/Library/LaunchDaemons
+          cp target/release/dek-core target/pkg/root/usr/local/bin/
+          cp target/release/dek-mcp-proxy target/pkg/root/usr/local/bin/
+          cp target/release/dek-updater target/pkg/root/usr/local/bin/
+          cp packaging/macos/ai.pollen.dek.plist target/pkg/root/Library/LaunchDaemons/
+          pkgbuild --root target/pkg/root --identifier ai.pollen.dek --version 1.0.0 target/pollen-dek-macos.pkg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pollen-dek-macos-pkg
+          path: target/*.pkg

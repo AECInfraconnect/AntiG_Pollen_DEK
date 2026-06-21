@@ -1,7 +1,7 @@
 use axum::{routing::{get, post}, Json, Router, extract::State};
 use ed25519_dalek::{Signer, SigningKey};
 use serde_json::{json, Value};
-use crate::{state::AppState, BUNDLE_SEED, bundle_pubkey_b64};
+use crate::{state::AppState, BUNDLE_SEED};
 
 pub fn router() -> Router<AppState> {
     Router::new()

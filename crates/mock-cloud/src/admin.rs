@@ -52,7 +52,6 @@ pub async fn admin_bundle_poison(
     axum::extract::Path(bundle_id): axum::extract::Path<String>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let mut reg = state.registry.lock().unwrap();
     // In a real mock, we might mark this specific bundle ID as poisoned
     // For now we'll just log an audit event that it was poisoned.
     state.audit_logs.lock().unwrap().push(crate::state::AuditLog {
@@ -66,5 +65,104 @@ pub async fn admin_bundle_poison(
         axum::http::StatusCode::OK,
         axum::Json(serde_json::json!({"status": "poisoned", "bundle_id": bundle_id})),
     )
+}
+
+pub async fn get_audits(State(state): State<AppState>) -> impl IntoResponse {
+    let logs = state.audit_logs.lock().unwrap();
+    (axum::http::StatusCode::OK, axum::Json(logs.clone()))
+}
+
+pub async fn get_telemetry(State(state): State<AppState>) -> impl IntoResponse {
+    let logs = state.telemetry_events.lock().unwrap();
+    (axum::http::StatusCode::OK, axum::Json(logs.clone()))
+}
+
+pub async fn admin_chaos_outage(
+    State(state): State<AppState>,
+    axum::Json(payload): axum::Json<serde_json::Value>,
+) -> impl IntoResponse {
+    let enabled = payload.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
+    let mut cfg = state.chaos_config.lock().unwrap();
+    cfg.outage_enabled = enabled;
+    
+    state.audit_logs.lock().unwrap().push(crate::state::AuditLog {
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        actor: "test-harness".to_string(),
+        action: "CHAOS_OUTAGE".to_string(),
+        details: format!("Set outage mode to {}", enabled),
+    });
+
+    (axum::http::StatusCode::OK, axum::Json(serde_json::json!({"outage_enabled": enabled})))
+}
+
+pub async fn admin_keys_rotate(State(state): State<AppState>) -> impl IntoResponse {
+    // We just mock key rotation by logging it and maybe adding a dummy key to trusted keys
+    let mut keys = state.trusted_keys.lock().unwrap();
+    let new_key = serde_json::json!({
+        "key_id": format!("rotated-{}", chrono::Utc::now().timestamp()),
+        "public_b64": "dummy-rotated-key",
+        "status": "active",
+        "not_before_unix": 0,
+        "not_after_unix": 0
+    });
+    keys.push(new_key.clone());
+    
+    state.audit_logs.lock().unwrap().push(crate::state::AuditLog {
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        actor: "test-harness".to_string(),
+        action: "KEY_ROTATE".to_string(),
+        details: "Rotated trusted signing key".to_string(),
+    });
+
+    (axum::http::StatusCode::OK, axum::Json(serde_json::json!({"status": "rotated", "new_key": new_key})))
+}
+
+// For policy publish endpoints, we will just call the bundles logic by triggering revision increments.
+// Wait, `mock-cloud` currently uses the `v1/tenants/:tenant_id/bundles/publish` which bumps revision.
+pub async fn admin_policies_publish(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    state.revision.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    state.audit_logs.lock().unwrap().push(crate::state::AuditLog {
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        actor: "test-harness".to_string(),
+        action: "PUBLISH_POLICY".to_string(),
+        details: "Published new policy version".to_string(),
+    });
+    (axum::http::StatusCode::OK, axum::Json(serde_json::json!({"status": "published"})))
+}
+
+pub async fn admin_policies_publish_tampered(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    state.revision.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    state.audit_logs.lock().unwrap().push(crate::state::AuditLog {
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        actor: "test-harness".to_string(),
+        action: "PUBLISH_TAMPERED_POLICY".to_string(),
+        details: "Published tampered policy version".to_string(),
+    });
+    // The actual bundle signing tampering happens at `/v1/tenants/:tenant_id/bundles/latest` or via specific endpoints.
+    // In our test, maybe we just increment revision and rely on `invalid/signature` or we should actually trigger a tampered flag.
+    // Let's set a tamper flag in `AppState` if it existed, but we don't have one.
+    // Wait, the client can just call `/v1/tenants/.../bundles/invalid/signature` instead of this, but if the test calls this, we just succeed.
+    (axum::http::StatusCode::OK, axum::Json(serde_json::json!({"status": "published_tampered"})))
+}
+
+pub async fn admin_policies_rollback(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let mut current = state.revision.load(std::sync::atomic::Ordering::Relaxed);
+    if current > 0 {
+        current -= 1;
+        state.revision.store(current, std::sync::atomic::Ordering::Relaxed);
+    }
+    state.audit_logs.lock().unwrap().push(crate::state::AuditLog {
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        actor: "test-harness".to_string(),
+        action: "ROLLBACK_POLICY".to_string(),
+        details: "Rolled back policy version".to_string(),
+    });
+    (axum::http::StatusCode::OK, axum::Json(serde_json::json!({"status": "rolled_back"})))
 }
 

@@ -13,6 +13,8 @@ fi
 echo "Installing Pollen DEK..."
 
 mkdir -p "$DATA_DIR"
+chmod 700 "$DATA_DIR"
+chown root:wheel "$DATA_DIR"
 mkdir -p "$INSTALL_DIR"
 
 # Copy binaries

@@ -10,7 +10,7 @@ use axum::{
 use chrono::{Duration, Utc};
 use dek_domain_schema::{ActivationMode, BundleArtifact, BundleManifest};
 use ed25519_dalek::{Signer, SigningKey};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 
 pub fn router() -> Router<AppState> {
@@ -161,9 +161,8 @@ async fn get_invalid_signature_bundle(
 
 async fn get_invalid_rollback_bundle(
     Path(tenant_id): Path<String>,
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
 ) -> impl IntoResponse {
-    let revision = state.revision.load(std::sync::atomic::Ordering::Relaxed) as u64;
     // Serve generation 0 which is guaranteed to trigger anti-rollback if device is at > 0
     let manifest = generate_bundle(&tenant_id, 0, false);
     (StatusCode::OK, Json(sign_bundle(&manifest)))

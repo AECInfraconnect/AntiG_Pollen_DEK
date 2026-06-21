@@ -20,6 +20,19 @@ if (!(Test-Path $DataDir)) {
     New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
 }
 
+# Apply icacls to lock down C:\ProgramData\PollenDEK
+Write-Host "Locking down permissions on $DataDir..."
+icacls "$DataDir" /inheritance:r /grant "SYSTEM:(OI)(CI)F" /grant "Administrators:(OI)(CI)F" /T /C /Q
+
+# Check for Edge WebView2 runtime (for dek-ext-authz if GUI is triggered)
+$WebView2RegPath = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+$WebView2UserRegPath = "HKCU:\Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+if (!(Test-Path $WebView2RegPath) -and !(Test-Path $WebView2UserRegPath)) {
+    Write-Host "Warning: Edge WebView2 runtime is not installed. dek-ext-authz GUI popups may not work."
+} else {
+    Write-Host "Edge WebView2 runtime detected."
+}
+
 # 3. Copy binaries (assumes binaries are in current dir)
 Copy-Item ".\dek-core.exe" "$InstallPath\dek-core.exe" -Force
 Copy-Item ".\dek-updater.exe" "$InstallPath\dek-updater.exe" -Force

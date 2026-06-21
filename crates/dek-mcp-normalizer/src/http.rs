@@ -21,7 +21,7 @@ impl TransportAdapter for HttpTransportAdapter {
         let method = raw.get("method").and_then(|v| v.as_str()).unwrap_or("unknown");
         
         let mut tool_name = None;
-        let mut server_id = None;
+        let _server_id: Option<String> = None;
 
         // If it's tools/call, the tool name is in params.name
         if method == "tools/call" {

@@ -28,6 +28,7 @@ chrono = "0.4.45"
 askama = "0.16.0"
 dek-domain-schema = { version = "0.1.0", path = "../dek-domain-schema" }
 clap = { version = "4.5.31", features = ["derive"] }
+futures-util = "0.3"
 
 [lints]
 workspace = true
