@@ -288,17 +288,15 @@ mod tests {
             client_key_path: key_path.to_string_lossy().into_owned(),
             root_ca_path: ca_path.to_string_lossy().into_owned(),
         };
-        let client = mtls
-            .build_client(None)
-            .unwrap_or_else(|e| {
-                let mut msg = format!("build mtls client from disk identity: {e:?}");
-                let mut source = e.source();
-                while let Some(s) = source {
-                    msg.push_str(&format!("\nCaused by: {s:?}"));
-                    source = s.source();
-                }
-                panic!("{msg}");
-            });
+        let client = mtls.build_client(None).unwrap_or_else(|e| {
+            let mut msg = format!("build mtls client from disk identity: {e:?}");
+            let mut source = e.source();
+            while let Some(s) = source {
+                msg.push_str(&format!("\nCaused by: {s:?}"));
+                source = s.source();
+            }
+            panic!("{msg}");
+        });
         let renew_url = format!("http://{addr}/spire/svid/renew");
 
         let spiffe = fetch_and_install_svid(

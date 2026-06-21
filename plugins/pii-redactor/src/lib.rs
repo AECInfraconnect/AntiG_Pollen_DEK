@@ -279,6 +279,7 @@ pub fn process_json(value: &mut Value, detector: &DeterministicDetector) {
 #[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub extern "C" fn _start() {
+    use std::io::{self, Read, Write};
     let mut input = String::new();
     if io::stdin().read_to_string(&mut input).is_err() {
         return;
