@@ -90,17 +90,31 @@ The **Local Admin Dashboard** (React/Vite) provides 19 pages for full control:
 
 ### Local mode (single machine, no Cloud)
 
+The easiest way to start the **Local Control Plane** and **Local Admin Dashboard** is using the included one-click scripts. This will automatically compile the backend, build the frontend, and run the server silently in the background.
+
+**On Windows (PowerShell):**
+```powershell
+.\start-dek.ps1
+```
+
+**On macOS/Linux:**
 ```bash
-# 1) start the Local Control Plane + dashboard (http://127.0.0.1:3000)
-local-control-plane &
+./start-dek.sh
+```
 
-# 2) point the DEK at it and enroll
-dek-cli profile set local --trusted-key <key-from-local-cp-log>
-dek-cli enroll --cloud-url http://127.0.0.1:3000
+After running the script, the Local Admin Dashboard will automatically open in your browser at `http://127.0.0.1:3000`.
 
-# 3) run the enforcement point (PEP on :43890)
-dek-core &
-dek-cli doctor && dek-cli status
+To stop the Local Control Plane:
+- Windows: `.\stop-dek.ps1`
+- macOS/Linux: `./stop-dek.sh`
+
+*(Advanced)* You can also run the backend manually, but you will need to leave the terminal open:
+```bash
+# Start the Local Control Plane
+cargo run -p local-control-plane &
+
+# (Optional) If you want to develop the dashboard frontend:
+cd apps/local-admin-dashboard && npm run dev
 ```
 
 See **[docs/quickstart_local_en.md](docs/quickstart_local_en.md)** (TH: `_th`).
