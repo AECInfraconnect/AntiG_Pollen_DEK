@@ -77,6 +77,7 @@ async fn setup_mock_cloud() -> Result<Proc> {
         "workspace build failed"
     );
     let _ = Command::new(bin("cert-gen"))
+        .arg("certs")
         .current_dir(workspace_dir())
         .status()
         .await;

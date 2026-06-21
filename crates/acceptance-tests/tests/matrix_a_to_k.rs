@@ -97,6 +97,7 @@ async fn setup() -> Result<Proc> {
     );
     // certs for mTLS (cert-gen writes ./certs)
     let _ = Command::new(bin("cert-gen"))
+        .arg("certs")
         .current_dir(workspace_dir())
         .status()
         .await;
