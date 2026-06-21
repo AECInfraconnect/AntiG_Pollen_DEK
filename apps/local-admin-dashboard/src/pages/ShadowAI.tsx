@@ -69,12 +69,16 @@ export function ShadowAI({ hideHeader = false }: { hideHeader?: boolean }) {
                     ID: {c.candidate_id}
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    <span className="font-medium">First seen:</span> {new Date(c.first_seen).toLocaleString()} <br />
-                    <span className="font-medium">Last seen:</span> {new Date(c.last_seen).toLocaleString()}
+                    <span className="font-medium">First seen:</span>{" "}
+                    {new Date(c.first_seen).toLocaleString()} <br />
+                    <span className="font-medium">Last seen:</span>{" "}
+                    {new Date(c.last_seen).toLocaleString()}
                   </p>
                   {c.heuristics_matched && c.heuristics_matched.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-destructive/10">
-                      <p className="text-sm font-medium mb-1">Suspicious Heuristics Detected:</p>
+                      <p className="text-sm font-medium mb-1">
+                        Suspicious Heuristics Detected:
+                      </p>
                       <ul className="list-disc pl-5 text-xs text-muted-foreground">
                         {c.heuristics_matched.map((h: string, i: number) => (
                           <li key={i}>{h.replace(/_/g, " ")}</li>
@@ -84,7 +88,8 @@ export function ShadowAI({ hideHeader = false }: { hideHeader?: boolean }) {
                   )}
                   {c.evidence && c.evidence.length > 0 && (
                     <div className="mt-2 text-xs text-muted-foreground">
-                      <span className="font-medium">Evidence Sources:</span> {c.evidence.map((e: any) => e.source).join(", ")}
+                      <span className="font-medium">Evidence Sources:</span>{" "}
+                      {c.evidence.map((e: any) => e.source).join(", ")}
                     </div>
                   )}
                 </div>

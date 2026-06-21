@@ -82,7 +82,6 @@ export function PdpRuntimeRouting() {
     }
   };
 
-
   const remoteRuntimes = runtimes.filter(
     (r) => r.category === "remote_connector",
   );

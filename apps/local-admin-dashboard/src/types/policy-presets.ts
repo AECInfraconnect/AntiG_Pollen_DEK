@@ -99,10 +99,7 @@ export interface TelemetryRequirement {
   pii_handling: PiiHandling;
 }
 
-export type SimulationWindow =
-  | "last_24_hours"
-  | "last_7_days"
-  | "last_30_days";
+export type SimulationWindow = "last_24_hours" | "last_7_days" | "last_30_days";
 
 export interface PolicyPresetV2 {
   id: string;

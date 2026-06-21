@@ -26,22 +26,20 @@ only the endpoint + trust store, never the enforcement code.
   parameters, enforced natively by the MCP proxy.
 - **Policy your way** — Cedar (ABAC/RBAC), OPA/Rego (complex logic), OpenFGA
   (ReBAC); the router auto-selects the right engine per request.
-- **Policy Presets** — pre-built Rego/Cedar/OpenFGA policy templates for
-  zero-config quickstart; deploy common guardrails in one click.
+- **Policy Presets V2** — pre-built Rego/Cedar/OpenFGA templates with dynamic PEP capability targeting; deploy common guardrails in one click.
 - **Dry-run Simulation** — test draft policies with what-if scenarios from the
   dashboard without affecting live traffic.
+- **Granular Control Modes** — define policies that simply `Observe`, `Warn`, require `Approval`, `Enforce`, or `StrictDeny` based on risk tolerance.
 
 ### AI Agent Observability & Fingerprinting
 
-- **Shadow AI Discovery** — automatically detects unmanaged AI agents via OS
-  process scanning and heuristic fingerprinting (Ollama, vLLM, Claude Desktop,
-  GitHub Copilot, Cursor, and more).
+- **Shadow AI Discovery** — automatically detects unmanaged AI agents via eBPF/WFP network scanning and heuristic fingerprinting (Ollama, vLLM, Claude Desktop, GitHub Copilot, Cursor).
+- **Secure Telemetry Spool** — telemetry events are seamlessly streamed via `dek-secure-spool`, providing a secure asynchronous feed for auto-discovery and offline processing without opening local IPC ports.
 - **Agent Fingerprint Definitions** — natively supports Offline Baseline definitions with Cloud-pushed Delta updates over SSE. Definitions map agent binaries/processes to known identities securely with signature verification.
 - **Agent Binding Governance** — Maps discovered agents to Runtime Capabilities (resolving HTTP/Stdio MCP surfaces dynamically) and enforces governance constraints throughout the agent lifecycle.
 - **Token & Cost Ledger** — tracks estimated token costs across all observed AI
   APIs via a configurable price catalog, with per-agent breakdowns.
-- **Policy Suggestion Engine** — auto-generates Rego/Cedar policies based on
-  observed cost thresholds, Shadow AI detections, and agent behavior anomalies.
+- **Telemetry-Driven Policy Suggestions** — auto-generates specific `DeployPreset` rules (like PII Redaction and Prompt Injection blocks) based on active observations from the secure spool.
 - **Governance Loop** — fully integrated Observe → Suggest → Enforce cycle runs
   end-to-end.
 

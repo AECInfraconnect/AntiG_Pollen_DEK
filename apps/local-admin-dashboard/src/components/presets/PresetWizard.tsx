@@ -19,14 +19,16 @@ export function PresetWizard({
   onClose: () => void;
 }) {
   const [controlMode, setControlMode] = useState<ControlMode>(
-    preset.default_control_mode || "observe"
+    preset.default_control_mode || "observe",
   );
   const [selectedPeps, setSelectedPeps] = useState<string[]>(
-    preset.recommended_pep_types || []
+    preset.recommended_pep_types || [],
   );
   const [params, setParams] = useState<Record<string, any>>({});
-  
-  const [preview, setPreview] = useState<PolicyPresetPreviewResponse | null>(null);
+
+  const [preview, setPreview] = useState<PolicyPresetPreviewResponse | null>(
+    null,
+  );
   const [simResult, setSimResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -127,9 +129,17 @@ export function PresetWizard({
   };
 
   const controlModes: { id: ControlMode; label: string; desc: string }[] = [
-    { id: "observe", label: "Observe Only", desc: "Log decisions without blocking" },
+    {
+      id: "observe",
+      label: "Observe Only",
+      desc: "Log decisions without blocking",
+    },
     { id: "warn", label: "Warn", desc: "Allow but show user warning" },
-    { id: "approval", label: "Require Approval", desc: "Pause for human approval" },
+    {
+      id: "approval",
+      label: "Require Approval",
+      desc: "Pause for human approval",
+    },
     { id: "enforce", label: "Enforce", desc: "Block actively" },
     { id: "strict_deny", label: "Strict Deny", desc: "Block and isolate" },
   ];
@@ -149,7 +159,9 @@ export function PresetWizard({
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
           {/* Overview */}
           <div>
-            <p className="text-sm text-muted-foreground">{preset.long_description}</p>
+            <p className="text-sm text-muted-foreground">
+              {preset.long_description}
+            </p>
           </div>
 
           {/* PEP Selection */}
@@ -168,16 +180,21 @@ export function PresetWizard({
                 {preset.parameters.map((p) => (
                   <div key={p.key} className="space-y-1 text-sm">
                     <label className="font-medium text-foreground block">
-                      {p.label} {p.required && <span className="text-red-500">*</span>}
+                      {p.label}{" "}
+                      {p.required && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type={p.value_type === "integer" ? "number" : "text"}
                       className="w-full bg-background border rounded px-3 py-2"
                       value={params[p.key] || ""}
-                      onChange={(e) => setParams({ ...params, [p.key]: e.target.value })}
+                      onChange={(e) =>
+                        setParams({ ...params, [p.key]: e.target.value })
+                      }
                       placeholder={`e.g. ${p.examples?.[0] || ""}`}
                     />
-                    <div className="text-xs text-muted-foreground">{p.description}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {p.description}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -191,7 +208,9 @@ export function PresetWizard({
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {controlModes.map((lvl) => {
-                const isSupported = preset.supported_control_modes.includes(lvl.id);
+                const isSupported = preset.supported_control_modes.includes(
+                  lvl.id,
+                );
                 return (
                   <button
                     key={lvl.id}
@@ -204,7 +223,9 @@ export function PresetWizard({
                     } ${!isSupported ? "opacity-50 cursor-not-allowed bg-muted" : ""}`}
                   >
                     <div className="font-medium text-sm mb-1">{lvl.label}</div>
-                    <div className="text-xs text-muted-foreground">{lvl.desc}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {lvl.desc}
+                    </div>
                   </button>
                 );
               })}
@@ -229,7 +250,8 @@ export function PresetWizard({
                 <PolicyPreview preview={preview} />
               ) : (
                 <div className="text-sm text-muted-foreground p-4 bg-muted/30 rounded border text-center">
-                  Click Generate Preview to see the raw policies that will be deployed.
+                  Click Generate Preview to see the raw policies that will be
+                  deployed.
                 </div>
               )}
             </div>

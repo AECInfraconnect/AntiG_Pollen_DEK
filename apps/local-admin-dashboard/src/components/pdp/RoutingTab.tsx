@@ -8,10 +8,13 @@ export function RoutingTab() {
 
   // New Route form state
   const [newRouteName, setNewRouteName] = useState("");
-  const [newRouteMode, setNewRouteMode] = useState<PdpRouteRule["mode"]>("local_primary_remote_fallback");
+  const [newRouteMode, setNewRouteMode] = useState<PdpRouteRule["mode"]>(
+    "local_primary_remote_fallback",
+  );
   const [newRoutePrimary, setNewRoutePrimary] = useState("");
   const [newRouteFallback, setNewRouteFallback] = useState("");
-  const [newRouteFailure, setNewRouteFailure] = useState<PdpRouteRule["failure_behavior"]>("fallback");
+  const [newRouteFailure, setNewRouteFailure] =
+    useState<PdpRouteRule["failure_behavior"]>("fallback");
   const [newRouteMatchCond, setNewRouteMatchCond] = useState<string>("{}");
   const [simulateResult, setSimulateResult] = useState<any>(null);
 
@@ -47,7 +50,9 @@ export function RoutingTab() {
         match_cond: matchCond,
         mode: newRouteMode,
         primary_pdp_id: newRoutePrimary,
-        fallback_pdp_ids: newRouteFallback ? newRouteFallback.split(",").map((s) => s.trim()) : [],
+        fallback_pdp_ids: newRouteFallback
+          ? newRouteFallback.split(",").map((s) => s.trim())
+          : [],
         shadow_pdp_ids: [],
         merge_strategy: "first_decisive",
         failure_behavior: newRouteFailure,
@@ -79,7 +84,7 @@ export function RoutingTab() {
         action: "simulate",
         resource: "test",
         principal: "admin",
-        context: {}
+        context: {},
       });
       setSimulateResult(res);
     } catch (e: any) {
@@ -91,9 +96,13 @@ export function RoutingTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Manage how authorization requests are routed to the available PDP runtimes.
+          Manage how authorization requests are routed to the available PDP
+          runtimes.
         </p>
-        <button onClick={reload} className="px-3 py-1 bg-secondary text-secondary-foreground rounded text-xs hover:opacity-80">
+        <button
+          onClick={reload}
+          className="px-3 py-1 bg-secondary text-secondary-foreground rounded text-xs hover:opacity-80"
+        >
           Refresh
         </button>
       </div>
@@ -112,16 +121,28 @@ export function RoutingTab() {
           </thead>
           <tbody>
             {routes.map((r) => (
-              <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
+              <tr
+                key={r.id}
+                className="border-b last:border-0 hover:bg-muted/30"
+              >
                 <td className="px-4 py-3 font-mono">{r.priority}</td>
                 <td className="px-4 py-3 font-medium">{r.name}</td>
                 <td className="px-4 py-3">
-                  <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs">{r.mode}</span>
+                  <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs">
+                    {r.mode}
+                  </span>
                 </td>
-                <td className="px-4 py-3 font-mono text-xs">{r.primary_pdp_id}</td>
-                <td className="px-4 py-3 font-mono text-xs">{r.fallback_pdp_ids?.join(", ")}</td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  {r.primary_pdp_id}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  {r.fallback_pdp_ids?.join(", ")}
+                </td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => handleDeleteRoute(r.id)} className="px-3 py-1 bg-red-500/10 text-red-500 rounded text-xs hover:opacity-80">
+                  <button
+                    onClick={() => handleDeleteRoute(r.id)}
+                    className="px-3 py-1 bg-red-500/10 text-red-500 rounded text-xs hover:opacity-80"
+                  >
                     Delete
                   </button>
                 </td>
@@ -129,7 +150,10 @@ export function RoutingTab() {
             ))}
             {!loading && routes.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                <td
+                  colSpan={6}
+                  className="px-4 py-8 text-center text-muted-foreground"
+                >
                   No routes configured. Add one below.
                 </td>
               </tr>
@@ -160,8 +184,12 @@ export function RoutingTab() {
                 onChange={(e) => setNewRouteMode(e.target.value as any)}
               >
                 <option value="local_only">Local Only</option>
-                <option value="local_primary_remote_fallback">Local Primary, Remote Fallback</option>
-                <option value="remote_primary_local_fallback">Remote Primary, Local Fallback</option>
+                <option value="local_primary_remote_fallback">
+                  Local Primary, Remote Fallback
+                </option>
+                <option value="remote_primary_local_fallback">
+                  Remote Primary, Local Fallback
+                </option>
                 <option value="strict_remote">Strict Remote</option>
               </select>
             </div>
@@ -176,7 +204,9 @@ export function RoutingTab() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium">Fallback PDP IDs (comma separated)</label>
+              <label className="text-xs font-medium">
+                Fallback PDP IDs (comma separated)
+              </label>
               <input
                 type="text"
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
@@ -186,7 +216,9 @@ export function RoutingTab() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium">Match Conditions (JSON)</label>
+              <label className="text-xs font-medium">
+                Match Conditions (JSON)
+              </label>
               <textarea
                 className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 placeholder='e.g. {"agent_ids": ["my-agent"]}'
@@ -218,7 +250,9 @@ export function RoutingTab() {
         <div>
           <h4 className="text-sm font-medium mb-4">Simulate Routing</h4>
           <div className="space-y-4 bg-muted/20 p-4 rounded-lg">
-            <p className="text-xs text-muted-foreground">Test how the router processes a sample request.</p>
+            <p className="text-xs text-muted-foreground">
+              Test how the router processes a sample request.
+            </p>
             <button
               onClick={handleSimulate}
               className="h-9 px-4 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium hover:opacity-90 w-full"

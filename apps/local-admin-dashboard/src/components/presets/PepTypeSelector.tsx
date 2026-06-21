@@ -38,7 +38,11 @@ export function PepTypeSelector({
   };
 
   if (loading) {
-    return <div className="text-sm text-muted-foreground">Checking PEP capabilities...</div>;
+    return (
+      <div className="text-sm text-muted-foreground">
+        Checking PEP capabilities...
+      </div>
+    );
   }
 
   return (

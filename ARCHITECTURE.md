@@ -72,7 +72,7 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 
 - `dek-a2a-mediator` — Inter-Agent Trust Protocol (IATP) mediator for Google A2A protocol communication between trusted agents. Manages trust negotiation, capability exchange, and secure message routing.
 - `dek-execution-sandbox` — isolated, short-lived tool execution environments for untrusted or unverified agent code. Enforces resource limits and network isolation.
-- `dek-policy-presets` — pre-built Rego/Cedar/OpenFGA policy templates (e.g. "Block Shadow AI", "Enforce Cost Budget", "Require MCP Tool Approval") for zero-config deployment via the dashboard.
+- `dek-policy-presets` — pre-built Rego/Cedar/OpenFGA policy templates V2 (e.g. "Block Shadow AI", "Enforce Cost Budget", "Require MCP Tool Approval") for zero-config deployment via the dashboard. Includes PEP compatibility targeting and granular Control Modes (Observe, Warn, Approval, Enforce).
 
 ## Decision data flow
 

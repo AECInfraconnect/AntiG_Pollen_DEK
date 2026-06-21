@@ -7,8 +7,12 @@ import type { PolicyPresetV2, PresetCategory } from "../types/policy-presets";
 export function PolicyPresets() {
   const [presets, setPresets] = useState<PolicyPresetV2[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPreset, setSelectedPreset] = useState<PolicyPresetV2 | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<PresetCategory | "all">("all");
+  const [selectedPreset, setSelectedPreset] = useState<PolicyPresetV2 | null>(
+    null,
+  );
+  const [selectedCategory, setSelectedCategory] = useState<
+    PresetCategory | "all"
+  >("all");
 
   useEffect(() => {
     PolicyApi.listPresets()
@@ -20,7 +24,10 @@ export function PolicyPresets() {
   }, []);
 
   const categories = Array.from(new Set(presets.map((p) => p.category)));
-  const filteredPresets = selectedCategory === "all" ? presets : presets.filter((p) => p.category === selectedCategory);
+  const filteredPresets =
+    selectedCategory === "all"
+      ? presets
+      : presets.filter((p) => p.category === selectedCategory);
 
   return (
     <div className="space-y-6">
@@ -30,7 +37,8 @@ export function PolicyPresets() {
             <FileKey className="h-6 w-6 text-primary" /> Policy Presets V2
           </h2>
           <p className="text-muted-foreground mt-1">
-            Deploy advanced guardrails using industry best practices mapping to OWASP and NIST frameworks.
+            Deploy advanced guardrails using industry best practices mapping to
+            OWASP and NIST frameworks.
           </p>
         </div>
       </div>
@@ -39,7 +47,9 @@ export function PolicyPresets() {
         <button
           onClick={() => setSelectedCategory("all")}
           className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-            selectedCategory === "all" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80 text-foreground"
+            selectedCategory === "all"
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted hover:bg-muted/80 text-foreground"
           }`}
         >
           All Categories
@@ -49,7 +59,9 @@ export function PolicyPresets() {
             key={c}
             onClick={() => setSelectedCategory(c)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors capitalize ${
-              selectedCategory === c ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80 text-foreground"
+              selectedCategory === c
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted hover:bg-muted/80 text-foreground"
             }`}
           >
             {c.replace(/_/g, " ")}
@@ -74,12 +86,14 @@ export function PolicyPresets() {
             >
               <div className="p-5 flex-1 flex flex-col">
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="font-semibold text-lg leading-tight">{preset.title}</h3>
+                  <h3 className="font-semibold text-lg leading-tight">
+                    {preset.title}
+                  </h3>
                   <span className="text-[10px] uppercase font-bold tracking-wider bg-primary/10 text-primary px-2 py-1 rounded">
                     v{preset.version}
                   </span>
                 </div>
-                
+
                 <p className="text-sm text-muted-foreground mb-4 line-clamp-2 flex-1">
                   {preset.short_description}
                 </p>
@@ -90,7 +104,10 @@ export function PolicyPresets() {
                       <ShieldAlert className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
                       <div className="flex flex-wrap gap-1.5">
                         {preset.risk_tags.map((tag) => (
-                          <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded border bg-orange-500/5 text-orange-600 border-orange-500/20">
+                          <span
+                            key={tag}
+                            className="text-[10px] px-1.5 py-0.5 rounded border bg-orange-500/5 text-orange-600 border-orange-500/20"
+                          >
                             {tag}
                           </span>
                         ))}
@@ -98,18 +115,22 @@ export function PolicyPresets() {
                     </div>
                   )}
 
-                  {preset.recommended_pep_types && preset.recommended_pep_types.length > 0 && (
-                    <div className="flex items-start gap-2">
-                      <Tags className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                      <div className="flex flex-wrap gap-1.5">
-                        {preset.recommended_pep_types.map((pep) => (
-                          <span key={pep} className="text-[10px] px-1.5 py-0.5 rounded border bg-blue-500/5 text-blue-600 border-blue-500/20">
-                            {pep}
-                          </span>
-                        ))}
+                  {preset.recommended_pep_types &&
+                    preset.recommended_pep_types.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <Tags className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                        <div className="flex flex-wrap gap-1.5">
+                          {preset.recommended_pep_types.map((pep) => (
+                            <span
+                              key={pep}
+                              className="text-[10px] px-1.5 py-0.5 rounded border bg-blue-500/5 text-blue-600 border-blue-500/20"
+                            >
+                              {pep}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               </div>
 

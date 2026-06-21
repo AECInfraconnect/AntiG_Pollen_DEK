@@ -129,7 +129,10 @@ export function AutoDiscovery() {
     setRegisterModal({
       show: true,
       candidate,
-      name: candidate.suggested_registration?.name || candidate.display_name || "Unknown Agent",
+      name:
+        candidate.suggested_registration?.name ||
+        candidate.display_name ||
+        "Unknown Agent",
     });
   };
 
@@ -141,19 +144,27 @@ export function AutoDiscovery() {
       await RegistryApi.registerDiscoveryCandidate(candidate.candidate_id, {
         agent_name: registerModal.name,
       });
-      
+
       // 2. Apply all suggested control bindings automatically (Enforce)
-      if (candidate.suggested_control_bindings && candidate.suggested_control_bindings.length > 0) {
+      if (
+        candidate.suggested_control_bindings &&
+        candidate.suggested_control_bindings.length > 0
+      ) {
         for (const binding of candidate.suggested_control_bindings) {
           try {
             await RegistryApi.applyControlBinding(binding.binding_id);
           } catch (bindErr) {
-            console.error(`Failed to apply binding ${binding.binding_id}:`, bindErr);
+            console.error(
+              `Failed to apply binding ${binding.binding_id}:`,
+              bindErr,
+            );
           }
         }
       }
-      
-      alert(`Successfully registered and enforced bindings for ${registerModal.name}`);
+
+      alert(
+        `Successfully registered and enforced bindings for ${registerModal.name}`,
+      );
       fetchCandidates();
       setRegisterModal({ show: false, candidate: null, name: "" });
     } catch (err) {
@@ -276,8 +287,12 @@ export function AutoDiscovery() {
                         ID: {c.candidate_id}
                       </p>
                       <p className="text-muted-foreground text-sm">
-                        <span className="font-medium">Risk Score:</span> {c.risk_score} | <span className="font-medium">Confidence:</span> {(c.confidence * 100).toFixed(0)}% <br />
-                        <span className="font-medium">First seen:</span> {new Date(c.first_seen).toLocaleString()}
+                        <span className="font-medium">Risk Score:</span>{" "}
+                        {c.risk_score} |{" "}
+                        <span className="font-medium">Confidence:</span>{" "}
+                        {(c.confidence * 100).toFixed(0)}% <br />
+                        <span className="font-medium">First seen:</span>{" "}
+                        {new Date(c.first_seen).toLocaleString()}
                       </p>
                     </div>
 
@@ -337,9 +352,7 @@ export function AutoDiscovery() {
                       className="border rounded-lg overflow-hidden"
                     >
                       <div className="bg-muted/30 p-3 border-b flex justify-between items-center">
-                        <h4 className="font-medium">
-                          {c.display_name}
-                        </h4>
+                        <h4 className="font-medium">{c.display_name}</h4>
                         <span className="text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-0.5 rounded border">
                           ID: {c.candidate_id}
                         </span>
@@ -542,11 +555,14 @@ export function AutoDiscovery() {
           <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6">
             <h3 className="text-xl font-bold mb-4">Register Agent</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Please confirm or update the name for this agent before registering.
+              Please confirm or update the name for this agent before
+              registering.
             </p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Agent Name</label>
+                <label className="block text-sm font-medium mb-1">
+                  Agent Name
+                </label>
                 <input
                   type="text"
                   value={registerModal.name}
@@ -560,7 +576,9 @@ export function AutoDiscovery() {
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button
-                onClick={() => setRegisterModal({ show: false, candidate: null, name: "" })}
+                onClick={() =>
+                  setRegisterModal({ show: false, candidate: null, name: "" })
+                }
                 className="px-4 py-2 text-sm border rounded hover:bg-muted"
               >
                 Cancel
