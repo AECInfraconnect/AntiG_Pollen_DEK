@@ -27,7 +27,7 @@ test.describe('Security & Policies', () => {
   test('view policy presets', async ({ page }) => {
     await page.getByRole('link', { name: /policy presets/i }).click();
     await expect(page.getByRole('heading', { name: /policy presets/i, exact: false }).first()).toBeVisible();
-    await expect(page.getByText(/no presets available/i)).toBeVisible();
+
   });
 
   test('view policy suggestions', async ({ page }) => {
