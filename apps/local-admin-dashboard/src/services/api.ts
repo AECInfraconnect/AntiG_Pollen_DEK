@@ -107,6 +107,13 @@ export class ControlPlaneClient {
     return this.fetchApi('/bundles/sync', { method: 'POST' });
   }
 
+  async deployToPep(pepId: string, bundleId: string): Promise<any> {
+    return this.fetchApi(`/peps/${pepId}/deploy`, { 
+      method: 'POST', 
+      body: JSON.stringify({ bundle_id: bundleId }) 
+    });
+  }
+
   // Telemetry
   async listDecisionLogs(): Promise<TelemetryEventEnvelope[]> {
     const data = await this.fetchApi('/telemetry/decision-logs');
@@ -153,6 +160,7 @@ export const PolicyApi = {
 export const BundleApi = {
   list: () => defaultClient.listBundles(),
   sync: () => defaultClient.pushSync(),
+  deployToPep: (pepId: string, bundleId: string) => defaultClient.deployToPep(pepId, bundleId),
 };
 
 export const TelemetryApi = {

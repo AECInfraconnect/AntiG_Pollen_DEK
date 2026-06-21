@@ -172,6 +172,10 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/devices/:device/config",
             axum::routing::get(get_mock_config),
         )
+        .route(
+            "/v1/tenants/:tenant/peps/:pep_id/deploy",
+            axum::routing::post(deploy_to_pep),
+        )
 }
 
 async fn list_bundles(
@@ -381,4 +385,45 @@ async fn get_artifact(
         Ok(None) => Err(ApiError::NotFound("artifact".into())),
         Err(e) => Err(ApiError::Internal(e)),
     }
+}
+
+async fn deploy_to_pep(
+    Path((tenant, pep_id)): Path<(String, String)>,
+    State(st): State<AppState>,
+    body: Option<Json<serde_json::Value>>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let bundle_id = body
+        .as_ref()
+        .and_then(|b| b.get("bundle_id"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("bundle:latest");
+
+    let val = match st.policy_store.get_policy_raw(&tenant, bundle_id).await {
+        Ok(Some(v)) => v,
+        Ok(None) => return Err(ApiError::NotFound(bundle_id.to_string())),
+        Err(e) => return Err(ApiError::Internal(e)),
+    };
+
+    let data_dir = dek_config::paths::get_data_dir();
+    let pep_dir = data_dir.join(format!("pep_{}", pep_id));
+    
+    if let Err(e) = std::fs::create_dir_all(&pep_dir) {
+        return Err(ApiError::Internal(e.into()));
+    }
+    
+    let bundle_path = pep_dir.join("active_bundle.json");
+    let bundle_str = serde_json::to_string_pretty(&val)
+        .map_err(|e| ApiError::Internal(e.into()))?;
+        
+    if let Err(e) = std::fs::write(&bundle_path, bundle_str) {
+        return Err(ApiError::Internal(e.into()));
+    }
+
+    Ok(Json(serde_json::json!({
+        "status": "success",
+        "pep_id": pep_id,
+        "bundle_id": bundle_id,
+        "bundle_path": bundle_path.to_string_lossy().to_string(),
+        "timestamp": chrono::Utc::now().to_rfc3339()
+    })))
 }

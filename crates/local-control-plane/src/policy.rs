@@ -351,7 +351,7 @@ async fn simulate_policy(
 
     let mut syntax_check = "Passed".to_string();
     let recommended_pep: String;
-    let mut deployment_test: String;
+    let mut deployment_test = "Passed".to_string();
 
     if language_id == "cedar" {
         recommended_pep = "Application PEP (Native Cedar)".to_string();
