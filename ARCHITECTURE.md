@@ -77,6 +77,12 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 6. The decision is enforced and emitted as a signed telemetry envelope; network rules are split across kernel and user-mode planes by the complexity guard.
 7. Observer records the decision and suggests new policies via the governance loop.
 
+## Identity Propagation
+
+When an agent authenticates with the DEK gateway, identity must propagate to backend MCP servers. Pollen DEK utilizes SPIFFE for this purpose:
+- **Token Forwarding**: Passes the original agent token directly if the backend and agent share the same trust domain.
+- **Token Exchange**: DEK can exchange the incoming agent token for a short-lived SPIFFE JWT-SVID (via `dek-spire-node`) bound specifically to the target MCP server. This implements secure impersonation and enforces least-privilege without exposing long-lived credentials.
+
 ## Failure posture (fail-closed everywhere)
 
 - No bundle / stale bundle past `max_bundle_age` → strict-deny.
