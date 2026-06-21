@@ -68,4 +68,13 @@ export async function installMockApi(page: Page) {
       build_number: 1,
     });
   });
+
+  // Additional mock routes for new pages
+  await page.route('**/v1/tenants/local/policy-presets', (route) => json(route, []));
+  await page.route('**/v1/tenants/local/policy-suggestions', (route) => json(route, []));
+  await page.route('**/v1/tenants/local/telemetry/cost-ledger', (route) => json(route, []));
+  await page.route('**/v1/tenants/local/telemetry/alerts', (route) => json(route, []));
+  await page.route('**/v1/tenants/local/bundles', (route) => json(route, []));
+  await page.route('**/v1/tenants/local/settings', (route) => json(route, { ok: true }));
+  await page.route('**/v1/tenants/local/discovery/scan', (route) => json(route, { status: "completed", findings: [] }));
 }
