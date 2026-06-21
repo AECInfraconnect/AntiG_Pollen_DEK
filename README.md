@@ -68,8 +68,10 @@ only the endpoint + trust store, never the enforcement code.
   protocol communication between trusted agents.
 - **Execution Sandbox (Preview)** — isolated, short-lived tool execution
   environments for untrusted code.
+- **WASM Ext Authz** — natively integrates WASM-based External Authorization (`dek-ext-authz`) for fast, localized, custom edge authorization logic.
+- **MCP Stdio Wrapper** — bridges legacy CLI-based agents (`dek-mcp-stdio-wrapper`), wrapping standard I/O to speak the Model Context Protocol securely.
 - **Plugin / Adapter SDK** — `dek-pdp-sdk` for custom policy engines;
-  `dek-plugin-sdk` for transform plugins (e.g. PII redaction). Bundled adapters
+  `dek-plugin-sdk` for transform plugins (e.g. `pii-redactor`). Bundled adapters
   are feature-gated.
 - **Internationalization** — Dashboard supports English and Thai natively.
 
@@ -77,7 +79,7 @@ only the endpoint + trust store, never the enforcement code.
 
 ## Dashboard
 
-The **Local Admin Dashboard** (React/Vite) provides 19 pages for full control:
+The **Local Admin Dashboard** (React/Vite) provides 20+ pages for full control:
 
 | Category | Pages |
 |----------|-------|
