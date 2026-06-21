@@ -22,11 +22,11 @@ only the endpoint + trust store, never the enforcement code.
   egress against signed policy, fail-closed by default.
 - **Policy your way** — Cedar (ABAC/RBAC), OPA/Rego (complex logic), OpenFGA
   (ReBAC); the router auto-selects the right engine per request.
-- **Kernel-grade network control** — eBPF on Linux today; Windows WFP / macOS
+- **Kernel-grade network control** — eBPF on Linux today (with dynamic DNS LRU caching and runtime modes); Windows WFP / macOS
   System Extension in progress. Complex rules are kept out of the kernel to avoid
   instability (kernel handles only simple, exact matches).
 - **Local-first, Cloud-ready** — same schema, bundle format, and telemetry
-  envelope in both modes.
+  envelope in both modes. Built on OpenAPI, TypeSpec, and a shared `Contract Hub` for `/.well-known/pollen-contract` discovery.
 
 ## Quickstart
 
