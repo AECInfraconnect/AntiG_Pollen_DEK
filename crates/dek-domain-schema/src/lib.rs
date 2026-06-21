@@ -7,3 +7,4 @@ pub mod policy_target;
 pub mod decision;
 pub mod telemetry;
 pub mod ebpf;
+pub mod spiffe;
