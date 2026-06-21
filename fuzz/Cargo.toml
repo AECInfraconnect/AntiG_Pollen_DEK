@@ -10,11 +10,18 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 dek-activation = { path = "../crates/dek-activation" }
+dek-mcp-normalizer = { path = "../crates/dek-mcp-normalizer" }
 serde_json = "1.0"
 
 [[bin]]
 name = "bundle_parser"
 path = "fuzz_targets/bundle_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "normalize"
+path = "fuzz_targets/normalize.rs"
 test = false
 doc = false
 
