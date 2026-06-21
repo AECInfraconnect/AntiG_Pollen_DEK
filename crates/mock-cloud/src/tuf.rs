@@ -26,6 +26,14 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant_id/devices/:device_id/bundles/artifacts/:hash",
             get(get_tuf_artifact),
         )
+        .route(
+            "/v1/updater/metadata/:role",
+            get(get_updater_tuf_metadata),
+        )
+        .route(
+            "/v1/updater/artifacts/:hash",
+            get(get_updater_tuf_artifact),
+        )
 }
 
 async fn get_tuf_metadata(
@@ -211,6 +219,66 @@ async fn get_tuf_artifact(
         (
             StatusCode::NOT_FOUND,
             Json(json!({"error": "artifact not found"})),
+        )
+    }
+}
+
+async fn get_updater_tuf_metadata(
+    Path(role): Path<String>,
+) -> impl IntoResponse {
+    let now = Utc::now();
+    let expires = now + chrono::Duration::days(7);
+
+    // Mock an executable that is exactly the string "MOCK_EXE_CONTENT"
+    let mock_exe_content = b"MOCK_EXE_CONTENT";
+    use sha2::{Sha256, Digest};
+    let mut h = Sha256::new(); h.update(mock_exe_content);
+    let exe_hash = hex::encode(h.finalize());
+    let exe_length = mock_exe_content.len();
+
+    let payload = match role.as_str() {
+        "targets.json" => {
+            json!({
+                "signed": {
+                    "_type": "targets",
+                    "spec_version": "1.0",
+                    "version": 1,
+                    "expires": expires.to_rfc3339(),
+                    "targets": {
+                        "dek-core.exe": {
+                            "hashes": {
+                                "sha256": exe_hash
+                            },
+                            "length": exe_length,
+                            "custom": {
+                                "platform": "windows-amd64"
+                            }
+                        }
+                    }
+                },
+                "signatures": []
+            })
+        },
+        _ => return (StatusCode::NOT_FOUND, Json(json!({"error": "role not found"}))),
+    };
+
+    (StatusCode::OK, Json(payload))
+}
+
+async fn get_updater_tuf_artifact(
+    Path(hash): Path<String>,
+) -> impl IntoResponse {
+    let mock_exe_content = b"MOCK_EXE_CONTENT";
+    use sha2::{Sha256, Digest};
+    let mut h = Sha256::new(); h.update(mock_exe_content);
+    let exe_hash = hex::encode(h.finalize());
+
+    if hash == exe_hash {
+        (StatusCode::OK, axum::body::Bytes::from_static(mock_exe_content).into_response())
+    } else {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": "artifact not found"})).into_response(),
         )
     }
 }
