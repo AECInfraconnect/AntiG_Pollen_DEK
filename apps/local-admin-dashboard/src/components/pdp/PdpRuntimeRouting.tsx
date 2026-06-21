@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { PdpRuntimeApi, PdpRoutingApi } from "../../services/api";
-import type { PdpRuntime, PdpRouteRule } from "../../services/api";
+import { PdpRuntimeApi } from "../../services/api";
+import type { PdpRuntime } from "../../services/api";
 import { LocalEnginesTab } from "./LocalEnginesTab";
 import { CloudPdpTab } from "./CloudPdpTab";
 import { RoutingTab } from "./RoutingTab";
@@ -10,7 +10,6 @@ export function PdpRuntimeRouting() {
     "local" | "remote" | "cloud" | "routing"
   >("local");
   const [runtimes, setRuntimes] = useState<PdpRuntime[]>([]);
-  const [routes, setRoutes] = useState<PdpRouteRule[]>([]);
   const [testResults, setTestResults] = useState<Record<string, any>>({});
   const [newRemoteName, setNewRemoteName] = useState("");
   const [newRemoteKind, setNewRemoteKind] = useState<
@@ -18,16 +17,7 @@ export function PdpRuntimeRouting() {
   >("opa_server");
   const [newRemoteUrl, setNewRemoteUrl] = useState("http://localhost:8181");
 
-  // New Route form state
-  const [newRouteName, setNewRouteName] = useState("");
-  const [newRouteMode, setNewRouteMode] = useState<PdpRouteRule["mode"]>(
-    "local_primary_remote_fallback",
-  );
-  const [newRoutePrimary, setNewRoutePrimary] = useState("");
-  const [newRouteFallback, setNewRouteFallback] = useState("");
-  const [newRouteFailure, setNewRouteFailure] = useState<
-    PdpRouteRule["failure_behavior"]
-  >("fallback" as any);
+  // Routing state moved to RoutingTab
 
   useEffect(() => {
     loadData();
@@ -37,8 +27,6 @@ export function PdpRuntimeRouting() {
     try {
       const rtRes = await PdpRuntimeApi.list();
       setRuntimes(rtRes);
-      const rrRes = await PdpRoutingApi.list();
-      setRoutes(rrRes);
     } catch (e) {
       console.error(e);
     }
@@ -46,7 +34,7 @@ export function PdpRuntimeRouting() {
 
   const handleTestRuntime = async (id: string) => {
     try {
-      const res = await PdpRuntimeApi.probeHealth(id);
+      const res = await PdpRuntimeApi.probe(id);
       setTestResults((prev) => ({ ...prev, [id]: res }));
     } catch (e) {
       console.error(e);
@@ -63,11 +51,14 @@ export function PdpRuntimeRouting() {
       await PdpRuntimeApi.upsert({
         id: `${newRemoteKind}-${Date.now()}`,
         name: newRemoteName,
-        category: "external_connector",
+        category: "remote_connector",
         kind: newRemoteKind,
         enabled: true,
         status: "ready",
         endpoint: newRemoteUrl,
+        mode: "strict_remote",
+        system_managed: false,
+        config_source: "manual",
         capabilities: [],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -91,48 +82,9 @@ export function PdpRuntimeRouting() {
     }
   };
 
-  const handleAddRoute = async () => {
-    if (!newRouteName || !newRoutePrimary) return;
-    try {
-      await PdpRoutingApi.upsert({
-        id: `route-${Date.now()}`,
-        name: newRouteName,
-        enabled: true,
-        priority: 100,
-        match_cond: {},
-        mode: newRouteMode,
-        primary_pdp_id: newRoutePrimary,
-        fallback_pdp_ids: newRouteFallback
-          ? newRouteFallback.split(",").map((s) => s.trim())
-          : [],
-        shadow_pdp_ids: [],
-        merge_strategy: "override",
-        failure_behavior: newRouteFailure,
-        timeout_ms: 200,
-        max_retries: 0,
-      });
-      setNewRouteName("");
-      setNewRoutePrimary("");
-      setNewRouteFallback("");
-      loadData();
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
-  const handleDeleteRoute = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this route?")) return;
-    try {
-      await PdpRoutingApi.delete(id);
-      loadData();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const localRuntimes = runtimes.filter((r) => r.category === "local_engine");
   const remoteRuntimes = runtimes.filter(
-    (r) => r.category === "external_connector",
+    (r) => r.category === "remote_connector",
   );
 
   return (
@@ -292,7 +244,6 @@ export function PdpRuntimeRouting() {
             </div>
           </div>
         )}
-      </div>
       </div>
     </div>
   );
