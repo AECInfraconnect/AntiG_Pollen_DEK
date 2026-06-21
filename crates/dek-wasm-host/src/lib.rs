@@ -12,46 +12,35 @@ pub trait PluginHost {
 
 pub struct WasmtimePluginHost {
     engine: Engine,
-    modules: HashMap<String, Module>,
+    instances_pre: HashMap<String, InstancePre<wasmtime_wasi::preview1::WasiP1Ctx>>,
 }
 
 impl WasmtimePluginHost {
-    pub fn new() -> Result<Self> {
+    pub fn new(plugin_paths: HashMap<String, String>) -> Result<Self> {
         let engine = Engine::default();
-        let mut modules = HashMap::new();
+        let mut instances_pre = HashMap::new();
 
-        // Dynamically resolve WASM path based on debug vs release
-        let paths = vec![
-            "target/wasm32-wasip1/release/dummy_policy.wasm",
-            "target/wasm32-wasip1/debug/dummy_policy.wasm",
-            "../../target/wasm32-wasip1/release/dummy_policy.wasm",
-            "../../target/wasm32-wasip1/debug/dummy_policy.wasm",
-        ];
+        let mut linker = Linker::new(&engine);
+        preview1::add_to_linker_sync(&mut linker, |s| s)?;
 
-        let mut wasm_path = None;
-        for p in paths {
-            if std::path::Path::new(p).exists() {
-                wasm_path = Some(p);
-                break;
+        for (plugin_id, path) in plugin_paths {
+            if std::path::Path::new(&path).exists() {
+                let module = Module::from_file(&engine, &path).with_context(|| format!("Failed to load plugin WASM module: {}", path))?;
+                let instance_pre = linker.instantiate_pre(&module)?;
+                instances_pre.insert(plugin_id, instance_pre);
+            } else {
+                eprintln!("Plugin path not found: {}", path);
             }
         }
 
-        // For testing, we use dummy_policy.wasm as the "pii-redactor" for now
-        // In reality, this should be configurable
-        if let Some(path) = wasm_path {
-            let module =
-                Module::from_file(&engine, path).context("Failed to load plugin WASM module")?;
-            modules.insert("pii-redactor".to_string(), module);
-        }
-
-        Ok(Self { engine, modules })
+        Ok(Self { engine, instances_pre })
     }
 }
 
 impl PluginHost for WasmtimePluginHost {
     fn invoke(&self, plugin_id: &str, input: Value) -> Result<Value> {
-        let module = self
-            .modules
+        let instance_pre = self
+            .instances_pre
             .get(plugin_id)
             .ok_or_else(|| anyhow::anyhow!("Unknown or uninitialized plugin: {}", plugin_id))?;
 
@@ -66,11 +55,9 @@ impl PluginHost for WasmtimePluginHost {
         let wasi = builder.build_p1();
 
         let mut store = Store::new(&self.engine, wasi);
-        let mut linker = Linker::new(&self.engine);
-        preview1::add_to_linker_sync(&mut linker, |s| s)?;
 
         // Instantiate and run _start
-        let instance = linker.instantiate(&mut store, module)?;
+        let instance = instance_pre.instantiate(&mut store)?;
         let func = instance.get_typed_func::<(), ()>(&mut store, "_start")?;
         func.call(&mut store, ())?;
 

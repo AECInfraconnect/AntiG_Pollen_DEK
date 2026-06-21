@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use dek_agent_connector::{AgentConfigRewriter, ClaudeDesktopRewriter};
 use dek_ipc::{IpcRequest, IpcResponse};
 use std::path::PathBuf;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
 use tokio::net::TcpStream;
 use tracing::{error, info};
 

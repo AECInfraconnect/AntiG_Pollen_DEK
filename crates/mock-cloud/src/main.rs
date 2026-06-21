@@ -37,6 +37,7 @@ async fn main() -> Result<()> {
         .route("/telemetry", post(ingest_telemetry))
         .route("/bundles/latest", get(get_latest_bundle))
         .route("/config/:device_id", get(get_config))
+        .route("/spire/node/attest", post(attest_node))
         .with_state(state);
 
     // Load server certificate and key
@@ -136,7 +137,9 @@ async fn get_latest_bundle(State(state): State<AppState>) -> Json<Value> {
 
     // Dynamically resolve WASM path based on debug vs release
     let wasm_path =
-        if std::path::Path::new("target/wasm32-wasip1/release/dummy_policy.wasm").exists() {
+        if std::path::Path::new("plugins/dummy_policy.wasm").exists() {
+            "plugins/dummy_policy.wasm"
+        } else if std::path::Path::new("target/wasm32-wasip1/release/dummy_policy.wasm").exists() {
             "target/wasm32-wasip1/release/dummy_policy.wasm"
         } else {
             "target/wasm32-wasip1/debug/dummy_policy.wasm"
@@ -182,7 +185,9 @@ async fn get_config(
 
     // Dynamically resolve WASM path based on debug vs release
     let wasm_path =
-        if std::path::Path::new("target/wasm32-wasip1/release/dummy_policy.wasm").exists() {
+        if std::path::Path::new("plugins/dummy_policy.wasm").exists() {
+            "plugins/dummy_policy.wasm"
+        } else if std::path::Path::new("target/wasm32-wasip1/release/dummy_policy.wasm").exists() {
             "target/wasm32-wasip1/release/dummy_policy.wasm"
         } else {
             "target/wasm32-wasip1/debug/dummy_policy.wasm"
@@ -198,6 +203,9 @@ async fn get_config(
             "client_key_path": "certs/client.key",
             "root_ca_path": "certs/root_ca.crt"
         },
+        "spire_server": {
+            "endpoint": "https://127.0.0.1:43891/spire"
+        },
         "policy_config": {
             "openfga": {
                 "endpoint": "http://127.0.0.1:8080",
@@ -210,5 +218,14 @@ async fn get_config(
                 "policy_path": wasm_path
             }
         }
+    }))
+}
+
+async fn attest_node(Json(payload): Json<Value>) -> Json<Value> {
+    let device_id = payload.get("device_id").and_then(|v| v.as_str()).unwrap_or("unknown-device");
+    let spiffe_id = format!("spiffe://pollen.cloud/tenant-production-1/device/{}", device_id);
+    info!("CLOUD: Attesting node {}, issuing SPIFFE ID: {}", device_id, spiffe_id);
+    Json(json!({
+        "spiffe_id": spiffe_id
     }))
 }

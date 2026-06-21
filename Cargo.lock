@@ -927,6 +927,7 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "dek-config",
+ "dek-spire-node",
  "ed25519-dalek",
  "rand 0.10.1",
  "reqwest",
@@ -1048,6 +1049,7 @@ dependencies = [
  "anyhow",
  "clap",
  "dek-cedar",
+ "dek-config",
  "dek-mcp-normalizer",
  "dek-openfga",
  "dek-policy-router",
@@ -1066,6 +1068,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "dek-config",
  "dek-policy-runtime",
  "reqwest",
  "serde",
@@ -1100,6 +1103,19 @@ dependencies = [
  "tokio",
  "wasmtime",
  "wasmtime-wasi",
+]
+
+[[package]]
+name = "dek-spire-node"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dek-config",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

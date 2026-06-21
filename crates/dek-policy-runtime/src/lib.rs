@@ -79,7 +79,7 @@ use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
 /// The actual WASM runtime host
 pub struct WasmtimePolicyRuntime {
     engine: Engine,
-    module: Module,
+    instance_pre: InstancePre<wasmtime_wasi::preview1::WasiP1Ctx>,
     wasm_path: String,
 }
 
@@ -89,9 +89,13 @@ impl WasmtimePolicyRuntime {
         let module = Module::from_file(&engine, wasm_path)
             .map_err(|e| anyhow::anyhow!("Failed to load WASM module: {}", e))?;
 
+        let mut linker = Linker::new(&engine);
+        preview1::add_to_linker_sync(&mut linker, |s| s)?;
+        let instance_pre = linker.instantiate_pre(&module)?;
+
         Ok(Self {
             engine,
-            module,
+            instance_pre,
             wasm_path: wasm_path.to_string(),
         })
     }
@@ -111,11 +115,9 @@ impl PolicyRuntime for WasmtimePolicyRuntime {
         let wasi = builder.build_p1();
 
         let mut store = Store::new(&self.engine, wasi);
-        let mut linker = Linker::new(&self.engine);
-        preview1::add_to_linker_sync(&mut linker, |s| s)?;
 
         // Run plugin from pre-compiled module (thread-safe, concurrent)
-        let instance = linker.instantiate(&mut store, &self.module)?;
+        let instance = self.instance_pre.instantiate(&mut store)?;
         let func = instance.get_typed_func::<(), ()>(&mut store, "_start")?;
 
         let mut reason = "Executed WASM policy".to_string();

@@ -4,6 +4,8 @@ use dek_policy_runtime::{PolicyDecision, PolicyRuntime};
 use reqwest::Client;
 use serde_json::json;
 
+use dek_config::MtlsConfig;
+
 pub struct OpenFgaAdapter {
     endpoint: String,
     store_id: String,
@@ -11,12 +13,17 @@ pub struct OpenFgaAdapter {
 }
 
 impl OpenFgaAdapter {
-    pub fn new(endpoint: &str, store_id: &str) -> Self {
-        Self {
+    pub fn new(endpoint: &str, store_id: &str, mtls: Option<&MtlsConfig>) -> Result<Self> {
+        let client = if let Some(m) = mtls {
+            m.build_client()?
+        } else {
+            Client::new()
+        };
+        Ok(Self {
             endpoint: endpoint.to_string(),
             store_id: store_id.to_string(),
-            client: Client::new(),
-        }
+            client,
+        })
     }
 }
 

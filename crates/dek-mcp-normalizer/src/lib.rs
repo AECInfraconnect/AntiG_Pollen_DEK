@@ -33,6 +33,12 @@ pub struct NormalizedMcpEvent {
     pub device_id: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub spiffe_id: Option<String>,
+    
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_id: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_id: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -55,6 +61,20 @@ pub struct NormalizedMcpEvent {
 
 pub trait TransportAdapter {
     fn transport_name(&self) -> &'static str;
-    fn normalize_request(&self, raw: serde_json::Value) -> Result<NormalizedMcpEvent>;
-    fn normalize_response(&self, raw: serde_json::Value) -> Result<NormalizedMcpEvent>;
+    fn normalize_request(
+        &self, 
+        raw: serde_json::Value,
+        tenant_id: &str,
+        device_id: &str,
+        spiffe_id: Option<&str>,
+        user_id: Option<&str>,
+    ) -> Result<NormalizedMcpEvent>;
+    fn normalize_response(
+        &self, 
+        raw: serde_json::Value,
+        tenant_id: &str,
+        device_id: &str,
+        spiffe_id: Option<&str>,
+        user_id: Option<&str>,
+    ) -> Result<NormalizedMcpEvent>;
 }

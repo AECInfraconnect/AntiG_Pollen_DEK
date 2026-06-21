@@ -11,7 +11,6 @@ use dek_cedar::CedarAdapter;
 use dek_mcp_normalizer::{http::HttpTransportAdapter, TransportAdapter};
 use dek_openfga::OpenFgaAdapter;
 use dek_policy_router::{ConditionalPdp, MatchRule, PolicyRouter, Route};
-use dek_policy_runtime::MockPolicyRuntime;
 use dek_wasm_host::{PluginHost, WasmtimePluginHost};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -19,15 +18,27 @@ use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
+#[derive(Clone)]
+struct DekMetadata {
+    tenant_id: String,
+    device_id: String,
+    spiffe_id: Option<String>,
+}
+
 struct AppState {
     plugin_host: WasmtimePluginHost,
     router: RwLock<PolicyRouter>,
     http_adapter: HttpTransportAdapter,
+    metadata: RwLock<DekMetadata>,
 }
 
 use dek_config::{BootstrapConfig, DekConfig};
 
+use dek_config::MtlsConfig;
+
 fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
+    let mtls: Option<MtlsConfig> = payload.get("mtls").and_then(|v| serde_json::from_value(v.clone()).ok());
+
     if let Some(openfga) = payload.get("openfga") {
         let endpoint = openfga
             .get("endpoint")
@@ -37,7 +48,11 @@ fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
             .get("store_id")
             .and_then(|v| v.as_str())
             .unwrap_or("store_123");
-        router.register_evaluator("openfga", Box::new(OpenFgaAdapter::new(endpoint, store_id)));
+        
+        match OpenFgaAdapter::new(endpoint, store_id, mtls.as_ref()) {
+            Ok(adapter) => router.register_evaluator("openfga", Box::new(adapter)),
+            Err(e) => error!("Failed to initialize OpenFGA Adapter with mTLS: {}", e),
+        }
     }
     if let Some(cedar) = payload.get("cedar") {
         let policy_src = cedar
@@ -51,14 +66,15 @@ fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
             .get("policy_path")
             .and_then(|v| v.as_str())
             .unwrap_or("");
+        
         if std::path::Path::new(policy_path).exists() {
             if let Ok(runtime) = dek_policy_runtime::WasmtimePolicyRuntime::new(policy_path) {
                 router.register_evaluator("opa_wasm", Box::new(runtime));
             } else {
-                router.register_evaluator("opa_wasm", Box::new(MockPolicyRuntime));
+                error!("Failed to initialize WASM Policy Runtime for path: {}", policy_path);
             }
         } else {
-            router.register_evaluator("opa_wasm", Box::new(MockPolicyRuntime));
+            error!("WASM policy file not found at: {}", policy_path);
         }
     }
 }
@@ -86,6 +102,13 @@ async fn main() -> Result<()> {
     // 1. Load initial config (if available) or fallback
     let mut router = PolicyRouter::new();
 
+    // Initialize metadata
+    let mut initial_metadata = DekMetadata {
+        tenant_id: tenant_id.clone(),
+        device_id: device_id.clone(),
+        spiffe_id: None,
+    };
+
     // Attempt to load from staged bundle first
     let staged_path = std::path::Path::new("target/active_bundle.json");
     if staged_path.exists() {
@@ -93,19 +116,20 @@ async fn main() -> Result<()> {
             if let Ok(payload) = serde_json::from_str::<Value>(&content) {
                 info!("Loaded initial configuration from staged active_bundle.json");
                 load_router_config(&mut router, &payload);
+                if let Some(t) = payload.get("tenant_id").and_then(|v| v.as_str()) {
+                    initial_metadata.tenant_id = t.to_string();
+                }
+                if let Some(s) = payload.get("spiffe_id").and_then(|v| v.as_str()) {
+                    initial_metadata.spiffe_id = Some(s.to_string());
+                }
             }
         }
     } else {
         // Fallback defaults if no policy config
-        router.register_evaluator(
-            "openfga",
-            Box::new(OpenFgaAdapter::new("http://localhost:8080", "store_123")),
-        );
-        router.register_evaluator(
-            "cedar",
-            Box::new(CedarAdapter::new("permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n);")),
-        );
-        router.register_evaluator("opa_wasm", Box::new(MockPolicyRuntime));
+        if let Ok(adapter) = OpenFgaAdapter::new("http://localhost:8080", "store_123", None) {
+            router.register_evaluator("openfga", Box::new(adapter));
+        }
+        // Removed fallback to Cedar requiring user_bob
     }
 
     // Define initial routes
@@ -137,13 +161,26 @@ async fn main() -> Result<()> {
 
     router.set_routes(routes);
 
+    // Determine plugin paths
+    let mut plugin_paths = std::collections::HashMap::new();
+    let paths_to_try = vec![
+        "target/wasm32-wasip1/release/pii_redactor.wasm",
+        "target/wasm32-wasip1/debug/pii_redactor.wasm",
+        "../../target/wasm32-wasip1/release/pii_redactor.wasm",
+        "../../target/wasm32-wasip1/debug/pii_redactor.wasm",
+    ];
+    for p in paths_to_try {
+        if std::path::Path::new(p).exists() {
+            plugin_paths.insert("pii-redactor".to_string(), p.to_string());
+            break;
+        }
+    }
+
     let state = Arc::new(AppState {
-        plugin_host: WasmtimePluginHost::new()?,
+        plugin_host: WasmtimePluginHost::new(plugin_paths)?,
         router: RwLock::new(router),
-        http_adapter: HttpTransportAdapter {
-            tenant_id,
-            device_id,
-        },
+        http_adapter: HttpTransportAdapter,
+        metadata: RwLock::new(initial_metadata),
     });
 
     // Start background file watcher for hot-reloading
@@ -224,7 +261,16 @@ async fn main() -> Result<()> {
                                     // Hot swap
                                     let mut current_router = state_clone.router.write().await;
                                     *current_router = new_router;
-                                    info!("Hot-reloaded policies from disk successfully!");
+
+                                    let mut metadata_lock = state_clone.metadata.write().await;
+                                    if let Some(t) = payload.get("tenant_id").and_then(|v| v.as_str()) {
+                                        metadata_lock.tenant_id = t.to_string();
+                                    }
+                                    if let Some(s) = payload.get("spiffe_id").and_then(|v| v.as_str()) {
+                                        metadata_lock.spiffe_id = Some(s.to_string());
+                                    }
+
+                                    info!("Hot-reloaded policies and metadata from disk successfully!");
                                 } else {
                                     error!("Failed to parse active_bundle.json payload");
                                 }
@@ -290,33 +336,23 @@ async fn handle_mcp_request(
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "));
 
+    let mut jwt_tenant_id = None;
     let principal = if let Some(token) = auth_header {
         let parts: Vec<&str> = token.split('.').collect();
         if parts.len() == 3 {
             // JWT payload is URL_SAFE_NO_PAD
-            if let Ok(decoded) = general_purpose::URL_SAFE_NO_PAD.decode(parts[1]) {
+            let decoded_opt = general_purpose::URL_SAFE_NO_PAD.decode(parts[1])
+                .or_else(|_| general_purpose::URL_SAFE.decode(parts[1]));
+
+            if let Ok(decoded) = decoded_opt {
                 if let Ok(claims) = serde_json::from_slice::<Value>(&decoded) {
-                    claims
-                        .get("sub")
-                        .and_then(|s| s.as_str())
-                        .map(|s| s.to_string())
+                    jwt_tenant_id = claims.get("tenant_id").or(claims.get("tenant")).and_then(|s| s.as_str()).map(|s| s.to_string());
+                    claims.get("sub").and_then(|s| s.as_str()).map(|s| s.to_string())
                 } else {
                     None
                 }
             } else {
-                // Some JWTs use padding, fallback to URL_SAFE
-                if let Ok(decoded) = general_purpose::URL_SAFE.decode(parts[1]) {
-                    if let Ok(claims) = serde_json::from_slice::<Value>(&decoded) {
-                        claims
-                            .get("sub")
-                            .and_then(|s| s.as_str())
-                            .map(|s| s.to_string())
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
+                None
             }
         } else {
             None
@@ -337,8 +373,17 @@ async fn handle_mcp_request(
         }
     };
 
+    let metadata = state.metadata.read().await.clone();
+    let final_tenant_id = jwt_tenant_id.unwrap_or(metadata.tenant_id);
+
     // Normalize Event
-    let normalized = match state.http_adapter.normalize_request(payload.clone()) {
+    let normalized = match state.http_adapter.normalize_request(
+        payload.clone(),
+        &final_tenant_id,
+        &metadata.device_id,
+        metadata.spiffe_id.as_deref(),
+        Some(&principal),
+    ) {
         Ok(n) => n,
         Err(_) => {
             error!("Failed to normalize request");

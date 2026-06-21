@@ -141,7 +141,11 @@ impl PolicyRouter {
                     break;
                 }
             } else {
-                println!("Warning: Evaluator {} not found", ev_id);
+                println!("Error: Required evaluator {} not found. Failing closed.", ev_id);
+                combined_decision.allow = false;
+                combined_decision.decision = "deny".into();
+                combined_decision.reason = format!("Required evaluator {} not configured or failed to load", ev_id);
+                break;
             }
         }
 
