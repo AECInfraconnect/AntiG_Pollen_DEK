@@ -49,6 +49,8 @@ impl PolicySnapshot {
         Self { router, metadata, verifier }
     }
 }
+use dek_telemetry::CloudTelemetrySink;
+
 pub struct AppState {
     pub plugin_host: WasmtimePluginHost,
     pub http_adapter: HttpTransportAdapter,
@@ -56,6 +58,8 @@ pub struct AppState {
     pub snapshot: ArcSwap<PolicySnapshot>,
     /// Shadow snapshot for parallel evaluation.
     pub shadow_snapshot: ArcSwapOption<PolicySnapshot>,
+    /// Telemetry Sink
+    pub telemetry: Option<Arc<CloudTelemetrySink>>,
 }
 
 impl AppState {
@@ -63,12 +67,14 @@ impl AppState {
         plugin_host: WasmtimePluginHost,
         http_adapter: HttpTransportAdapter,
         initial: PolicySnapshot,
+        telemetry: Option<Arc<CloudTelemetrySink>>,
     ) -> Arc<Self> {
         Arc::new(Self {
             plugin_host,
             http_adapter,
             snapshot: ArcSwap::from_pointee(initial),
             shadow_snapshot: ArcSwapOption::empty(),
+            telemetry,
         })
     }
 

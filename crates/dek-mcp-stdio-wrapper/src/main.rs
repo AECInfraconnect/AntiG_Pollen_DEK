@@ -86,6 +86,16 @@ async fn main() -> Result<()> {
     }
 
     let router = Arc::new(RwLock::new(router));
+
+    // Init telemetry
+    let telemetry_db = dek_config::paths::get_data_dir().join("telemetry-stdio.db");
+    let telemetry_sink = dek_telemetry::CloudTelemetrySink::new(
+        "https://telemetry.pollen-cloud.internal",
+        &bootstrap.mtls,
+        None,
+        &telemetry_db.to_string_lossy(),
+    ).ok();
+
     let mut cmd = Command::new(&args.command_args[0]);
     cmd.args(&args.command_args[1..]);
     
@@ -202,6 +212,7 @@ async fn main() -> Result<()> {
                 // Mock legacy fields
                 policy_input["action"] = json!(normalized
                     .tool_name
+                    .clone()
                     .unwrap_or(normalized.request_type.clone()));
                 policy_input["principal"] = json!(agent_id.clone());
                 policy_input["resource"] = json!(server_id.clone());
@@ -223,6 +234,25 @@ async fn main() -> Result<()> {
                         obligations: vec![],
                         metadata: json!({}),
                     });
+
+                if let Some(telemetry) = &telemetry_sink {
+                    let event = json!({
+                        "schema_version": "1.0",
+                        "event_type": "decision_log",
+                        "device_id": bootstrap.device_id.clone(),
+                        "tenant_id": tenant_id.clone(),
+                        "timestamp": chrono::Utc::now().to_rfc3339(),
+                        "mcp": {
+                            "principal": agent_id.clone(),
+                            "tool": normalized.tool_name.clone().unwrap_or_default(),
+                            "method": normalized.request_type.clone(),
+                            "verdict": if decision.allow { "allow" } else { "deny" },
+                            "reason": decision.reason.clone(),
+                            "request_id": Uuid::new_v4().to_string(),
+                        }
+                    });
+                    telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);
+                }
 
                 if !decision.allow {
                     warn!("[wrapper] Denied: {}", decision.reason);

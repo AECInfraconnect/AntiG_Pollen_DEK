@@ -120,8 +120,16 @@ impl PolicyRouter {
 
         for ev_id in to_evaluate {
             if let Some(evaluator) = self.evaluators.get(&ev_id) {
+                let start_time = std::time::Instant::now();
                 match evaluator.evaluate(payload.clone()).await {
                     Ok(res) => {
+                        let latency = start_time.elapsed().as_millis() as f64;
+                        let meter = opentelemetry::global::meter("dek-policy-router");
+                        let histogram = meter.f64_histogram("dek_policy_eval_latency_ms").init();
+                        histogram.record(latency, &[
+                            opentelemetry::KeyValue::new("evaluator", ev_id.clone())
+                        ]);
+
                         tracing::info!("Evaluator {} returned: {}", ev_id, res.decision);
 
                         // Combine obligations
@@ -151,6 +159,10 @@ impl PolicyRouter {
                         }
                     }
                     Err(dek_policy_runtime::PolicyError::Unavailable(msg)) => {
+                        let meter = opentelemetry::global::meter("dek-policy-router");
+                        let counter = meter.u64_counter("dek_pdp_unavailable_total").init();
+                        counter.add(1, &[opentelemetry::KeyValue::new("evaluator", ev_id.clone())]);
+
                         tracing::warn!("required PDP unavailable: {msg}; failing closed");
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();

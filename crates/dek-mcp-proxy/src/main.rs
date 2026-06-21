@@ -121,10 +121,20 @@ async fn main() -> Result<()> {
 
     let initial_snapshot = PolicySnapshot::build(router, initial_metadata);
 
+    // Init telemetry
+    let telemetry_db = dek_config::paths::get_data_dir().join("telemetry.db");
+    let telemetry = dek_telemetry::CloudTelemetrySink::new(
+        "https://telemetry.pollen-cloud.internal",
+        &bootstrap.mtls,
+        None,
+        &telemetry_db.to_string_lossy(),
+    ).ok();
+
     let state = AppState::new(
         WasmtimePluginHost::new(plugin_paths)?,
         HttpTransportAdapter,
         initial_snapshot,
+        telemetry,
     );
 
     // Start background file watcher for hot-reloading
@@ -390,7 +400,7 @@ async fn handle_mcp_request(
 
     let mut policy_input = serde_json::to_value(&normalized).unwrap_or(json!({}));
     // Provide backwards compatibility for existing mock PDPs
-    policy_input["action"] = json!(normalized.tool_name.unwrap_or(normalized.request_type));
+    policy_input["action"] = json!(normalized.tool_name.clone().unwrap_or(normalized.request_type.clone()));
     policy_input["principal"] = json!(principal);
     policy_input["resource"] = json!("mcp_tool");
 
@@ -416,6 +426,26 @@ async fn handle_mcp_request(
     match decision_result {
         Ok(decision) => {
             info!("Final Pipeline Decision: {:?}", decision);
+            
+            if let Some(telemetry) = &state.telemetry {
+                let event = json!({
+                    "schema_version": "1.0",
+                    "event_type": "decision_log",
+                    "device_id": metadata.device_id.clone(),
+                    "tenant_id": final_tenant_id.clone(),
+                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                    "mcp": {
+                        "principal": principal.clone(),
+                        "tool": normalized.tool_name.clone().unwrap_or_default(),
+                        "method": normalized.request_type.clone(),
+                        "verdict": if decision.allow { "allow" } else { "deny" },
+                        "reason": decision.reason.clone(),
+                        "request_id": uuid::Uuid::new_v4().to_string(),
+                    }
+                });
+                telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);
+            }
+
             if decision.allow {
                 let response = json!({
                     "status": "allowed",
