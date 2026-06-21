@@ -20,12 +20,12 @@ nohup ./target/release/local-control-plane > /dev/null 2>&1 &
 
 echo "Waiting for server to start..."
 sleep 2
-echo -e "\033[0;32mOpening Dashboard at http://localhost:3000\033[0m"
+echo -e "\033[0;32mOpening Dashboard at http://127.0.0.1:3000\033[0m"
 
-if which xdg-open > /dev/null; then
-  xdg-open http://localhost:3000
-elif which open > /dev/null; then
-  open http://localhost:3000
+if command -v open > /dev/null; then
+    open "http://127.0.0.1:3000"
+elif command -v xdg-open > /dev/null; then
+    xdg-open "http://127.0.0.1:3000"
 else
   echo "Please open http://localhost:3000 in your browser."
 fi
