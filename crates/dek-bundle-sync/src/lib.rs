@@ -76,7 +76,7 @@ impl BundleSyncAgent {
         Ok(())
     }
 
-    pub async fn run_pipeline(&self) -> Result<DekConfig> {
+    pub async fn run_pipeline(&self) -> Result<(DekConfig, std::path::PathBuf)> {
         let client = self.client.read().await.clone();
 
         info!("[BundleSync] Starting Unified Sync Pipeline...");
@@ -238,40 +238,13 @@ impl BundleSyncAgent {
             let _ = fs::set_permissions(&bundle_path, fs::Permissions::from_mode(0o600));
         }
 
-        // Atomically update active pointer (using file rename for cross-platform compatibility)
-        let active_path = dek_config::paths::get_active_bundle_path();
-        let lkg_path = dek_config::paths::get_data_dir().join("active_bundle_lkg.json");
-        let tmp_path = target_dir.join("active_bundle.tmp.json");
-
-        fs::write(&tmp_path, payload_string)?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = fs::set_permissions(&tmp_path, fs::Permissions::from_mode(0o600));
-        }
-
-        // Backup to LKG
-        if active_path.exists() {
-            let _ = fs::copy(&active_path, &lkg_path);
-        }
-
-        // Atomic rename
-        fs::rename(&tmp_path, &active_path)?;
-
         final_state = ArtifactState::Staged;
         info!(
-            "[BundleSync] State: {:?} - Staged combined config atomically to {:?}",
+            "[BundleSync] State: {:?} - Staged combined config at {:?}",
             final_state,
-            active_path
+            bundle_path
         );
 
-        // Activation is implicit via dek-mcp-proxy's notify watcher
-        final_state = ArtifactState::Active;
-        info!(
-            "[BundleSync] State: {:?} - Pipeline complete. Proxy will activate implicitly.",
-            final_state
-        );
-
-        Ok(dek_config)
+        Ok((dek_config, bundle_path))
     }
 }

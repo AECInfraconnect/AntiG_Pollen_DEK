@@ -33,6 +33,7 @@ pub async fn spawn_ipc_server_task(
     bundle_agent: Arc<BundleSyncAgent>,
     metrics_client: Arc<RwLock<reqwest::Client>>,
     start_time: Instant,
+    reload_coordinator: Arc<crate::reload_coordinator::ReloadCoordinator>,
 ) -> Result<JoinHandle<()>> {
     let listener = TcpListener::bind(&ipc_listen_addr).await?;
     info!("IPC Endpoint listening on {}", ipc_listen_addr);
@@ -66,6 +67,7 @@ pub async fn spawn_ipc_server_task(
                             let sink_clone = telemetry_sink.clone();
                             let sync_agent_clone = bundle_agent.clone();
                             let metrics_client_clone = metrics_client.clone();
+                            let reload_coordinator_clone = reload_coordinator.clone();
 
                             ipc_join_set.spawn({
                                 let req_id = Uuid::new_v4();
@@ -121,24 +123,25 @@ pub async fn spawn_ipc_server_task(
                                                 IpcRequest::ReloadConfig => {
                                                     info!("Received ReloadConfig IPC command. Triggering unified sync pipeline...");
                                                     match sync_agent_clone.run_pipeline().await {
-                                                        Ok(new_config) => {
+                                                        Ok((new_config, staged_path)) => {
                                                             let mut success = true;
-                                                            if let Err(e) = sink_clone.update_mtls(&new_config.mtls).await {
-                                                                error!("Failed to update Telemetry Sink mTLS: {}", e);
+                                                            if let Err(e) = reload_coordinator_clone.process_staged_bundle(&new_config, &staged_path).await {
+                                                                error!("Bundle Activation Failed via IPC: {}", e);
                                                                 success = false;
                                                             }
+                                                            if let Err(e) = sink_clone.update_mtls(&new_config.mtls).await {
+                                                                error!("Failed to update Telemetry Sink mTLS: {}", e);
+                                                            }
                                                             if let Err(e) = sync_agent_clone.update_mtls(&new_config.mtls).await {
-                                                                error!("Failed to update Bundle Sync Agent mTLS: {}", e);
-                                                                success = false;
+                                                                error!("Failed to update Bundle Sync mTLS: {}", e);
                                                             }
                                                             match new_config.mtls.build_client(None) {
                                                                 Ok(c) => {
-                                                                    *metrics_client_clone.write().await = c;
-                                                                    info!("Successfully updated Metrics Client mTLS");
+                                                                    let mut mc = metrics_client_clone.write().await;
+                                                                    *mc = c;
                                                                 }
                                                                 Err(e) => {
-                                                                    error!("Failed to update Metrics Client mTLS: {}", e);
-                                                                    success = false;
+                                                                    error!("Failed to build metrics client with new mTLS config: {}", e);
                                                                 }
                                                             }
                                                             if success {

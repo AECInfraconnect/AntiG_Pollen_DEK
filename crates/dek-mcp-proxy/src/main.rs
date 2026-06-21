@@ -98,7 +98,6 @@ async fn main() -> Result<()> {
         if let Ok(adapter) = OpenFgaAdapter::new("http://localhost:8080", "store_123", None) {
             router.register_evaluator("openfga", Box::new(adapter));
         }
-        // Removed fallback to Cedar requiring user_bob
     }
 
     // Determine plugin paths
@@ -164,9 +163,14 @@ async fn main() -> Result<()> {
                 | EventKind::Create(_) => {
                     let path = event.paths.first();
                     if let Some(p) = path {
-                        if p.ends_with("active_bundle.json") {
+                        let is_active = p.ends_with("active_bundle.json");
+                        let is_shadow = p.ends_with("shadow_bundle.json");
+
+                        if is_active || is_shadow {
+                            let bundle_type = if is_active { "active" } else { "shadow" };
                             info!(
-                                "Detected change in active_bundle.json. Attempting hot-reload..."
+                                "Detected change in {}. Attempting hot-reload...",
+                                p.display()
                             );
 
                             if let Ok(content) = std::fs::read_to_string(p) {
@@ -212,15 +216,19 @@ async fn main() -> Result<()> {
                                         }
                                     }
 
-                                    // Clear cache of the old router before replacing
-                                    old_snapshot.router.clear_caches().await;
-
                                     let new_snapshot = PolicySnapshot::build(new_router, metadata_clone);
-                                    state_clone.reload(new_snapshot);
-
-                                    info!("Hot-reloaded policies and metadata from disk successfully!");
+                                    
+                                    if is_active {
+                                        // Clear cache of the old router before replacing
+                                        old_snapshot.router.clear_caches().await;
+                                        state_clone.reload(new_snapshot);
+                                        info!("Hot-reloaded active policies and metadata from disk successfully!");
+                                    } else {
+                                        state_clone.reload_shadow(new_snapshot);
+                                        info!("Hot-reloaded shadow policies and metadata from disk successfully!");
+                                    }
                                 } else {
-                                    error!("Failed to parse active_bundle.json payload");
+                                    error!("Failed to parse payload for {}", bundle_type);
                                 }
                             }
                         }
@@ -354,7 +362,23 @@ async fn handle_mcp_request(
     policy_input["resource"] = json!("mcp_tool");
 
     // Evaluate against the Adaptive Policy Pipeline
-    let decision_result = snapshot.router.authorize(policy_input).await;
+    let decision_result = snapshot.router.authorize(policy_input.clone()).await;
+
+    // Shadow evaluation if shadow_snapshot exists
+    if let Some(shadow_snap) = state.shadow_snapshot.load_full() {
+        let shadow_input = policy_input.clone();
+        tokio::spawn(async move {
+            match shadow_snap.router.authorize(shadow_input).await {
+                Ok(shadow_decision) => {
+                    info!("Shadow Pipeline Decision: {:?}", shadow_decision);
+                    // Emit telemetry or compare with Active
+                }
+                Err(e) => {
+                    warn!("Shadow Policy Evaluation Error: {}", e);
+                }
+            }
+        });
+    }
 
     match decision_result {
         Ok(decision) => {

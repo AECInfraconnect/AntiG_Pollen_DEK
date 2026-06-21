@@ -12,6 +12,7 @@ mod probation;
 mod supervisor;
 mod metrics_push;
 mod svid_renewal;
+mod reload_coordinator;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
