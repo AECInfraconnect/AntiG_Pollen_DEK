@@ -42,9 +42,9 @@ pub struct Artifact {
 use dek_config::DekConfig;
 
 pub struct BundleSyncAgent {
-    cloud_url: String,
-    tenant_id: String,
-    device_id: String,
+    pub cloud_url: String,
+    pub tenant_id: String,
+    pub device_id: String,
     key_set: std::sync::Arc<arc_swap::ArcSwap<crate::keys::TrustedKeySet>>,
     client: RwLock<reqwest::Client>,
     api_token: Option<String>,
