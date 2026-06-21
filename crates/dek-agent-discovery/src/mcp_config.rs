@@ -34,18 +34,16 @@ pub enum McpTransport {
     Unknown,
 }
 
-pub fn parse_mcp_config(parser_id: &str, content: &str) -> Vec<McpServerEntry> {
+pub fn parse_mcp_config(_parser_id: &str, content: &str) -> Vec<McpServerEntry> {
     let json: serde_json::Value = match serde_json::from_str(content) {
         Ok(v) => v,
         Err(_) => return vec![],
     };
-    let servers_node = match parser_id {
-        "mcp_servers_vscode" => json.get("servers"),
-        "mcp_servers_zed" => json.get("context_servers"),
-        "mcp_servers_continue_array" => json.get("mcpServers"),
-        _ => json.get("mcpServers"),
-    };
-    let Some(node) = servers_node else {
+    let node = json
+        .get("mcpServers")
+        .or_else(|| json.get("servers"))
+        .or_else(|| json.get("context_servers"));
+    let Some(node) = node else {
         return vec![];
     };
 

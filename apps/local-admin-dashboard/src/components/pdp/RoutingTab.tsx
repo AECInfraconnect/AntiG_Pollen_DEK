@@ -12,6 +12,7 @@ export function RoutingTab() {
   const [newRoutePrimary, setNewRoutePrimary] = useState("");
   const [newRouteFallback, setNewRouteFallback] = useState("");
   const [newRouteFailure, setNewRouteFailure] = useState<PdpRouteRule["failure_behavior"]>("fallback");
+  const [newRouteMatchCond, setNewRouteMatchCond] = useState<string>("{}");
   const [simulateResult, setSimulateResult] = useState<any>(null);
 
   const reload = async () => {
@@ -31,12 +32,19 @@ export function RoutingTab() {
   const handleAddRoute = async () => {
     if (!newRouteName || !newRoutePrimary) return;
     try {
+      let matchCond = {};
+      try {
+        matchCond = JSON.parse(newRouteMatchCond);
+      } catch (e) {
+        alert("Invalid JSON for Match Conditions");
+        return;
+      }
       await PdpRoutingApi.upsert({
         id: `route-${Date.now()}`,
         name: newRouteName,
         enabled: true,
         priority: 100,
-        match_cond: {},
+        match_cond: matchCond,
         mode: newRouteMode,
         primary_pdp_id: newRoutePrimary,
         fallback_pdp_ids: newRouteFallback ? newRouteFallback.split(",").map((s) => s.trim()) : [],
@@ -175,6 +183,15 @@ export function RoutingTab() {
                 placeholder="e.g. remote-opa"
                 value={newRouteFallback}
                 onChange={(e) => setNewRouteFallback(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Match Conditions (JSON)</label>
+              <textarea
+                className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder='e.g. {"agent_ids": ["my-agent"]}'
+                value={newRouteMatchCond}
+                onChange={(e) => setNewRouteMatchCond(e.target.value)}
               />
             </div>
             <div className="space-y-2">

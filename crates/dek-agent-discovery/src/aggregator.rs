@@ -29,6 +29,13 @@ pub fn aggregate_evidence(
         let mut endpoints = Vec::new();
         let mut redacted_env_keys = Vec::new();
 
+        let mut signals = crate::fingerprint::FingerprintSignals {
+            matched_process_name: None,
+            matched_config_path: None,
+            matched_port: None,
+            has_mcp_servers: false,
+        };
+
         for ev in &group {
             if ev.confidence > max_confidence {
                 max_confidence = ev.confidence;
@@ -39,12 +46,15 @@ pub fn aggregate_evidence(
                     name = ev.source_path_redacted.clone().unwrap_or(name);
                     agent_type = crate::fingerprint::infer_agent_type_from_name(&name);
                     process_hash = ev.source_path_hash.clone();
+                    signals.matched_process_name = Some(name.clone());
                 }
                 EvidenceSource::McpConfig => {
                     if agent_type == InferredAgentType::UnknownAiProcess {
                         agent_type = InferredAgentType::DesktopAgent;
                         name = "MCP Capable Agent".to_string();
                     }
+                    signals.matched_config_path = ev.source_path_redacted.clone();
+
                     if let Some(transport) = ev.data.get("transport").and_then(|v| v.as_str()) {
                         let server_name = ev
                             .data
@@ -65,6 +75,8 @@ pub fn aggregate_evidence(
                             transport: transport.to_string(),
                             command,
                         });
+
+                        signals.has_mcp_servers = true;
 
                         if let Some(env_keys) =
                             ev.data.get("env_key_names").and_then(|v| v.as_array())
@@ -89,6 +101,7 @@ pub fn aggregate_evidence(
                                         .and_then(|c| c.as_str())
                                         .map(|s| s.to_string()),
                                 });
+                                signals.has_mcp_servers = true;
                             }
                         }
                     }
@@ -102,6 +115,7 @@ pub fn aggregate_evidence(
                             protocol: "http".into(),
                         });
                     }
+                    signals.matched_port = Some(80); // Just a dummy port to indicate port matched
                 }
                 EvidenceSource::PortProbe => {
                     agent_type = InferredAgentType::LocalModelServer;
@@ -117,15 +131,21 @@ pub fn aggregate_evidence(
                             transport: "sse".into(),
                             command: None,
                         });
+                        signals.has_mcp_servers = true;
                     }
+                    signals.matched_port = Some(80);
                 }
                 EvidenceSource::IdeExtension => {
                     agent_type = InferredAgentType::IdeExtension;
                     name = "IDE Extension".into();
+                    signals.matched_process_name = Some(name.clone());
                 }
                 _ => {}
             }
         }
+
+        let computed_confidence = crate::fingerprint::compute_confidence(&signals);
+        max_confidence = f64::max(max_confidence, computed_confidence);
 
         let mut control_bindings = Vec::new();
         let cand_id = format!("cand_{}", uuid::Uuid::new_v4());

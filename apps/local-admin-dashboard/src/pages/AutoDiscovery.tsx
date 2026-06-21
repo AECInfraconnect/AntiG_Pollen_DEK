@@ -137,10 +137,23 @@ export function AutoDiscovery() {
     const candidate = registerModal.candidate;
     if (!candidate) return;
     try {
+      // 1. Register the agent
       await RegistryApi.registerDiscoveryCandidate(candidate.candidate_id, {
         agent_name: registerModal.name,
       });
-      alert(`Successfully registered ${registerModal.name}`);
+      
+      // 2. Apply all suggested control bindings automatically (Enforce)
+      if (candidate.suggested_control_bindings && candidate.suggested_control_bindings.length > 0) {
+        for (const binding of candidate.suggested_control_bindings) {
+          try {
+            await RegistryApi.applyControlBinding(binding.binding_id);
+          } catch (bindErr) {
+            console.error(`Failed to apply binding ${binding.binding_id}:`, bindErr);
+          }
+        }
+      }
+      
+      alert(`Successfully registered and enforced bindings for ${registerModal.name}`);
       fetchCandidates();
       setRegisterModal({ show: false, candidate: null, name: "" });
     } catch (err) {
@@ -253,7 +266,7 @@ export function AutoDiscovery() {
                             onClick={() => openRegisterModal(c)}
                             className="text-xs border px-3 py-1.5 rounded hover:bg-primary hover:text-primary-foreground font-medium"
                           >
-                            Register Agent
+                            Register & Enforce
                           </button>
                         )}
                       </div>
@@ -555,9 +568,10 @@ export function AutoDiscovery() {
               <button
                 onClick={handleConfirmRegister}
                 disabled={!registerModal.name.trim()}
-                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
+                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
               >
-                Register
+                <ShieldAlert className="w-4 h-4" />
+                Register & Enforce
               </button>
             </div>
           </div>
