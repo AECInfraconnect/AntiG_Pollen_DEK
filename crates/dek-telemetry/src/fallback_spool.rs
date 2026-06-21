@@ -28,7 +28,7 @@ impl SecureFallback {
         #[cfg(target_os = "linux")]
         let store = DefaultOsKeyStore::new(key_dir.join("secure_spool.key"));
         #[cfg(target_os = "macos")]
-        let store = DefaultOsKeyStore::new();
+        let store = DefaultOsKeyStore::new(key_dir.join("secure_spool.key"));
 
         let key_mgr = SpoolKeyManager::new(store);
         let key = key_mgr.active_aead_key()?;
