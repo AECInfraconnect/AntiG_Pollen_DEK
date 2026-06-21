@@ -42,8 +42,8 @@ impl NetworkEnforcer for WfpFilterManager {
         }
 
         info!(
-            "Applying WFP filters for policy: {} (v{})",
-            rules.policy_id, rules.version
+            "OS Enforcement (Windows): inserting WFP filters for policy '{}' (v{}, risk={})",
+            rules.policy_id, rules.version, rules.risk_tier
         );
 
         Ok(())

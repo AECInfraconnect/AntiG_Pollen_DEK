@@ -23,6 +23,8 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 
 metrics-exporter-prometheus = "0.13"
+dek-telemetry = { version = "0.1.0", path = "../dek-telemetry" }
+chrono.workspace = true
 
 [build-dependencies]
 tonic-build = "0.12"

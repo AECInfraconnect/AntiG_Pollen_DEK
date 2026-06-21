@@ -256,7 +256,10 @@ impl Supervisor {
                 enforcement_ref,
                 telemetry_for_api,
                 health_rx,
-                43890,
+                std::env::var("DEK_API_PORT")
+                    .ok()
+                    .and_then(|p| p.parse().ok())
+                    .unwrap_or(43890),
             )
             .await
             {
@@ -339,15 +342,20 @@ impl Supervisor {
             }
         });
 
-        // Spawn SVID Renewal Task
-        let renew_handle = crate::svid_renewal::spawn_svid_renewal_task(
-            self.cancel.clone(),
-            renew_cfg,
-            self.telemetry_sink.clone(),
-            self.bundle_agent.clone(),
-            self.metrics_client.clone(),
-            health_tx,
-        );
+        // Spawn SVID Renewal Task (Only in Cloud Mode)
+        let is_local_mode = self.cloud_url.contains("127.0.0.1") || self.cloud_url.contains("localhost");
+        let renew_handle = if !is_local_mode {
+            crate::svid_renewal::spawn_svid_renewal_task(
+                self.cancel.clone(),
+                renew_cfg,
+                self.telemetry_sink.clone(),
+                self.bundle_agent.clone(),
+                self.metrics_client.clone(),
+                health_tx,
+            )
+        } else {
+            tokio::spawn(async {})
+        };
 
         // 4) Wait for shutdown signal -> cancel -> bounded drain.
         Self::wait_for_signal().await;

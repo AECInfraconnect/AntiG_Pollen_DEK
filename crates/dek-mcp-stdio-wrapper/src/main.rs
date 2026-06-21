@@ -255,7 +255,8 @@ async fn main() -> Result<()> {
                 policy_input["principal"] = json!(agent_id.clone());
                 policy_input["resource"] = json!(server_id.clone());
 
-                let decision_req = dek_decision::DecisionRequest {
+                let decision_req = dek_decision::DecisionRequestV1 {
+                    decision_id: Uuid::new_v4().to_string(),
                     request_id: Uuid::new_v4().to_string(),
                     trace_id: None,
                     tenant_id: tenant_id.clone(),
@@ -313,6 +314,7 @@ async fn main() -> Result<()> {
                             "verdict": if decision.allow { "allow" } else { "deny" },
                             "reason": decision.reason.clone(),
                             "request_id": decision_req.request_id.clone(),
+                            "decision_id": decision_req.decision_id.clone(),
                         }
                     });
                     telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);

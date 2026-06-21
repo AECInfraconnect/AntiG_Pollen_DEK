@@ -16,8 +16,8 @@ pub async fn hydrate_runtime(
     let mut router = PolicyRouter::new();
 
     // Attempt to load route configuration
-    // (In dek-router-builder it panics or unwrap so we catch and map to ActivationError)
-    dek_router_builder::load_router_config(&mut router, payload);
+    let router_payload = payload.get("policy_config").unwrap_or(payload);
+    dek_router_builder::load_router_config(&mut router, router_payload);
 
     // Load OpenFGA Adapter
     if let Some(openfga_cfg) = config

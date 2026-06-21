@@ -4,7 +4,7 @@
 use crate::state::AppState;
 use crate::BUNDLE_SEED;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Query},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
@@ -21,6 +21,10 @@ pub fn router() -> Router<AppState> {
         .route(
             "/v1/tenants/:tenant_id/bundles/latest",
             get(get_latest_bundle),
+        )
+        .route(
+            "/v1/devices/:device_id/desired-state",
+            get(get_desired_state),
         )
         .route(
             "/v1/tenants/:tenant_id/bundles/publish",
@@ -122,6 +126,38 @@ async fn get_latest_bundle(
     let revision = state.revision.load(std::sync::atomic::Ordering::Relaxed) as u64;
     let manifest = generate_bundle(&tenant_id, revision, false);
     (StatusCode::OK, Json(sign_bundle(&manifest)))
+}
+
+#[derive(Deserialize)]
+struct DesiredStateQuery {
+    #[allow(dead_code)]
+    current_bundle: Option<String>,
+}
+
+async fn get_desired_state(
+    Path(device_id): Path<String>,
+    Query(_query): Query<DesiredStateQuery>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let revision = state.revision.load(std::sync::atomic::Ordering::Relaxed) as u64;
+    let bundle_id = format!("bundle-{}", revision);
+    
+    let response = serde_json::json!({
+        "device_id": device_id,
+        "desired_bundle": {
+            "bundle_id": bundle_id,
+            "version": format!("1.0.{}", revision),
+            "url": format!("https://mock-cloud.local/bundles/{}.tar.gz", bundle_id),
+            "sha256": "dummy_sha256_hash",
+            "signature": "dummy_signature"
+        },
+        "activation": {
+            "mode": "hot_reload",
+            "deadline": chrono::Utc::now().to_rfc3339()
+        }
+    });
+
+    (StatusCode::OK, Json(response))
 }
 
 #[derive(Deserialize)]

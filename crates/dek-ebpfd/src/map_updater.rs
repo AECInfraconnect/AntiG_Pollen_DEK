@@ -74,7 +74,7 @@ impl MapUpdater {
             self.current_generation = update.generation;
         }
 
-        info!("Applied update to map: {}", update.map_name);
+        info!("OS Enforcement: applied compiled update to eBPF map '{}' (gen={}, src={:?})", update.map_name, update.generation, update.source);
         // Note: Actual aya map modification would happen here.
         Ok(())
     }

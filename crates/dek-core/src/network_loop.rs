@@ -115,7 +115,7 @@ pub mod nefilter_backend {
     impl NeFilterEnforcer {
         pub fn new() -> anyhow::Result<Self> {
             let mut client = NeFilterClient::new();
-            client.connect()?;
+            client.start()?;
             Ok(Self { client })
         }
     }
@@ -123,13 +123,13 @@ pub mod nefilter_backend {
         fn apply(&mut self, rules: &[CompiledNetworkRules]) -> anyhow::Result<()> {
             self.client.clear_rules()?;
             for r in rules {
-                self.client.push_rules(r)?;
+                self.client.apply_rules(r)?;
             }
             Ok(())
         }
         fn fail_closed(&mut self) -> anyhow::Result<()> {
             self.client.clear_rules()?;
-            self.client.push_rules(&deny_all_rule())
+            self.client.apply_rules(&deny_all_rule())
         }
         fn backend(&self) -> &'static str {
             "nefilter"

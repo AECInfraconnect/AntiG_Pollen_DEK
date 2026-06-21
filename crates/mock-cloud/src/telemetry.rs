@@ -24,6 +24,7 @@ use dek_domain_schema::TelemetryEvent;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/v1/telemetry/events", post(ingest_events))
+        .route("/v1/devices/:device_id/status", post(ingest_device_status))
         .route("/v1/telemetry/decision-logs", post(ingest_decision_logs))
         .route(
             "/v1/telemetry/security-events",
@@ -141,4 +142,32 @@ async fn ingest_events_tenant(
     Json(p): Json<TelemetryPayload>,
 ) -> impl IntoResponse {
     handle(s, p, "events").await
+}
+
+#[derive(serde::Deserialize)]
+pub struct DeviceStatusPayload {
+    pub device_id: String,
+    pub bundle_id: String,
+    pub status: String,
+    #[serde(default)]
+    pub capabilities: serde_json::Value,
+    #[serde(default)]
+    pub health: serde_json::Value,
+    pub last_error: Option<String>,
+}
+
+async fn ingest_device_status(
+    axum::extract::Path(_device_id): axum::extract::Path<String>,
+    State(_s): State<AppState>,
+    Json(p): Json<DeviceStatusPayload>,
+) -> impl IntoResponse {
+    // In a real implementation we would update the DeviceStatus in the database.
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "status": "recorded",
+            "device_id": p.device_id,
+            "bundle_id": p.bundle_id
+        }))
+    )
 }

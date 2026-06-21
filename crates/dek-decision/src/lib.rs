@@ -166,7 +166,7 @@ impl PolicyRouterHandle {
 }
 
 // -----------------------------------------------------------------------------
-// Legacy structures
+// V1 structures
 // -----------------------------------------------------------------------------
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Principal {
@@ -180,8 +180,12 @@ pub struct AgentIdentity {
     pub version: String,
 }
 
+// -----------------------------------------------------------------------------
+// V1 structures
+// -----------------------------------------------------------------------------
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DecisionRequest {
+pub struct DecisionRequestV1 {
+    pub decision_id: String,
     pub request_id: String,
     pub trace_id: Option<String>,
     pub tenant_id: String,
@@ -198,6 +202,53 @@ pub struct DecisionRequest {
 pub struct Obligation {
     pub kind: String,
     pub parameters: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Effect {
+    Allow,
+    Deny,
+    Quarantine,
+    AllowAudit,
+    ShadowDeny,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PartialDecision {
+    pub effect: Effect,
+    pub reason: String,
+    pub matched_policies: Vec<String>,
+    pub obligations: Vec<Obligation>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DecisionResponseV1 {
+    pub decision_id: String,
+    pub allowed: bool,
+    pub effect: Effect,
+    pub reason: String,
+    pub matched_policies: Vec<String>,
+    pub obligations: Vec<Obligation>,
+    pub ttl_ms: Option<u64>,
+    pub bundle_id: String,
+    pub generation: u64,
+}
+
+// -----------------------------------------------------------------------------
+// Legacy structures
+// -----------------------------------------------------------------------------
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DecisionRequest {
+    pub request_id: String,
+    pub trace_id: Option<String>,
+    pub tenant_id: String,
+    pub device_id: String,
+    pub principal: Principal,
+    pub agent: Option<AgentIdentity>,
+    pub action: String,
+    pub resource: ResourceRef,
+    pub context: serde_json::Value,
+    pub input_hash: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
