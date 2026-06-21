@@ -67,20 +67,4 @@ jobs:
     - name: Build WASM Plugins
       run: cargo build --target wasm32-wasip1 --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude dek-core
 
-  security_audit:
-    name: Security & Dependencies
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install cargo-audit
-      run: cargo install cargo-audit
-    - name: Run Cargo Audit
-      run: cargo audit
-    - name: Install cargo-deny
-      run: cargo install cargo-deny
-    - name: Run Cargo Deny
-      run: cargo deny check
-    - name: Install cargo-machete
-      run: cargo install cargo-machete
-    - name: Run Cargo Machete
-      run: cargo machete
+

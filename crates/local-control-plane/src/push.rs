@@ -11,7 +11,7 @@ use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::StreamExt;
 
 pub async fn sse_handler(
-    State(state): State<crate::AppState>,
+    State(state): State<crate::state::AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let receiver = state.bundle_tx.subscribe();
     let mut broadcast_stream = BroadcastStream::new(receiver);

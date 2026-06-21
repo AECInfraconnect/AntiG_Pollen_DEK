@@ -49,7 +49,7 @@ pub fn constant_time_eq(a: &str, b: &str) -> bool {
 }
 
 pub async fn require_token(
-    State(state): State<crate::AppState>,
+    State(state): State<crate::state::AppState>,
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {

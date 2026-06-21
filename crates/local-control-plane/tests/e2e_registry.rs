@@ -1,9 +1,12 @@
 use reqwest::Client;
 use serde_json::json;
 
+mod common;
+
 #[tokio::test]
 async fn e2e_register_agent_tool_resource_entity() {
-    let base = std::env::var("LCP_BASE_URL").unwrap_or_else(|_| "http://127.0.0.1:3000".into());
+    let harness = common::LocalControlPlaneHarness::start().await;
+    let base = harness.base_url.clone();
     let client = Client::new();
 
     let meta = json!({
