@@ -6,6 +6,8 @@ import { Servers } from "./pages/Servers";
 import { Tools } from "./pages/Tools";
 import { Resources } from "./pages/Resources";
 import { Policies } from "./pages/Policies";
+import { Simulator } from "./pages/Simulator";
+import { Bundles } from "./pages/Bundles";
 import { DecisionLogs } from "./pages/DecisionLogs";
 import { Entities } from "./pages/Entities";
 import { Relationships } from "./pages/Relationships";
@@ -26,6 +28,8 @@ function App() {
           <Route path="relationships" element={<Relationships />} />
           <Route path="blackbox-ai" element={<BlackboxAI />} />
           <Route path="policies" element={<Policies />} />
+          <Route path="simulator" element={<Simulator />} />
+          <Route path="bundles" element={<Bundles />} />
           <Route path="audit" element={<DecisionLogs />} />
           <Route path="alerts" element={<div className="glass p-6 rounded-xl"><h1>Alerts (WIP)</h1></div>} />
           <Route path="settings" element={<Settings />} />

@@ -56,6 +56,21 @@ export class ControlPlaneClient {
     return this.fetchApi(`/policies/${policyId}/publish`, { method: 'POST' });
   }
 
+  async simulatePolicy(req: any): Promise<any> {
+    return this.fetchApi('/policies/simulate', { method: 'POST', body: JSON.stringify(req) });
+  }
+
+  // Bundles
+  async listBundles(): Promise<any[]> {
+    return this.fetchApi('/bundles');
+  }
+  
+  async pushSync(): Promise<any> {
+    // Note: the mock server push is a stream, but we might just hit a sync endpoint.
+    // Assuming /bundles/sync or just let the dashboard know it triggers a reload
+    return this.fetchApi('/bundles/sync', { method: 'POST' });
+  }
+
   // Telemetry
   async listDecisionLogs(): Promise<TelemetryEventEnvelope[]> {
     const data = await this.fetchApi('/telemetry/decision-logs');
@@ -63,8 +78,21 @@ export class ControlPlaneClient {
   }
 }
 
-// Global default client for now
-export const defaultClient = new ControlPlaneClient('local');
+// Store the active profile in localStorage to persist across reloads
+const getStoredProfile = (): 'local' | 'mock-cloud' => {
+  const p = localStorage.getItem('dek_admin_profile');
+  if (p === 'mock-cloud') return 'mock-cloud';
+  return 'local';
+};
+
+// Global default client
+export const defaultClient = new ControlPlaneClient(getStoredProfile());
+
+// Helper to switch profile
+export const switchProfile = (profile: 'local' | 'mock-cloud') => {
+  localStorage.setItem('dek_admin_profile', profile);
+  window.location.reload();
+};
 
 // Proxy objects for backward compatibility with existing code
 export const RegistryApi = {
@@ -81,6 +109,12 @@ export const PolicyApi = {
   list: () => defaultClient.listPolicies(),
   create: (draft: PolicyDraft) => defaultClient.createPolicy(draft),
   publish: (policyId: string) => defaultClient.publishPolicy(policyId),
+  simulate: (req: any) => defaultClient.simulatePolicy(req),
+};
+
+export const BundleApi = {
+  list: () => defaultClient.listBundles(),
+  sync: () => defaultClient.pushSync(),
 };
 
 export const TelemetryApi = {
