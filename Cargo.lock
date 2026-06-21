@@ -151,6 +151,59 @@ dependencies = [
 ]
 
 [[package]]
+name = "askama"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1bf825125edd887a019d0a3a837dcc5499a68b0d034cc3eb594070c3e18addc"
+dependencies = [
+ "askama_macros",
+ "itoa",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "askama_derive"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1c7065972a130eafa84215f21352ae15b4a7393da48c1f5e103904490736738"
+dependencies = [
+ "askama_parser",
+ "basic-toml",
+ "glob",
+ "memchr",
+ "proc-macro2",
+ "quote",
+ "rustc-hash 2.1.2",
+ "serde",
+ "serde_derive",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "askama_macros"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e23b1d2c4bd39a41971f6124cef4cc6fd0540913ecb90919b69ab3bbe44ae1a"
+dependencies = [
+ "askama_derive",
+]
+
+[[package]]
+name = "askama_parser"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7db09fde9143e7ac4513358fb32ee32847125b63b18ea715afd487956da715da"
+dependencies = [
+ "rustc-hash 2.1.2",
+ "serde",
+ "serde_derive",
+ "unicode-ident",
+ "winnow 1.0.3",
+]
+
+[[package]]
 name = "asn1-rs"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -473,6 +526,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
+name = "basic-toml"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba62675e8242a4c4e806d12f11d136e626e6c8361d6b829310732241652a178a"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -738,9 +800,9 @@ dependencies = [
 
 [[package]]
 name = "chrono"
-version = "0.4.44"
+version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c673075a2e0e5f4a1dde27ce9dee1ea4558c7ffe648f576438a20ca1d2acc4b0"
+checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
  "js-sys",
@@ -3245,9 +3307,11 @@ name = "mock-cloud"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "askama",
  "axum",
  "axum-server",
  "base64 0.22.1",
+ "chrono",
  "ed25519-dalek",
  "jsonwebtoken 10.4.0",
  "rand 0.10.1",
@@ -5506,7 +5570,7 @@ dependencies = [
  "serde_spanned",
  "toml_datetime",
  "toml_write",
- "winnow",
+ "winnow 0.7.15",
 ]
 
 [[package]]
@@ -6744,6 +6808,15 @@ name = "winnow"
 version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "winnow"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0592e1c9d151f854e6fd382574c3a0855250e1d9b2f99d9281c6e6391af352f1"
 dependencies = [
  "memchr",
 ]

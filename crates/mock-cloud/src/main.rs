@@ -1,20 +1,23 @@
 use anyhow::{Context, Result};
+use askama::Template;
 use axum::{
-    extract::{Form, Path, State},
+    extract::{Form, Path, Query, State},
     http::{HeaderMap, StatusCode},
+    response::{Html, IntoResponse, Redirect},
     routing::{get, post},
     Json, Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
 use axum_server::Handle;
 use base64::Engine;
+use chrono::Utc;
 use ed25519_dalek::{Signer, SigningKey};
 use rustls::{server::WebPkiClientVerifier, RootCertStore, ServerConfig};
 use rustls_pemfile::{certs, private_key};
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fs::File;
 use std::io::BufReader;
 use std::net::SocketAddr;
@@ -22,8 +25,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
 
-// Static ed25519 seed used to sign policy bundles. The pinned_bundle_public_key
-// returned at /enroll is derived from this so the enrolled DEK pins the right key.
+// Static ed25519 seed used to sign policy bundles.
 const BUNDLE_SEED: [u8; 32] = [
     0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10,
     0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10,
@@ -34,12 +36,48 @@ fn bundle_pubkey_b64() -> String {
     base64::prelude::BASE64_STANDARD.encode(sk.verifying_key().as_bytes())
 }
 
+#[derive(Clone, Debug)]
+struct DeviceStatus {
+    id: String,
+    profile: String,
+    revoked: bool,
+    last_health: String,
+}
+
+#[derive(Clone, Debug)]
+struct LogEntry {
+    device_id: String,
+    timestamp: String,
+    action: String,
+    decision: String,
+}
+
+#[derive(Clone, Debug)]
+struct PolicyBundle {
+    version: String,
+    cedar_src: String,
+    openfga_store: String,
+}
+
+#[derive(Clone, Debug)]
+struct RolloutConfig {
+    latest_bundle: PolicyBundle,
+    canary_bundle: Option<PolicyBundle>,
+    canary_percentage: u8, // 0-100
+}
+
 #[derive(Clone)]
 struct AppState {
     revision: Arc<AtomicUsize>,
     rsa_public_key_pem: String,
-    /// device_code -> poll count (drives the authorization_pending -> granted flow)
+    /// device_code -> poll count
     pending: Arc<Mutex<HashMap<String, u32>>>,
+    /// device_id -> DeviceStatus
+    devices: Arc<Mutex<HashMap<String, DeviceStatus>>>,
+    /// decision logs buffer
+    decision_logs: Arc<Mutex<VecDeque<LogEntry>>>,
+    /// rollout config
+    rollout: Arc<Mutex<RolloutConfig>>,
 }
 
 #[tokio::main]
@@ -59,6 +97,17 @@ async fn main() -> Result<()> {
         revision: Arc::new(AtomicUsize::new(1)),
         rsa_public_key_pem,
         pending: Arc::new(Mutex::new(HashMap::new())),
+        devices: Arc::new(Mutex::new(HashMap::new())),
+        decision_logs: Arc::new(Mutex::new(VecDeque::with_capacity(100))),
+        rollout: Arc::new(Mutex::new(RolloutConfig {
+            latest_bundle: PolicyBundle {
+                version: "1.0.0".to_string(),
+                cedar_src: "permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n);".to_string(),
+                openfga_store: "store_rev_1".to_string(),
+            },
+            canary_bundle: None,
+            canary_percentage: 0,
+        })),
     };
 
     // ---- mTLS API (post-enrollment): config / bundles / telemetry ----
@@ -76,8 +125,12 @@ async fn main() -> Result<()> {
         .route("/oauth/device_authorization", post(device_authorization))
         .route("/oauth/token", post(token))
         .route("/enroll", post(enroll_device))
-        .route("/spire/node/attest", post(attest_csr)) // join-token + CSR -> X.509-SVID
-        .route("/device", get(device_page))
+        .route("/spire/node/attest", post(attest_csr))
+        .route("/device", get(device_page_get).post(device_page_post))
+        .route("/admin/dashboard", get(dashboard_page))
+        .route("/admin/devices/:device_id/revoke", post(admin_revoke_device))
+        .route("/admin/policies/publish", post(admin_publish_policy))
+        .route("/admin/policies/rollout", post(admin_set_rollout))
         .with_state(state.clone());
 
     // Load server certificate and key
@@ -111,6 +164,7 @@ async fn main() -> Result<()> {
 
     info!("Mock Cloud mTLS API on https://127.0.0.1:43891");
     info!("Mock Cloud HTTPS Enrollment API on https://127.0.0.1:43892");
+    info!("Dashboard: https://127.0.0.1:43892/admin/dashboard");
 
     let handle = Handle::new();
     let shutdown_handle = handle.clone();
@@ -142,7 +196,127 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-// =========================== Enrollment handlers ===========================
+// =========================== Templates ===========================
+#[derive(Template)]
+#[template(path = "device_approval.html")]
+struct DeviceApprovalTemplate {
+    code: String,
+    error: Option<String>,
+    success: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "dashboard.html")]
+struct DashboardTemplate {
+    devices: Vec<DeviceStatus>,
+    recent_logs: Vec<LogEntry>,
+    telemetry_count: usize,
+}
+
+// =========================== Handlers ===========================
+
+#[derive(Deserialize)]
+struct DevicePageQuery {
+    code: Option<String>,
+}
+
+async fn device_page_get(Query(query): Query<DevicePageQuery>) -> impl IntoResponse {
+    let tpl = DeviceApprovalTemplate {
+        code: query.code.unwrap_or_default(),
+        error: None,
+        success: None,
+    };
+    Html(tpl.render().unwrap())
+}
+
+#[derive(Deserialize)]
+struct DevicePagePost {
+    user_code: String,
+    profile: String,
+}
+
+async fn device_page_post(State(state): State<AppState>, Form(form): Form<DevicePagePost>) -> impl IntoResponse {
+    // In a real system, we'd lookup device_code by user_code.
+    // Here we just mark the next polling attempt as successful by removing it from `pending`?
+    // Actually the token handler checks `pending`. For mock simplicity, let's just create a dummy device in registry
+    // and wait for `/enroll` to pick it up. Or we could just record the profile for the *next* device that enrolls.
+    // Let's create a placeholder device or just globally set next profile.
+    // For MVP, we'll assign the profile to "device-001" which is hardcoded in /enroll.
+    
+    let mut devices = state.devices.lock().unwrap();
+    devices.insert("device-001".to_string(), DeviceStatus {
+        id: "device-001".to_string(),
+        profile: form.profile,
+        revoked: false,
+        last_health: "Pending Enrollment".to_string(),
+    });
+
+    let tpl = DeviceApprovalTemplate {
+        code: form.user_code,
+        error: None,
+        success: Some("Device approved and profile assigned.".to_string()),
+    };
+    Html(tpl.render().unwrap())
+}
+
+async fn dashboard_page(State(state): State<AppState>) -> impl IntoResponse {
+    let devices: Vec<DeviceStatus> = state.devices.lock().unwrap().values().cloned().collect();
+    let logs_guard = state.decision_logs.lock().unwrap();
+    let recent_logs: Vec<LogEntry> = logs_guard.iter().take(50).cloned().collect();
+    let count = logs_guard.len();
+
+    let tpl = DashboardTemplate {
+        devices,
+        recent_logs,
+        telemetry_count: count,
+    };
+    Html(tpl.render().unwrap())
+}
+
+async fn admin_revoke_device(State(state): State<AppState>, Path(device_id): Path<String>) -> impl IntoResponse {
+    let mut devices = state.devices.lock().unwrap();
+    if let Some(dev) = devices.get_mut(&device_id) {
+        dev.revoked = true;
+    }
+    Redirect::to("/admin/dashboard")
+}
+
+
+#[derive(Deserialize)]
+struct PublishPolicyReq {
+    version: String,
+    cedar_src: String,
+    openfga_store: String,
+}
+
+async fn admin_publish_policy(State(state): State<AppState>, Json(req): Json<PublishPolicyReq>) -> impl IntoResponse {
+    let mut rollout = state.rollout.lock().unwrap();
+    rollout.latest_bundle = PolicyBundle {
+        version: req.version,
+        cedar_src: req.cedar_src,
+        openfga_store: req.openfga_store,
+    };
+    Json(json!({"status": "published"}))
+}
+
+#[derive(Deserialize)]
+struct RolloutReq {
+    canary_percentage: u8,
+    canary_bundle_version: String,
+    canary_cedar_src: String,
+    canary_openfga_store: String,
+}
+
+async fn admin_set_rollout(State(state): State<AppState>, Json(req): Json<RolloutReq>) -> impl IntoResponse {
+    let mut rollout = state.rollout.lock().unwrap();
+    rollout.canary_percentage = req.canary_percentage;
+    rollout.canary_bundle = Some(PolicyBundle {
+        version: req.canary_bundle_version,
+        cedar_src: req.canary_cedar_src,
+        openfga_store: req.canary_openfga_store,
+    });
+    Json(json!({"status": "rollout_updated"}))
+}
 
 #[derive(Deserialize)]
 struct DeviceAuthForm {
@@ -192,8 +366,6 @@ async fn token(
         ),
         Some(count) => {
             *count += 1;
-            // Simulate the user taking a moment: pending on the first poll,
-            // granted from the second onward.
             if *count < 2 {
                 (
                     StatusCode::BAD_REQUEST,
@@ -216,10 +388,9 @@ async fn token(
 }
 
 async fn enroll_device(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     headers: HeaderMap,
 ) -> (StatusCode, Json<Value>) {
-    // Mock accepts any Bearer token; real cloud validates it.
     let has_bearer = headers
         .get("authorization")
         .and_then(|v| v.to_str().ok())
@@ -237,18 +408,27 @@ async fn enroll_device(
     let join_token = rand_hex(16);
     info!("CLOUD: enroll -> issuing join_token for {}", device_id);
 
+    // Register device if not exists
+    let mut devices = state.devices.lock().unwrap();
+    if !devices.contains_key(device_id) {
+        devices.insert(device_id.to_string(), DeviceStatus {
+            id: device_id.to_string(),
+            profile: "Developer".to_string(),
+            revoked: false,
+            last_health: Utc::now().to_rfc3339(),
+        });
+    }
+
     (
         StatusCode::OK,
         Json(json!({
             "join_token": join_token,
-            // join-token attestation runs on the same HTTPS listener (pre-identity)
             "spire_endpoint": "https://127.0.0.1:43892/spire",
             "trust_bundle_pem": trust_bundle,
             "pinned_bundle_public_key": bundle_pubkey_b64(),
             "tenant_id": "tenant-production-1",
             "device_id": device_id,
             "spiffe_id": format!("spiffe://pollen.cloud/tenant-production-1/device/{}", device_id),
-            // base URL for the post-enrollment mTLS API
             "cloud_url": "https://127.0.0.1:43891"
         })),
     )
@@ -262,7 +442,12 @@ struct JoinAttest {
     csr_pem: String,
 }
 
-async fn attest_csr(Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
+async fn attest_csr(State(state): State<AppState>, Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
+    // Check revocation
+    if is_device_revoked(&state, &req.device_id) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "device revoked"})));
+    }
+
     let spiffe_id = format!(
         "spiffe://pollen.cloud/tenant-production-1/device/{}",
         req.device_id
@@ -289,7 +474,11 @@ async fn attest_csr(Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
     }
 }
 
-async fn renew_csr(Path((_tenant_id, _device_id)): Path<(String, String)>, Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
+async fn renew_csr(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(req): Json<JoinAttest>) -> (StatusCode, Json<Value>) {
+    if is_device_revoked(&state, &device_id) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "device revoked"})));
+    }
+
     let spiffe_id = format!(
         "spiffe://pollen.cloud/tenant-production-1/device/{}",
         req.device_id
@@ -316,8 +505,14 @@ async fn renew_csr(Path((_tenant_id, _device_id)): Path<(String, String)>, Json(
     }
 }
 
-/// Sign the client's CSR with the root CA.
-/// Uses rcgen 0.11 API to match cert-gen.
+fn is_device_revoked(state: &AppState, device_id: &str) -> bool {
+    let devices = state.devices.lock().unwrap();
+    if let Some(dev) = devices.get(device_id) {
+        return dev.revoked;
+    }
+    false
+}
+
 fn sign_csr(csr_pem: &str, spiffe_id: &str) -> Result<(String, String)> {
     use rcgen::{Certificate, CertificateParams, CertificateSigningRequest, KeyPair, SanType};
 
@@ -332,7 +527,6 @@ fn sign_csr(csr_pem: &str, spiffe_id: &str) -> Result<(String, String)> {
     let ca = Certificate::from_params(ca_params).context("CA cert")?;
 
     let mut csr = CertificateSigningRequest::from_pem(csr_pem).context("parse CSR")?;
-    // Server controls identity: stamp the SPIFFE ID as a URI SAN.
     csr.params.subject_alt_names.push(SanType::URI(spiffe_id.to_string()));
 
     let cert_pem = csr.serialize_pem_with_signer(&ca).context("sign CSR")?;
@@ -340,15 +534,6 @@ fn sign_csr(csr_pem: &str, spiffe_id: &str) -> Result<(String, String)> {
     Ok((cert_pem, ca_cert_pem))
 }
 
-async fn device_page() -> axum::response::Html<&'static str> {
-    axum::response::Html(
-        "<h2>Pollen Cloud — Device Approval (mock)</h2>\
-         <p>In the real product you'd log in and approve here. \
-         The mock auto-approves on the second token poll.</p>",
-    )
-}
-
-// =============================== helpers ===============================
 
 fn rand_hex(n_bytes: usize) -> String {
     use rand_core::RngCore;
@@ -359,14 +544,12 @@ fn rand_hex(n_bytes: usize) -> String {
 
 fn rand_user_code() -> String {
     use rand_core::RngCore;
-    const ALPHA: &[u8] = b"BCDFGHJKLMNPQRSTVWXZ"; // no vowels/ambiguous
+    const ALPHA: &[u8] = b"BCDFGHJKLMNPQRSTVWXZ"; 
     let mut b = [0u8; 8];
     rand_core::OsRng.fill_bytes(&mut b);
     let c: String = b.iter().map(|x| ALPHA[(*x as usize) % ALPHA.len()] as char).collect();
     format!("{}-{}", &c[0..4], &c[4..8])
 }
-
-// =================== existing handlers (unchanged) ===================
 
 fn load_certs(path: &str) -> Result<Vec<CertificateDer<'static>>> {
     let file = File::open(path)?;
@@ -380,23 +563,73 @@ fn load_private_key(path: &str) -> Result<PrivateKeyDer<'static>> {
     Ok(private_key(&mut reader)?.context("No private key found")?)
 }
 
-async fn ingest_telemetry(Path((_tenant_id, _device_id)): Path<(String, String)>, Json(payload): Json<Value>) -> Json<Value> {
-    info!("CLOUD RECEIVED TELEMETRY: {}", payload);
+async fn ingest_telemetry(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(payload): Json<Value>) -> Json<Value> {
+    info!("CLOUD RECEIVED TELEMETRY from {}: {}", device_id, payload);
     Json(json!({ "status": "ingested" }))
 }
 
-async fn ingest_decision_logs(Path((_tenant_id, _device_id)): Path<(String, String)>, Json(payload): Json<Value>) -> Json<Value> {
-    info!("CLOUD RECEIVED DECISION LOGS: {}", payload);
+async fn ingest_decision_logs(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(payload): Json<Value>) -> Json<Value> {
+    info!("CLOUD RECEIVED DECISION LOGS from {}: {}", device_id, payload);
+    
+    // Parse decision logs
+    let mut logs = state.decision_logs.lock().unwrap();
+    if let Some(events) = payload.as_array() {
+        for ev in events {
+            let action = ev.get("action").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
+            let decision = ev.get("decision").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
+            let ts = ev.get("timestamp").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+            
+            logs.push_front(LogEntry {
+                device_id: device_id.clone(),
+                timestamp: ts,
+                action,
+                decision,
+            });
+            
+            if logs.len() > 1000 {
+                logs.pop_back();
+            }
+        }
+    }
+    
     Json(json!({ "status": "ingested" }))
 }
 
-async fn report_health(Path((_tenant_id, _device_id)): Path<(String, String)>, Json(payload): Json<Value>) -> Json<Value> {
-    info!("CLOUD RECEIVED HEALTH REPORT: {}", payload);
+async fn report_health(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(payload): Json<Value>) -> Json<Value> {
+    info!("CLOUD RECEIVED HEALTH REPORT from {}: {}", device_id, payload);
+    let mut devices = state.devices.lock().unwrap();
+    if let Some(dev) = devices.get_mut(&device_id) {
+        dev.last_health = Utc::now().to_rfc3339();
+    }
     Json(json!({ "status": "ok" }))
 }
 
-async fn get_latest_bundle(Path((_tenant_id, _device_id)): Path<(String, String)>, State(state): State<AppState>) -> Json<Value> {
-    let rev = state.revision.fetch_add(1, Ordering::SeqCst);
+async fn get_latest_bundle(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>) -> impl IntoResponse {
+    if is_device_revoked(&state, &device_id) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "device revoked"})));
+    }
+
+    let bundle = {
+        let rollout = state.rollout.lock().unwrap();
+        
+        // Simple hash logic to determine canary inclusion
+        let mut hash_val: usize = 0;
+        for b in device_id.bytes() {
+            hash_val = hash_val.wrapping_add(b as usize);
+        }
+        let dev_pct = (hash_val % 100) as u8;
+
+        if let Some(ref canary) = rollout.canary_bundle {
+            if dev_pct < rollout.canary_percentage {
+                canary.clone()
+            } else {
+                rollout.latest_bundle.clone()
+            }
+        } else {
+            rollout.latest_bundle.clone()
+        }
+    };
+
     let signing_key = SigningKey::from_bytes(&BUNDLE_SEED);
     let public_key = signing_key.verifying_key();
 
@@ -407,7 +640,6 @@ async fn get_latest_bundle(Path((_tenant_id, _device_id)): Path<(String, String)
     } else {
         "target/wasm32-wasip1/debug/dummy_policy.wasm"
     };
-    let store_id = format!("store_rev_{}", rev);
 
     let payload = json!({
         "jwt_config": {
@@ -415,8 +647,8 @@ async fn get_latest_bundle(Path((_tenant_id, _device_id)): Path<(String, String)
             "issuer_url": "https://127.0.0.1:43891",
             "audience": ["pollen-dek"]
         },
-        "openfga": { "endpoint": "http://127.0.0.1:8080", "store_id": store_id },
-        "cedar": { "policy_src": format!("permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n); // rev {}", rev) },
+        "openfga": { "endpoint": "http://127.0.0.1:8080", "store_id": bundle.openfga_store },
+        "cedar": { "policy_src": bundle.cedar_src },
         "opa_wasm": { "policy_path": wasm_path },
         "routes": [
             { "id": "route_tools_call", "priority": 100,
@@ -429,18 +661,25 @@ async fn get_latest_bundle(Path((_tenant_id, _device_id)): Path<(String, String)
         ]
     });
 
-    let payload_string = serde_jcs::to_string(&payload).unwrap();
+    let payload_string = serde_json::to_string(&payload).unwrap();
     let signature = signing_key.sign(payload_string.as_bytes());
-    Json(json!({
-        "bundle_id": format!("bnd-mcp-authz-{:03}", rev),
-        "version": format!("1.0.{}", rev),
+    (StatusCode::OK, Json(json!({
+        "bundle_id": format!("bnd-mcp-authz-{}", bundle.version),
+        "version": bundle.version,
         "signature": base64::prelude::BASE64_STANDARD.encode(signature.to_bytes()),
         "public_key": base64::prelude::BASE64_STANDARD.encode(public_key.as_bytes()),
         "payload": payload
-    }))
+    })))
 }
 
-async fn get_config(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>) -> Json<Value> {
+async fn get_config(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>) -> impl IntoResponse {
+    if is_device_revoked(&state, &device_id) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "device revoked"})));
+    }
+
+    let devices = state.devices.lock().unwrap();
+    let profile = devices.get(&device_id).map(|d| d.profile.clone()).unwrap_or_else(|| "Developer".to_string());
+
     let rev = state.revision.fetch_add(1, Ordering::SeqCst);
     let wasm_path = if std::path::Path::new("plugins/dummy_policy.wasm").exists() {
         "plugins/dummy_policy.wasm"
@@ -450,9 +689,10 @@ async fn get_config(Path((_tenant_id, device_id)): Path<(String, String)>, State
         "target/wasm32-wasip1/debug/dummy_policy.wasm"
     };
     let store_id = format!("store_rev_{}", rev);
-    Json(json!({
+    (StatusCode::OK, Json(json!({
         "device_id": device_id,
         "tenant_id": "tenant-production-1",
+        "profile": profile,
         "mtls": { "client_cert_path": "certs/client.crt", "client_key_path": "certs/client.key", "root_ca_path": "certs/root_ca.crt" },
         "spire_server": { "endpoint": "https://127.0.0.1:43891/spire" },
         "jwt_config": { "public_key_pem": state.rsa_public_key_pem.clone(), "issuer_url": "https://127.0.0.1:43891", "audience": ["pollen-dek"] },
@@ -470,5 +710,5 @@ async fn get_config(Path((_tenant_id, device_id)): Path<(String, String)>, State
                   "pdp_required": ["openfga"], "pdp_conditional": [] }
             ]
         }
-    }))
+    })))
 }

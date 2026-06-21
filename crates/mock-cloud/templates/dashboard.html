@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pollen Cloud - Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; padding: 2rem; }
+        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 1000px; margin: 0 auto; }
+        h2, h3 { color: #1a1a1a; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; }
+        .badge { padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.85em; font-weight: bold; }
+        .badge.active { background: #e6f4ea; color: #1e8e3e; }
+        .badge.revoked { background: #fce8e6; color: #d93025; }
+        .btn-danger { background: #d93025; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+        .btn-danger:hover { background: #b3261e; }
+        .card { background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Pollen Cloud Control Plane (Mock)</h2>
+        
+        <h3>Device Fleet</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Device ID</th>
+                    <th>Profile</th>
+                    <th>Status</th>
+                    <th>Last Health Check</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for device in devices %}
+                <tr>
+                    <td>{{ device.id }}</td>
+                    <td>{{ device.profile }}</td>
+                    <td>
+                        {% if device.revoked %}
+                            <span class="badge revoked">Revoked</span>
+                        {% else %}
+                            <span class="badge active">Active</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ device.last_health }}</td>
+                    <td>
+                        {% if !device.revoked %}
+                        <form method="POST" action="/admin/devices/{{ device.id }}/revoke" style="display:inline;">
+                            <button type="submit" class="btn-danger">Revoke</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5">No devices enrolled.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h3>Recent Decision Logs</h3>
+        <div class="card">
+            Total logs ingested: {{ telemetry_count }}
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Device ID</th>
+                    <th>Timestamp</th>
+                    <th>Action</th>
+                    <th>Decision</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in recent_logs %}
+                <tr>
+                    <td>{{ log.device_id }}</td>
+                    <td>{{ log.timestamp }}</td>
+                    <td>{{ log.action }}</td>
+                    <td>{{ log.decision }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4">No logs yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
