@@ -51,10 +51,10 @@ Key practices:
 
 References:
 
-- OPA Management APIs and Architecture: https://www.openpolicyagent.org/docs/management-introduction
-- OPA Bundles: https://www.openpolicyagent.org/docs/management-bundles
-- OPA Decision Logs: https://www.openpolicyagent.org/docs/management-decision-logs
-- OPA REST API: https://www.openpolicyagent.org/docs/rest-api
+- OPA Management APIs and Architecture: <https://www.openpolicyagent.org/docs/management-introduction>
+- OPA Bundles: <https://www.openpolicyagent.org/docs/management-bundles>
+- OPA Decision Logs: <https://www.openpolicyagent.org/docs/management-decision-logs>
+- OPA REST API: <https://www.openpolicyagent.org/docs/rest-api>
 
 ### 2.2 Cedar
 
@@ -69,9 +69,9 @@ Key practices:
 
 References:
 
-- Cedar policy validation: https://docs.cedarpolicy.com/policies/validation.html
-- Cedar schema: https://docs.cedarpolicy.com/schema/schema.html
-- Cedar entities syntax: https://docs.cedarpolicy.com/auth/entities-syntax.html
+- Cedar policy validation: <https://docs.cedarpolicy.com/policies/validation.html>
+- Cedar schema: <https://docs.cedarpolicy.com/schema/schema.html>
+- Cedar entities syntax: <https://docs.cedarpolicy.com/auth/entities-syntax.html>
 
 ### 2.3 OpenFGA
 
@@ -86,8 +86,8 @@ Key practices:
 
 References:
 
-- OpenFGA Concepts: https://openfga.dev/docs/concepts
-- OpenFGA Modeling: https://openfga.dev/docs/modeling/getting-started
+- OpenFGA Concepts: <https://openfga.dev/docs/concepts>
+- OpenFGA Modeling: <https://openfga.dev/docs/modeling/getting-started>
 
 ### 2.4 SPIFFE/SPIRE Workload Identity
 
@@ -102,7 +102,7 @@ Key practices:
 
 Reference:
 
-- SPIFFE Concepts: https://spiffe.io/docs/latest/spiffe-about/spiffe-concepts/
+- SPIFFE Concepts: <https://spiffe.io/docs/latest/spiffe-about/spiffe-concepts/>
 
 ### 2.5 OS Kernel / L4 Enforcement
 
@@ -114,10 +114,10 @@ Linux, Windows, macOS มี enforcement primitive ต่างกัน จึ�
 
 References:
 
-- Linux libbpf program types: https://docs.kernel.org/bpf/libbpf/program_types.html
-- Microsoft WFP ALE: https://learn.microsoft.com/en-us/windows/win32/fwp/application-layer-enforcement--ale-
-- Microsoft ALE layers: https://learn.microsoft.com/en-us/windows/win32/fwp/ale-layers
-- Apple NetworkExtension content filter providers: https://developer.apple.com/documentation/networkextension/content-filter-providers
+- Linux libbpf program types: <https://docs.kernel.org/bpf/libbpf/program_types.html>
+- Microsoft WFP ALE: <https://learn.microsoft.com/en-us/windows/win32/fwp/application-layer-enforcement--ale->
+- Microsoft ALE layers: <https://learn.microsoft.com/en-us/windows/win32/fwp/ale-layers>
+- Apple NetworkExtension content filter providers: <https://developer.apple.com/documentation/networkextension/content-filter-providers>
 
 ---
 
@@ -1937,4 +1937,3 @@ flowchart TB
 16. Decision logs and telemetry go to Mock-Cloud
 17. Deploy bad bundle to verify rollback
 ```
-

@@ -11,6 +11,7 @@ and run fully locally with the Local Admin Dashboard, or pointed at a Cloud-styl
 control plane (exercised via `mock-cloud` until Pollen Cloud is GA).
 
 ### Added
+
 - **Official release pipeline** — signed binaries for Linux/macOS/Windows on
   GitHub Releases, each with `SHA256SUMS`, cosign signatures, and SBOM.
 - **End-to-end auto-update** — `dek-cli update --channel beta` checks GitHub
@@ -39,6 +40,7 @@ control plane (exercised via `mock-cloud` until Pollen Cloud is GA).
   tamper-evident audit hash chain, and evidence-export guidance.
 
 ### Changed
+
 - Telemetry is split by type to typed endpoints (decision-logs, security-events,
   traces, ebpf-events, metrics) matching the Cloud contract.
 - Network capability is reported honestly per OS: kernel-enforced on Linux,
@@ -46,6 +48,7 @@ control plane (exercised via `mock-cloud` until Pollen Cloud is GA).
 - All workspace crates are Apache-2.0 with SPDX headers; `NOTICE` added.
 
 ### Security
+
 - Fail-closed everywhere: no/stale bundle → strict-deny; PDP down or circuit
   open → deny; Cloud unreachable → last-known-good then strict-deny; expired,
   un-renewable identity → deny; kernel apply failure → block-all.
@@ -53,6 +56,7 @@ control plane (exercised via `mock-cloud` until Pollen Cloud is GA).
 - Update artifacts must pass SHA-256 **and** cosign verification before apply.
 
 ### Known limitations
+
 - Windows/macOS network enforcement is redirect-advisory in beta; kernel-grade
   enforcement (WFP callout driver / macOS System Extension) is in progress.
 - Pollen Cloud is not yet public; the Cloud path is validated against

@@ -39,11 +39,13 @@ tokio = { version = "1.0", features = ["full"] } # Or ["rt", "rt-multi-thread", 
 Replace the raw Prometheus recorder bootstrapping in `crates/dek-mcp-proxy/src/main.rs`.
 
 **Before**:
+
 ```rust
 metrics_exporter_prometheus::PrometheusBuilder::new().install_recorder().unwrap();
 ```
 
 **After**:
+
 ```rust
 use std::sync::Arc;
 use tokio::sync::{Notify, RwLock};
@@ -76,11 +78,13 @@ Verify that the `BootstrapConfig::load()` API behavior aligns with your environm
 Similarly, integrate into `crates/dek-ext-authz/src/main.rs` prior to invoking the `Server::serve` gRPC call.
 
 **Before**:
+
 ```rust
 metrics_exporter_prometheus::PrometheusBuilder::new().install_recorder().unwrap();
 ```
 
 **After**:
+
 ```rust
 use std::sync::Arc;
 use tokio::sync::{Notify, RwLock};
@@ -107,5 +111,6 @@ dek_metrics::spawn_push(
 By moving to `dek-metrics`, `dek-core` can share the exact same logic, eliminating the bespoke code in `metrics_push.rs`. The `Arc<RwLock<reqwest::Client>>` passed to `spawn_push` is specifically designed so `dek-core`'s SVID renewal loop can write-lock the client to safely inject a newly minted mTLS identity without restarting the task.
 
 ## Future Merge Considerations
-*   **Target Architectures**: If you wish to natively build for macOS and ARM Linux in the CI release artifacts, modify the `release.yml` matrix by adding `x86_64-apple-darwin` and `aarch64-linux` to the `target` list.
-*   **SLSA Provenance**: The pipeline currently relies on generic OIDC keyless signatures (`cosign keyless`). To obtain strict SLSA Level 3 guarantees mapping source commit to final artifact, evaluate integrating `slsa-github-generator`.
+
+* **Target Architectures**: If you wish to natively build for macOS and ARM Linux in the CI release artifacts, modify the `release.yml` matrix by adding `x86_64-apple-darwin` and `aarch64-linux` to the `target` list.
+* **SLSA Provenance**: The pipeline currently relies on generic OIDC keyless signatures (`cosign keyless`). To obtain strict SLSA Level 3 guarantees mapping source commit to final artifact, evaluate integrating `slsa-github-generator`.

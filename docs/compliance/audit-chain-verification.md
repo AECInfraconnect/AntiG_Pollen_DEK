@@ -3,6 +3,7 @@
 Pollen DEK uses a tamper-evident hash chain to protect the integrity of its audit logs (satisfying NIST AU-9). Each audit event references the cryptographic hash of the previous event.
 
 ## Verification Tool
+
 You can verify an exported audit chain using the `dek-cli` verification utility.
 
 ```bash
@@ -10,7 +11,9 @@ dek-cli verify-audit --file audit_chain.json
 ```
 
 ## How It Works
+
 Each event in the JSON array contains:
+
 - `seq`: Monotonically increasing sequence number.
 - `timestamp`: The ISO8601 time of the event.
 - `event_type`: What occurred (e.g., `BundleReloaded`, `KeyRotated`).
@@ -18,6 +21,7 @@ Each event in the JSON array contains:
 - `digest`: The SHA-256 hash of `(prev_digest + seq + timestamp + event_type + payload)`.
 
 ### Manual Verification
+
 If an auditor requires manual verification without `dek-cli`, they can write a script to recompute the SHA-256 hashes sequentially:
 
 ```python
