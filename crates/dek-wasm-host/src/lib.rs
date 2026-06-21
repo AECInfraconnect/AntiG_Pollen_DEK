@@ -27,7 +27,7 @@ pub struct WasmtimePluginHost {
     instances_pre: HashMap<String, InstancePre<wasmtime_wasi::preview1::WasiP1Ctx>>,
 }
 
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 impl WasmtimePluginHost {
     pub fn new(plugin_paths: HashMap<String, String>) -> anyhow::Result<Self> {
@@ -45,24 +45,32 @@ impl WasmtimePluginHost {
                     let manifest_path = parent.join("manifest.json");
                     if manifest_path.exists() {
                         let manifest_content = std::fs::read_to_string(&manifest_path)?;
-                        if let Ok(manifest) = serde_json::from_str::<HashMap<String, String>>(&manifest_content) {
+                        if let Ok(manifest) =
+                            serde_json::from_str::<HashMap<String, String>>(&manifest_content)
+                        {
                             let file_name = p.file_name().unwrap_or_default().to_string_lossy();
                             if let Some(expected_hash) = manifest.get(file_name.as_ref()) {
                                 let bytes = std::fs::read(p)?;
                                 let mut hasher = Sha256::new();
                                 hasher.update(&bytes);
                                 let actual_hash = hex::encode(hasher.finalize());
-                                
+
                                 if actual_hash != *expected_hash {
-                                    anyhow::bail!("SHA256 hash mismatch for plugin {}: expected {}, got {}", path, expected_hash, actual_hash);
+                                    anyhow::bail!(
+                                        "SHA256 hash mismatch for plugin {}: expected {}, got {}",
+                                        path,
+                                        expected_hash,
+                                        actual_hash
+                                    );
                                 }
                             }
                         }
                     }
                 }
 
-                let module = Module::from_file(&engine, &path)
-                    .map_err(|e| anyhow::anyhow!("Failed to load plugin WASM module: {}: {}", path, e))?;
+                let module = Module::from_file(&engine, &path).map_err(|e| {
+                    anyhow::anyhow!("Failed to load plugin WASM module: {}: {}", path, e)
+                })?;
                 let instance_pre = linker.instantiate_pre(&module)?;
                 instances_pre.insert(plugin_id, instance_pre);
             } else {
@@ -84,7 +92,8 @@ impl PluginHost for WasmtimePluginHost {
             .get(plugin_id)
             .ok_or_else(|| PluginError::NotFound(plugin_id.to_string()))?;
 
-        let input_str = serde_json::to_string(&input).map_err(|e| PluginError::InvalidFormat(e.to_string()))?;
+        let input_str =
+            serde_json::to_string(&input).map_err(|e| PluginError::InvalidFormat(e.to_string()))?;
         let stdin = MemoryInputPipe::new(bytes::Bytes::from(input_str.into_bytes()));
         let stdout = MemoryOutputPipe::new(10 * 1024 * 1024);
 
@@ -97,9 +106,11 @@ impl PluginHost for WasmtimePluginHost {
         let mut store = Store::new(&self.engine, wasi);
 
         // Instantiate and run _start
-        let instance = instance_pre.instantiate(&mut store)
+        let instance = instance_pre
+            .instantiate(&mut store)
             .map_err(|e| PluginError::Execution(format!("Instantiate failed: {}", e)))?;
-        let func = instance.get_typed_func::<(), ()>(&mut store, "_start")
+        let func = instance
+            .get_typed_func::<(), ()>(&mut store, "_start")
             .map_err(|e| PluginError::Execution(format!("Missing _start function: {}", e)))?;
         func.call(&mut store, ())
             .map_err(|e| PluginError::Execution(format!("Execution failed: {}", e)))?;
@@ -108,8 +119,9 @@ impl PluginHost for WasmtimePluginHost {
         let out_bytes = stdout.contents();
         let output_str = String::from_utf8_lossy(&out_bytes);
 
-        let output_val: Value = serde_json::from_str(&output_str)
-            .map_err(|e| PluginError::InvalidFormat(format!("Failed to parse output JSON: {}", e)))?;
+        let output_val: Value = serde_json::from_str(&output_str).map_err(|e| {
+            PluginError::InvalidFormat(format!("Failed to parse output JSON: {}", e))
+        })?;
 
         Ok(output_val)
     }

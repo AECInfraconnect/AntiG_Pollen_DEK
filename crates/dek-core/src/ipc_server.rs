@@ -221,7 +221,9 @@ pub async fn spawn_ipc_server_task(
         .await
         {
             Ok(_) => info!("All active IPC connections closed gracefully."),
-            Err(_) => warn!("Grace period expired! Forcefully terminating remaining active IPC connections."),
+            Err(_) => warn!(
+                "Grace period expired! Forcefully terminating remaining active IPC connections."
+            ),
         }
     }))
 }

@@ -8,16 +8,19 @@ pub mod envoy {
     }
 }
 
-use envoy::service::auth::v3::authorization_server::{Authorization, AuthorizationServer};
-use envoy::service::auth::v3::{CheckRequest, CheckResponse, check_response::HttpResponse, DeniedHttpResponse, OkHttpResponse, HttpStatus};
-use envoy::service::auth::v3::Status as EnvoyStatus;
-use tonic::{transport::Server, Request, Response, Status};
-use serde_json::{json, Value};
-use dek_policy_router::PolicyRouter;
 use dek_config::BootstrapConfig;
+use dek_policy_router::PolicyRouter;
+use envoy::service::auth::v3::authorization_server::{Authorization, AuthorizationServer};
+use envoy::service::auth::v3::Status as EnvoyStatus;
+use envoy::service::auth::v3::{
+    check_response::HttpResponse, CheckRequest, CheckResponse, DeniedHttpResponse, HttpStatus,
+    OkHttpResponse,
+};
+use serde_json::{json, Value};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{info, warn, error};
+use tonic::{transport::Server, Request, Response, Status};
+use tracing::{error, info, warn};
 
 #[derive(Clone)]
 pub struct ExtAuthzService {
@@ -33,7 +36,7 @@ impl Authorization for ExtAuthzService {
         request: Request<CheckRequest>,
     ) -> Result<Response<CheckResponse>, Status> {
         let req = request.into_inner();
-        
+
         // Extract HTTP attributes from envoy request
         let mut action = "unknown".to_string();
         let mut resource_id = "unknown".to_string();
@@ -89,21 +92,27 @@ impl Authorization for ExtAuthzService {
         let decision_input = serde_json::to_value(&decision_req).unwrap_or(policy_input);
 
         // Evaluate Policy
-        let decision = self.router.read().await.authorize(decision_input).await.unwrap_or_else(|e| {
-            error!("Policy routing failed: {}", e);
-            dek_policy_runtime::PolicyDecision {
-                evaluator_id: "ext_authz".into(),
-                evaluator_type: "router".into(),
-                required: true,
-                status: "error".into(),
-                decision: "deny".into(),
-                allow: false,
-                reason: "Internal policy router error".into(),
-                effects: json!({}),
-                obligations: vec![],
-                metadata: json!({}),
-            }
-        });
+        let decision = self
+            .router
+            .read()
+            .await
+            .authorize(decision_input)
+            .await
+            .unwrap_or_else(|e| {
+                error!("Policy routing failed: {}", e);
+                dek_policy_runtime::PolicyDecision {
+                    evaluator_id: "ext_authz".into(),
+                    evaluator_type: "router".into(),
+                    required: true,
+                    status: "error".into(),
+                    decision: "deny".into(),
+                    allow: false,
+                    reason: "Internal policy router error".into(),
+                    effects: json!({}),
+                    obligations: vec![],
+                    metadata: json!({}),
+                }
+            });
 
         if decision.allow {
             info!("ExtAuthz: Request Allowed");
@@ -116,7 +125,7 @@ impl Authorization for ExtAuthzService {
                 status: Some(EnvoyStatus {
                     code: 0, // OK
                     message: "Allowed by Pollen DEK".to_string(),
-                    details: vec![]
+                    details: vec![],
                 }),
                 http_response: Some(HttpResponse::OkResponse(ok_response)),
             };
@@ -135,7 +144,7 @@ impl Authorization for ExtAuthzService {
                 status: Some(EnvoyStatus {
                     code: 7, // PermissionDenied
                     message: decision.reason.clone(),
-                    details: vec![]
+                    details: vec![],
                 }),
                 http_response: Some(HttpResponse::DeniedResponse(denied_response)),
             };
@@ -146,22 +155,27 @@ impl Authorization for ExtAuthzService {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt().with_writer(std::io::stderr).init();
-    metrics_exporter_prometheus::PrometheusBuilder::new().install_recorder().unwrap();
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .init();
+    metrics_exporter_prometheus::PrometheusBuilder::new()
+        .install_recorder()
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
     info!("Starting Pollen DEK Envoy ext_authz Server...");
 
-    let bootstrap = BootstrapConfig::load_or_default("bootstrap.json").unwrap_or_else(|_| BootstrapConfig {
-        device_id: "local-device".into(),
-        mtls: dek_config::MtlsConfig {
-            client_cert_path: "".into(),
-            client_key_path: "".into(),
-            root_ca_path: "".into(),
-        },
-        pinned_bundle_public_key: "".into(),
-        cloud_url: "".into(),
-        spiffe_id: None,
-        tenant_id: None,
-    });
+    let bootstrap =
+        BootstrapConfig::load_or_default("bootstrap.json").unwrap_or_else(|_| BootstrapConfig {
+            device_id: "local-device".into(),
+            mtls: dek_config::MtlsConfig {
+                client_cert_path: "".into(),
+                client_key_path: "".into(),
+                root_ca_path: "".into(),
+            },
+            pinned_bundle_public_key: "".into(),
+            cloud_url: "".into(),
+            spiffe_id: None,
+            tenant_id: None,
+        });
 
     let mut router = PolicyRouter::new();
     let bundle_path_buf = dek_config::paths::get_active_bundle_path();

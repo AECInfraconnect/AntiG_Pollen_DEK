@@ -1,10 +1,10 @@
 use metrics_exporter_prometheus::PrometheusHandle;
 use std::sync::Arc;
+use tokio::sync::Notify;
 use tokio::sync::RwLock;
 use tokio::time::{sleep, Duration};
 use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::Retry;
-use tokio::sync::Notify;
 use tracing::{debug, info, warn};
 
 #[allow(dead_code)]

@@ -47,7 +47,10 @@ pub fn spawn_svid_renewal_task(
             let sleep_dur = match seconds_until_renewal(&cfg.mtls.client_cert_path) {
                 Ok(d) => d,
                 Err(e) => {
-                    warn!("could not read SVID expiry ({e}); will retry in {:?}", FALLBACK_SLEEP);
+                    warn!(
+                        "could not read SVID expiry ({e}); will retry in {:?}",
+                        FALLBACK_SLEEP
+                    );
                     FALLBACK_SLEEP
                 }
             };
@@ -66,7 +69,10 @@ pub fn spawn_svid_renewal_task(
                 }
                 Err(e) => {
                     metrics::counter!("dek_svid_renew_errors_total").increment(1);
-                    error!("SVID renewal failed: {e}; keeping current SVID, retry in {:?}", RETRY_BACKOFF);
+                    error!(
+                        "SVID renewal failed: {e}; keeping current SVID, retry in {:?}",
+                        RETRY_BACKOFF
+                    );
                     tokio::select! {
                         _ = cancel.cancelled() => break,
                         _ = tokio::time::sleep(RETRY_BACKOFF) => {}
@@ -78,15 +84,18 @@ pub fn spawn_svid_renewal_task(
 }
 
 fn now_secs() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64
 }
 
 /// Parse the leaf cert's `notAfter` and return how long to sleep before renewing
 /// (half of the remaining lifetime, floored at MIN_SLEEP).
 fn seconds_until_renewal(cert_path: &str) -> Result<Duration> {
     let pem = std::fs::read(cert_path).context("read SVID cert")?;
-    let (_, p) = x509_parser::pem::parse_x509_pem(&pem)
-        .map_err(|e| anyhow::anyhow!("PEM parse: {e}"))?;
+    let (_, p) =
+        x509_parser::pem::parse_x509_pem(&pem).map_err(|e| anyhow::anyhow!("PEM parse: {e}"))?;
     let cert = p.parse_x509().context("parse X.509")?;
     let not_after = cert.validity().not_after.timestamp();
     let remaining = not_after - now_secs();
@@ -105,7 +114,10 @@ async fn renew_once(
     metrics_client: &Arc<RwLock<reqwest::Client>>,
 ) -> Result<String> {
     // Authenticate the renewal with the CURRENT SVID; fetch + install new cert/key.
-    let client = cfg.mtls.build_client(None).context("build current mTLS client")?;
+    let client = cfg
+        .mtls
+        .build_client(None)
+        .context("build current mTLS client")?;
     let spiffe_id = fetch_and_install_svid(
         &cfg.renew_url,
         &client,
@@ -173,6 +185,7 @@ fn atomic_write(path: &str, data: &[u8]) -> Result<()> {
 // ============================================================================
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
     use std::sync::{Arc, Mutex};
 
@@ -187,7 +200,11 @@ mod tests {
         let p_long = dir.path().join("long.crt");
         std::fs::write(&p_long, &long).unwrap();
         let d = seconds_until_renewal(p_long.to_str().unwrap()).unwrap();
-        assert!(d.as_secs() >= 400 && d.as_secs() <= 520, "got {}s", d.as_secs());
+        assert!(
+            d.as_secs() >= 400 && d.as_secs() <= 520,
+            "got {}s",
+            d.as_secs()
+        );
 
         // near-expired -> floored at MIN_SLEEP (60s)
         let short = sign_leaf(&ca, "device-x", time_offset(2));
@@ -212,19 +229,27 @@ mod tests {
         std::fs::write(&key_path, &init_key).unwrap();
         std::fs::write(&ca_path, ca.serialize_pem().unwrap()).unwrap();
         let before = std::fs::read_to_string(&cert_path).unwrap();
-        assert!(!before.contains("spiffe"), "precondition: initial cert has no spiffe SAN");
+        assert!(
+            !before.contains("spiffe"),
+            "precondition: initial cert has no spiffe SAN"
+        );
 
         // 2) spawn mock renew endpoint that signs the CSR (short-lived, spiffe SAN).
         let ca_pem = ca.serialize_pem().unwrap();
         let ca_key_pem = ca.serialize_private_key_pem();
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
-        let state = MockState { ca_pem: ca_pem.clone(), ca_key_pem };
+        let state = MockState {
+            ca_pem: ca_pem.clone(),
+            ca_key_pem,
+        };
         let app = axum::Router::new()
             .route("/spire/svid/renew", axum::routing::post(renew_handler))
             .with_state(Arc::new(state));
         tokio::spawn(async move {
-            axum::serve(listener, app.into_make_service()).await.unwrap();
+            axum::serve(listener, app.into_make_service())
+                .await
+                .unwrap();
         });
 
         // 3) build an mTLS client from the on-disk identity (unused over http, but
@@ -234,7 +259,9 @@ mod tests {
             client_key_path: key_path.to_string_lossy().into_owned(),
             root_ca_path: ca_path.to_string_lossy().into_owned(),
         };
-        let client = mtls.build_client(None).expect("build mtls client from disk identity");
+        let client = mtls
+            .build_client(None)
+            .expect("build mtls client from disk identity");
         let renew_url = format!("http://{addr}/spire/svid/renew");
 
         let spiffe = fetch_and_install_svid(
@@ -314,7 +341,10 @@ mod tests {
         p.alg = &rcgen::PKCS_ECDSA_P256_SHA256;
         p.key_pair = Some(rcgen::KeyPair::generate(&rcgen::PKCS_ECDSA_P256_SHA256).unwrap());
         let c = Certificate::from_params(p).unwrap();
-        (c.serialize_pem_with_signer(ca).unwrap(), c.serialize_private_key_pem())
+        (
+            c.serialize_pem_with_signer(ca).unwrap(),
+            c.serialize_private_key_pem(),
+        )
     }
 
     fn sign_leaf(ca: &Certificate, cn: &str, not_after: time::OffsetDateTime) -> String {
@@ -327,15 +357,22 @@ mod tests {
         c.serialize_pem_with_signer(ca).unwrap()
     }
 
-    fn sign_csr(ca_pem: &str, ca_key_pem: &str, csr_pem: &str, spiffe: &str, ttl_secs: i64) -> String {
+    fn sign_csr(
+        ca_pem: &str,
+        ca_key_pem: &str,
+        csr_pem: &str,
+        spiffe: &str,
+        ttl_secs: i64,
+    ) -> String {
         use rcgen::{CertificateParams, CertificateSigningRequest, KeyPair, SanType};
         let ca_key = KeyPair::from_pem(ca_key_pem).unwrap();
-        let ca = Certificate::from_params(
-            CertificateParams::from_ca_cert_pem(ca_pem, ca_key).unwrap(),
-        )
-        .unwrap();
+        let ca =
+            Certificate::from_params(CertificateParams::from_ca_cert_pem(ca_pem, ca_key).unwrap())
+                .unwrap();
         let mut csr = CertificateSigningRequest::from_pem(csr_pem).unwrap();
-        csr.params.subject_alt_names.push(SanType::URI(spiffe.to_string()));
+        csr.params
+            .subject_alt_names
+            .push(SanType::URI(spiffe.to_string()));
         csr.params.not_after = time_offset(ttl_secs);
         csr.serialize_pem_with_signer(&ca).unwrap()
     }

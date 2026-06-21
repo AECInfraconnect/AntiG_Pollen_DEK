@@ -22,7 +22,10 @@ fn main() {
     // Task 6.2: TUF Verification
     // In a full implementation, this uses tough or rust-tuf to query the root role, targets role, and map the target path to its hash/size.
     if let Some(tuf_metadata) = args.get(3) {
-        println!("Performing TUF verification using metadata: {}", tuf_metadata);
+        println!(
+            "Performing TUF verification using metadata: {}",
+            tuf_metadata
+        );
         if let Err(e) = verify_tuf_signature(&new_exe, tuf_metadata) {
             eprintln!("TUF Verification Failed: {e}");
             std::process::exit(1);
@@ -37,16 +40,18 @@ fn main() {
 
     // Remove old backup if it exists
     if backup_exe.exists()
-        && let Err(e) = fs::remove_file(&backup_exe) {
-            eprintln!("Failed to remove old backup: {e}");
-        }
+        && let Err(e) = fs::remove_file(&backup_exe)
+    {
+        eprintln!("Failed to remove old backup: {e}");
+    }
 
     // Rename current running executable to backup
     if target_exe.exists()
-        && let Err(e) = fs::rename(&target_exe, &backup_exe) {
-            eprintln!("Failed to rename active executable: {e}");
-            std::process::exit(1);
-        }
+        && let Err(e) = fs::rename(&target_exe, &backup_exe)
+    {
+        eprintln!("Failed to rename active executable: {e}");
+        std::process::exit(1);
+    }
 
     // Rename the new downloaded executable to the target name
     if let Err(e) = fs::rename(&new_exe, &target_exe) {
@@ -71,7 +76,11 @@ fn verify_tuf_signature(new_exe: &PathBuf, metadata_path: &str) -> anyhow::Resul
     let metadata: serde_json::Value = serde_json::from_str(&metadata_content)?;
 
     // Expected format: { "targets": { "dek-core.exe": { "hashes": { "sha256": "..." }, "length": ... } } }
-    let target_name = new_exe.file_name().unwrap_or_default().to_string_lossy().to_string();
+    let target_name = new_exe
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
     let target_info = metadata["targets"][&target_name]
         .as_object()
         .ok_or_else(|| anyhow::anyhow!("Target {} not found in TUF metadata", target_name))?;
@@ -87,7 +96,11 @@ fn verify_tuf_signature(new_exe: &PathBuf, metadata_path: &str) -> anyhow::Resul
     let mut file = fs::File::open(new_exe)?;
     let meta = file.metadata()?;
     if meta.len() != expected_size {
-        anyhow::bail!("File size mismatch. Expected {}, got {}", expected_size, meta.len());
+        anyhow::bail!(
+            "File size mismatch. Expected {}, got {}",
+            expected_size,
+            meta.len()
+        );
     }
 
     let mut hasher = Sha256::new();
@@ -103,7 +116,11 @@ fn verify_tuf_signature(new_exe: &PathBuf, metadata_path: &str) -> anyhow::Resul
     let actual_hash = hex::encode(result);
 
     if actual_hash != expected_hash {
-        anyhow::bail!("Hash mismatch. Expected {}, got {}", expected_hash, actual_hash);
+        anyhow::bail!(
+            "Hash mismatch. Expected {}, got {}",
+            expected_hash,
+            actual_hash
+        );
     }
 
     Ok(())

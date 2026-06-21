@@ -11,6 +11,7 @@
 //! Side-effect-free: returns an [`Enrollment`]; the caller drives SPIRE + writes
 //! bootstrap.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use serde::Deserialize;
 use std::future::Future;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -38,7 +39,10 @@ pub enum EnrollError {
 impl EnrollError {
     /// Transient (worth retrying) vs terminal.
     fn retryable(&self) -> bool {
-        matches!(self, EnrollError::Network(..) | EnrollError::BadResponse(..))
+        matches!(
+            self,
+            EnrollError::Network(..) | EnrollError::BadResponse(..)
+        )
     }
 
     pub fn into_envelope(self) -> dek_errors::ErrorEnvelope {
@@ -185,14 +189,20 @@ impl EnrollClient {
             let resp = self
                 .http
                 .post(&url)
-                .form(&[("client_id", self.client_id.as_str()), ("scope", self.scope.as_str())])
+                .form(&[
+                    ("client_id", self.client_id.as_str()),
+                    ("scope", self.scope.as_str()),
+                ])
                 .send()
                 .await
                 .map_err(|e| classify(&url, e))?;
             if !resp.status().is_success() {
                 // 5xx is transient; 4xx is terminal config error.
                 return if resp.status().is_server_error() {
-                    Err(EnrollError::Network(url.clone(), format!("HTTP {}", resp.status())))
+                    Err(EnrollError::Network(
+                        url.clone(),
+                        format!("HTTP {}", resp.status()),
+                    ))
                 } else {
                     Err(EnrollError::DeviceAuth(format!("HTTP {}", resp.status())))
                 };
@@ -212,7 +222,10 @@ impl EnrollClient {
         let mut consecutive_transient = 0u32;
         const MAX_CONSECUTIVE_TRANSIENT: u32 = 10;
 
-        info!("waiting for user authorization (poll every {}s)...", interval.as_secs());
+        info!(
+            "waiting for user authorization (poll every {}s)...",
+            interval.as_secs()
+        );
         loop {
             if Instant::now() >= deadline {
                 return Err(EnrollError::Expired);
@@ -235,7 +248,10 @@ impl EnrollClient {
                 Ok(r) => r,
                 Err(e) => {
                     consecutive_transient += 1;
-                    warn!("token poll network error ({}/{}): {}", consecutive_transient, MAX_CONSECUTIVE_TRANSIENT, e);
+                    warn!(
+                        "token poll network error ({}/{}): {}",
+                        consecutive_transient, MAX_CONSECUTIVE_TRANSIENT, e
+                    );
                     if consecutive_transient >= MAX_CONSECUTIVE_TRANSIENT {
                         return Err(EnrollError::Network(url.clone(), e.to_string()));
                     }
@@ -247,7 +263,10 @@ impl EnrollClient {
                 Ok(b) => b,
                 Err(_) => {
                     consecutive_transient += 1;
-                    warn!("token poll bad response ({}/{})", consecutive_transient, MAX_CONSECUTIVE_TRANSIENT);
+                    warn!(
+                        "token poll bad response ({}/{})",
+                        consecutive_transient, MAX_CONSECUTIVE_TRANSIENT
+                    );
                     if consecutive_transient >= MAX_CONSECUTIVE_TRANSIENT {
                         return Err(EnrollError::BadResponse("token".into()));
                     }
@@ -264,12 +283,19 @@ impl EnrollClient {
                 Some("authorization_pending") => {}
                 Some("slow_down") => {
                     interval += Duration::from_secs(5); // RFC 8628 §3.5
-                    warn!("server asked to slow down; interval now {}s", interval.as_secs());
+                    warn!(
+                        "server asked to slow down; interval now {}s",
+                        interval.as_secs()
+                    );
                 }
                 Some("access_denied") => return Err(EnrollError::AccessDenied),
                 Some("expired_token") => return Err(EnrollError::Expired),
                 Some(other) => return Err(EnrollError::DeviceAuth(other.to_string())),
-                None => return Err(EnrollError::BadResponse("token (no token, no error)".into())),
+                None => {
+                    return Err(EnrollError::BadResponse(
+                        "token (no token, no error)".into(),
+                    ))
+                }
             }
         }
     }
@@ -298,7 +324,10 @@ impl EnrollClient {
                     .map_err(|e| classify(&url, e))?;
                 if !resp.status().is_success() {
                     return if resp.status().is_server_error() {
-                        Err(EnrollError::Network(url.clone(), format!("HTTP {}", resp.status())))
+                        Err(EnrollError::Network(
+                            url.clone(),
+                            format!("HTTP {}", resp.status()),
+                        ))
                     } else {
                         Err(EnrollError::EnrollHttp(resp.status().as_u16()))
                     };
@@ -333,7 +362,12 @@ impl EnrollClient {
                 Err(e) if e.retryable() => {
                     last = e.to_string();
                     let delay = self.backoff(attempt);
-                    warn!("{what} failed (attempt {}/{}): {e}; retrying in {:?}", attempt + 1, self.retry.max_attempts, delay);
+                    warn!(
+                        "{what} failed (attempt {}/{}): {e}; retrying in {:?}",
+                        attempt + 1,
+                        self.retry.max_attempts,
+                        delay
+                    );
                     tokio::time::sleep(delay).await;
                 }
                 Err(e) => return Err(e), // terminal

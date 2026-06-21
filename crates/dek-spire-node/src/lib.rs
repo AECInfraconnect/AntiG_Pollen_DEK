@@ -40,13 +40,18 @@ impl SpireNodeAgent {
         let mtls_client = mtls
             .build_client(None)
             .context("Failed to build mTLS client for SPIRE Node Agent")?;
-        Ok(Self { endpoint: endpoint.to_string(), mtls_client })
+        Ok(Self {
+            endpoint: endpoint.to_string(),
+            mtls_client,
+        })
     }
 
     pub async fn attest_and_fetch_svid(&self, device_id: &str) -> Result<String> {
         let url = format!("{}/node/attest", self.endpoint);
         info!("Attesting node to SPIRE Server at {}", url);
-        let req_body = SpireAttestRequest { device_id: device_id.to_string() };
+        let req_body = SpireAttestRequest {
+            device_id: device_id.to_string(),
+        };
         let res = self.mtls_client.post(&url).json(&req_body).send().await?;
         if !res.status().is_success() {
             let status = res.status();
@@ -119,7 +124,11 @@ pub async fn attest_with_join_token(
 
     let res = client
         .post(&url)
-        .json(&JoinAttestRequest { join_token, device_id, csr_pem: &csr_pem })
+        .json(&JoinAttestRequest {
+            join_token,
+            device_id,
+            csr_pem: &csr_pem,
+        })
         .send()
         .await
         .context("send join attestation")?;
@@ -137,7 +146,9 @@ pub async fn attest_with_join_token(
         key_pem,
         cert_pem: resp.svid_cert_pem,
         spiffe_id: resp.spiffe_id,
-        trust_bundle_pem: resp.trust_bundle_pem.unwrap_or_else(|| trust_bundle_pem.to_string()),
+        trust_bundle_pem: resp
+            .trust_bundle_pem
+            .unwrap_or_else(|| trust_bundle_pem.to_string()),
     })
 }
 
@@ -155,7 +166,11 @@ pub async fn renew_svid(
 
     let res = mtls_client
         .post(renew_url)
-        .json(&JoinAttestRequest { join_token: "", device_id, csr_pem: &csr_pem })
+        .json(&JoinAttestRequest {
+            join_token: "",
+            device_id,
+            csr_pem: &csr_pem,
+        })
         .send()
         .await
         .context("send renew request")?;

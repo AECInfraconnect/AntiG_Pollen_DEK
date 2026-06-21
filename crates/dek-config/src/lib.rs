@@ -1,5 +1,5 @@
-pub mod paths;
 pub mod logging;
+pub mod paths;
 
 use anyhow::{Context, Result};
 use reqwest::{Certificate, Identity};
@@ -68,9 +68,21 @@ impl BootstrapConfig {
             let default_config = Self {
                 device_id: "device-001".to_string(),
                 mtls: MtlsConfig {
-                    client_cert_path: paths::get_config_dir().join("certs").join("client.crt").to_string_lossy().into_owned(),
-                    client_key_path: paths::get_config_dir().join("certs").join("client.key").to_string_lossy().into_owned(),
-                    root_ca_path: paths::get_config_dir().join("certs").join("root_ca.crt").to_string_lossy().into_owned(),
+                    client_cert_path: paths::get_config_dir()
+                        .join("certs")
+                        .join("client.crt")
+                        .to_string_lossy()
+                        .into_owned(),
+                    client_key_path: paths::get_config_dir()
+                        .join("certs")
+                        .join("client.key")
+                        .to_string_lossy()
+                        .into_owned(),
+                    root_ca_path: paths::get_config_dir()
+                        .join("certs")
+                        .join("root_ca.crt")
+                        .to_string_lossy()
+                        .into_owned(),
                 },
                 pinned_bundle_public_key: "xQyzrpVpR6jeGRNbW+JoX/NIr8Y/w0qDesoSvFwfViU="
                     .to_string(),
@@ -189,7 +201,10 @@ impl DekConfig {
         let client = bootstrap.mtls.build_client(None)?;
 
         let tenant_id = bootstrap.tenant_id.as_deref().unwrap_or("unknown_tenant");
-        let url = format!("{}/v1/tenants/{}/devices/{}/config", endpoint_base, tenant_id, bootstrap.device_id);
+        let url = format!(
+            "{}/v1/tenants/{}/devices/{}/config",
+            endpoint_base, tenant_id, bootstrap.device_id
+        );
         tracing::info!("Fetching dynamic config from cloud over MTLS: {}", url);
 
         let res = client.get(&url).send().await?;

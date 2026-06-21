@@ -94,24 +94,25 @@ async fn main() -> Result<()> {
         &bootstrap.mtls,
         None,
         &telemetry_db.to_string_lossy(),
-    ).ok();
+    )
+    .ok();
 
     let mut cmd = Command::new(&args.command_args[0]);
     cmd.args(&args.command_args[1..]);
-    
+
     // Inject opt-in proxy redirect environment variables
     cmd.env("HTTP_PROXY", "http://127.0.0.1:43890");
     cmd.env("HTTPS_PROXY", "http://127.0.0.1:43890");
-    
+
     cmd.stdin(Stdio::piped());
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 
     let mut child = cmd.spawn()?;
 
-    let mut child_stdin = child.stdin.take().expect("Failed to open child stdin");
-    let child_stdout = child.stdout.take().expect("Failed to open child stdout");
-    let child_stderr = child.stderr.take().expect("Failed to open child stderr");
+    let mut child_stdin = child.stdin.take().ok_or_else(|| anyhow::anyhow!("Failed to open child stdin"))?;
+    let child_stdout = child.stdout.take().ok_or_else(|| anyhow::anyhow!("Failed to open child stdout"))?;
+    let child_stderr = child.stderr.take().ok_or_else(|| anyhow::anyhow!("Failed to open child stderr"))?;
 
     // Parent streams
     let mut parent_stdin = BufReader::new(tokio::io::stdin()).lines();
@@ -129,7 +130,9 @@ async fn main() -> Result<()> {
 
     // Initialize PluginHost for redaction
     let mut plugin_paths = std::collections::HashMap::new();
-    let base_dir = dek_config::paths::get_plugin_dir().to_string_lossy().into_owned();
+    let base_dir = dek_config::paths::get_plugin_dir()
+        .to_string_lossy()
+        .into_owned();
     let paths_to_try = vec![
         format!("{}/pii_redactor.wasm", base_dir),
         "target/wasm32-wasip1/release/pii_redactor.wasm".to_string(),
@@ -141,11 +144,11 @@ async fn main() -> Result<()> {
             break;
         }
     }
-    
+
     let plugin_host_res = dek_wasm_host::WasmtimePluginHost::new(plugin_paths);
     let plugin_host = Arc::new(plugin_host_res.unwrap_or_else(|_| {
         warn!("Failed to load WasmtimePluginHost. Redaction may be unavailable.");
-        dek_wasm_host::WasmtimePluginHost::new(std::collections::HashMap::new()).unwrap()
+        dek_wasm_host::WasmtimePluginHost::new(std::collections::HashMap::new()).unwrap_or_else(|_| panic!("Failed to create dummy WasmtimePluginHost"))
     }));
 
     // Task 2: Read child stdout and pipe to our stdout
@@ -227,7 +230,10 @@ async fn main() -> Result<()> {
                         roles: vec![],
                     },
                     agent: None,
-                    action: normalized.tool_name.clone().unwrap_or(normalized.request_type.clone()),
+                    action: normalized
+                        .tool_name
+                        .clone()
+                        .unwrap_or(normalized.request_type.clone()),
                     resource: dek_decision::ResourceRef {
                         kind: "mcp_tool".into(),
                         id: server_id.clone(),
@@ -238,7 +244,7 @@ async fn main() -> Result<()> {
 
                 let decision_input = serde_json::to_value(&decision_req).unwrap_or(policy_input);
 
-                let start_time = std::time::Instant::now();
+                let _start_time = std::time::Instant::now();
                 let decision = router
                     .read()
                     .await

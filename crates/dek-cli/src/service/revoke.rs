@@ -7,11 +7,16 @@ pub async fn run(reason: &str) -> Result<()> {
         anyhow::bail!("Device is not enrolled.");
     }
 
-    let config: dek_config::BootstrapConfig = 
+    let config: dek_config::BootstrapConfig =
         serde_json::from_str(&std::fs::read_to_string(&bootstrap_path)?)?;
-    
+
     info!("Revoking device identity with Pollen Cloud...");
-    let url = format!("{}/v1/tenants/{}/devices/{}/revoke", config.cloud_url, config.tenant_id.unwrap_or_default(), config.device_id);
+    let url = format!(
+        "{}/v1/tenants/{}/devices/{}/revoke",
+        config.cloud_url,
+        config.tenant_id.unwrap_or_default(),
+        config.device_id
+    );
 
     // Get current mTLS client
     let certs_dir = dek_config::paths::get_config_dir().join("certs");

@@ -42,7 +42,7 @@ pub fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
             .unwrap_or("");
 
         if std::path::Path::new(policy_path).exists() {
-            if let Ok(runtime) = dek_policy_runtime::WasmtimePolicyRuntime::new(policy_path) {
+            if let Ok(runtime) = dek_policy_runtime::WasmtimePolicyRuntime::new(policy_path, None) {
                 router.register_evaluator("opa_wasm", Box::new(runtime));
             } else {
                 error!(

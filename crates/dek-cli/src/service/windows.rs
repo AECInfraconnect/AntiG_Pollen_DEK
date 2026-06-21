@@ -28,18 +28,24 @@ impl OsServiceManager {
 impl ServiceManager for OsServiceManager {
     fn install(&self) -> Result<()> {
         let exe_path = Self::core_exe_path()?;
-        
+
         // To bypass OneDrive/UserProfile permission issues for NetworkService,
         // we copy the executable to %ProgramData%\PollenDEK\bin\
-        let program_data_env = std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
+        let program_data_env =
+            std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
         let root_dir = PathBuf::from(&program_data_env).join("PollenDEK");
         let bin_dir = root_dir.join("bin");
         std::fs::create_dir_all(&bin_dir)?;
         let target_exe = bin_dir.join("dek-core.exe");
         std::fs::copy(&exe_path, &target_exe)?;
-        
+
         let _ = Command::new("icacls")
-            .args([root_dir.to_str().unwrap(), "/grant", "*S-1-5-20:(OI)(CI)RX", "/T"])
+            .args([
+                root_dir.to_str().unwrap_or_default(),
+                "/grant",
+                "*S-1-5-20:(OI)(CI)RX",
+                "/T",
+            ])
             .output();
 
         let output = Command::new("sc")
@@ -49,18 +55,25 @@ impl ServiceManager for OsServiceManager {
                 &format!("binPath=\"{}\"", target_exe.display()),
                 "start=auto",
                 // "NT AUTHORITY\\NetworkService" runs without admin rights but has network access
-                "obj=NT AUTHORITY\\NetworkService", 
-                "DisplayName=Pollen DEK Core"
+                "obj=NT AUTHORITY\\NetworkService",
+                "DisplayName=Pollen DEK Core",
             ])
             .output()
             .context("Failed to run sc create")?;
-            
+
         if !output.status.success() {
-            anyhow::bail!("Failed to create service: {}", String::from_utf8_lossy(&output.stdout));
+            anyhow::bail!(
+                "Failed to create service: {}",
+                String::from_utf8_lossy(&output.stdout)
+            );
         }
 
         Command::new("sc")
-            .args(["description", self.service_name, "Pollen DEK IPC Supervisor and Policy Enforcer"])
+            .args([
+                "description",
+                self.service_name,
+                "Pollen DEK IPC Supervisor and Policy Enforcer",
+            ])
             .output()?;
 
         // Generate rollback script
@@ -86,9 +99,12 @@ sc start PollenDEK
             .args([
                 "failure",
                 self.service_name,
-                "reset=", "60",
-                "actions=", "restart/5000/restart/5000/run/5000",
-                "command=", &failure_command
+                "reset=",
+                "60",
+                "actions=",
+                "restart/5000/restart/5000/run/5000",
+                "command=",
+                &failure_command,
             ])
             .output()?;
 
@@ -101,9 +117,12 @@ sc start PollenDEK
             .args(["delete", self.service_name])
             .output()
             .context("Failed to run sc delete")?;
-            
+
         if !output.status.success() {
-            anyhow::bail!("Failed to delete service: {}", String::from_utf8_lossy(&output.stdout));
+            anyhow::bail!(
+                "Failed to delete service: {}",
+                String::from_utf8_lossy(&output.stdout)
+            );
         }
         Ok(())
     }
@@ -114,7 +133,10 @@ sc start PollenDEK
             .output()
             .context("Failed to start service")?;
         if !output.status.success() {
-            anyhow::bail!("Failed to start service: {}", String::from_utf8_lossy(&output.stdout));
+            anyhow::bail!(
+                "Failed to start service: {}",
+                String::from_utf8_lossy(&output.stdout)
+            );
         }
         Ok(())
     }

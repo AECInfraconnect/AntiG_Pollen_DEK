@@ -1,11 +1,11 @@
 use anyhow::Result;
 
-pub mod enroll;
-pub mod rollback;
-pub mod unenroll;
 pub mod doctor;
-pub mod rotate;
+pub mod enroll;
 pub mod revoke;
+pub mod rollback;
+pub mod rotate;
+pub mod unenroll;
 
 pub trait ServiceManager {
     fn install(&self) -> Result<()>;
@@ -44,11 +44,21 @@ mod unsupported {
     }
 
     impl ServiceManager for OsServiceManager {
-        fn install(&self) -> Result<()> { anyhow::bail!("Unsupported OS") }
-        fn uninstall(&self) -> Result<()> { anyhow::bail!("Unsupported OS") }
-        fn start(&self) -> Result<()> { anyhow::bail!("Unsupported OS") }
-        fn stop(&self) -> Result<()> { anyhow::bail!("Unsupported OS") }
-        fn status(&self) -> Result<String> { anyhow::bail!("Unsupported OS") }
+        fn install(&self) -> Result<()> {
+            anyhow::bail!("Unsupported OS")
+        }
+        fn uninstall(&self) -> Result<()> {
+            anyhow::bail!("Unsupported OS")
+        }
+        fn start(&self) -> Result<()> {
+            anyhow::bail!("Unsupported OS")
+        }
+        fn stop(&self) -> Result<()> {
+            anyhow::bail!("Unsupported OS")
+        }
+        fn status(&self) -> Result<String> {
+            anyhow::bail!("Unsupported OS")
+        }
     }
 }
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]

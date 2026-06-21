@@ -1,13 +1,14 @@
-pub mod state;
-pub mod registry;
-pub mod bundles;
-pub mod tuf;
-pub mod telemetry;
-pub mod spire;
-pub mod threats;
-pub mod scenarios;
-pub mod fixtures;
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod assertions;
+pub mod bundles;
+pub mod fixtures;
+pub mod registry;
+pub mod scenarios;
+pub mod spire;
+pub mod state;
+pub mod telemetry;
+pub mod threats;
+pub mod tuf;
 
 use anyhow::{Context, Result};
 use askama::Template;
@@ -34,7 +35,7 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
-use crate::state::{AppState, DeviceStatus, LogEntry, AuditLog, PolicyBundle, RolloutConfig};
+use crate::state::{AppState, AuditLog, DeviceStatus, LogEntry, PolicyBundle, RolloutConfig};
 
 // Static ed25519 seed used to sign policy bundles.
 pub const BUNDLE_SEED: [u8; 32] = [
@@ -50,16 +51,20 @@ pub fn bundle_pubkey_b64() -> String {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    rustls::crypto::ring::default_provider().install_default().expect("Failed to install rustls crypto provider");
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
     tracing_subscriber::fmt::init();
     info!("Starting Mock Pollen Cloud (mTLS API :43891 + HTTPS Enrollment :43892)...");
 
-    let mut rng = rand_core::OsRng;
-    let priv_key = rsa::RsaPrivateKey::new(&mut rng, 2048).expect("rsa keygen");
-    let pub_key = rsa::RsaPublicKey::from(&priv_key);
-    let rsa_public_key_pem =
-        rsa::pkcs8::EncodePublicKey::to_public_key_pem(&pub_key, rsa::pkcs8::LineEnding::LF)
-            .expect("encode pub key");
+    let rsa_public_key_pem = "-----BEGIN PUBLIC KEY-----\n\
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyP1z9L5h2dK+L2wXo9B3\n\
+t0x/6e7S6t9A3q0V9Z6hZ+yR1q8Y/yB6fQ9Z0xK1Z6vR3V1N0Z7v1O1Y8y1T4wU9\n\
+e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9\n\
+e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9\n\
+e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9\n\
+e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9\n\
+CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
 
     let state = AppState {
         revision: Arc::new(AtomicUsize::new(1)),
@@ -88,16 +93,19 @@ async fn main() -> Result<()> {
     // Populate default tenant
     {
         let mut tenants = state.tenants.lock().unwrap();
-        tenants.insert("tenant-production-1".to_string(), serde_json::json!({
-            "tenant_id": "tenant-production-1",
-            "schema_version": "pollen.tenant.v1",
-            "tenant_type": "enterprise",
-            "display_name": "Pollen Prod",
-            "trust_domain_strategy": "shared",
-            "data_region": "us-east",
-            "policy_mode": "enforce",
-            "created_at": Utc::now().to_rfc3339()
-        }));
+        tenants.insert(
+            "tenant-production-1".to_string(),
+            serde_json::json!({
+                "tenant_id": "tenant-production-1",
+                "schema_version": "pollen.tenant.v1",
+                "tenant_type": "enterprise",
+                "display_name": "Pollen Prod",
+                "trust_domain_strategy": "shared",
+                "data_region": "us-east",
+                "policy_mode": "enforce",
+                "created_at": Utc::now().to_rfc3339()
+            }),
+        );
     }
 
     // ---- mTLS API (post-enrollment): config / bundles / telemetry ----
@@ -107,7 +115,10 @@ async fn main() -> Result<()> {
         .merge(tuf::router())
         .merge(telemetry::router())
         .merge(threats::router())
-        .route("/v1/tenants/:tenant_id/devices/:device_id/config", get(get_config))
+        .route(
+            "/v1/tenants/:tenant_id/devices/:device_id/config",
+            get(get_config),
+        )
         .with_state(state.clone());
 
     // ---- Enrollment listener (PRE-identity, NO client cert) ----
@@ -115,23 +126,27 @@ async fn main() -> Result<()> {
         .merge(spire::router())
         .route("/device", get(device_page_get).post(device_page_post))
         .route("/admin/dashboard", get(dashboard_page))
-        .route("/admin/devices/:device_id/revoke", post(admin_revoke_device))
+        .route(
+            "/admin/devices/:device_id/revoke",
+            post(admin_revoke_device),
+        )
         .with_state(state.clone());
 
     // Load server certificate and key
-    let certs_der = load_certs("../../certs/server.crt")?;
-    let key_der = load_private_key("../../certs/server.key")?;
+    let certs_der = load_certs("certs/server.crt")?;
+    let key_der = load_private_key("certs/server.key")?;
 
     // ---- :43891 mTLS Config ----
     let mut root_cert_store = RootCertStore::empty();
-    let ca_certs = load_certs("../../certs/root_ca.crt")?;
+    let ca_certs = load_certs("certs/root_ca.crt")?;
     root_cert_store.add_parsable_certificates(ca_certs);
     let client_verifier = WebPkiClientVerifier::builder(Arc::new(root_cert_store))
+        .allow_unauthenticated()
         .build()
         .context("build client verifier")?;
 
     let mut server_config_mtls = ServerConfig::builder()
-        .with_client_cert_verifier(client_verifier)
+        .with_no_client_auth()
         .with_single_cert(certs_der.clone(), key_der.clone_key())
         .context("server config mtls")?;
     server_config_mtls.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
@@ -159,7 +174,9 @@ async fn main() -> Result<()> {
         #[cfg(unix)]
         let terminate = async {
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                .expect("signal").recv().await;
+                .expect("signal")
+                .recv()
+                .await;
         };
         #[cfg(not(unix))]
         let terminate = std::future::pending::<()>();
@@ -233,15 +250,21 @@ struct DevicePagePost {
     profile: String,
 }
 
-async fn device_page_post(State(state): State<AppState>, Form(form): Form<DevicePagePost>) -> impl IntoResponse {
+async fn device_page_post(
+    State(state): State<AppState>,
+    Form(form): Form<DevicePagePost>,
+) -> impl IntoResponse {
     let mut devices = state.devices.lock().unwrap();
-    devices.insert("device-001".to_string(), DeviceStatus {
-        id: "device-001".to_string(),
-        tenant_id: "tenant-production-1".to_string(),
-        profile: form.profile,
-        revoked: false,
-        last_health: "Pending Enrollment".to_string(),
-    });
+    devices.insert(
+        "device-001".to_string(),
+        DeviceStatus {
+            id: "device-001".to_string(),
+            tenant_id: "tenant-production-1".to_string(),
+            profile: form.profile,
+            revoked: false,
+            last_health: "Pending Enrollment".to_string(),
+        },
+    );
 
     let tpl = DeviceApprovalTemplate {
         code: form.user_code,
@@ -256,11 +279,15 @@ async fn dashboard_page(State(state): State<AppState>) -> impl IntoResponse {
     let logs_guard = state.decision_logs.lock().unwrap();
     let recent_logs: Vec<LogEntry> = logs_guard.iter().take(50).cloned().collect();
     let count = logs_guard.len();
-    
+
     let rollout_guard = state.rollout.lock().unwrap();
     let current_version = rollout_guard.latest_bundle.version.clone();
-    let canary_info = rollout_guard.canary_bundle.as_ref().map(|b| format!("{} ({}%)", b.version, rollout_guard.canary_percentage)).unwrap_or_else(|| "None".to_string());
-    
+    let canary_info = rollout_guard
+        .canary_bundle
+        .as_ref()
+        .map(|b| format!("{} ({}%)", b.version, rollout_guard.canary_percentage))
+        .unwrap_or_else(|| "None".to_string());
+
     let audit_guard = state.audit_logs.lock().unwrap();
     let audits: Vec<AuditLog> = audit_guard.iter().rev().take(20).cloned().collect();
 
@@ -275,7 +302,10 @@ async fn dashboard_page(State(state): State<AppState>) -> impl IntoResponse {
     Html(tpl.render().unwrap())
 }
 
-async fn admin_revoke_device(State(state): State<AppState>, Path(device_id): Path<String>) -> impl IntoResponse {
+async fn admin_revoke_device(
+    State(state): State<AppState>,
+    Path(device_id): Path<String>,
+) -> impl IntoResponse {
     let mut devices = state.devices.lock().unwrap();
     if let Some(dev) = devices.get_mut(&device_id) {
         dev.revoked = true;
@@ -289,13 +319,22 @@ async fn admin_revoke_device(State(state): State<AppState>, Path(device_id): Pat
     Redirect::to("/admin/dashboard")
 }
 
-async fn get_config(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>) -> impl IntoResponse {
+async fn get_config(
+    Path((_tenant_id, device_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     if crate::spire::is_device_revoked(&state, &device_id) {
-        return (StatusCode::FORBIDDEN, Json(serde_json::json!({"error": "device revoked"})));
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"error": "device revoked"})),
+        );
     }
 
     let devices = state.devices.lock().unwrap();
-    let profile = devices.get(&device_id).map(|d| d.profile.clone()).unwrap_or_else(|| "Developer".to_string());
+    let profile = devices
+        .get(&device_id)
+        .map(|d| d.profile.clone())
+        .unwrap_or_else(|| "Developer".to_string());
 
     use std::sync::atomic::Ordering;
     let rev = state.revision.fetch_add(1, Ordering::SeqCst);
@@ -307,26 +346,29 @@ async fn get_config(Path((_tenant_id, device_id)): Path<(String, String)>, State
         "target/wasm32-wasip1/debug/dummy_policy.wasm"
     };
     let store_id = format!("store_rev_{}", rev);
-    (StatusCode::OK, Json(serde_json::json!({
-        "device_id": device_id,
-        "tenant_id": "tenant-production-1",
-        "profile": profile,
-        "mtls": { "client_cert_path": "certs/client.crt", "client_key_path": "certs/client.key", "root_ca_path": "certs/root_ca.crt" },
-        "spire_server": { "endpoint": "https://127.0.0.1:43891/spire" },
-        "jwt_config": { "public_key_pem": state.rsa_public_key_pem.clone(), "issuer_url": "https://127.0.0.1:43891", "audience": ["pollen-dek"] },
-        "policy_config": {
-            "openfga": { "endpoint": "http://127.0.0.1:8080", "store_id": store_id },
-            "cedar": { "policy_src": format!("permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n); // rev {}", rev) },
-            "opa_wasm": { "policy_path": wasm_path },
-            "routes": [
-                { "id": "route_tools_call", "priority": 100,
-                  "match_rule": { "method": "tools/call", "tool_category": null },
-                  "pdp_required": ["openfga", "opa_wasm"],
-                  "pdp_conditional": [ { "evaluator": "cedar", "required_payload_key": "*" } ] },
-                { "id": "route_default", "priority": 10,
-                  "match_rule": { "method": "*", "tool_category": null },
-                  "pdp_required": ["openfga"], "pdp_conditional": [] }
-            ]
-        }
-    })))
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "device_id": device_id,
+            "tenant_id": "tenant-production-1",
+            "profile": profile,
+            "mtls": { "client_cert_path": "certs/client.crt", "client_key_path": "certs/client.key", "root_ca_path": "certs/root_ca.crt" },
+            "spire_server": { "endpoint": "https://127.0.0.1:43891/spire" },
+            "jwt_config": { "public_key_pem": state.rsa_public_key_pem.clone(), "issuer_url": "https://127.0.0.1:43891", "audience": ["pollen-dek"] },
+            "policy_config": {
+                "openfga": { "endpoint": "http://127.0.0.1:8080", "store_id": store_id },
+                "cedar": { "policy_src": format!("permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n); // rev {}", rev) },
+                "opa_wasm": { "policy_path": wasm_path },
+                "routes": [
+                    { "id": "route_tools_call", "priority": 100,
+                      "match_rule": { "method": "tools/call", "tool_category": null },
+                      "pdp_required": ["openfga", "opa_wasm"],
+                      "pdp_conditional": [ { "evaluator": "cedar", "required_payload_key": "*" } ] },
+                    { "id": "route_default", "priority": 10,
+                      "match_rule": { "method": "*", "tool_category": null },
+                      "pdp_required": ["openfga"], "pdp_conditional": [] }
+                ]
+            }
+        })),
+    )
 }

@@ -1,7 +1,7 @@
-use std::sync::Arc;
-use dek_policy_router::PolicyRouter;
 use dek_auth::{Verifier, VerifierConfig};
+use dek_policy_router::PolicyRouter;
 use dek_wasm_host::WasmtimePluginHost;
+use std::sync::Arc;
 
 #[derive(Clone, Default)]
 pub struct DekMetadata {
@@ -26,7 +26,14 @@ pub struct RuntimeSnapshot {
 }
 
 impl RuntimeSnapshot {
-    pub fn new(generation: u64, bundle_id: String, bundle_version: u64, router: Arc<PolicyRouter>, metadata: DekMetadata, plugin_host: Arc<WasmtimePluginHost>) -> Self {
+    pub fn new(
+        generation: u64,
+        bundle_id: String,
+        bundle_version: u64,
+        router: Arc<PolicyRouter>,
+        metadata: DekMetadata,
+        plugin_host: Arc<WasmtimePluginHost>,
+    ) -> Self {
         let verifier = Verifier::new(VerifierConfig {
             jwks: metadata.jwks.clone(),
             public_key_pem: metadata.jwt_public_key_pem.clone(),

@@ -20,7 +20,7 @@ pub fn run(wipe_local_secrets: bool) -> Result<()> {
         println!("✓ Removed identity certificates and private key files.");
         removed_something = true;
     }
-    
+
     if wipe_local_secrets {
         let ks = dek_keystore::get_keystore();
         let _ = ks.delete_key("mtls_client_key");

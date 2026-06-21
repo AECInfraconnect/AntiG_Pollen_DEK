@@ -21,15 +21,20 @@ use tracing::{error, info, warn};
 mod state;
 use state::AppState;
 
+use dek_activation::snapshot::{DekMetadata, RuntimeSnapshot};
 use dek_config::{BootstrapConfig, DekConfig};
-use dek_activation::snapshot::{RuntimeSnapshot, DekMetadata};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    dek_config::logging::init_logging("dek-mcp-proxy").unwrap_or_else(|e| {
-        eprintln!("Failed to initialize logging: {}", e);
-    });
-    metrics_exporter_prometheus::PrometheusBuilder::new().install_recorder().unwrap();
+    #[allow(clippy::print_stderr)]
+    {
+        dek_config::logging::init_logging("dek-mcp-proxy").unwrap_or_else(|e| {
+            eprintln!("Failed to initialize logging: {}", e);
+        });
+    }
+    metrics_exporter_prometheus::PrometheusBuilder::new()
+        .install_recorder()
+        .map_err(|e| anyhow::anyhow!("Metrics error: {}", e))?;
     info!("Starting Pollen DEK MCP Proxy...");
 
     let bootstrap = BootstrapConfig::load_or_default("bootstrap.json")?;
@@ -110,9 +115,11 @@ async fn main() -> Result<()> {
 
     // Determine plugin paths
     let mut plugin_paths = std::collections::HashMap::new();
-    
+
     // Resolve plugins path via standard installation directory or env var
-    let base_dir = dek_config::paths::get_plugin_dir().to_string_lossy().into_owned();
+    let base_dir = dek_config::paths::get_plugin_dir()
+        .to_string_lossy()
+        .into_owned();
 
     let paths_to_try = vec![
         format!("{}/pii_redactor.wasm", base_dir),
@@ -129,7 +136,14 @@ async fn main() -> Result<()> {
 
     let plugin_host = Arc::new(WasmtimePluginHost::new(plugin_paths)?);
     let initial_prof = initial_metadata.enterprise_profile.clone();
-    let initial_snapshot = RuntimeSnapshot::new(0, "initial".into(), 0, Arc::new(router), initial_metadata, plugin_host.clone());
+    let initial_snapshot = RuntimeSnapshot::new(
+        0,
+        "initial".into(),
+        0,
+        Arc::new(router),
+        initial_metadata,
+        plugin_host.clone(),
+    );
 
     let telemetry_db = dek_config::paths::get_data_dir().join("telemetry.db");
     let telemetry = dek_telemetry::CloudTelemetrySink::new(
@@ -137,17 +151,14 @@ async fn main() -> Result<()> {
         &bootstrap.mtls,
         None,
         &telemetry_db.to_string_lossy(),
-    ).ok();
+    )
+    .ok();
 
     if let Some(ref tel) = telemetry {
         tel.set_enterprise_profile(initial_prof);
     }
 
-    let state = AppState::new(
-        HttpTransportAdapter,
-        initial_snapshot,
-        telemetry,
-    );
+    let state = AppState::new(HttpTransportAdapter, initial_snapshot, telemetry);
 
     // Start background file watcher for hot-reloading
     let state_clone = state.clone();
@@ -170,13 +181,18 @@ async fn main() -> Result<()> {
 
         let bundle_path_clone = bundle_path_buf.clone();
         let staged_path_local = std::path::Path::new(&bundle_path_clone);
-        let parent_dir = staged_path_local.parent().unwrap_or(std::path::Path::new("."));
+        let parent_dir = staged_path_local
+            .parent()
+            .unwrap_or(std::path::Path::new("."));
         if let Err(e) = watcher.watch(parent_dir, RecursiveMode::NonRecursive) {
             error!("Failed to watch target directory: {}", e);
             return;
         }
 
-        info!("Started background file watcher for hot-reloading on {}", staged_path_local.display());
+        info!(
+            "Started background file watcher for hot-reloading on {}",
+            staged_path_local.display()
+        );
 
         while let Some(event) = rx.recv().await {
             match event.kind {
@@ -224,15 +240,20 @@ async fn main() -> Result<()> {
                                                 Some(pem.to_string());
                                         }
                                         if let Some(jwks_val) = jwt_cfg.get("jwks") {
-                                            if let Ok(jwks) = serde_json::from_value(jwks_val.clone()) {
+                                            if let Ok(jwks) =
+                                                serde_json::from_value(jwks_val.clone())
+                                            {
                                                 metadata_clone.jwks = Some(jwks);
                                             }
                                         }
-                                        if let Some(issuer) = jwt_cfg.get("issuer_url").and_then(|v| v.as_str()) {
+                                        if let Some(issuer) =
+                                            jwt_cfg.get("issuer_url").and_then(|v| v.as_str())
+                                        {
                                             metadata_clone.issuer_url = Some(issuer.to_string());
                                         }
                                         if let Some(aud_val) = jwt_cfg.get("audience") {
-                                            if let Ok(aud) = serde_json::from_value(aud_val.clone()) {
+                                            if let Ok(aud) = serde_json::from_value(aud_val.clone())
+                                            {
                                                 metadata_clone.audience = Some(aud);
                                             }
                                         }
@@ -241,7 +262,9 @@ async fn main() -> Result<()> {
                                         if let Ok(prof) = serde_json::from_value(prof_val.clone()) {
                                             metadata_clone.enterprise_profile = prof;
                                             if let Some(ref tel) = state_clone.telemetry {
-                                                tel.set_enterprise_profile(metadata_clone.enterprise_profile.clone());
+                                                tel.set_enterprise_profile(
+                                                    metadata_clone.enterprise_profile.clone(),
+                                                );
                                             }
                                         }
                                     }
@@ -252,9 +275,9 @@ async fn main() -> Result<()> {
                                         0,
                                         Arc::new(new_router),
                                         metadata_clone,
-                                        old_snapshot.plugin_host.clone()
+                                        old_snapshot.plugin_host.clone(),
                                     );
-                                    
+
                                     if is_active {
                                         // Clear cache of the old router before replacing
                                         old_snapshot.router.clear_caches().await;
@@ -327,23 +350,26 @@ async fn handle_forward_proxy(
         });
         StatusCode::OK.into_response()
     } else {
-        (StatusCode::BAD_GATEWAY, "Only HTTP CONNECT is implemented for Forward Proxy").into_response()
+        (
+            StatusCode::BAD_GATEWAY,
+            "Only HTTP CONNECT is implemented for Forward Proxy",
+        )
+            .into_response()
     }
 }
 
 async fn shutdown_signal() {
     let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("Failed to install Ctrl+C handler");
+        if let Err(e) = tokio::signal::ctrl_c().await {
+            warn!("Failed to install Ctrl+C handler: {}", e);
+        }
     };
 
     #[cfg(unix)]
     let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("Failed to install signal handler")
-            .recv()
-            .await;
+        if let Ok(mut sig) = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            sig.recv().await;
+        }
     };
 
     #[cfg(not(unix))]
@@ -364,7 +390,7 @@ async fn handle_mcp_request(
     info!("Intercepted MCP Request: {}", payload);
 
     let auth_header = headers.get("Authorization").and_then(|h| h.to_str().ok());
-    
+
     let snapshot = state.snapshot.load();
     let metadata = &snapshot.metadata;
     let verifier = &snapshot.verifier;
@@ -427,7 +453,10 @@ async fn handle_mcp_request(
 
     let mut policy_input = serde_json::to_value(&normalized).unwrap_or(json!({}));
     // Provide backwards compatibility for existing mock PDPs
-    policy_input["action"] = json!(normalized.tool_name.clone().unwrap_or(normalized.request_type.clone()));
+    policy_input["action"] = json!(normalized
+        .tool_name
+        .clone()
+        .unwrap_or(normalized.request_type.clone()));
     policy_input["principal"] = json!(principal);
     policy_input["resource"] = json!("mcp_tool");
 
@@ -441,7 +470,10 @@ async fn handle_mcp_request(
             roles: vec![],
         },
         agent: None,
-        action: normalized.tool_name.clone().unwrap_or(normalized.request_type.clone()),
+        action: normalized
+            .tool_name
+            .clone()
+            .unwrap_or(normalized.request_type.clone()),
         resource: dek_decision::ResourceRef {
             kind: "mcp_tool".into(),
             id: "*".into(),
@@ -449,13 +481,13 @@ async fn handle_mcp_request(
         context: policy_input.clone(),
         input_hash: "mock_hash".into(),
     };
-    
+
     let decision_input = serde_json::to_value(&decision_req).unwrap_or(policy_input);
 
     let start_time = std::time::Instant::now();
     // Evaluate against the Adaptive Policy Pipeline
     let decision_result = snapshot.router.authorize(decision_input.clone()).await;
-    
+
     let duration = start_time.elapsed().as_secs_f64();
     metrics::histogram!("dek_proxy_request_duration_seconds").record(duration);
 
@@ -483,11 +515,15 @@ async fn handle_mcp_request(
                 metrics::counter!("dek_proxy_requests_total", "decision" => "deny").increment(1);
             }
             info!("Final Pipeline Decision: {:?}", decision);
-            
+
             let response = dek_decision::DecisionResponse {
                 decision_id: uuid::Uuid::new_v4().to_string(),
                 allow: decision.allow,
-                reason_code: if decision.allow { "OK".into() } else { "DENY".into() },
+                reason_code: if decision.allow {
+                    "OK".into()
+                } else {
+                    "DENY".into()
+                },
                 reason: decision.reason.clone(),
                 obligations: vec![],
                 effects: decision.effects.clone(),
@@ -517,14 +553,17 @@ async fn handle_mcp_request(
             }
 
             if decision.allow {
-                let mut final_response = json!({
+                let final_response = json!({
                     "status": "allowed",
                     "message": "The request passed the PEP evaluation.",
                     "decision": response
                 });
 
                 // Apply PII redaction plugin if required
-                if let Ok(redacted) = snapshot.plugin_host.invoke("pii-redactor", final_response.clone()) {
+                if let Ok(redacted) = snapshot
+                    .plugin_host
+                    .invoke("pii-redactor", final_response.clone())
+                {
                     info!("Applied PII redaction plugin successfully.");
                     (StatusCode::OK, Json(redacted)).into_response()
                 } else {
@@ -566,7 +605,7 @@ async fn handle_authorize(
     let decision_result = snapshot.router.authorize(payload).await;
     let duration = start_time.elapsed().as_secs_f64();
     metrics::histogram!("dek_proxy_request_duration_seconds").record(duration);
-    
+
     match decision_result {
         Ok(decision) => {
             if decision.allow {
@@ -594,7 +633,11 @@ async fn handle_filter_request(
 ) -> Response {
     let _snapshot = state.snapshot.load();
     // In a real scenario, this would apply request-side obligations (e.g. inject headers)
-    (StatusCode::OK, Json(json!({"status": "filtered", "payload": payload}))).into_response()
+    (
+        StatusCode::OK,
+        Json(json!({"status": "filtered", "payload": payload})),
+    )
+        .into_response()
 }
 
 async fn handle_filter_response(

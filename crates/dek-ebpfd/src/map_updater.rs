@@ -65,7 +65,7 @@ impl MapUpdater {
 
     pub fn apply_update(&mut self, update: EbpfMapUpdate) -> Result<()> {
         self.validate_update(&update)?;
-        
+
         // Update generation to prevent replay of older updates
         if update.generation > self.current_generation {
             self.current_generation = update.generation;

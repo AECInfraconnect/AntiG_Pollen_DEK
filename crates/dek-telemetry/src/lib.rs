@@ -27,7 +27,7 @@ pub struct TelemetryEnvelope {
     pub dek_version: String,
     pub os: String,
     pub event_type: String,
-    
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub egress: Option<EgressLog>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -64,8 +64,15 @@ pub struct CloudTelemetrySink {
 }
 
 impl CloudTelemetrySink {
-    pub fn new(endpoint_url: &str, mtls: &MtlsConfig, client_key_override: Option<&[u8]>, db_path: &str) -> Result<Arc<Self>> {
-        let client = Arc::new(tokio::sync::RwLock::new(mtls.build_client(client_key_override)?));
+    pub fn new(
+        endpoint_url: &str,
+        mtls: &MtlsConfig,
+        client_key_override: Option<&[u8]>,
+        db_path: &str,
+    ) -> Result<Arc<Self>> {
+        let client = Arc::new(tokio::sync::RwLock::new(
+            mtls.build_client(client_key_override)?,
+        ));
         let spooler = Arc::new(Spooler::new(db_path)?);
         let redactor = Arc::new(Redactor::new());
 
@@ -74,7 +81,9 @@ impl CloudTelemetrySink {
             redactor,
             client: client.clone(),
             endpoint_url: endpoint_url.to_string(),
-            enterprise_profile: Arc::new(std::sync::RwLock::new(dek_config::EnterpriseProfile::default())),
+            enterprise_profile: Arc::new(std::sync::RwLock::new(
+                dek_config::EnterpriseProfile::default(),
+            )),
         });
 
         // Initialize OTLP Metrics Provider
@@ -98,20 +107,23 @@ impl CloudTelemetrySink {
         let exporter = opentelemetry_otlp::new_exporter()
             .http()
             .with_endpoint(format!("{}/v1/metrics", endpoint_url))
-            .build_metrics_exporter(Box::new(opentelemetry_sdk::metrics::reader::DefaultTemporalitySelector::new()))
+            .build_metrics_exporter(Box::new(
+                opentelemetry_sdk::metrics::reader::DefaultTemporalitySelector::new(),
+            ))
             .map_err(|e| anyhow::anyhow!("Failed to build metrics exporter: {}", e))?;
-            
+
         let reader = PeriodicReader::builder(exporter, opentelemetry_sdk::runtime::Tokio)
             .with_interval(Duration::from_secs(10))
             .build();
-            
+
         let provider = SdkMeterProvider::builder()
             .with_reader(reader)
-            .with_resource(Resource::new(vec![
-                KeyValue::new("service.name", "pollen-dek")
-            ]))
+            .with_resource(Resource::new(vec![KeyValue::new(
+                "service.name",
+                "pollen-dek",
+            )]))
             .build();
-            
+
         global::set_meter_provider(provider);
         info!("[Telemetry] OTLP Metrics provider initialized");
         Ok(())
@@ -121,7 +133,7 @@ impl CloudTelemetrySink {
         let new_client = mtls.build_client(None)?;
         let mut client_lock = self.client.write().await;
         *client_lock = new_client;
-        
+
         // (In a real system, we might also need to update the OTLP exporter's client)
         info!("[Telemetry] Successfully updated internal HTTP client with new mTLS configuration");
         Ok(())
@@ -135,7 +147,11 @@ impl CloudTelemetrySink {
 
     pub fn emit_async(&self, mut event: Value, priority: Priority) {
         // Enforce Enterprise Regulated Profile: Strip any raw payload capture
-        let profile = self.enterprise_profile.read().map(|p| p.clone()).unwrap_or_default();
+        let profile = self
+            .enterprise_profile
+            .read()
+            .map(|p| p.clone())
+            .unwrap_or_default();
         if profile == dek_config::EnterpriseProfile::Regulated {
             if let Some(obj) = event.as_object_mut() {
                 obj.remove("raw_payload");
@@ -173,7 +189,7 @@ impl CloudTelemetrySink {
             for (id, event) in batch {
                 let bg_client = self.client.read().await.clone();
                 let bg_url = self.endpoint_url.clone();
-                
+
                 let strategy = ExponentialBackoff::from_millis(500)
                     .factor(2)
                     .max_delay(Duration::from_secs(5))
@@ -185,12 +201,18 @@ impl CloudTelemetrySink {
                         Ok(res) if res.status().is_success() => Ok(()),
                         Ok(res) if res.status().is_client_error() => {
                             // Non-retryable error (e.g. 400 Bad Request)
-                            warn!("[Telemetry] Cloud rejected event (4xx). Status: {}", res.status());
+                            warn!(
+                                "[Telemetry] Cloud rejected event (4xx). Status: {}",
+                                res.status()
+                            );
                             Err(anyhow::anyhow!("Non-retryable {}", res.status()))
                         }
                         Ok(res) => {
                             // Retryable error (e.g. 500 Internal Server Error)
-                            warn!("[Telemetry] Cloud rejected event (5xx). Status: {}", res.status());
+                            warn!(
+                                "[Telemetry] Cloud rejected event (5xx). Status: {}",
+                                res.status()
+                            );
                             Err(anyhow::anyhow!("Retryable {}", res.status()))
                         }
                         Err(e) => {
@@ -228,7 +250,7 @@ impl CloudTelemetrySink {
     async fn start_heartbeat(&self) {
         loop {
             tokio::time::sleep(Duration::from_secs(60)).await;
-            
+
             let q_depth = self.spooler.len().unwrap_or(0);
             let heartbeat = serde_json::json!({
                 "schema_version": "1.0",

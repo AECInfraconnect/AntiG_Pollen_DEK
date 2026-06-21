@@ -10,6 +10,8 @@
 //!  - Public API is unchanged (new/push/pop_batch/delete_batch/len) plus two
 //!    additions (`with_capacity`, `vacuum`); existing callers keep working.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::len_without_is_empty)]
+
 use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit, OsRng},
     Aes256Gcm, Key, Nonce,
@@ -110,9 +112,11 @@ impl Spooler {
 
     pub fn push(&self, priority: Priority, payload: &Value) -> Result<()> {
         let payload_str = serde_json::to_string(payload)?;
-        
+
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng); // 96-bits; unique per message
-        let ciphertext = self.cipher.encrypt(&nonce, payload_str.as_bytes())
+        let ciphertext = self
+            .cipher
+            .encrypt(&nonce, payload_str.as_bytes())
             .map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;
 
         let conn = self.conn.lock().unwrap();
@@ -132,16 +136,21 @@ impl Spooler {
         )?;
         if evicted > 0 {
             metrics::counter!("dek_telemetry_spool_evicted_total").increment(evicted as u64);
-            warn!(evicted, cap = self.max_rows, "telemetry spool full; evicted oldest/low-priority events");
+            warn!(
+                evicted,
+                cap = self.max_rows,
+                "telemetry spool full; evicted oldest/low-priority events"
+            );
         }
         Ok(())
     }
 
     pub fn pop_batch(&self, limit: usize) -> Result<Vec<(i64, Value)>> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn
-            .prepare("SELECT id, payload, nonce FROM events ORDER BY priority DESC, id ASC LIMIT ?1")?;
-        
+        let mut stmt = conn.prepare(
+            "SELECT id, payload, nonce FROM events ORDER BY priority DESC, id ASC LIMIT ?1",
+        )?;
+
         let rows = stmt.query_map([limit as i64], |row| {
             let id: i64 = row.get(0)?;
             let payload_blob: Vec<u8> = row.get(1)?;
@@ -163,8 +172,8 @@ impl Spooler {
                 }
                 Err(e) => {
                     warn!("Failed to decrypt spooled event id {}: {}", id, e);
-                    // We skip it, but maybe we should delete it. 
-                    // Let's just drop it from this batch, it will be retried or stuck. 
+                    // We skip it, but maybe we should delete it.
+                    // Let's just drop it from this batch, it will be retried or stuck.
                     // Actually, if decryption fails permanently, it might block the queue.
                     // But we won't delete here; the caller deletes.
                 }
@@ -212,7 +221,10 @@ mod tests {
         }
         assert_eq!(s.len().unwrap(), 3); // only newest 3 survive
         let batch = s.pop_batch(10).unwrap();
-        let ns: Vec<i64> = batch.iter().map(|(_, v)| v["n"].as_i64().unwrap()).collect();
+        let ns: Vec<i64> = batch
+            .iter()
+            .map(|(_, v)| v["n"].as_i64().unwrap())
+            .collect();
         assert_eq!(ns, vec![2, 3, 4]); // 0,1 evicted
     }
 
@@ -223,7 +235,10 @@ mod tests {
         s.push(Priority::Low, &json!({ "k": "a" })).unwrap();
         s.push(Priority::Low, &json!({ "k": "b" })).unwrap();
         let batch = s.pop_batch(10).unwrap();
-        let ks: Vec<String> = batch.iter().map(|(_, v)| v["k"].as_str().unwrap().to_string()).collect();
+        let ks: Vec<String> = batch
+            .iter()
+            .map(|(_, v)| v["k"].as_str().unwrap().to_string())
+            .collect();
         assert!(ks.contains(&"keep".to_string()), "critical must survive");
         assert_eq!(batch.len(), 2);
     }

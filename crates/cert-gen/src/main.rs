@@ -22,10 +22,7 @@ fn main() -> Result<()> {
     let root_cert = root_params.self_signed(&root_kp)?;
 
     fs::write(certs_dir.join("root_ca.crt"), root_cert.pem())?;
-    fs::write(
-        certs_dir.join("root_ca.key"),
-        root_kp.serialize_pem(),
-    )?;
+    fs::write(certs_dir.join("root_ca.key"), root_kp.serialize_pem())?;
     println!("Root CA generated.");
 
     // 2. Generate Server Certificate (mock-cloud)
@@ -41,10 +38,7 @@ fn main() -> Result<()> {
     let server_cert = server_params.signed_by(&server_kp, &root_cert, &root_kp)?;
 
     fs::write(certs_dir.join("server.crt"), server_cert.pem())?;
-    fs::write(
-        certs_dir.join("server.key"),
-        server_kp.serialize_pem(),
-    )?;
+    fs::write(certs_dir.join("server.key"), server_kp.serialize_pem())?;
     println!("Server Certificate generated.");
 
     // 3. Generate Client Certificate (DEK Telemetry / Sync)
@@ -59,10 +53,7 @@ fn main() -> Result<()> {
     let client_cert = client_params.signed_by(&client_kp, &root_cert, &root_kp)?;
 
     fs::write(certs_dir.join("client.crt"), client_cert.pem())?;
-    fs::write(
-        certs_dir.join("client.key"),
-        client_kp.serialize_pem(),
-    )?;
+    fs::write(certs_dir.join("client.key"), client_kp.serialize_pem())?;
     println!("Client Certificate generated.");
 
     println!("All MTLS mock certificates successfully generated in `certs/`.");

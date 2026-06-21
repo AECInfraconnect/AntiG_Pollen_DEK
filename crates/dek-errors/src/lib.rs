@@ -81,7 +81,10 @@ impl ErrorEnvelope {
             }
             ErrorDomain::Enrollment | ErrorDomain::Config | ErrorDomain::Bundle => 400, // Bad Request
             ErrorDomain::Activation | ErrorDomain::Update => 409, // Conflict / Unprocessable
-            ErrorDomain::Wasm | ErrorDomain::Ebpf | ErrorDomain::Platform | ErrorDomain::Storage => 500, // Internal Server Error
+            ErrorDomain::Wasm
+            | ErrorDomain::Ebpf
+            | ErrorDomain::Platform
+            | ErrorDomain::Storage => 500, // Internal Server Error
             ErrorDomain::Telemetry => 503, // Service Unavailable (queue full etc)
         }
     }
@@ -97,9 +100,14 @@ impl ErrorEnvelope {
                     tonic::Code::InvalidArgument
                 }
             }
-            ErrorDomain::Enrollment | ErrorDomain::Config | ErrorDomain::Bundle => tonic::Code::InvalidArgument,
+            ErrorDomain::Enrollment | ErrorDomain::Config | ErrorDomain::Bundle => {
+                tonic::Code::InvalidArgument
+            }
             ErrorDomain::Activation | ErrorDomain::Update => tonic::Code::FailedPrecondition,
-            ErrorDomain::Wasm | ErrorDomain::Ebpf | ErrorDomain::Platform | ErrorDomain::Storage => tonic::Code::Internal,
+            ErrorDomain::Wasm
+            | ErrorDomain::Ebpf
+            | ErrorDomain::Platform
+            | ErrorDomain::Storage => tonic::Code::Internal,
             ErrorDomain::Telemetry => tonic::Code::Unavailable,
         }
     }

@@ -39,7 +39,10 @@ pub struct RollbackManager {
 
 impl RollbackManager {
     pub fn new(data_dir: &std::path::Path) -> Self {
-        let state_path = data_dir.join("state").join("security").join("rollback_state.json");
+        let state_path = data_dir
+            .join("state")
+            .join("security")
+            .join("rollback_state.json");
         Self { state_path }
     }
 
@@ -49,8 +52,8 @@ impl RollbackManager {
         }
         let content = fs::read_to_string(&self.state_path)
             .with_context(|| format!("Failed to read rollback state at {:?}", self.state_path))?;
-        let state: RollbackState = serde_json::from_str(&content)
-            .context("Failed to parse rollback state JSON")?;
+        let state: RollbackState =
+            serde_json::from_str(&content).context("Failed to parse rollback state JSON")?;
         Ok(state)
     }
 
@@ -77,23 +80,43 @@ impl RollbackManager {
         timestamp_version: u64,
     ) -> Result<RollbackState> {
         let mut state = self.load()?;
-        
+
         // Trust but verify tenant
         if !state.tenant_id.is_empty() && state.tenant_id != tenant_id {
-            return Err(anyhow::anyhow!("Rollback violation: Tenant ID mismatch. Expected {}, got {}", state.tenant_id, tenant_id));
+            return Err(anyhow::anyhow!(
+                "Rollback violation: Tenant ID mismatch. Expected {}, got {}",
+                state.tenant_id,
+                tenant_id
+            ));
         }
         if !state.device_id.is_empty() && state.device_id != device_id {
-            return Err(anyhow::anyhow!("Rollback violation: Device ID mismatch. Expected {}, got {}", state.device_id, device_id));
+            return Err(anyhow::anyhow!(
+                "Rollback violation: Device ID mismatch. Expected {}, got {}",
+                state.device_id,
+                device_id
+            ));
         }
 
         if root_version < state.highest_root_version {
-            return Err(anyhow::anyhow!("Rollback violation: root version {} is older than known {}", root_version, state.highest_root_version));
+            return Err(anyhow::anyhow!(
+                "Rollback violation: root version {} is older than known {}",
+                root_version,
+                state.highest_root_version
+            ));
         }
         if snapshot_version < state.highest_snapshot_version {
-            return Err(anyhow::anyhow!("Rollback violation: snapshot version {} is older than known {}", snapshot_version, state.highest_snapshot_version));
+            return Err(anyhow::anyhow!(
+                "Rollback violation: snapshot version {} is older than known {}",
+                snapshot_version,
+                state.highest_snapshot_version
+            ));
         }
         if timestamp_version < state.highest_timestamp_version {
-            return Err(anyhow::anyhow!("Rollback violation: timestamp version {} is older than known {}", timestamp_version, state.highest_timestamp_version));
+            return Err(anyhow::anyhow!(
+                "Rollback violation: timestamp version {} is older than known {}",
+                timestamp_version,
+                state.highest_timestamp_version
+            ));
         }
 
         state.tenant_id = tenant_id.to_string();
@@ -102,7 +125,7 @@ impl RollbackManager {
         state.highest_snapshot_version = snapshot_version;
         state.highest_timestamp_version = timestamp_version;
         state.last_accepted_at = Utc::now();
-        
+
         self.save(&state)?;
         Ok(state)
     }
@@ -110,14 +133,18 @@ impl RollbackManager {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
     use std::env;
 
     #[test]
     fn test_downgrade_attack_prevented() {
-        let dir = env::temp_dir().join(format!("rollback_test_{}", Utc::now().timestamp_nanos_opt().unwrap()));
+        let dir = env::temp_dir().join(format!(
+            "rollback_test_{}",
+            Utc::now().timestamp_nanos_opt().unwrap()
+        ));
         let manager = RollbackManager::new(&dir);
-        
+
         // Initial success
         let res = manager.check_and_update_tuf("t1", "d1", 10, 10, 10);
         assert!(res.is_ok());
@@ -129,22 +156,34 @@ mod tests {
         // Downgrade root
         let res = manager.check_and_update_tuf("t1", "d1", 9, 10, 10);
         assert!(res.is_err());
-        assert!(res.unwrap_err().to_string().contains("Rollback violation: root version 9 is older than known 10"));
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("Rollback violation: root version 9 is older than known 10"));
 
         // Downgrade snapshot
         let res = manager.check_and_update_tuf("t1", "d1", 10, 9, 10);
         assert!(res.is_err());
-        assert!(res.unwrap_err().to_string().contains("Rollback violation: snapshot version 9 is older than known 10"));
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("Rollback violation: snapshot version 9 is older than known 10"));
 
         // Downgrade timestamp
         let res = manager.check_and_update_tuf("t1", "d1", 10, 10, 9);
         assert!(res.is_err());
-        assert!(res.unwrap_err().to_string().contains("Rollback violation: timestamp version 9 is older than known 10"));
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("Rollback violation: timestamp version 9 is older than known 10"));
 
         // Tenant change prevention
         let res = manager.check_and_update_tuf("t2", "d1", 11, 11, 11);
         assert!(res.is_err());
-        assert!(res.unwrap_err().to_string().contains("Rollback violation: Tenant ID mismatch"));
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("Rollback violation: Tenant ID mismatch"));
 
         std::fs::remove_dir_all(dir).unwrap_or(());
     }

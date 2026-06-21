@@ -43,7 +43,9 @@ impl BundleManifest {
     /// Check if the bundle generation is older than the current generation (anti-rollback)
     pub fn validate_anti_rollback(&self, current_generation: u64) -> Result<(), &'static str> {
         if self.bundle_generation < current_generation {
-            return Err("Anti-rollback protection triggered: bundle generation is older than current");
+            return Err(
+                "Anti-rollback protection triggered: bundle generation is older than current",
+            );
         }
         Ok(())
     }
@@ -59,7 +61,10 @@ impl BundleManifest {
         let mut hasher = Sha256::new();
         hasher.update(content);
         let hash_bytes = hasher.finalize();
-        let hash = hash_bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+        let hash = hash_bytes
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<String>();
 
         if hash != artifact.sha256 {
             return Err("Hash mismatch");
@@ -75,6 +80,12 @@ pub struct LkgState {
     pub fallback_manifest: Option<BundleManifest>,
 }
 
+impl Default for LkgState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LkgState {
     pub fn new() -> Self {
         Self {
@@ -83,19 +94,17 @@ impl LkgState {
         }
     }
 
-    /// Applies a new manifest. If successful, current becomes fallback.
-    pub fn apply_new_manifest(&mut self, new_manifest: BundleManifest) {
+    pub fn accept_manifest(&mut self, manifest: BundleManifest) {
         self.fallback_manifest = self.current_manifest.take();
-        self.current_manifest = Some(new_manifest);
+        self.current_manifest = Some(manifest);
     }
 
-    /// Rollback to the fallback manifest.
-    pub fn rollback(&mut self) -> Result<&BundleManifest, &'static str> {
+    pub fn rollback(&mut self) -> Result<&BundleManifest, String> {
         if let Some(fallback) = self.fallback_manifest.take() {
             self.current_manifest = Some(fallback);
-            Ok(self.current_manifest.as_ref().unwrap())
+            self.current_manifest.as_ref().ok_or_else(|| "impossible".to_string())
         } else {
-            Err("No LKG manifest available to rollback to")
+            Err("No LKG manifest available to rollback to".to_string())
         }
     }
 }

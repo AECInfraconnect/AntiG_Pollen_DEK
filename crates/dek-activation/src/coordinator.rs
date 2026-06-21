@@ -1,10 +1,10 @@
-use crate::{ActivationDecision, ActivationError, ActivationReceipt, ActivationRequest};
 use crate::snapshot::RuntimeSnapshot;
+use crate::{ActivationDecision, ActivationError, ActivationReceipt, ActivationRequest};
 use arc_swap::ArcSwap;
 use dek_config::DekConfig;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActivationState {
@@ -30,25 +30,38 @@ impl ActivationCoordinator {
         }
     }
 
-    pub async fn process_activation(&self, req: ActivationRequest, config: &DekConfig) -> Result<ActivationDecision, anyhow::Error> {
+    pub async fn process_activation(
+        &self,
+        req: ActivationRequest,
+        config: &DekConfig,
+    ) -> Result<ActivationDecision, anyhow::Error> {
         let mut state = self.state.lock().await;
         if *state != ActivationState::Idle && *state != ActivationState::Failed {
             warn!("Activation already in progress: {:?}", *state);
-            return Ok(ActivationDecision::Deferred("Activation already in progress".into()));
+            return Ok(ActivationDecision::Deferred(
+                "Activation already in progress".into(),
+            ));
         }
 
         *state = ActivationState::Warming;
-        info!("ActivationCoordinator: Starting activation for bundle at {:?}", req.manifest_path);
+        info!(
+            "ActivationCoordinator: Starting activation for bundle at {:?}",
+            req.manifest_path
+        );
 
         // Enforce Enterprise Profiles
         match config.enterprise_profile {
-            dek_config::EnterpriseProfile::Enterprise | dek_config::EnterpriseProfile::Regulated => {
-                if config.activation_mode != dek_config::ActivationMode::Full {
-                    *state = ActivationState::Failed;
-                    return Ok(ActivationDecision::Rejected(ActivationError::ProfileViolation(
-                        format!("Profile {:?} requires Full activation mode. Current mode: {:?}", config.enterprise_profile, config.activation_mode)
-                    )));
-                }
+            dek_config::EnterpriseProfile::Enterprise
+            | dek_config::EnterpriseProfile::Regulated
+                if config.activation_mode != dek_config::ActivationMode::Full =>
+            {
+                *state = ActivationState::Failed;
+                return Ok(ActivationDecision::Rejected(
+                    ActivationError::ProfileViolation(format!(
+                        "Profile {:?} requires Full activation mode",
+                        config.enterprise_profile
+                    )),
+                ));
             }
             _ => {}
         }
@@ -58,16 +71,20 @@ impl ActivationCoordinator {
             Ok(s) => s,
             Err(e) => {
                 *state = ActivationState::Failed;
-                return Ok(ActivationDecision::Rejected(ActivationError::SchemaFailed(e.to_string())));
+                return Ok(ActivationDecision::Rejected(ActivationError::SchemaFailed(
+                    e.to_string(),
+                )));
             }
         };
-        
+
         // Parse metadata from payload
         let payload: serde_json::Value = match serde_json::from_str(&payload_str) {
             Ok(p) => p,
             Err(e) => {
                 *state = ActivationState::Failed;
-                return Ok(ActivationDecision::Rejected(ActivationError::SchemaFailed(e.to_string())));
+                return Ok(ActivationDecision::Rejected(ActivationError::SchemaFailed(
+                    e.to_string(),
+                )));
             }
         };
 
@@ -90,30 +107,62 @@ impl ActivationCoordinator {
         // 4. Activate modes and update LKG
         *state = ActivationState::Activating;
         crate::lkg::update_lkg();
-        if let Err(e) = crate::modes::handle_activation_mode(&req.manifest_path, config.activation_mode.clone()) {
+        if let Err(e) =
+            crate::modes::handle_activation_mode(&req.manifest_path, config.activation_mode.clone())
+        {
             *state = ActivationState::Failed;
             return Ok(ActivationDecision::Rejected(e));
         }
 
         // 5. Atomic Snapshot Swap
-        let gen = self.generation.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        let mut metadata = crate::snapshot::DekMetadata::default();
-        metadata.enterprise_profile = config.enterprise_profile.clone();
-        if let Some(t) = payload.get("tenant_id").and_then(|v| v.as_str()) { metadata.tenant_id = t.to_string(); }
-        if let Some(s) = payload.get("spiffe_id").and_then(|v| v.as_str()) { metadata.spiffe_id = Some(s.to_string()); }
+        let gen = self
+            .generation
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let mut metadata = crate::snapshot::DekMetadata {
+            enterprise_profile: config.enterprise_profile.clone(),
+            ..Default::default()
+        };
+        if let Some(t) = payload.get("tenant_id").and_then(|v| v.as_str()) {
+            metadata.tenant_id = t.to_string();
+        }
+        if let Some(s) = payload.get("spiffe_id").and_then(|v| v.as_str()) {
+            metadata.spiffe_id = Some(s.to_string());
+        }
         if let Some(jwt_cfg) = payload.get("jwt_config") {
-            if let Some(pem) = jwt_cfg.get("public_key_pem").and_then(|v| v.as_str()) { metadata.jwt_public_key_pem = Some(pem.to_string()); }
-            if let Some(jwks_val) = jwt_cfg.get("jwks") { if let Ok(jwks) = serde_json::from_value(jwks_val.clone()) { metadata.jwks = Some(jwks); } }
-            if let Some(issuer) = jwt_cfg.get("issuer_url").and_then(|v| v.as_str()) { metadata.issuer_url = Some(issuer.to_string()); }
-            if let Some(aud_val) = jwt_cfg.get("audience") { if let Ok(aud) = serde_json::from_value(aud_val.clone()) { metadata.audience = Some(aud); } }
+            if let Some(pem) = jwt_cfg.get("public_key_pem").and_then(|v| v.as_str()) {
+                metadata.jwt_public_key_pem = Some(pem.to_string());
+            }
+            if let Some(jwks_val) = jwt_cfg.get("jwks") {
+                if let Ok(jwks) = serde_json::from_value(jwks_val.clone()) {
+                    metadata.jwks = Some(jwks);
+                }
+            }
+            if let Some(issuer) = jwt_cfg.get("issuer_url").and_then(|v| v.as_str()) {
+                metadata.issuer_url = Some(issuer.to_string());
+            }
+            if let Some(aud_val) = jwt_cfg.get("audience") {
+                if let Ok(aud) = serde_json::from_value(aud_val.clone()) {
+                    metadata.audience = Some(aud);
+                }
+            }
         }
 
         let current_plugin_host = self.snapshot.load().plugin_host.clone();
-        let new_snapshot = RuntimeSnapshot::new(gen, format!("{}_{}", req.tenant_id, req.device_id), 0, router, metadata, current_plugin_host);
+        let new_snapshot = RuntimeSnapshot::new(
+            gen,
+            format!("{}_{}", req.tenant_id, req.device_id),
+            0,
+            router,
+            metadata,
+            current_plugin_host,
+        );
         self.snapshot.store(Arc::new(new_snapshot));
 
         *state = ActivationState::Idle;
-        info!("ActivationCoordinator: Successfully swapped to generation {}", gen);
+        info!(
+            "ActivationCoordinator: Successfully swapped to generation {}",
+            gen
+        );
 
         Ok(ActivationDecision::Activated(ActivationReceipt {
             timestamp_version: 0,
@@ -125,20 +174,23 @@ impl ActivationCoordinator {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
     use crate::ActivationSource;
     use std::sync::Arc;
 
     #[tokio::test]
     async fn test_sequential_reloads() {
-        let plugin_host = Arc::new(dek_wasm_host::WasmtimePluginHost::new(std::collections::HashMap::new()).unwrap());
+        let plugin_host = Arc::new(
+            dek_wasm_host::WasmtimePluginHost::new(std::collections::HashMap::new()).unwrap(),
+        );
         let router = Arc::new(dek_policy_router::PolicyRouter::new());
         let metadata = crate::snapshot::DekMetadata::default();
         let snapshot = RuntimeSnapshot::new(0, "test_0".into(), 0, router, metadata, plugin_host);
 
         let coordinator = ActivationCoordinator::new(snapshot);
 
-        for i in 1..=100 {
+        for _i in 1..=100 {
             let req = ActivationRequest {
                 source: ActivationSource::LocalAdmin,
                 tenant_id: "t1".into(),
@@ -147,15 +199,29 @@ mod tests {
             };
 
             // Simulate the hot-reload
-            let gen = coordinator.generation.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let gen = coordinator
+                .generation
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             let metadata = crate::snapshot::DekMetadata::default();
             let new_router = Arc::new(dek_policy_router::PolicyRouter::new());
             let current_plugin_host = coordinator.snapshot.load().plugin_host.clone();
-            
-            let new_snapshot = RuntimeSnapshot::new(gen, format!("{}_{}", req.tenant_id, req.device_id), 0, new_router, metadata, current_plugin_host);
+
+            let new_snapshot = RuntimeSnapshot::new(
+                gen,
+                format!("{}_{}", req.tenant_id, req.device_id),
+                0,
+                new_router,
+                metadata,
+                current_plugin_host,
+            );
             coordinator.snapshot.store(Arc::new(new_snapshot));
         }
 
-        assert_eq!(coordinator.generation.load(std::sync::atomic::Ordering::SeqCst), 101);
+        assert_eq!(
+            coordinator
+                .generation
+                .load(std::sync::atomic::Ordering::SeqCst),
+            101
+        );
     }
 }

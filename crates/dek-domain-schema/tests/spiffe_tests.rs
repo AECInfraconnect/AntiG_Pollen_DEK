@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use dek_domain_schema::spiffe::{SpiffeBuilder, SpiffeId, validate_tenant_isolation};
 use dek_domain_schema::tenant::TrustDomainStrategy;
 
@@ -17,14 +18,20 @@ fn test_spiffe_builder_shared() {
     let builder = SpiffeBuilder::new(
         TrustDomainStrategy::Shared,
         "t-1".to_string(),
-        "pollen.cloud".to_string()
+        "pollen.cloud".to_string(),
     );
 
     let agent_id = builder.build_agent_id("a-1");
-    assert_eq!(agent_id.to_uri(), "spiffe://pollen.cloud/tenant/t-1/agent/a-1");
+    assert_eq!(
+        agent_id.to_uri(),
+        "spiffe://pollen.cloud/tenant/t-1/agent/a-1"
+    );
 
     let device_id = builder.build_device_id("d-1");
-    assert_eq!(device_id.to_uri(), "spiffe://pollen.cloud/tenant/t-1/device/d-1");
+    assert_eq!(
+        device_id.to_uri(),
+        "spiffe://pollen.cloud/tenant/t-1/device/d-1"
+    );
 }
 
 #[test]
@@ -32,7 +39,7 @@ fn test_spiffe_builder_dedicated() {
     let builder = SpiffeBuilder::new(
         TrustDomainStrategy::Dedicated,
         "acme".to_string(),
-        "pollen.cloud".to_string()
+        "pollen.cloud".to_string(),
     );
 
     let agent_id = builder.build_agent_id("a-1");
@@ -44,7 +51,7 @@ fn test_spiffe_builder_custom() {
     let builder = SpiffeBuilder::new(
         TrustDomainStrategy::Custom("secure.acme.corp".to_string()),
         "acme".to_string(),
-        "pollen.cloud".to_string()
+        "pollen.cloud".to_string(),
     );
 
     let device_id = builder.build_device_id("d-1");
@@ -55,7 +62,7 @@ fn test_spiffe_builder_custom() {
 fn test_validate_tenant_isolation_shared() {
     let strategy = TrustDomainStrategy::Shared;
     let valid_id = SpiffeId::parse("spiffe://pollen.cloud/tenant/t-1/device/d-1").unwrap();
-    
+
     // Valid
     assert!(validate_tenant_isolation(&valid_id, &strategy, "t-1", "pollen.cloud").is_ok());
 
@@ -71,7 +78,7 @@ fn test_validate_tenant_isolation_shared() {
 fn test_validate_tenant_isolation_dedicated() {
     let strategy = TrustDomainStrategy::Dedicated;
     let valid_id = SpiffeId::parse("spiffe://acme.pollen.cloud/device/d-1").unwrap();
-    
+
     // Valid
     assert!(validate_tenant_isolation(&valid_id, &strategy, "acme", "pollen.cloud").is_ok());
 
@@ -87,7 +94,7 @@ fn test_validate_tenant_isolation_dedicated() {
 fn test_validate_tenant_isolation_custom() {
     let strategy = TrustDomainStrategy::Custom("corp.acme.internal".to_string());
     let valid_id = SpiffeId::parse("spiffe://corp.acme.internal/device/d-1").unwrap();
-    
+
     // Valid
     assert!(validate_tenant_isolation(&valid_id, &strategy, "acme", "pollen.cloud").is_ok());
 

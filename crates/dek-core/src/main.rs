@@ -1,19 +1,19 @@
 #![warn(clippy::print_stdout, clippy::print_stderr)]
 #![deny(clippy::unwrap_used, clippy::expect_used)]
 
-mod service_integration;
-mod ebpf;
-mod keystore_migration;
-mod updater;
-mod ipc_server;
-mod bundle_loop;
-mod ipc_client;
-mod probation;
-mod supervisor;
-mod metrics_push;
-mod svid_renewal;
-mod reload_coordinator;
 mod api;
+mod bundle_loop;
+mod ebpf;
+mod ipc_client;
+mod ipc_server;
+mod keystore_migration;
+mod metrics_push;
+mod probation;
+mod reload_coordinator;
+mod service_integration;
+mod supervisor;
+mod svid_renewal;
+mod updater;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

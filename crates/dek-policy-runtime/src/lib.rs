@@ -126,12 +126,13 @@ pub struct WasmtimePolicyRuntime {
 impl WasmtimePolicyRuntime {
     pub fn new(wasm_path: &str, profile: Option<WasmProfile>) -> Result<Self> {
         let profile = profile.unwrap_or_default();
-        
+
         let mut config = Config::new();
         config.consume_fuel(true);
         config.max_wasm_stack(1024 * 1024); // 1 MB stack limit
 
-        let engine = Engine::new(&config).map_err(|e| anyhow::anyhow!("Failed to init Engine: {}", e))?;
+        let engine =
+            Engine::new(&config).map_err(|e| anyhow::anyhow!("Failed to init Engine: {}", e))?;
         let module = Module::from_file(&engine, wasm_path)
             .map_err(|e| anyhow::anyhow!("Failed to load WASM module: {}", e))?;
 
@@ -152,7 +153,8 @@ impl WasmtimePolicyRuntime {
 #[async_trait]
 impl PolicyRuntime for WasmtimePolicyRuntime {
     async fn evaluate(&self, input: serde_json::Value) -> PolicyResult {
-        let input_str = serde_json::to_string(&input).map_err(|e| PolicyError::Invalid(e.to_string()))?;
+        let input_str =
+            serde_json::to_string(&input).map_err(|e| PolicyError::Invalid(e.to_string()))?;
         let stdin = MemoryInputPipe::new(bytes::Bytes::from(input_str.into_bytes()));
         let stdout = MemoryOutputPipe::new(self.profile.max_memory_bytes);
 
@@ -168,16 +170,20 @@ impl PolicyRuntime for WasmtimePolicyRuntime {
 
         let state = RuntimeState { wasi, limits };
         let mut store = Store::new(&self.engine, state);
-        
+
         store.limiter(|state| &mut state.limits);
 
-        store.set_fuel(self.profile.max_fuel)
+        store
+            .set_fuel(self.profile.max_fuel)
             .map_err(|e| PolicyError::Eval(format!("failed to set fuel: {e}")))?;
 
         // Run plugin from pre-compiled module (thread-safe, concurrent)
-        let instance = self.instance_pre.instantiate(&mut store)
+        let instance = self
+            .instance_pre
+            .instantiate(&mut store)
             .map_err(|e| PolicyError::Eval(format!("instantiate: {e}")))?;
-        let func = instance.get_typed_func::<(), ()>(&mut store, "_start")
+        let func = instance
+            .get_typed_func::<(), ()>(&mut store, "_start")
             .map_err(|e| PolicyError::Eval(format!("get _start: {e}")))?;
 
         let mut reason = "Executed WASM policy".to_string();
@@ -232,6 +238,7 @@ impl PolicyRuntime for WasmtimePolicyRuntime {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
     use serde_json::json;
 

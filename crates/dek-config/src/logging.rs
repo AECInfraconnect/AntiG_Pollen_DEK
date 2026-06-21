@@ -34,9 +34,10 @@ pub fn init_logging(service_name: &str) -> anyhow::Result<()> {
             // A robust implementation would use `winapi` or `windows-sys` to explicitly SetNamedSecurityInfo.
         }
 
-        let file_appender = tracing_appender::rolling::daily(&log_dir, format!("{}.log", service_name));
+        let file_appender =
+            tracing_appender::rolling::daily(&log_dir, format!("{}.log", service_name));
         let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-        
+
         // Save the guard globally so it doesn't drop. Usually this is returned, but for simplicity
         // we can leak it or store it globally. Leaking is acceptable for the lifetime of the daemon.
         Box::leak(Box::new(_guard));
@@ -49,7 +50,7 @@ pub fn init_logging(service_name: &str) -> anyhow::Result<()> {
 
         // Spawn a background task to sweep old logs
         spawn_log_sweeper(log_dir);
-        
+
         Ok(())
     }
 }
