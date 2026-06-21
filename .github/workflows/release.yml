@@ -49,7 +49,7 @@ jobs:
         run: cargo binstall -y cargo-auditable
 
       - name: Build Auditable Binaries
-        run: cargo auditable build --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --exclude dek-opa-wasm --release --target ${{ matrix.target }}
+        run: cargo auditable build --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --release --target ${{ matrix.target }}
 
       - name: Stage Artifacts
         shell: bash
