@@ -14,6 +14,7 @@ pub enum PdpRuntimeCategory {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum PdpKind {
+    PolicyRouter,
     OpaWasm,
     CedarLocal,
     WasmPlugin,
@@ -31,6 +32,7 @@ pub enum PdpKind {
 pub enum PdpStatus {
     NotInstalled,
     Installed,
+    NotConfigured,
     Loading,
     Ready,
     Reachable,
@@ -80,17 +82,37 @@ pub struct PdpHealthSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PdpProbeResult {
+    pub ok: bool,
+    pub effect: String,
+    pub reason: String,
+    pub latency_ms: u64,
+    pub decision_id: String,
+    pub details: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PdpRuntime {
     pub id: String,
     pub name: String,
     pub category: PdpRuntimeCategory,
     pub kind: PdpKind,
+    #[serde(default)]
+    pub mode: String,
+    #[serde(default)]
+    pub system_managed: bool,
     pub enabled: bool,
     pub status: PdpStatus,
     pub endpoint: Option<String>,
     pub auth_ref: Option<String>,
     #[serde(default)]
     pub capabilities: Vec<PdpCapability>,
+    #[serde(default)]
+    pub config_source: String,
+    pub active_bundle_id: Option<String>,
+    pub active_bundle_hash: Option<String>,
+    pub last_activated_at: Option<String>,
+    pub last_probe: Option<PdpProbeResult>,
     pub health: Option<PdpHealthSnapshot>,
     pub created_at: String,
     pub updated_at: String,
@@ -124,6 +146,11 @@ pub struct PdpRouteRule {
     pub failure_behavior: PdpFailureBehavior,
     pub timeout_ms: u64,
     pub max_retries: u32,
+    #[serde(default)]
+    pub circuit_breaker_threshold: u32,
+    #[serde(default)]
+    pub cooldown_secs: u32,
+    pub last_known_good_ttl_secs: Option<u32>,
 }
 
 pub fn normalize_pdp_kind(input: &str) -> Result<PdpKind, String> {
@@ -131,6 +158,7 @@ pub fn normalize_pdp_kind(input: &str) -> Result<PdpKind, String> {
     match value.as_str() {
         "opa" | "opa_server" => Ok(PdpKind::OpaServer),
         "opa_wasm" => Ok(PdpKind::OpaWasm),
+        "policy_router" => Ok(PdpKind::PolicyRouter),
         "openfga" | "open_fga" | "openfga_server" => Ok(PdpKind::OpenfgaServer),
         "cedar" | "cedar_http" => Ok(PdpKind::CedarHttp),
         "cedar_local" => Ok(PdpKind::CedarLocal),

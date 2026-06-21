@@ -27,6 +27,7 @@ pub fn aggregate_evidence(
         let mut process_hash = None;
         let mut mcp_servers = Vec::new();
         let mut endpoints = Vec::new();
+        let mut redacted_env_keys = Vec::new();
 
         for ev in &group {
             if ev.confidence > max_confidence {
@@ -44,7 +45,27 @@ pub fn aggregate_evidence(
                         agent_type = InferredAgentType::DesktopAgent;
                         name = "MCP Capable Agent".to_string();
                     }
-                    if let Some(data) = ev.data.get("servers") {
+                    if let Some(transport) = ev.data.get("transport").and_then(|v| v.as_str()) {
+                        let server_name = ev.data.get("server_name").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
+                        let command = ev.data.get("command_template").and_then(|v| v.as_array()).and_then(|arr| arr.first()).and_then(|v| v.as_str()).map(|s| s.to_string());
+                        
+                        mcp_servers.push(DiscoveredMcpServerRef {
+                            server_name: server_name.clone(),
+                            transport: transport.to_string(),
+                            command,
+                        });
+                        
+                        if let Some(env_keys) = ev.data.get("env_key_names").and_then(|v| v.as_array()) {
+                            for key in env_keys {
+                                if let Some(k) = key.as_str() {
+                                    if !redacted_env_keys.contains(&k.to_string()) {
+                                        redacted_env_keys.push(k.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    } else if let Some(data) = ev.data.get("servers") {
+                        // Fallback for older mock tests
                         if let Some(obj) = data.as_object() {
                             for (k, v) in obj {
                                 mcp_servers.push(DiscoveredMcpServerRef {
@@ -69,6 +90,22 @@ pub fn aggregate_evidence(
                         });
                     }
                 }
+                EvidenceSource::PortProbe => {
+                    agent_type = InferredAgentType::LocalModelServer;
+                    name = "Local Server".into();
+                    if let Some(key_url) = &ev.merge_key {
+                        endpoints.push(DiscoveredEndpointRef {
+                            url: key_url.clone(),
+                            protocol: "sse".into(),
+                        });
+                        
+                        mcp_servers.push(DiscoveredMcpServerRef {
+                            server_name: "sse_server".into(),
+                            transport: "sse".into(),
+                            command: None,
+                        });
+                    }
+                }
                 EvidenceSource::IdeExtension => {
                     agent_type = InferredAgentType::IdeExtension;
                     name = "IDE Extension".into();
@@ -77,9 +114,43 @@ pub fn aggregate_evidence(
             }
         }
 
+        let mut control_bindings = Vec::new();
+        let cand_id = format!("cand_{}", uuid::Uuid::new_v4());
+        
+        for server in &mcp_servers {
+            let binding_id = format!("bind_{}", uuid::Uuid::new_v4());
+            if server.transport == "stdio" {
+                control_bindings.push(ControlBindingPlan {
+                    binding_id,
+                    kind: ControlBindingKind::McpStdioWrapper,
+                    target_candidate_id: cand_id.clone(),
+                    target_config_hash: None, // In real scenario, map from config evidence
+                    action: ControlBindingAction::Wrap,
+                    requires_user_approval: true,
+                    risk: "medium".to_string(),
+                    reversible: true,
+                    backup_path_hash: None,
+                    summary: format!("Wrap stdio MCP server: {}", server.server_name),
+                });
+            } else if server.transport == "http" || server.transport == "sse" {
+                control_bindings.push(ControlBindingPlan {
+                    binding_id,
+                    kind: ControlBindingKind::McpHttpProxy,
+                    target_candidate_id: cand_id.clone(),
+                    target_config_hash: None,
+                    action: ControlBindingAction::Proxy,
+                    requires_user_approval: false,
+                    risk: "low".to_string(),
+                    reversible: true,
+                    backup_path_hash: None,
+                    summary: format!("Proxy HTTP/SSE MCP server: {}", server.server_name),
+                });
+            }
+        }
+
         candidates.push(DiscoveredAgentCandidateV2 {
             schema_version: "pollen.agent_discovery_candidate.v2".into(),
-            candidate_id: format!("cand_{}", uuid::Uuid::new_v4()),
+            candidate_id: cand_id,
             tenant_id: tenant_id.to_string(),
             device_id: "device-local".into(),
             status: DiscoveryStatus::Discovered,
@@ -118,10 +189,14 @@ pub fn aggregate_evidence(
                 collect_raw_response: false,
                 retention_days: 30,
             },
-            suggested_control_bindings: vec![],
+            suggested_control_bindings: control_bindings,
             telemetry_plan: TelemetryPlan {
                 events_endpoint: "/v1/telemetry/events".into(),
                 metrics_endpoint: "/v1/metrics".into(),
+                capture_tool_calls: true,
+                capture_arguments: true,
+                redact_env_keys: redacted_env_keys,
+                risk_signals: vec!["mcp_active".into()],
             },
             labels: BTreeMap::new(),
         });

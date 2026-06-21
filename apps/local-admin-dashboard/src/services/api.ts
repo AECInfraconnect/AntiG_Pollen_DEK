@@ -13,6 +13,7 @@ import type {
   SimulationResult,
   PdpRuntime,
   PdpRouteRule,
+  CloudPdpProfile,
   DiscoveryScanJob,
   DiscoveredAgentCandidateV2,
 } from "./types";
@@ -181,8 +182,40 @@ export class ControlPlaneClient {
   async deletePdpRuntime(id: string): Promise<void> {
     return this.fetchApi(`/pdp/runtimes/${id}`, { method: "DELETE" });
   }
-  async probePdpHealth(id: string): Promise<unknown> {
-    return this.fetchApi(`/pdp/runtimes/${id}/health`, { method: "POST" });
+  async probePdpHealth(id: string, input?: any): Promise<unknown> {
+    return this.fetchApi(`/pdp/runtimes/${id}/probe`, {
+      method: "POST",
+      body: JSON.stringify(input ?? {}),
+    });
+  }
+  async validatePdpRuntime(id: string): Promise<unknown> {
+    return this.fetchApi(`/pdp/runtimes/${id}/validate`, { method: "POST" });
+  }
+  async clearPdpCache(id: string): Promise<unknown> {
+    return this.fetchApi(`/pdp/runtimes/${id}/cache/clear`, { method: "POST" });
+  }
+
+  // Cloud PDP
+  async getCloudPdpProfile(): Promise<CloudPdpProfile> {
+    return this.fetchApi("/pdp/cloud");
+  }
+  async loginCloudPdp(): Promise<CloudPdpProfile> {
+    return this.fetchApi("/pdp/cloud/login", { method: "POST" });
+  }
+  async discoverCloudPdp(): Promise<CloudPdpProfile> {
+    return this.fetchApi("/pdp/cloud/discover", { method: "POST" });
+  }
+  async probeCloudPdp(): Promise<unknown> {
+    return this.fetchApi("/pdp/cloud/probe", { method: "POST" });
+  }
+  async updateCloudPdpProfile(payload: any): Promise<CloudPdpProfile> {
+    return this.fetchApi("/pdp/cloud", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  }
+  async disconnectCloudPdp(): Promise<unknown> {
+    return this.fetchApi("/pdp/cloud", { method: "DELETE" });
   }
 
   // PDP Routing
@@ -200,6 +233,12 @@ export class ControlPlaneClient {
   }
   async deletePdpRoute(id: string): Promise<void> {
     return this.fetchApi(`/pdp/routes/${id}`, { method: "DELETE" });
+  }
+  async simulatePdpRoute(payload: any): Promise<unknown> {
+    return this.fetchApi("/pdp/routes/simulate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
   }
 
   // Bundles
@@ -423,7 +462,18 @@ export const PdpRuntimeApi = {
   get: (id: string) => defaultClient.getPdpRuntime(id),
   upsert: (rt: PdpRuntime) => defaultClient.upsertPdpRuntime(rt),
   delete: (id: string) => defaultClient.deletePdpRuntime(id),
-  probeHealth: (id: string) => defaultClient.probePdpHealth(id),
+  probe: (id: string, input?: any) => defaultClient.probePdpHealth(id, input),
+  validate: (id: string) => defaultClient.validatePdpRuntime(id),
+  clearCache: (id: string) => defaultClient.clearPdpCache(id),
+};
+
+export const PdpCloudApi = {
+  get: () => defaultClient.getCloudPdpProfile(),
+  login: () => defaultClient.loginCloudPdp(),
+  discover: () => defaultClient.discoverCloudPdp(),
+  probe: () => defaultClient.probeCloudPdp(),
+  update: (payload: any) => defaultClient.updateCloudPdpProfile(payload),
+  disconnect: () => defaultClient.disconnectCloudPdp(),
 };
 
 export const PdpRoutingApi = {
@@ -431,4 +481,5 @@ export const PdpRoutingApi = {
   get: (id: string) => defaultClient.getPdpRoute(id),
   upsert: (rt: PdpRouteRule) => defaultClient.upsertPdpRoute(rt),
   delete: (id: string) => defaultClient.deletePdpRoute(id),
+  simulate: (payload: any) => defaultClient.simulatePdpRoute(payload),
 };

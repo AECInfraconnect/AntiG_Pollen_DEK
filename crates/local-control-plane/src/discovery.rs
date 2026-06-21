@@ -17,8 +17,13 @@ async fn get_discovery() -> Json<serde_json::Value> {
             "bundle.signed-envelope.v1",
             "telemetry.batch.v1",
             "policy.opa-wasm.v1",
+            "policy.opa-wasm-abi.v1",
             "policy.cedar.v1",
-            "policy.openfga.v1"
+            "policy.openfga.v1",
+            "policy.wasm-plugin.v1",
+            "pdp.routing.v1",
+            "pdp.cloud-sync.v1",
+            "pdp.system-managed-runtimes.v1"
         ]
     }))
 }

@@ -20,38 +20,10 @@ pub struct SourceCatalog {
 }
 
 pub fn load_default_catalog() -> SourceCatalog {
-    SourceCatalog {
-        schema_version: "pollen.agent_signature_catalog.v1".into(),
-        catalog_version: "2026-06-21".into(),
-        signatures: vec![
-            AgentSignature {
-                id: "claude_desktop".into(),
-                display_name: "Claude Desktop".into(),
-                agent_type: "desktop_agent".into(),
-                process_names: vec!["Claude".into(), "Claude.exe".into()],
-                config_paths: None,
-                config_parsers: Some(vec!["mcpServers".into()]),
-                ports: None,
-                control_strategies: vec![
-                    "mcp_stdio_wrapper".into(),
-                    "mcp_http_proxy".into(),
-                    "observe_only".into(),
-                ],
-            },
-            AgentSignature {
-                id: "ollama".into(),
-                display_name: "Ollama".into(),
-                agent_type: "local_model_server".into(),
-                process_names: vec!["ollama".into(), "ollama.exe".into()],
-                config_paths: None,
-                config_parsers: None,
-                ports: Some(vec![11434]),
-                control_strategies: vec![
-                    "ollama_proxy".into(),
-                    "network_egress_pep".into(),
-                    "observe_only".into(),
-                ],
-            },
-        ],
-    }
+    const EMBEDDED: &str = include_str!("../data/agent_signatures.v2.json");
+    serde_json::from_str(EMBEDDED).unwrap_or_else(|_| SourceCatalog {
+        schema_version: "pollen.agent_signature_catalog.v2".into(),
+        catalog_version: "fallback".into(),
+        signatures: vec![],
+    })
 }

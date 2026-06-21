@@ -34,6 +34,31 @@ impl CedarAdapter {
             cache,
         })
     }
+
+    pub fn validate(&self) -> Result<()> {
+        // Since parsing happens in `new`, if we have `Self` it is already syntactically valid.
+        // Schema validation would go here.
+        Ok(())
+    }
+
+    pub async fn probe(&self) -> Result<PolicyDecision> {
+        let req = EvalRequest {
+            request_id: format!("probe_{}", uuid::Uuid::new_v4()),
+            tenant_id: Some("local".into()),
+            subject: None,
+            action: None,
+            resource: None,
+            payload: serde_json::json!({
+                "principal": "User::\"probe\"",
+                "action": "Action::\"tools/call\"",
+                "resource": "Resource::\"safe.echo\"",
+                "context": {},
+                "entities": []
+            }),
+            context: std::collections::BTreeMap::new(),
+        };
+        self.evaluate(req).await.map_err(|e| anyhow::anyhow!("Probe failed: {:?}", e))
+    }
 }
 
 #[async_trait]
