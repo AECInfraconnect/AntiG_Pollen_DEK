@@ -98,23 +98,12 @@ pub async fn run_migration(bootstrap: &BootstrapConfig, pollen_cloud_url: &str) 
             Ok(resp) => {
                 info!("Verify-by-use successful! (Status: {})", resp.status());
                 
-                // 4. Quarantine original file
+                // 4. Delete the original file to close plaintext-on-disk window
                 if client_key_path.exists() {
-                    let quarantine_path = client_key_path.with_extension("key.migrated");
-                    info!("Quarantining original client.key to {:?}", quarantine_path);
+                    info!("Deleting original client.key at {:?}", client_key_path);
                     
-                    if let Err(e) = fs::rename(client_key_path, &quarantine_path) {
-                        warn!("Failed to quarantine client.key: {}", e);
-                    } else {
-                        // Set strict permissions on quarantine file on Unix
-                        #[cfg(unix)]
-                        {
-                            use std::os::unix::fs::PermissionsExt;
-                            if let Ok(mut perms) = fs::metadata(&quarantine_path).map(|m| m.permissions()) {
-                                perms.set_mode(0o600);
-                                let _ = fs::set_permissions(&quarantine_path, perms);
-                            }
-                        }
+                    if let Err(e) = fs::remove_file(client_key_path) {
+                        warn!("Failed to delete client.key: {}", e);
                     }
                 }
                 return true;

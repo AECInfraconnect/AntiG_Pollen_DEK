@@ -16,6 +16,7 @@ dek-openfga = { path = "../dek-openfga" }
 dek-policy-runtime = { path = "../dek-policy-runtime" }
 dek-config = { path = "../dek-config" }
 uuid = { version = "1.10.0", features = ["v4"] }
+
 tracing.workspace = true
 tracing-subscriber.workspace = true
 dek-auth = { path = "../dek-auth" }
@@ -23,6 +24,8 @@ dek-wasm-host = { path = "../dek-wasm-host" }
 arc-swap = "1.6"
 dek-router-builder = { path = "../dek-router-builder" }
 dek-telemetry = { path = "../dek-telemetry" }
+dek-activation = { path = "../dek-activation" }
+dek-decision = { path = "../dek-decision" }
 chrono = "0.4"
 
 [lints]

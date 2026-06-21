@@ -412,12 +412,34 @@ async fn handle_mcp_request(
     policy_input["principal"] = json!(principal);
     policy_input["resource"] = json!("mcp_tool");
 
+    let decision_req = dek_decision::DecisionRequest {
+        request_id: uuid::Uuid::new_v4().to_string(),
+        trace_id: None,
+        tenant_id: final_tenant_id.clone(),
+        device_id: metadata.device_id.clone(),
+        principal: dek_decision::Principal {
+            id: principal.clone(),
+            roles: vec![],
+        },
+        agent: None,
+        action: normalized.tool_name.clone().unwrap_or(normalized.request_type.clone()),
+        resource: dek_decision::ResourceRef {
+            kind: "mcp_tool".into(),
+            id: "*".into(),
+        },
+        context: policy_input.clone(),
+        input_hash: "mock_hash".into(),
+    };
+    
+    let decision_input = serde_json::to_value(&decision_req).unwrap_or(policy_input);
+
+    let start_time = std::time::Instant::now();
     // Evaluate against the Adaptive Policy Pipeline
-    let decision_result = snapshot.router.authorize(policy_input.clone()).await;
+    let decision_result = snapshot.router.authorize(decision_input.clone()).await;
 
     // Shadow evaluation if shadow_snapshot exists
     if let Some(shadow_snap) = state.shadow_snapshot.load_full() {
-        let shadow_input = policy_input.clone();
+        let shadow_input = decision_input.clone();
         tokio::spawn(async move {
             match shadow_snap.router.authorize(shadow_input).await {
                 Ok(shadow_decision) => {
@@ -435,6 +457,19 @@ async fn handle_mcp_request(
         Ok(decision) => {
             info!("Final Pipeline Decision: {:?}", decision);
             
+            let response = dek_decision::DecisionResponse {
+                decision_id: uuid::Uuid::new_v4().to_string(),
+                allow: decision.allow,
+                reason_code: if decision.allow { "OK".into() } else { "DENY".into() },
+                reason: decision.reason.clone(),
+                obligations: vec![],
+                effects: decision.effects.clone(),
+                policy_bundle_id: "bundle".into(),
+                policy_bundle_version: "v1".into(),
+                evaluator_results: vec![],
+                latency_ms: start_time.elapsed().as_millis() as u64,
+            };
+
             if let Some(telemetry) = &state.telemetry {
                 let event = json!({
                     "schema_version": "1.0",
@@ -448,25 +483,25 @@ async fn handle_mcp_request(
                         "method": normalized.request_type.clone(),
                         "verdict": if decision.allow { "allow" } else { "deny" },
                         "reason": decision.reason.clone(),
-                        "request_id": uuid::Uuid::new_v4().to_string(),
+                        "request_id": decision_req.request_id.clone(),
                     }
                 });
                 telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);
             }
 
             if decision.allow {
-                let response = json!({
+                let mut final_response = json!({
                     "status": "allowed",
                     "message": "The request passed the PEP evaluation.",
-                    "decision": decision
+                    "decision": response
                 });
 
                 // Apply PII redaction plugin if required
-                if let Ok(redacted) = snapshot.plugin_host.invoke("pii-redactor", response.clone()) {
+                if let Ok(redacted) = snapshot.plugin_host.invoke("pii-redactor", final_response.clone()) {
                     info!("Applied PII redaction plugin successfully.");
                     (StatusCode::OK, Json(redacted)).into_response()
                 } else {
-                    (StatusCode::OK, Json(response)).into_response()
+                    (StatusCode::OK, Json(final_response)).into_response()
                 }
             } else {
                 (
@@ -474,7 +509,7 @@ async fn handle_mcp_request(
                     Json(json!({
                         "status": "denied",
                         "reason": decision.reason,
-                        "decision": decision
+                        "decision": response
                     })),
                 )
                     .into_response()

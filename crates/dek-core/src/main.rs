@@ -13,6 +13,7 @@ mod supervisor;
 mod metrics_push;
 mod svid_renewal;
 mod reload_coordinator;
+mod api;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
