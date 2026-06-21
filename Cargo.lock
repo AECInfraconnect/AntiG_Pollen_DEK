@@ -1937,7 +1937,7 @@ dependencies = [
  "dek-windows-wfp",
  "futures",
  "libc",
- "metrics",
+ "metrics 0.24.6",
  "rcgen",
  "reqwest",
  "sd-notify",
@@ -2079,7 +2079,7 @@ dependencies = [
  "dek-resilience",
  "dek-router-builder",
  "dek-telemetry",
- "metrics",
+ "metrics 0.24.6",
  "metrics-exporter-prometheus",
  "prost",
  "protoc-bin-vendored",
@@ -2184,7 +2184,7 @@ dependencies = [
  "hyper 1.10.1",
  "hyper-util",
  "jsonwebtoken 9.3.1",
- "metrics",
+ "metrics 0.24.6",
  "metrics-exporter-prometheus",
  "notify",
  "serde",
@@ -2228,7 +2228,7 @@ name = "dek-metrics"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "metrics",
+ "metrics 0.24.6",
  "metrics-exporter-prometheus",
  "reqwest",
  "tokio",
@@ -2348,7 +2348,7 @@ dependencies = [
  "dek-openfga",
  "dek-policy-runtime",
  "dek-resilience",
- "metrics",
+ "metrics 0.24.6",
  "serde",
  "serde_json",
  "tokio",
@@ -2406,7 +2406,7 @@ dependencies = [
  "dek-telemetry",
  "ed25519-dalek",
  "hex",
- "metrics",
+ "metrics 0.24.6",
  "reqwest",
  "serde",
  "serde_json",
@@ -2422,7 +2422,7 @@ dependencies = [
 name = "dek-resilience"
 version = "0.1.0"
 dependencies = [
- "metrics",
+ "metrics 0.24.6",
  "tokio",
  "tracing",
 ]
@@ -2500,7 +2500,7 @@ dependencies = [
  "dek-secure-spool",
  "hex",
  "keyring",
- "metrics",
+ "metrics 0.24.6",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
@@ -4507,6 +4507,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "metrics"
+version = "0.24.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89550ee9f79e88fef3119de263694973a8adb26c21d75322164fb8c493039fe2"
+dependencies = [
+ "portable-atomic",
+ "rapidhash",
+]
+
+[[package]]
 name = "metrics-exporter-prometheus"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4516,7 +4526,7 @@ dependencies = [
  "hyper 0.14.32",
  "indexmap 2.14.0",
  "ipnet",
- "metrics",
+ "metrics 0.22.4",
  "metrics-util",
  "quanta",
  "thiserror 1.0.69",
@@ -4532,7 +4542,7 @@ dependencies = [
  "crossbeam-epoch",
  "crossbeam-utils",
  "hashbrown 0.14.5",
- "metrics",
+ "metrics 0.22.4",
  "num_cpus",
  "quanta",
  "sketches-ddsketch",
@@ -5707,6 +5717,15 @@ name = "rand_core"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
+
+[[package]]
+name = "rapidhash"
+version = "4.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5e48930979c155e2f33aa36ab3119b5ee81332beb6482199a8ecd6029b80b59"
+dependencies = [
+ "rustversion",
+]
 
 [[package]]
 name = "raw-cpuid"

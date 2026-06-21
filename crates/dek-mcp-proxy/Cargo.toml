@@ -12,7 +12,7 @@ dek-policy-router = { path = "../dek-policy-router" }
 dek-policy-syncer = { path = "../dek-policy-syncer" }
 dek-domain-schema = { path = "../dek-domain-schema" }
 dek-telemetry = { path = "../dek-telemetry" }
-metrics = "0.22"
+metrics = "0.24"
 dek-cedar = { path = "../dek-cedar" }
 dek-openfga = { path = "../dek-openfga" }
 dek-mcp-normalizer = { path = "../dek-mcp-normalizer" }
