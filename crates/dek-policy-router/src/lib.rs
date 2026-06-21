@@ -39,9 +39,15 @@ pub struct ConditionalPdp {
     pub required_payload_key: String, // Mock condition evaluation
 }
 
+use dek_resilience::breaker::{CircuitBreaker, CircuitConfig, Admit};
+use std::sync::Arc;
+
 pub struct PolicyRouter {
     routes: Vec<Route>,
     evaluators: HashMap<String, Box<dyn PolicyRuntime>>,
+    breakers: HashMap<String, Arc<CircuitBreaker>>,
+    pdp_timeout_ms: u64,
+    circuit_config: CircuitConfig,
 }
 
 impl PolicyRouter {
@@ -49,11 +55,27 @@ impl PolicyRouter {
         Self {
             routes: vec![],
             evaluators: HashMap::new(),
+            breakers: HashMap::new(),
+            pdp_timeout_ms: 200,
+            circuit_config: CircuitConfig::default(),
         }
+    }
+
+    pub fn set_scale_config(&mut self, pdp_timeout_ms: u64, failure_threshold: u32, cooldown_secs: u64) {
+        self.pdp_timeout_ms = pdp_timeout_ms;
+        self.circuit_config = CircuitConfig {
+            failure_threshold,
+            cooldown: std::time::Duration::from_secs(cooldown_secs),
+            half_open_required_successes: 2,
+        };
     }
 
     pub fn register_evaluator(&mut self, id: &str, evaluator: Box<dyn PolicyRuntime>) {
         self.evaluators.insert(id.to_string(), evaluator);
+        self.breakers.insert(
+            id.to_string(),
+            Arc::new(CircuitBreaker::new(id, self.circuit_config.clone())),
+        );
     }
 
     pub fn set_routes(&mut self, mut routes: Vec<Route>) {
@@ -185,13 +207,34 @@ impl PolicyRouter {
 
         for ev_id in to_evaluate {
             if let Some(evaluator) = self.evaluators.get(&ev_id) {
+                let breaker = self.breakers.get(&ev_id).cloned();
+                
+                // Check circuit breaker before hitting PDP
+                if let Some(ref b) = breaker {
+                    if let Admit::Reject = b.permitted() {
+                        metrics::counter!("dek_proxy_requests_total", "decision" => "deny", "reason" => "circuit_open", "evaluator" => ev_id.clone()).increment(1);
+                        tracing::warn!(%ev_id, "request rejected (circuit breaker open)");
+                        combined_decision.allow = false;
+                        combined_decision.decision = "deny".into();
+                        combined_decision.reason = format!("Blocked by Circuit Breaker for {}", ev_id);
+                        break;
+                    }
+                }
+
                 let start_time = std::time::Instant::now();
-                match evaluator.evaluate(payload.clone()).await {
-                    Ok(res) => {
+                let eval_fut = evaluator.evaluate(payload.clone());
+                let timeout_dur = std::time::Duration::from_millis(self.pdp_timeout_ms);
+                
+                match tokio::time::timeout(timeout_dur, eval_fut).await {
+                    Ok(Ok(res)) => {
                         let latency = start_time.elapsed().as_millis() as f64;
                         metrics::histogram!("dek_policy_eval_latency_ms", "evaluator" => ev_id.clone()).record(latency);
 
                         tracing::info!("Evaluator {} returned: {}", ev_id, res.decision);
+                        
+                        if let Some(ref b) = breaker {
+                            b.on_success();
+                        }
 
                         // Combine obligations
                         combined_decision
@@ -219,29 +262,31 @@ impl PolicyRouter {
                             break;
                         }
                     }
-                    Err(dek_policy_runtime::PolicyError::Unavailable(msg)) => {
+                    Ok(Err(dek_policy_runtime::PolicyError::Unavailable(msg))) => {
                         metrics::counter!("dek_pdp_unavailable_total", "evaluator" => ev_id.clone()).increment(1);
-
-                        tracing::warn!(
-                            "required PDP unavailable: {msg}; mode: {:?}",
-                            route.enforcement_mode
-                        );
+                        tracing::warn!("required PDP unavailable: {msg}; mode: {:?}", route.enforcement_mode);
+                        if let Some(ref b) = breaker { b.on_failure(); }
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
-                        combined_decision.reason = format!(
-                            "required PDP unavailable: {} (Mode: {:?})",
-                            msg, route.enforcement_mode
-                        );
+                        combined_decision.reason = format!("required PDP unavailable: {} (Mode: {:?})", msg, route.enforcement_mode);
                         break;
                     }
-                    Err(e) => {
-                        metrics::counter!("dek_pdp_error_total", "evaluator" => ev_id.clone())
-                            .increment(1);
+                    Ok(Err(e)) => {
+                        metrics::counter!("dek_pdp_error_total", "evaluator" => ev_id.clone()).increment(1);
                         tracing::warn!("PDP error: {e}; mode: {:?}", route.enforcement_mode);
+                        if let Some(ref b) = breaker { b.on_failure(); }
                         combined_decision.allow = false;
                         combined_decision.decision = "deny".into();
-                        combined_decision.reason =
-                            format!("PDP error: {} (Mode: {:?})", e, route.enforcement_mode);
+                        combined_decision.reason = format!("PDP error: {} (Mode: {:?})", e, route.enforcement_mode);
+                        break;
+                    }
+                    Err(_) => { // Timeout elapsed
+                        metrics::counter!("dek_pdp_timeout_total", "evaluator" => ev_id.clone()).increment(1);
+                        tracing::warn!("PDP timeout for evaluator: {}", ev_id);
+                        if let Some(ref b) = breaker { b.on_failure(); }
+                        combined_decision.allow = false;
+                        combined_decision.decision = "deny".into();
+                        combined_decision.reason = format!("PDP timeout ({} ms) for {}", self.pdp_timeout_ms, ev_id);
                         break;
                     }
                 }

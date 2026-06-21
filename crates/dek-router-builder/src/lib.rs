@@ -10,6 +10,16 @@ pub fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
         .get("mtls")
         .and_then(|v| serde_json::from_value(v.clone()).ok());
 
+    if let Some(scale_val) = payload.get("scale") {
+        if let Ok(scale) = serde_json::from_value::<dek_config::ScaleConfig>(scale_val.clone()) {
+            router.set_scale_config(
+                scale.pdp_timeout_ms,
+                scale.breaker_failure_threshold,
+                scale.breaker_cooldown_secs,
+            );
+        }
+    }
+
     if let Some(openfga) = payload.get("openfga") {
         let endpoint = openfga
             .get("endpoint")

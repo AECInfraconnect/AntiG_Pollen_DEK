@@ -1895,6 +1895,7 @@ dependencies = [
  "dek-policy-router",
  "dek-policy-runtime",
  "dek-policy-syncer",
+ "dek-resilience",
  "dek-router-builder",
  "dek-telemetry",
  "dek-wasm-host",
@@ -1977,6 +1978,7 @@ dependencies = [
  "dek-cedar",
  "dek-openfga",
  "dek-policy-runtime",
+ "dek-resilience",
  "metrics",
  "serde",
  "serde_json",
@@ -2006,9 +2008,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arc-swap",
+ "axum 0.7.9",
+ "base64 0.22.1",
  "dek-bundle-sync",
  "dek-config",
  "dek-telemetry",
+ "ed25519-dalek",
  "hex",
  "metrics",
  "reqwest 0.12.28",
@@ -2018,6 +2023,15 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-util",
+ "tracing",
+]
+
+[[package]]
+name = "dek-resilience"
+version = "0.1.0"
+dependencies = [
+ "metrics",
+ "tokio",
  "tracing",
 ]
 

@@ -10,6 +10,7 @@
 //!     dek-auth = { path = "../dek-auth" }
 //!     # jsonwebtoken can be dropped here once all JWT logic lives in dek-auth
 
+use dek_resilience::admission::AdmissionControl;
 use arc_swap::{ArcSwap, ArcSwapOption};
 use dek_activation::snapshot::RuntimeSnapshot;
 use dek_mcp_normalizer::http::HttpTransportAdapter;
@@ -24,6 +25,8 @@ pub struct AppState {
     pub shadow_snapshot: ArcSwapOption<RuntimeSnapshot>,
     /// Telemetry Sink
     pub telemetry: Option<Arc<CloudTelemetrySink>>,
+    /// Admission Control for backpressure
+    pub admission: Arc<AdmissionControl>,
 }
 
 impl AppState {
@@ -31,12 +34,14 @@ impl AppState {
         http_adapter: HttpTransportAdapter,
         initial: RuntimeSnapshot,
         telemetry: Option<Arc<CloudTelemetrySink>>,
+        admission: Arc<AdmissionControl>,
     ) -> Arc<Self> {
         Arc::new(Self {
             http_adapter,
             snapshot: ArcSwap::from_pointee(initial),
             shadow_snapshot: ArcSwapOption::empty(),
             telemetry,
+            admission,
         })
     }
 
