@@ -142,9 +142,9 @@ export function Simulator() {
               {selectedPolicyId && policies.find(p => p.policy_id === selectedPolicyId) && (
                 <div className="mt-2 text-[11px] px-2 py-1.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1.5">
                   <span className="font-semibold">Recommended Deployment:</span> 
-                  {policies.find(p => p.policy_id === selectedPolicyId)?.policy_type === 'cedar' && "Application PEP (Native Cedar)"}
-                  {policies.find(p => p.policy_id === selectedPolicyId)?.policy_type === 'rego' && "Proxy PEP (Envoy / L7 Gateway)"}
-                  {policies.find(p => p.policy_id === selectedPolicyId)?.policy_type === 'open_fga' && "Application PEP (Authz API)"}
+                  {policies.find(p => p.policy_id === selectedPolicyId)?.policy_type === 'cedar' && "MCP Proxy PEP, Envoy Proxy, STDIO Wrapper"}
+                  {policies.find(p => p.policy_id === selectedPolicyId)?.policy_type === 'rego' && "Envoy / L7 Proxy PEP"}
+                  {policies.find(p => p.policy_id === selectedPolicyId)?.policy_type === 'open_fga' && "Envoy / L7 Proxy PEP"}
                   {!['cedar', 'rego', 'open_fga'].includes(policies.find(p => p.policy_id === selectedPolicyId)?.policy_type || '') && "Gateway PEP"}
                 </div>
               )}

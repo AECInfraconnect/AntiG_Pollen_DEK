@@ -354,7 +354,7 @@ async fn simulate_policy(
     let mut deployment_test = "Passed".to_string();
 
     if language_id == "cedar" {
-        recommended_pep = "Application PEP (Native Cedar)".to_string();
+        recommended_pep = "MCP Proxy PEP, Envoy Proxy, STDIO Wrapper".to_string();
         match dek_cedar::CedarAdapter::new(&policy_text) {
             Ok(adapter) => {
                 router.register_evaluator(
@@ -383,12 +383,12 @@ async fn simulate_policy(
             }
         }
     } else if language_id == "rego" {
-        recommended_pep = "Proxy PEP (Envoy / L7 Gateway)".to_string();
+        recommended_pep = "Envoy / L7 Proxy PEP".to_string();
         if !policy_text.contains("package") {
             syntax_check = "Failed: missing package declaration".to_string();
             deployment_test = "Failed: Invalid syntax".to_string();
         } else {
-            deployment_test = "Passed: Compatible with Proxy PEP".to_string();
+            deployment_test = "Passed: Compatible with Envoy/L7 Proxy PEP".to_string();
         }
         return Ok((
             StatusCode::OK,
@@ -404,7 +404,7 @@ async fn simulate_policy(
             })),
         ));
     } else if language_id == "open_fga" || language_id == "fga" {
-        recommended_pep = "Application PEP (Authz API)".to_string();
+        recommended_pep = "Envoy / L7 Proxy PEP".to_string();
         if !policy_text.contains("model") {
             syntax_check = "Failed: missing model declaration".to_string();
             deployment_test = "Failed: Invalid syntax".to_string();
