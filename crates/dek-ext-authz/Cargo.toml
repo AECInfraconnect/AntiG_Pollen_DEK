@@ -13,7 +13,7 @@ prost = "0.13"
 serde_json.workspace = true
 dek-policy-router = { path = "../dek-policy-router" }
 dek-policy-syncer = { path = "../dek-policy-syncer" }
-metrics = "0.22"
+metrics = "0.24"
 dek-policy-runtime = { path = "../dek-policy-runtime" }
 dek-config = { path = "../dek-config" }
 dek-router-builder = { path = "../dek-router-builder" }
