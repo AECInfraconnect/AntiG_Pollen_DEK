@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
-tonic = "0.12"
+tonic = "0.14"
 tracing.workspace = true
 
 [lints]
