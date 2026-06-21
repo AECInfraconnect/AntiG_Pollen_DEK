@@ -70,7 +70,7 @@ fn rule_cost_spike(
         artifacts: vec![SuggestedArtifact {
             language: SuggestedPolicyLanguage::Rego,
             filename: "daily_ai_cost_budget.rego".into(),
-            content: format!("package pollen.policies.daily_cost\nimport future.keywords.if\n\ndefault allow := true\n\nmax_daily_cost_usd := 25.00\n\nallow := false if {{\n  input.cost.currency == \"USD\"\n  input.cost.total_cost > max_daily_cost_usd\n}}"),
+            content: "package pollen.policies.daily_cost\nimport future.keywords.if\n\ndefault allow := true\nmax_daily_cost_usd := 25.00\nallow := false if {\n  input.cost.currency == \"USD\"\n  input.cost.total_cost > max_daily_cost_usd\n}".to_string(),
         }],
         dry_run_required: true,
         status: "suggested".into(),

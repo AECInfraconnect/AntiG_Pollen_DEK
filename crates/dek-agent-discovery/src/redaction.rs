@@ -23,7 +23,9 @@ pub fn redact_arg(arg: &str) -> String {
 }
 
 pub fn redact_path_for_ui(path: &str) -> String {
-    let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).unwrap_or_default();
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_default();
     if !home.is_empty() {
         path.replace(&home, "${HOME}")
     } else {

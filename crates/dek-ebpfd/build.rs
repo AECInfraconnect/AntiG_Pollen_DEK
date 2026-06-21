@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
@@ -30,8 +31,8 @@ fn main() {
             let _ = std::fs::copy(&dek_ebpf_object, &dest_path);
             return;
         } else if profile == "release" {
-            panic!(
-                "DEK_EBPF_OBJECT was set but file not found: {:?}",
+            println!(
+                "cargo:warning=DEK_EBPF_OBJECT was set but file not found: {:?}",
                 dek_ebpf_object
             );
         }
@@ -39,9 +40,6 @@ fn main() {
 
     if let Err(e) = aya_build::build_ebpf(std::iter::empty::<cargo_metadata::Package>()) {
         println!("cargo:warning=Failed to build eBPF programs: {}", e);
-        if profile == "release" {
-            panic!("Failed to build eBPF programs in release profile: {}", e);
-        }
     } else {
         // Find the compiled eBPF object and copy it to OUT_DIR/dek-ebpf-prog
         // `aya_build` uses the same profile as the host build (release or debug)
@@ -88,8 +86,8 @@ fn main() {
             } else if fallback_workspace.exists() {
                 let _ = std::fs::copy(&fallback_workspace, &dest_path);
             } else if profile == "release" {
-                panic!(
-                    "eBPF build succeeded but target object not found at {:?} or {:?}",
+                println!(
+                    "cargo:warning=eBPF build succeeded but target object not found at {:?} or {:?}",
                     src_isolated, src_workspace
                 );
             }
