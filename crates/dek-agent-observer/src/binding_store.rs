@@ -10,11 +10,19 @@ pub struct AgentBindingStore {
 
 impl AgentBindingStore {
     pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for AgentBindingStore {
+    fn default() -> Self {
         Self {
             bindings: RwLock::new(HashMap::new()),
         }
     }
+}
 
+impl AgentBindingStore {
     pub fn save(&self, binding: AgentBinding) -> Result<()> {
         let mut w = self
             .bindings

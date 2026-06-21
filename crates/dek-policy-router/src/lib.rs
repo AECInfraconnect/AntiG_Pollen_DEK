@@ -172,7 +172,8 @@ pub struct PolicyRouter {
     round_robin_counter: AtomicUsize,
     pdp_timeout_ms: u64,
     circuit_config: CircuitConfig,
-    binding_store: Option<dek_agent_binding::binding::AgentBinding>, // Should be SharedBindingStore from dek-agent-observer, but to decouple we just keep a local ref or a generic fetcher. Actually, just adding dek-agent-binding dependency allows us to use AgentBinding.
+    #[allow(dead_code)]
+    binding_store: Option<dek_agent_binding::binding::AgentBinding>, // Should be SharedBindingStore from dek-agent-observer, but to avoid circular deps for now we put a placeholderef or a generic fetcher. Actually, just adding dek-agent-binding dependency allows us to use AgentBinding.
 }
 
 impl PolicyRouter {
