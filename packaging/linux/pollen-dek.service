@@ -1,0 +1,18 @@
+[Unit]
+Description=Pollen DEK Policy Enforcement Service
+After=network.target
+
+[Service]
+Type=simple
+User=pollen-dek
+Group=pollen-dek
+ExecStart=/usr/bin/dekd
+Restart=on-failure
+RestartSec=5
+# Allow memlock for eBPF maps if enabled
+LimitMEMLOCK=infinity
+CapabilityBoundingSet=CAP_BPF CAP_NET_ADMIN CAP_SYS_ADMIN
+AmbientCapabilities=CAP_BPF CAP_NET_ADMIN CAP_SYS_ADMIN
+
+[Install]
+WantedBy=multi-user.target

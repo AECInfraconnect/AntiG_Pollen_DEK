@@ -2,6 +2,8 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
+pub mod metadata;
+
 fn main() {
     println!("Pollen DEK Auto-Updater");
 

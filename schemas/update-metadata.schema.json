@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pollen DEK Update Metadata",
+  "type": "object",
+  "required": ["schema_version", "channel", "version", "published_at", "expires_at", "artifacts"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "channel": { "type": "string" },
+    "version": { "type": "string" },
+    "published_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "min_supported_version": { "type": "string" },
+    "rollout": {
+      "type": "object",
+      "properties": {
+        "percentage": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "tenant_allowlist": { "type": "array", "items": { "type": "string" } },
+        "device_allowlist": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["os", "arch", "format", "url", "sha256", "size_bytes"],
+        "properties": {
+          "os": { "type": "string" },
+          "arch": { "type": "string" },
+          "format": { "type": "string" },
+          "url": { "type": "string", "format": "uri" },
+          "sha256": { "type": "string" },
+          "size_bytes": { "type": "integer" },
+          "signature": { "type": "string" }
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "signing_key_id": { "type": "string" },
+        "threshold": { "type": "integer" },
+        "signatures": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}
