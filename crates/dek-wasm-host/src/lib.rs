@@ -15,6 +15,8 @@ pub struct WasmtimePluginHost {
     instances_pre: HashMap<String, InstancePre<wasmtime_wasi::preview1::WasiP1Ctx>>,
 }
 
+use sha2::{Sha256, Digest};
+
 impl WasmtimePluginHost {
     pub fn new(plugin_paths: HashMap<String, String>) -> Result<Self> {
         let engine = Engine::default();
@@ -24,7 +26,29 @@ impl WasmtimePluginHost {
         preview1::add_to_linker_sync(&mut linker, |s| s)?;
 
         for (plugin_id, path) in plugin_paths {
-            if std::path::Path::new(&path).exists() {
+            let p = std::path::Path::new(&path);
+            if p.exists() {
+                // Optionally verify sha256 hash if manifest.json exists in the same directory
+                if let Some(parent) = p.parent() {
+                    let manifest_path = parent.join("manifest.json");
+                    if manifest_path.exists() {
+                        let manifest_content = std::fs::read_to_string(&manifest_path)?;
+                        if let Ok(manifest) = serde_json::from_str::<HashMap<String, String>>(&manifest_content) {
+                            let file_name = p.file_name().unwrap_or_default().to_string_lossy();
+                            if let Some(expected_hash) = manifest.get(file_name.as_ref()) {
+                                let bytes = std::fs::read(p)?;
+                                let mut hasher = Sha256::new();
+                                hasher.update(&bytes);
+                                let actual_hash = hex::encode(hasher.finalize());
+                                
+                                if actual_hash != *expected_hash {
+                                    anyhow::bail!("SHA256 hash mismatch for plugin {}: expected {}, got {}", path, expected_hash, actual_hash);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 let module = Module::from_file(&engine, &path)
                     .with_context(|| format!("Failed to load plugin WASM module: {}", path))?;
                 let instance_pre = linker.instantiate_pre(&module)?;

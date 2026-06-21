@@ -65,7 +65,16 @@ async fn main() -> Result<()> {
     // Setup Adaptive Policy Pipeline
     let mut router = PolicyRouter::new();
 
-    let staged_path = std::path::Path::new("target/active_bundle.json");
+    let bundle_path_str = std::env::var("DEK_BUNDLE_PATH").unwrap_or_else(|_| {
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join("active_bundle.json")
+            .to_string_lossy()
+            .into_owned()
+    });
+    let staged_path = std::path::Path::new(&bundle_path_str);
     if staged_path.exists() {
         if let Ok(content) = std::fs::read_to_string(staged_path) {
             if let Ok(payload) = serde_json::from_str::<Value>(&content) {

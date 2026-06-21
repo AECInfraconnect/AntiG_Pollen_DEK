@@ -1158,8 +1158,10 @@ dependencies = [
  "anyhow",
  "bytes",
  "cap-std",
+ "hex",
  "serde",
  "serde_json",
+ "sha2",
  "wasmtime",
  "wasmtime-wasi",
 ]
