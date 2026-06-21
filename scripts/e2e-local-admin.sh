@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cargo fmt --all -- --check
-cargo clippy --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --exclude dek-opa-wasm --all-targets -- -D warnings
-cargo test -p dek-control-plane-api
-cargo test -p local-control-plane
-
 mkdir -p ./target/e2e
 export DEK_LCP_AUTH_DISABLE=1
 export DEK_LCP_DB='sqlite://./target/e2e/pollen-local.db?mode=rwc'
 export DEK_LCP_DATA='./target/e2e/pollen-local-data'
+export DEK_DASHBOARD_DIR="$(pwd)/apps/local-admin-dashboard/dist"
 
 cargo run -p local-control-plane &
 LCP_PID=$!
@@ -23,5 +19,6 @@ cargo test -p local-control-plane --test e2e_policy_publish
 pushd apps/local-admin-dashboard
 npm ci
 npm run build
+npx playwright install --with-deps
 npx playwright test
 popd

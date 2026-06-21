@@ -86,9 +86,9 @@ async fn setup() -> Result<Proc> {
                 "--exclude",
                 "dek-ebpfd",
                 "--exclude",
-                "pii_redactor",
+                "pii-redactor-plugin",
                 "--exclude",
-                "pii-redactor",
+                "dek-opa-wasm",
             ])
             .status()
             .await?

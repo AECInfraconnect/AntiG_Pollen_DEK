@@ -42,8 +42,11 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
       - name: Install cargo-auditable
-        run: cargo install cargo-auditable
+        run: cargo binstall -y cargo-auditable
 
       - name: Build Auditable Binaries
         run: cargo auditable build --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --exclude dek-opa-wasm --release --target ${{ matrix.target }}
@@ -75,7 +78,7 @@ jobs:
           
           # Zip for notarization
           ditto -c -k --keepParent staging staging.zip
-          xcrun notarytool submit staging.zip --apple-id "$APPLE_DEV_ID" --password "$APPLE_APP_PASSWORD" --team-id "YOUR_TEAM_ID" --wait
+          xcrun notarytool submit staging.zip --apple-id "$APPLE_DEV_ID" --password "$APPLE_APP_PASSWORD" --wait
           xcrun stapler staple staging/dek-core
           xcrun stapler staple staging/dek-mcp-proxy
           xcrun stapler staple staging/dek-ext-authz
