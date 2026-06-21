@@ -28,7 +28,7 @@ jobs:
         components: rustfmt, clippy
         
     - name: Rust Cache
-      uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2
+      uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       
     - name: Check Formatting
       run: cargo fmt --all -- --check
@@ -58,7 +58,7 @@ jobs:
         toolchain: nightly
         components: rust-src, llvm-tools-preview
     - name: Rust Cache
-      uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2
+      uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
     - name: Install bpf-linker
       run: cargo install bpf-linker
     - name: Build eBPF Prog
