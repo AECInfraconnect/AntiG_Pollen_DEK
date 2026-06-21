@@ -1251,6 +1251,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
 
 [[package]]
+name = "content-guard"
+version = "1.0.0-beta.7"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "contract-conformance"
 version = "1.0.0-beta.7"
 dependencies = [
@@ -2128,6 +2135,7 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "chrono",
+ "content-guard",
  "dek-activation",
  "dek-agent-observer",
  "dek-auth",
