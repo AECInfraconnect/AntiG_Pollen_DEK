@@ -7,6 +7,7 @@ import "./rest/bundles.tsp";
 import "./rest/telemetry.tsp";
 import "./rest/registry.tsp";
 import "./rest/enrollment.tsp";
+import "./rest/a2a.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.Rest;

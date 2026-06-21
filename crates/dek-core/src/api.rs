@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use arc_swap::ArcSwap;
@@ -45,6 +45,7 @@ pub async fn start_sidecar_api(
         .route("/v1/capabilities", get(capabilities))
         .route("/v1/decision/check", post(check))
         .route("/v1/decision/batch-check", post(batch_check))
+        .route("/v1/a2a/message", post(a2a_message))
         .with_state(state);
 
     let addr = format!("127.0.0.1:{}", port);
@@ -327,4 +328,32 @@ async fn batch_check(
     }
 
     (StatusCode::OK, Json(responses))
+}
+
+async fn a2a_message(
+    State(_state): State<ApiState>,
+    Json(msg): Json<dek_a2a_mediator::A2AMessage>,
+) -> impl IntoResponse {
+    let broker = dek_a2a_mediator::IATPBroker::new();
+
+    // Mock Trust Score check (in the future, read from `dek-agent-observer` DB)
+    let sender_trust = dek_agent_observer::trust::TrustScore {
+        agent_id: msg.sender_id.clone(),
+        score: 1.0,
+        reasons: vec![],
+    };
+
+    match broker.route_message(&msg, &sender_trust) {
+        Ok(_) => (
+            StatusCode::OK,
+            Json(serde_json::json!({ "status": "delivered" })),
+        ),
+        Err(e) => {
+            tracing::warn!("A2A Message Blocked: {}", e);
+            (
+                StatusCode::FORBIDDEN,
+                Json(serde_json::json!({ "status": "blocked", "reason": e.to_string() })),
+            )
+        }
+    }
 }

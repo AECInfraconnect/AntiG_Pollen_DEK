@@ -1,0 +1,13 @@
+[package]
+name = "dek-a2a-mediator"
+version = "1.0.0-beta.6"
+edition = "2021"
+description = "Inter-Agent Trust Protocol (IATP) Mediator for A2A communication"
+
+[dependencies]
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+tokio = { version = "1.0", features = ["full"] }
+dek-agent-observer = { path = "../dek-agent-observer" }

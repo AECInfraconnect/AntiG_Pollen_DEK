@@ -99,6 +99,27 @@ model CostLedgerEntry {
   timestamp: string;
 }
 
+model AgentTrustScore {
+  schema_version: "agent-trust-score.v1";
+  agent_id: string;
+  score: float32;
+  reasons: string[];
+}
+
+model BudgetPolicy {
+  schema_version: "budget-policy.v1";
+  agent_id: string;
+  daily_cost_cap_usd: float32;
+  daily_token_cap: int64;
+}
+
+model SandboxConfig {
+  schema_version: "sandbox-config.v1";
+  timeout_ms: int64;
+  max_memory_mb: int32;
+  enable_network: boolean;
+}
+
 model CostLedgerListResponse {
   items: CostLedgerEntry[];
 }
@@ -238,6 +259,9 @@ interface ObservationApi {
 
   @route("coverage")
   @get getCoverage(@path tenant_id: string): PolicyCoverageSummary | PollenError;
+
+  @route("trust/{agent_id}")
+  @get getAgentTrustScore(@path tenant_id: string, @path agent_id: string): AgentTrustScore | PollenError;
 }
 
 @tag("Discovery")

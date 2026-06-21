@@ -14,6 +14,7 @@ tags:
   - name: Registry
   - name: Observation
   - name: PolicySuggestions
+  - name: A2A Mediator
 paths:
   /.well-known/pollen-contract:
     get:
@@ -38,6 +39,35 @@ paths:
                 $ref: '#/components/schemas/PollenError'
       tags:
         - Discovery
+  /v1/a2a/message:
+    post:
+      operationId: A2AApi_sendMessage
+      description: Send an Inter-Agent Trust Protocol (IATP) message via the DEK mediator.
+      parameters:
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/A2AMessageResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - A2A Mediator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/A2AMessage'
   /v1/telemetry/batches:
     post:
       operationId: TelemetryApi_ingestBatch
@@ -415,6 +445,35 @@ paths:
                 $ref: '#/components/schemas/PollenError'
       tags:
         - Observation
+  /v1/tenants/{tenant_id}/observations/trust/{agent_id}:
+    get:
+      operationId: ObservationApi_getAgentTrustScore
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTrustScore'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - Observation
   /v1/tenants/{tenant_id}/policy-suggestions:
     get:
       operationId: PolicySuggestionsApi_listSuggestions
@@ -690,6 +749,41 @@ components:
       schema:
         type: string
   schemas:
+    A2AMessage:
+      type: object
+      required:
+        - schema_version
+        - sender_id
+        - receiver_id
+        - payload_encrypted
+        - signature
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - a2a-message.v1
+        sender_id:
+          type: string
+        receiver_id:
+          type: string
+        payload_encrypted:
+          type: string
+        signature:
+          type: string
+    A2AMessageResponse:
+      type: object
+      required:
+        - schema_version
+        - status
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - a2a-response.v1
+        status:
+          type: string
+        reason:
+          type: string
     AgentObservationEvent:
       type: object
       required:
@@ -738,6 +832,47 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AgentObservationEvent'
+    AgentTrustScore:
+      type: object
+      required:
+        - schema_version
+        - agent_id
+        - score
+        - reasons
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - agent-trust-score.v1
+        agent_id:
+          type: string
+        score:
+          type: number
+          format: float
+        reasons:
+          type: array
+          items:
+            type: string
+    BudgetPolicy:
+      type: object
+      required:
+        - schema_version
+        - agent_id
+        - daily_cost_cap_usd
+        - daily_token_cap
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - budget-policy.v1
+        agent_id:
+          type: string
+        daily_cost_cap_usd:
+          type: number
+          format: float
+        daily_token_cap:
+          type: integer
+          format: int64
     BundleFetchRequest:
       type: object
       required:
@@ -1185,6 +1320,26 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Resource'
+    SandboxConfig:
+      type: object
+      required:
+        - schema_version
+        - timeout_ms
+        - max_memory_mb
+        - enable_network
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - sandbox-config.v1
+        timeout_ms:
+          type: integer
+          format: int64
+        max_memory_mb:
+          type: integer
+          format: int32
+        enable_network:
+          type: boolean
     SchemaFingerprint:
       type: object
       required:
