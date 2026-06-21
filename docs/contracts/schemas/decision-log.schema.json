@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Decision Log",
+  "type": "object",
+  "properties": {
+    "log_id": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "principal": { "type": "string" },
+    "action": { "type": "string" },
+    "resource": { "type": "string" },
+    "decision": { "type": "string", "enum": ["allow", "deny"] }
+  },
+  "required": ["log_id", "timestamp", "principal", "action", "resource", "decision"]
+}

@@ -67,6 +67,8 @@ async fn main() -> Result<()> {
         .route("/bundles/latest", get(get_latest_bundle))
         .route("/config/:device_id", get(get_config))
         .route("/spire/svid/renew", post(renew_csr))
+        .route("/decision-logs", post(ingest_decision_logs))
+        .route("/health", post(report_health))
         .with_state(state.clone());
 
     // ---- Enrollment listener (PRE-identity, NO client cert) ----
@@ -381,6 +383,16 @@ fn load_private_key(path: &str) -> Result<PrivateKeyDer<'static>> {
 async fn ingest_telemetry(Json(payload): Json<Value>) -> Json<Value> {
     info!("CLOUD RECEIVED TELEMETRY: {}", payload);
     Json(json!({ "status": "ingested" }))
+}
+
+async fn ingest_decision_logs(Json(payload): Json<Value>) -> Json<Value> {
+    info!("CLOUD RECEIVED DECISION LOGS: {}", payload);
+    Json(json!({ "status": "ingested" }))
+}
+
+async fn report_health(Json(payload): Json<Value>) -> Json<Value> {
+    info!("CLOUD RECEIVED HEALTH REPORT: {}", payload);
+    Json(json!({ "status": "ok" }))
 }
 
 async fn get_latest_bundle(State(state): State<AppState>) -> Json<Value> {

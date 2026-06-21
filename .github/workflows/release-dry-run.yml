@@ -1,0 +1,25 @@
+name: Release Dry Run
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  dry_run_release:
+    name: Dry Run Release Packaging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build all artifacts
+        run: cargo build --workspace --release
+      - name: Compress binaries
+        run: |
+          mkdir -p dist
+          cp target/release/dek-* dist/ 2>/dev/null || true
+          tar -czvf dek-linux-amd64.tar.gz -C dist/ .
+      - name: Verify package size and contents
+        run: |
+          ls -lh dek-linux-amd64.tar.gz
+          tar -tzf dek-linux-amd64.tar.gz

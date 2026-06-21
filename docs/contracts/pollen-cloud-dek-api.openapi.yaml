@@ -1,0 +1,166 @@
+openapi: 3.0.3
+info:
+  title: Pollen Cloud DEK API
+  version: 1.0.0
+  description: APIs for DEK Agent to interact with Pollen Cloud for Enrollment, Config, Telemetry, and SVID renewals.
+
+servers:
+  - url: https://api.pollen.cloud
+    description: Production Server
+
+paths:
+  /oauth/device_authorization:
+    post:
+      summary: Start Device Authorization Flow
+      responses:
+        '200':
+          description: Device Code and User Code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device_code: { type: string }
+                  user_code: { type: string }
+                  verification_uri: { type: string }
+                  verification_uri_complete: { type: string }
+                  expires_in: { type: integer }
+                  interval: { type: integer }
+
+  /oauth/token:
+    post:
+      summary: Poll for access token using device code
+      responses:
+        '200':
+          description: Access Token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  token_type: { type: string }
+                  expires_in: { type: integer }
+                  refresh_token: { type: string }
+
+  /v1/tenants/{tenant_id}/devices/register:
+    post:
+      summary: Register device
+      parameters:
+        - in: path
+          name: tenant_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Device registration details
+
+  /v1/tenants/{tenant_id}/devices/{device_id}/attest:
+    post:
+      summary: Attest device and issue initial SVID
+      parameters:
+        - in: path
+          name: tenant_id
+          required: true
+          schema: { type: string }
+        - in: path
+          name: device_id
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                csr: { type: string }
+      responses:
+        '200':
+          description: SVID issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  svid_cert: { type: string }
+                  ca_bundle: { type: string }
+
+  /v1/tenants/{tenant_id}/devices/{device_id}/config:
+    get:
+      summary: Get device configuration
+      parameters:
+        - in: path
+          name: tenant_id
+          required: true
+          schema: { type: string }
+        - in: path
+          name: device_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Configuration payload
+
+  /v1/tenants/{tenant_id}/devices/{device_id}/bundles/latest:
+    get:
+      summary: Get latest policy bundle manifest
+      parameters:
+        - in: path
+          name: tenant_id
+          required: true
+          schema: { type: string }
+        - in: path
+          name: device_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Policy Bundle Manifest
+
+  /v1/tenants/{tenant_id}/devices/{device_id}/telemetry/events:
+    post:
+      summary: Push telemetry and metric events
+      parameters:
+        - in: path
+          name: tenant_id
+          required: true
+          schema: { type: string }
+        - in: path
+          name: device_id
+          required: true
+          schema: { type: string }
+      responses:
+        '202':
+          description: Accepted
+
+  /v1/tenants/{tenant_id}/devices/{device_id}/decision-logs:
+    post:
+      summary: Push authorization decision logs
+      parameters:
+        - in: path
+          name: tenant_id
+          required: true
+          schema: { type: string }
+        - in: path
+          name: device_id
+          required: true
+          schema: { type: string }
+      responses:
+        '202':
+          description: Accepted
+
+  /v1/tenants/{tenant_id}/devices/{device_id}/health:
+    post:
+      summary: Report device health
+      parameters:
+        - in: path
+          name: tenant_id
+          required: true
+          schema: { type: string }
+        - in: path
+          name: device_id
+          required: true
+          schema: { type: string }
+      responses:
+        '202':
+          description: Health accepted
