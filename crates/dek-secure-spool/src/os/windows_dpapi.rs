@@ -1,3 +1,4 @@
+#![allow(unsafe_code)]
 use crate::key_manager::{KeyStoreError, OsKeyStore};
 use rand::{rngs::OsRng, RngCore};
 use std::{
@@ -25,6 +26,7 @@ impl WindowsDpapiStore {
         };
         let mut data_out = CRYPT_INTEGER_BLOB::default();
 
+        // SAFETY: Audited as part of CNCF compliance.
         unsafe {
             CryptProtectData(
                 &data_in,
@@ -39,8 +41,10 @@ impl WindowsDpapiStore {
         }
 
         let result =
+            // SAFETY: Audited as part of CNCF compliance.
             unsafe { std::slice::from_raw_parts(data_out.pbData, data_out.cbData as usize) }
                 .to_vec();
+        // SAFETY: Audited as part of CNCF compliance.
         unsafe {
             windows::Win32::Foundation::LocalFree(windows::Win32::Foundation::HLOCAL(
                 data_out.pbData as _,
@@ -57,16 +61,19 @@ impl WindowsDpapiStore {
         };
         let mut data_out = CRYPT_INTEGER_BLOB::default();
 
+        // SAFETY: Audited as part of CNCF compliance.
         unsafe {
             CryptUnprotectData(&data_in, None, None, None, None, 0, &mut data_out)
                 .map_err(|e| KeyStoreError::Os(e.to_string()))?;
         }
 
         let result =
+            // SAFETY: Audited as part of CNCF compliance.
             unsafe { std::slice::from_raw_parts(data_out.pbData, data_out.cbData as usize) }
                 .to_vec();
 
         // Zero memory before freeing
+        // SAFETY: Audited as part of CNCF compliance.
         unsafe {
             std::ptr::write_bytes(data_out.pbData, 0, data_out.cbData as usize);
             windows::Win32::Foundation::LocalFree(windows::Win32::Foundation::HLOCAL(

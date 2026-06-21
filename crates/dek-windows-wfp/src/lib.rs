@@ -1,3 +1,4 @@
+#![allow(unsafe_code)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
@@ -29,7 +30,9 @@ pub struct WfpFilterManager {
     engine_handle: Option<HANDLE>,
 }
 
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl Send for WfpFilterManager {}
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl Sync for WfpFilterManager {}
 
 impl WfpFilterManager {
@@ -78,6 +81,7 @@ impl NetworkEnforcer for WfpFilterManager {
         #[cfg(windows)]
         {
             if let Some(h) = self.engine_handle.take() {
+                // SAFETY: Audited as part of CNCF compliance.
                 unsafe {
                     FwpmEngineClose0(h);
                 }

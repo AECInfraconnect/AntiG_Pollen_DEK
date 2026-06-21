@@ -19,3 +19,6 @@ async-trait.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 tokio = { workspace = true, features = ["full"] }
+
+[lints]
+workspace = true

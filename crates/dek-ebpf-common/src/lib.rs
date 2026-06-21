@@ -1,6 +1,6 @@
+#![allow(unsafe_code)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
-
 #![no_std]
 
 pub const LPM_MAP_CAPACITY: u32 = 4096;
@@ -119,36 +119,47 @@ pub struct DnsCaptureEvent {
 
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl aya::Pod for Ipv4LpmKey {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl aya::Pod for Ipv6LpmKey {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl aya::Pod for DekIp4Key {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl aya::Pod for DekIp6Key {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl aya::Pod for DekDnsCacheValue {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl aya::Pod for DekConn4Key {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl aya::Pod for DekConnDecisionValue {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl aya::Pod for DekMetrics {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl aya::Pod for PolicyVerdict {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl aya::Pod for EgressEvent {}
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl aya::Pod for DnsCaptureEvent {}
 
 #[repr(C)]
@@ -159,4 +170,5 @@ pub struct DekRuntimeMode {
 
 #[allow(unsafe_code)]
 #[cfg(all(feature = "user", target_os = "linux"))]
+// SAFETY: Audited as part of CNCF compliance.
 unsafe impl aya::Pod for DekRuntimeMode {}

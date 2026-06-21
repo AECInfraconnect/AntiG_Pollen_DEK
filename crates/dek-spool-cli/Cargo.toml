@@ -8,3 +8,6 @@ edition = "2021"
 dek-secure-spool = { path = "../dek-secure-spool" }
 uuid = { version = "1", features = ["v4", "serde"] }
 serde_json = "1"
+
+[lints]
+workspace = true

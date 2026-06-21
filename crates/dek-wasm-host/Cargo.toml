@@ -16,3 +16,6 @@ hex = "0.4"
 tokio = { version = "1", features = ["full", "time"] }
 tracing = "0.1"
 wasmtime = { version = "24", features = ["async", "pooling-allocator", "cache"] }
+
+[lints]
+workspace = true

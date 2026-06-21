@@ -26,3 +26,6 @@ path = "src/main.rs"
 default = []
 
 
+
+[lints]
+workspace = true
