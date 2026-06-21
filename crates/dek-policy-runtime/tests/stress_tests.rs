@@ -76,4 +76,3 @@ async fn test_wasm_memory_exhaustion() {
     assert!(decision.reason.contains("WASM execution failed"));
     // Reason could mention out of bounds memory access or out of memory.
 }
-

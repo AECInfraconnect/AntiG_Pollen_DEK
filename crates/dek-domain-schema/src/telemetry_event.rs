@@ -128,4 +128,3 @@ pub enum TelemetryEvent {
         prev_digest: String,
     },
 }
-

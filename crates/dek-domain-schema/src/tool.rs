@@ -16,4 +16,3 @@ pub struct Tool {
     pub input_schema_hash: String,
     pub output_schema_hash: String,
 }
-

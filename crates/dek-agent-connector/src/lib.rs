@@ -154,4 +154,3 @@ impl AgentConfigRewriter for ClaudeDesktopRewriter {
         }
     }
 }
-

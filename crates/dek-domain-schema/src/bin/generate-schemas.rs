@@ -7,17 +7,9 @@ use std::fs;
 use std::path::Path;
 
 use dek_domain_schema::{
-    agent::AiAgent,
-    dek_device::DekDevice,
-    mcp_server::McpServer,
-    pep_deployment::PepDeployment,
-    policy::Policy,
-    principal::Principal,
-    relationship::Relationship,
-    resource::Resource,
-    telemetry_event::TelemetryEvent,
-    tenant::Tenant,
-    tool::Tool,
+    agent::AiAgent, dek_device::DekDevice, mcp_server::McpServer, pep_deployment::PepDeployment,
+    policy::Policy, principal::Principal, relationship::Relationship, resource::Resource,
+    telemetry_event::TelemetryEvent, tenant::Tenant, tool::Tool,
 };
 
 fn main() {
@@ -45,4 +37,3 @@ fn main() {
         println!("Generated {}", out_path.display());
     }
 }
-

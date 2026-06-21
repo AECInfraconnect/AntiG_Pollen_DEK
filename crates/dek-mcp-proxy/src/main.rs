@@ -118,7 +118,10 @@ async fn main() -> Result<()> {
     } else {
         // Fallback defaults if no policy config
         if let Ok(adapter) = OpenFgaAdapter::new("http://localhost:8080", "store_123", None) {
-            router.register_evaluator("openfga", Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))));
+            router.register_evaluator(
+                "openfga",
+                Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))),
+            );
         }
     }
 
@@ -381,7 +384,9 @@ async fn shutdown_signal() {
 
     #[cfg(unix)]
     let terminate = async {
-        if let Ok(mut sig) = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+        if let Ok(mut sig) =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        {
             sig.recv().await;
         }
     };
@@ -583,7 +588,8 @@ async fn handle_mcp_request(
 
             for ob in &decision.obligations {
                 let ob_type = ob.as_str();
-                metrics::counter!("dek_obligation_enforced_total", "type" => ob_type.to_string()).increment(1);
+                metrics::counter!("dek_obligation_enforced_total", "type" => ob_type.to_string())
+                    .increment(1);
                 if ob_type == "require_approval" {
                     require_approval = true;
                     compliance_tags.push("SOC2-CC6.1".to_string());
@@ -616,8 +622,17 @@ async fn handle_mcp_request(
                 telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);
             }
 
-            let has_mfa = identity.claims.get("mfa").and_then(|v| v.as_bool()).unwrap_or(false) ||
-                identity.claims.get("amr").and_then(|v| v.as_array()).map(|a| a.iter().any(|s| s.as_str() == Some("mfa"))).unwrap_or(false);
+            let has_mfa = identity
+                .claims
+                .get("mfa")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+                || identity
+                    .claims
+                    .get("amr")
+                    .and_then(|v| v.as_array())
+                    .map(|a| a.iter().any(|s| s.as_str() == Some("mfa")))
+                    .unwrap_or(false);
 
             let mfa_failed = require_mfa && !has_mfa;
 
@@ -790,4 +805,3 @@ async fn handle_filter_response(
         (StatusCode::OK, Json(payload)).into_response()
     }
 }
-

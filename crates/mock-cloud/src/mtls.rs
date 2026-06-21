@@ -3,14 +3,14 @@
 
 use anyhow::{Context, Result};
 use rustls::{
-    server::{WebPkiClientVerifier, ServerConfig},
+    server::{ServerConfig, WebPkiClientVerifier},
     RootCertStore,
 };
-use std::sync::Arc;
-use std::fs::File;
-use std::io::BufReader;
 use rustls_pemfile::{certs, private_key};
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
+use std::fs::File;
+use std::io::BufReader;
+use std::sync::Arc;
 
 /// Builds the ServerConfig for strictly authenticated mTLS (Port 43891)
 pub fn build_mtls_config(allow_insecure: bool) -> Result<ServerConfig> {
@@ -30,7 +30,7 @@ pub fn build_mtls_config(allow_insecure: bool) -> Result<ServerConfig> {
         .context("Failed to build strict mTLS client verifier")?;
 
     let builder = ServerConfig::builder();
-    
+
     let mut server_config_mtls = if allow_insecure {
         builder.with_no_client_auth()
     } else {
@@ -38,7 +38,7 @@ pub fn build_mtls_config(allow_insecure: bool) -> Result<ServerConfig> {
     }
     .with_single_cert(certs_der, key_der)
     .context("Failed to create mTLS ServerConfig")?;
-        
+
     server_config_mtls.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
     Ok(server_config_mtls)
 }
@@ -52,7 +52,7 @@ pub fn build_https_config() -> Result<ServerConfig> {
         .with_no_client_auth()
         .with_single_cert(certs_der, key_der)
         .context("Failed to create HTTPS ServerConfig")?;
-        
+
     server_config_https.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
     Ok(server_config_https)
 }
@@ -68,4 +68,3 @@ pub fn load_private_key(path: &str) -> Result<PrivateKeyDer<'static>> {
     let mut reader = BufReader::new(file);
     private_key(&mut reader)?.context("No private key found")
 }
-

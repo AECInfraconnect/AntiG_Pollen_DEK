@@ -32,9 +32,7 @@ impl OpenFgaAdapter {
         } else {
             Client::new()
         };
-        let cache = Cache::builder()
-            .max_capacity(CACHE_CAPACITY)
-            .build();
+        let cache = Cache::builder().max_capacity(CACHE_CAPACITY).build();
         Ok(Self {
             endpoint: endpoint.to_string(),
             store_id: store_id.to_string(),
@@ -49,7 +47,11 @@ impl OpenFgaAdapter {
             evaluator_type: "remote_pdp".to_string(),
             required: true,
             status: DecisionStatus::Success,
-            decision: if allow { DecisionEffect::Allow } else { DecisionEffect::Deny },
+            decision: if allow {
+                DecisionEffect::Allow
+            } else {
+                DecisionEffect::Deny
+            },
             reason: reason.to_string(),
             effects: json!({}),
             obligations: vec![],
@@ -72,17 +74,24 @@ impl PolicyEvaluator for OpenFgaAdapter {
     }
 
     async fn evaluate(&self, input: EvalRequest) -> PluginResult<PolicyDecision> {
-        let principal = input.payload
+        let principal = input
+            .payload
             .get("principal")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
-        let action = input.payload.get("action").and_then(|v| v.as_str()).unwrap_or("");
-        let resource = input.payload
+        let action = input
+            .payload
+            .get("action")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let resource = input
+            .payload
             .get("resource")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
 
-        let risk_tier = input.payload
+        let risk_tier = input
+            .payload
             .get("risk_tier")
             .and_then(|v| v.as_str())
             .unwrap_or("low");

@@ -62,4 +62,3 @@ fn main() -> Result<()> {
     println!("All MTLS mock certificates successfully generated in `certs/`.");
     Ok(())
 }
-

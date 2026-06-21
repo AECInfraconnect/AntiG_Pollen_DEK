@@ -25,13 +25,28 @@ async fn test_admin_apis() {
             println!("Got response: {}", r.status());
             // If it's up, test the rest
             if r.status().is_success() {
-                let _ = client.post(format!("{}/chaos/outage", base_url))
+                let _ = client
+                    .post(format!("{}/chaos/outage", base_url))
                     .json(&serde_json::json!({"enabled": true}))
-                    .send().await.unwrap();
+                    .send()
+                    .await
+                    .unwrap();
 
-                let _ = client.post(format!("{}/keys/rotate", base_url)).send().await.unwrap();
-                let _ = client.post(format!("{}/policies/publish", base_url)).send().await.unwrap();
-                let _ = client.post(format!("{}/policies/rollback", base_url)).send().await.unwrap();
+                let _ = client
+                    .post(format!("{}/keys/rotate", base_url))
+                    .send()
+                    .await
+                    .unwrap();
+                let _ = client
+                    .post(format!("{}/policies/publish", base_url))
+                    .send()
+                    .await
+                    .unwrap();
+                let _ = client
+                    .post(format!("{}/policies/rollback", base_url))
+                    .send()
+                    .await
+                    .unwrap();
             }
         }
         Err(e) => {
@@ -39,4 +54,3 @@ async fn test_admin_apis() {
         }
     }
 }
-

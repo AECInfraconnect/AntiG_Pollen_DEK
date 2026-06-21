@@ -115,7 +115,7 @@ impl Supervisor {
         )?);
         let data_dir = dek_config::paths::get_data_dir();
         let telemetry_sink = CloudTelemetrySink::new(
-            &cloud_url.trim_end_matches('/'),
+            cloud_url.trim_end_matches('/'),
             &bootstrap.mtls,
             client_key_override.as_deref(),
             &data_dir.join("telemetry.db").to_string_lossy(),
@@ -197,7 +197,7 @@ impl Supervisor {
 
         // 2) Bundle sync + auto-update loop.
 
-        use dek_policy_syncer::{PolicySyncer, FreshnessConfig};
+        use dek_policy_syncer::{FreshnessConfig, PolicySyncer};
 
         let max_stale = std::env::var("DEK_MAX_STALE_SECS")
             .ok()
@@ -208,7 +208,11 @@ impl Supervisor {
             max_bundle_age_secs: max_stale, // Configurable for tests
             grace_secs: 600,
         };
-        let tenant_id = self.bootstrap.tenant_id.clone().unwrap_or_else(|| "unknown_tenant".to_string());
+        let tenant_id = self
+            .bootstrap
+            .tenant_id
+            .clone()
+            .unwrap_or_else(|| "unknown_tenant".to_string());
         let syncer = PolicySyncer::new(
             self.bundle_agent.clone(),
             Some(self.telemetry_sink.clone()),
@@ -222,11 +226,12 @@ impl Supervisor {
         let snapshot_ref = reload_coordinator.activation.snapshot.clone();
         let enforcement_ref = syncer.enforcement();
         tokio::spawn(async move {
-            if let Err(e) = crate::api::start_sidecar_api(snapshot_ref, enforcement_ref, 43890).await {
+            if let Err(e) =
+                crate::api::start_sidecar_api(snapshot_ref, enforcement_ref, 43890).await
+            {
                 error!("Sidecar API failed: {}", e);
             }
         });
-
 
         let (sync_tx, sync_rx) = tokio::sync::mpsc::channel::<dek_policy_syncer::SyncOutcome>(100);
         let bundle_handle = syncer.clone().spawn(
@@ -316,4 +321,3 @@ impl Supervisor {
         let _ = tokio::signal::ctrl_c().await;
     }
 }
-

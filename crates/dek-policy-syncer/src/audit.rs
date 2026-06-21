@@ -23,7 +23,11 @@ pub struct AuditTrail {
 }
 
 impl AuditTrail {
-    pub fn new(sink: Option<Arc<CloudTelemetrySink>>, device_id: String, tenant_id: String) -> Self {
+    pub fn new(
+        sink: Option<Arc<CloudTelemetrySink>>,
+        device_id: String,
+        tenant_id: String,
+    ) -> Self {
         Self {
             sink,
             seq: AtomicU64::new(0),
@@ -35,7 +39,11 @@ impl AuditTrail {
 
     fn emit(&self, event_type: &str, severity: &str, mut payload: Value, priority: Priority) {
         let seq = self.seq.fetch_add(1, Ordering::SeqCst);
-        let prev = self.prev_digest.lock().map(|g| g.clone()).unwrap_or_default();
+        let prev = self
+            .prev_digest
+            .lock()
+            .map(|g| g.clone())
+            .unwrap_or_default();
         let ts = chrono_now_rfc3339();
 
         if let Some(obj) = payload.as_object_mut() {
@@ -106,8 +114,16 @@ impl AuditTrail {
     }
 
     pub fn state_change(&self, from: &str, to: &str, reason: &str) {
-        let sev = if to == "strict_deny" { "critical" } else { "warning" };
-        let pri = if to == "strict_deny" { Priority::Critical } else { Priority::High };
+        let sev = if to == "strict_deny" {
+            "critical"
+        } else {
+            "warning"
+        };
+        let pri = if to == "strict_deny" {
+            Priority::Critical
+        } else {
+            Priority::High
+        };
         self.emit(
             "policy.enforcement.state_change",
             sev,
@@ -130,7 +146,9 @@ fn chrono_now_rfc3339() -> String {
     // Keep dependency-light: seconds since epoch in RFC3339-ish if chrono absent.
     // If chrono is already a workspace dep, prefer chrono::Utc::now().to_rfc3339().
     use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
     format!("unix:{secs}")
 }
-

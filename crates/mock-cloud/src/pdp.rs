@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-use axum::{
-    extract::State,
-    routing::post,
-    Json, Router,
-};
+use axum::{extract::State, routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
 
 use crate::state::AppState;
@@ -36,7 +32,9 @@ pub async fn simulate_pdp(
 
     // Mock evaluation logic
     // 1. Check if principal and resource exist in tenant
-    if !registry.principals.contains_key(&req.principal_id) || !registry.resources.contains_key(&req.resource_id) {
+    if !registry.principals.contains_key(&req.principal_id)
+        || !registry.resources.contains_key(&req.resource_id)
+    {
         return Ok(Json(AccessDecision {
             decision: "Deny".to_string(),
             matching_policies: vec![],
@@ -96,4 +94,3 @@ pub fn router() -> Router<AppState> {
         .route("/v1/pdp/simulate", post(simulate_pdp))
         .route("/v1/pdp/sandbox", post(sandbox_simulate))
 }
-

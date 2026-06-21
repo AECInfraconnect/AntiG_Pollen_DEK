@@ -259,4 +259,3 @@ fn abort_and_rollback(config_dir: &Path, marker: &ProbationMarker) -> ! {
         }
     }
 }
-

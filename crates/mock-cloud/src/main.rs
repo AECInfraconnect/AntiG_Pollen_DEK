@@ -3,29 +3,28 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod admin;
+pub mod approvals;
 pub mod assertions;
 pub mod bundles;
 pub mod compiler;
+pub mod decision_logs;
 pub mod fixtures;
 pub mod keys;
+pub mod mtls;
 pub mod pdp;
 pub mod registry;
 pub mod scenarios;
+pub mod sidecar;
 pub mod spire;
 pub mod state;
 pub mod telemetry;
 pub mod threats;
 pub mod tuf;
-pub mod update_server;
 pub mod ui;
-pub mod approvals;
-pub mod decision_logs;
-pub mod mtls;
-pub mod sidecar;
+pub mod update_server;
 
 #[cfg(test)]
 mod contract_test;
-
 
 use anyhow::Result;
 use askama::Template;
@@ -36,10 +35,10 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use clap::Parser;
 use axum_server::tls_rustls::RustlsConfig;
 use axum_server::Handle;
 use chrono::Utc;
+use clap::Parser;
 use ed25519_dalek::SigningKey;
 use serde::Deserialize;
 use std::collections::{HashMap, VecDeque};
@@ -48,8 +47,7 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
-use crate::state::{AppState, AuditLog, DeviceStatus, PolicyBundle, RolloutConfig, RegistryState};
-
+use crate::state::{AppState, AuditLog, DeviceStatus, PolicyBundle, RegistryState, RolloutConfig};
 
 // Static ed25519 seed used to sign policy bundles.
 pub const BUNDLE_SEED: [u8; 32] = [
@@ -88,7 +86,8 @@ e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9\n\
 e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9\n\
 e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9\n\
 e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9e2X0Y2k4X5P7Y5k1T4wU9\n\
-CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
+CwIDAQAB\n-----END PUBLIC KEY-----\n"
+        .to_string();
 
     let state = AppState {
         revision: Arc::new(AtomicUsize::new(1)),
@@ -164,38 +163,71 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
         // the middleware internally explicitly filters to only act on `/v1/` routes.
         .merge(crate::telemetry::router())
         .merge(crate::threats::router())
-        .layer(axum::middleware::from_fn_with_state(state.clone(), crate::threats::chaos_middleware))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            crate::threats::chaos_middleware,
+        ))
         .with_state(state.clone());
 
     // ---- Enrollment listener (PRE-identity, NO client cert) ----
     let enroll = Router::new()
-        .nest_service("/admin/dashboard", tower_http::services::ServeDir::new("ui/mock-cloud/dist"))
+        .nest_service(
+            "/admin/dashboard",
+            tower_http::services::ServeDir::new("ui/mock-cloud/dist"),
+        )
         .route("/api/admin/dashboard/data", get(dashboard_data_api))
         .merge(spire::router())
         .route("/device", get(device_page_get).post(device_page_post))
         .route("/admin/registry", get(crate::admin::admin_dashboard))
-        .route("/mock/admin/bundles/:bundle_id/poison", post(crate::admin::admin_bundle_poison))
+        .route(
+            "/mock/admin/bundles/:bundle_id/poison",
+            post(crate::admin::admin_bundle_poison),
+        )
         .route("/mock/admin/audits", get(crate::admin::get_audits))
         .route("/mock/admin/telemetry", get(crate::admin::get_telemetry))
-        .route("/mock/admin/chaos/outage", post(crate::admin::admin_chaos_outage))
-        .route("/mock/admin/keys/rotate", post(crate::admin::admin_keys_rotate))
-        .route("/mock/admin/policies/publish", post(crate::admin::admin_policies_publish))
-        .route("/mock/admin/policies/publish-tampered", post(crate::admin::admin_policies_publish_tampered))
-        .route("/mock/admin/network/publish", post(crate::admin::admin_network_publish))
-        .route("/mock/admin/policies/rollback", post(crate::admin::admin_policies_rollback))
+        .route(
+            "/mock/admin/chaos/outage",
+            post(crate::admin::admin_chaos_outage),
+        )
+        .route(
+            "/mock/admin/keys/rotate",
+            post(crate::admin::admin_keys_rotate),
+        )
+        .route(
+            "/mock/admin/policies/publish",
+            post(crate::admin::admin_policies_publish),
+        )
+        .route(
+            "/mock/admin/policies/publish-tampered",
+            post(crate::admin::admin_policies_publish_tampered),
+        )
+        .route(
+            "/mock/admin/network/publish",
+            post(crate::admin::admin_network_publish),
+        )
+        .route(
+            "/mock/admin/policies/rollback",
+            post(crate::admin::admin_policies_rollback),
+        )
         .route(
             "/admin/devices/:device_id/revoke",
             post(admin_revoke_device),
         )
-        .route("/admin/approvals/approve", post(crate::admin::admin_approvals_approve_all))
+        .route(
+            "/admin/approvals/approve",
+            post(crate::admin::admin_approvals_approve_all),
+        )
         .with_state(state.clone());
 
     // ---- :43891 mTLS Config ----
-    let rustls_config_mtls = RustlsConfig::from_config(Arc::new(crate::mtls::build_mtls_config(args.dev_insecure_allow_no_client_cert)?));
+    let rustls_config_mtls = RustlsConfig::from_config(Arc::new(crate::mtls::build_mtls_config(
+        args.dev_insecure_allow_no_client_cert,
+    )?));
     let addr_mtls = SocketAddr::from(([127, 0, 0, 1], 43891));
 
     // ---- :43892 HTTPS Self-Signed Config ----
-    let rustls_config_https = RustlsConfig::from_config(Arc::new(crate::mtls::build_https_config()?));
+    let rustls_config_https =
+        RustlsConfig::from_config(Arc::new(crate::mtls::build_https_config()?));
     let addr_https = SocketAddr::from(([127, 0, 0, 1], 43892));
 
     info!("Mock Cloud mTLS API on https://127.0.0.1:43891");
@@ -234,8 +266,6 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n".to_string();
     Ok(())
 }
 
-
-
 // =========================== Templates ===========================
 #[derive(Template)]
 #[template(path = "device_approval.html")]
@@ -244,7 +274,6 @@ struct DeviceApprovalTemplate {
     error: Option<String>,
     success: Option<String>,
 }
-
 
 #[derive(Deserialize)]
 struct DevicePageQuery {
@@ -297,7 +326,7 @@ async fn dashboard_data_api(State(state): State<AppState>) -> impl IntoResponse 
 
     let rollout_guard = state.rollout.lock().unwrap();
     let current_version = rollout_guard.latest_bundle.version.clone();
-    
+
     let audit_guard = state.audit_logs.lock().unwrap();
     let audits: Vec<AuditLog> = audit_guard.iter().rev().take(20).cloned().collect();
 
@@ -308,7 +337,6 @@ async fn dashboard_data_api(State(state): State<AppState>) -> impl IntoResponse 
         "audits": audits,
     }))
 }
-
 
 async fn admin_revoke_device(
     State(state): State<AppState>,
@@ -388,14 +416,17 @@ async fn handle_push_stream() -> impl IntoResponse {
     use futures_util::stream;
     use std::convert::Infallible;
     use std::time::Duration;
-    
+
     let stream = stream::unfold(0, |count| async move {
         tokio::time::sleep(Duration::from_secs(30)).await;
         // Mock push event every 30 seconds
-        let event = Event::default().data(format!("{{\"event\": \"bundle_ready\", \"version\": \"push-{}\"}}", count));
+        let event = Event::default().data(format!(
+            "{{\"event\": \"bundle_ready\", \"version\": \"push-{}\"}}",
+            count
+        ));
         Some((Ok::<_, Infallible>(event), count + 1))
     });
 
-    Sse::new(stream).keep_alive(axum::response::sse::KeepAlive::new().interval(Duration::from_secs(15)))
+    Sse::new(stream)
+        .keep_alive(axum::response::sse::KeepAlive::new().interval(Duration::from_secs(15)))
 }
-

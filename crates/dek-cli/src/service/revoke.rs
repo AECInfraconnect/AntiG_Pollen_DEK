@@ -56,4 +56,3 @@ pub async fn run(reason: &str) -> Result<()> {
 
     Ok(())
 }
-

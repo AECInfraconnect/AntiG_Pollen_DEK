@@ -31,4 +31,3 @@ pub struct Entity {
     pub identity_assurance: IdentityAssurance,
     pub status: String,
 }
-

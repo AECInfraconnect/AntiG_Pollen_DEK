@@ -127,4 +127,3 @@ ExecStart=/bin/sh -c 'if [ -f {exe_path}.bak ]; then mv {exe_path}.bak {exe_path
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 }
-

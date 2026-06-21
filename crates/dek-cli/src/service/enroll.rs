@@ -154,4 +154,3 @@ fn set_owner_only(path: &Path) {
         let _ = path; // installer applies ACLs on Windows
     }
 }
-

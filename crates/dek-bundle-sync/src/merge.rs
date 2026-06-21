@@ -69,4 +69,3 @@ mod tests {
         assert_eq!(merged["d"], 5); // Emergency overrides DeviceGroup
     }
 }
-

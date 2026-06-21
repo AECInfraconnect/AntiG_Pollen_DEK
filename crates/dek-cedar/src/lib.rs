@@ -27,9 +27,7 @@ impl CedarAdapter {
     pub fn new(policy_src: &str) -> Result<Self> {
         let policy_set = PolicySet::from_str(policy_src)
             .map_err(|e| anyhow::anyhow!("Cedar Parse Error: {}", e))?;
-        let cache = Cache::builder()
-            .max_capacity(10_000)
-            .build();
+        let cache = Cache::builder().max_capacity(10_000).build();
         Ok(Self {
             policy_src: policy_src.to_string(),
             policy_set,
@@ -52,7 +50,11 @@ impl PolicyEvaluator for CedarAdapter {
     }
 
     async fn evaluate(&self, input: EvalRequest) -> PluginResult<PolicyDecision> {
-        let risk = input.payload.get("risk_tier").and_then(|v| v.as_str()).unwrap_or("low");
+        let risk = input
+            .payload
+            .get("risk_tier")
+            .and_then(|v| v.as_str())
+            .unwrap_or("low");
         let ttl = match risk {
             "high" | "critical" => Duration::from_secs(0),
             "medium" => Duration::from_secs(15),
@@ -86,45 +88,37 @@ impl PolicyEvaluator for CedarAdapter {
         let action = get_field("action").unwrap_or_else(|| "Action::\"unknown\"".to_string());
         let resource = get_field("resource").unwrap_or_else(|| "Resource::\"unknown\"".to_string());
 
-        tracing::info!("Evaluating Cedar Policy:\n{}\nInput: principal={}, action={}, resource={}", self.policy_src, principal, action, resource);
+        tracing::info!(
+            "Evaluating Cedar Policy:\n{}\nInput: principal={}, action={}, resource={}",
+            self.policy_src,
+            principal,
+            action,
+            resource
+        );
 
         let context = match input.payload.get("context") {
-            Some(ctx_val) => Context::from_json_value(ctx_val.clone(), None).map_err(|e| {
-                PluginError::Invalid(format!("Context parse error: {}", e))
-            })?,
+            Some(ctx_val) => Context::from_json_value(ctx_val.clone(), None)
+                .map_err(|e| PluginError::Invalid(format!("Context parse error: {}", e)))?,
             None => Context::empty(),
         };
 
         let entities = match input.payload.get("entities") {
-            Some(ent_val) => Entities::from_json_value(ent_val.clone(), None).map_err(|e| {
-                PluginError::Invalid(format!("Entities parse error: {}", e))
-            })?,
+            Some(ent_val) => Entities::from_json_value(ent_val.clone(), None)
+                .map_err(|e| PluginError::Invalid(format!("Entities parse error: {}", e)))?,
             None => Entities::empty(),
         };
 
-        let make_uid = |type_name: &str,
-                        id: &str|
-         -> std::result::Result<EntityUid, PluginError> {
+        let make_uid = |type_name: &str, id: &str| -> std::result::Result<EntityUid, PluginError> {
             if id.contains("::") {
-                EntityUid::from_str(id).map_err(|e| {
-                    PluginError::Invalid(format!(
-                        "EntityUid parse error: {}",
-                        e
-                    ))
-                })
+                EntityUid::from_str(id)
+                    .map_err(|e| PluginError::Invalid(format!("EntityUid parse error: {}", e)))
             } else {
                 Ok(EntityUid::from_type_name_and_id(
                     EntityTypeName::from_str(type_name).map_err(|e| {
-                        PluginError::Invalid(format!(
-                            "EntityTypeName parse error: {}",
-                            e
-                        ))
+                        PluginError::Invalid(format!("EntityTypeName parse error: {}", e))
                     })?,
                     EntityId::from_str(id).map_err(|e| {
-                        PluginError::Invalid(format!(
-                            "EntityId parse error: {}",
-                            e
-                        ))
+                        PluginError::Invalid(format!("EntityId parse error: {}", e))
                     })?,
                 ))
             }
@@ -135,9 +129,7 @@ impl PolicyEvaluator for CedarAdapter {
         let resource_uid = make_uid("Resource", &resource)?;
 
         let request = Request::new(principal_uid, action_uid, resource_uid, context, None)
-            .map_err(|e| {
-                PluginError::Execution(format!("Cedar Request Error: {}", e))
-            })?;
+            .map_err(|e| PluginError::Execution(format!("Cedar Request Error: {}", e)))?;
 
         let authorizer = Authorizer::new();
         let answer = authorizer.is_authorized(&request, &self.policy_set, &entities);
@@ -176,7 +168,8 @@ impl PolicyEvaluator for CedarAdapter {
         };
 
         if !ttl.is_zero() && !cache_key.is_empty() {
-            self.cache.insert(cache_key, (decision_res.clone(), std::time::Instant::now()));
+            self.cache
+                .insert(cache_key, (decision_res.clone(), std::time::Instant::now()));
         }
 
         Ok(decision_res)
@@ -208,10 +201,10 @@ mod tests {
     async fn test_cache_ttl_logic() {
         let policy = "permit(principal, action, resource);";
         let adapter = CedarAdapter::new(policy).unwrap();
-        
+
         let high_risk = json!({ "principal": "User::\"u\"", "action": "Action::\"a\"", "resource": "Resource::\"r\"", "risk_tier": "high" });
         let low_risk = json!({ "principal": "User::\"u\"", "action": "Action::\"a\"", "resource": "Resource::\"r\"", "risk_tier": "low" });
-        
+
         let req_high = EvalRequest {
             request_id: "1".into(),
             tenant_id: None,
@@ -234,15 +227,24 @@ mod tests {
         // Evaluate high risk: should not cache
         let _ = adapter.evaluate(req_high).await.unwrap();
         let cache_key_high = serde_json::to_string(&high_risk).unwrap();
-        assert!(adapter.cache.get(&cache_key_high).is_none(), "High risk should not be cached");
+        assert!(
+            adapter.cache.get(&cache_key_high).is_none(),
+            "High risk should not be cached"
+        );
 
         // Evaluate low risk: should cache
         let _ = adapter.evaluate(req_low).await.unwrap();
         let cache_key_low = serde_json::to_string(&low_risk).unwrap();
-        assert!(adapter.cache.get(&cache_key_low).is_some(), "Low risk should be cached");
+        assert!(
+            adapter.cache.get(&cache_key_low).is_some(),
+            "Low risk should be cached"
+        );
 
         // Clear cache
         adapter.clear_cache().await.unwrap();
-        assert!(adapter.cache.get(&cache_key_low).is_none(), "Cache should be cleared");
+        assert!(
+            adapter.cache.get(&cache_key_low).is_none(),
+            "Cache should be cleared"
+        );
     }
 }

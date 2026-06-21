@@ -9,18 +9,25 @@
 //! dek-bundle-sync::keys (TrustedKeySet); this module is the orchestration.
 
 use anyhow::{Context, Result};
-use dek_bundle_sync::keys::{parse_signatures, RotationDelta, TrustedKey, TrustedKeySet, VerifyOutcome};
+use dek_bundle_sync::keys::{
+    parse_signatures, RotationDelta, TrustedKey, TrustedKeySet, VerifyOutcome,
+};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{info, warn};
 
 fn now_unix() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
 }
 
 /// `<data_dir>/state/trusted_keys.json`
 pub fn keys_path() -> PathBuf {
-    dek_config::paths::get_data_dir().join("state").join("trusted_keys.json")
+    dek_config::paths::get_data_dir()
+        .join("state")
+        .join("trusted_keys.json")
 }
 
 /// Load the persisted set, else bootstrap from the single pinned key delivered
@@ -75,19 +82,24 @@ pub async fn fetch_and_merge(
     let sigs = parse_signatures(body.get("signatures").unwrap_or(&serde_json::Value::Null));
     match current.verify(now_unix(), &signed_bytes, &sigs) {
         VerifyOutcome::Valid { key_id } => {
-            info!("[KeyMgr] /v1/keys payload verified by trusted key '{}'", key_id);
+            info!(
+                "[KeyMgr] /v1/keys payload verified by trusted key '{}'",
+                key_id
+            );
         }
         other => {
             // SECURITY: refuse to merge keys that aren't vouched for by a key we
             // already trust. This is the rogue-key-injection guard.
-            anyhow::bail!("rejecting /v1/keys: payload not signed by a trusted key ({:?})", other);
+            anyhow::bail!(
+                "rejecting /v1/keys: payload not signed by a trusted key ({:?})",
+                other
+            );
         }
     }
 
-    let incoming: Vec<TrustedKey> = serde_json::from_value(
-        signed.get("keys").cloned().context("missing signed.keys")?,
-    )
-    .context("parse keys list")?;
+    let incoming: Vec<TrustedKey> =
+        serde_json::from_value(signed.get("keys").cloned().context("missing signed.keys")?)
+            .context("parse keys list")?;
 
     let mut merged = current.clone();
     let delta = merged.merge_rotation(incoming);
@@ -100,4 +112,3 @@ pub async fn fetch_and_merge(
     }
     Ok((merged, delta))
 }
-

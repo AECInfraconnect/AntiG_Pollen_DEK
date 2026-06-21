@@ -209,7 +209,10 @@ mod tests {
             extract_bearer(Some("Basic abc")),
             Err(AuthError::MissingToken)
         ));
-        assert_eq!(extract_bearer(Some("Bearer xyz")).expect("Should extract"), "xyz");
+        assert_eq!(
+            extract_bearer(Some("Bearer xyz")).expect("Should extract"),
+            "xyz"
+        );
     }
 
     #[test]
@@ -243,4 +246,3 @@ mod tests {
         assert!(v.verify(token).is_err());
     }
 }
-

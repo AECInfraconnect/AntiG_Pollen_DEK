@@ -2,6 +2,7 @@
 // Copyright (c) 2026 AEC Infraconnect
 
 use crate::state::{AppState, ApprovalRequest, AuditLog};
+use askama::Template;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -9,14 +10,16 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use askama::Template;
 use chrono::Utc;
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/v1/tenants/:tenant_id/approvals", post(submit_approval))
         .route("/mock/admin/approvals", get(admin_approvals_view))
-        .route("/mock/admin/approvals/:ref_id/:action", post(admin_approve_deny))
+        .route(
+            "/mock/admin/approvals/:ref_id/:action",
+            post(admin_approve_deny),
+        )
 }
 
 #[derive(serde::Deserialize)]
@@ -69,7 +72,10 @@ pub async fn admin_approvals_view(State(state): State<AppState>) -> impl IntoRes
     approvals.sort_by(|a, b| b.timestamp.cmp(&a.timestamp)); // newest first
 
     let tpl = ApprovalsTemplate { approvals };
-    Html(tpl.render().unwrap_or_else(|e| format!("Template render error: {}", e)))
+    Html(
+        tpl.render()
+            .unwrap_or_else(|e| format!("Template render error: {}", e)),
+    )
 }
 
 pub async fn admin_approve_deny(
@@ -104,4 +110,3 @@ pub async fn admin_approve_deny(
 
     Redirect::to("/mock/admin/approvals")
 }
-

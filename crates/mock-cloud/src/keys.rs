@@ -8,16 +8,23 @@
 //! The legacy `/v1/keys` is kept as an alias. Both return the SAME signed
 //! envelope (signed by the current active key = chain of trust).
 
-use axum::{extract::{Path, State}, routing::{get, post}, Json, Router};
+use crate::state::AppState;
+use axum::{
+    extract::{Path, State},
+    routing::{get, post},
+    Json, Router,
+};
 use base64::Engine;
 use ed25519_dalek::{Signer, SigningKey};
 use serde_json::{json, Value};
-use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()
         // contract path (R2.2 expects this)
-        .route("/v1/tenants/:tenant_id/devices/:device_id/trusted-keys", get(get_trusted_keys))
+        .route(
+            "/v1/tenants/:tenant_id/devices/:device_id/trusted-keys",
+            get(get_trusted_keys),
+        )
         // legacy alias
         .route("/v1/keys", get(get_keys))
         .route("/admin/rotate-key", post(rotate_key))
@@ -69,10 +76,16 @@ async fn get_keys(State(st): State<AppState>) -> Json<Value> {
 async fn rotate_key(State(st): State<AppState>) -> Json<Value> {
     const NEXT_SEED: [u8; 32] = [9u8; 32];
     let next_kid = "key-prod-2";
-    let next_pub = base64::prelude::BASE64_STANDARD
-        .encode(SigningKey::from_bytes(&NEXT_SEED).verifying_key().to_bytes());
+    let next_pub = base64::prelude::BASE64_STANDARD.encode(
+        SigningKey::from_bytes(&NEXT_SEED)
+            .verifying_key()
+            .to_bytes(),
+    );
     let mut keys = st.trusted_keys.lock().unwrap();
-    if !keys.iter().any(|k| k.get("key_id").and_then(|s| s.as_str()) == Some(next_kid)) {
+    if !keys
+        .iter()
+        .any(|k| k.get("key_id").and_then(|s| s.as_str()) == Some(next_kid))
+    {
         keys.push(json!({
             "key_id": next_kid, "public_b64": next_pub,
             "status": "next", "not_before_unix": 0, "not_after_unix": 0
@@ -82,4 +95,3 @@ async fn rotate_key(State(st): State<AppState>) -> Json<Value> {
     st.audit_push("admin", "rotate-key", "introduced next key (overlap)");
     Json(json!({ "rotated": true, "next_key_id": next_kid }))
 }
-

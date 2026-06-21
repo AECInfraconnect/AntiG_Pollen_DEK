@@ -19,4 +19,3 @@ pub struct DekDevice {
     pub status: String,
     pub last_seen_at: String,
 }
-

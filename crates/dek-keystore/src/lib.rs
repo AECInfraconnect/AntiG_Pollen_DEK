@@ -43,4 +43,3 @@ impl Keystore for MockKeystore {
         Ok(())
     }
 }
-

@@ -27,9 +27,15 @@ pub struct SyncerConfig {
     pub keys_path_suffix: String,
 }
 
-fn default_poll_interval_secs() -> u64 { 60 }
-fn default_max_bundle_age_secs() -> i64 { 86_400 } // 24h
-fn default_grace_secs() -> i64 { 600 }
+fn default_poll_interval_secs() -> u64 {
+    60
+}
+fn default_max_bundle_age_secs() -> i64 {
+    86_400
+} // 24h
+fn default_grace_secs() -> i64 {
+    600
+}
 
 impl Default for SyncerConfig {
     fn default() -> Self {
@@ -58,11 +64,21 @@ pub struct ScaleConfig {
     pub breaker_cooldown_secs: u64,
 }
 
-fn default_max_concurrent() -> usize { 512 }
-fn default_max_concurrent_per_tenant() -> usize { 64 }
-fn default_pdp_timeout_ms() -> u64 { 200 }
-fn default_breaker_failure_threshold() -> u32 { 5 }
-fn default_breaker_cooldown_secs() -> u64 { 10 }
+fn default_max_concurrent() -> usize {
+    512
+}
+fn default_max_concurrent_per_tenant() -> usize {
+    64
+}
+fn default_pdp_timeout_ms() -> u64 {
+    200
+}
+fn default_breaker_failure_threshold() -> u32 {
+    5
+}
+fn default_breaker_cooldown_secs() -> u64 {
+    10
+}
 
 impl Default for ScaleConfig {
     fn default() -> Self {
@@ -95,4 +111,3 @@ mod tests {
         assert_eq!(sc.pdp_timeout_ms, 200); // default preserved
     }
 }
-

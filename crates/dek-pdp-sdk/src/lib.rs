@@ -31,7 +31,11 @@ pub struct AdapterInfo {
 }
 
 impl AdapterInfo {
-    pub fn new(id: impl Into<String>, description: impl Into<String>, version: impl Into<String>) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        description: impl Into<String>,
+        version: impl Into<String>,
+    ) -> Self {
         Self {
             id: id.into(),
             description: description.into(),
@@ -90,11 +94,18 @@ impl AdapterRegistry {
     }
 
     /// Convenience method to build an adapter directly from the registry
-    pub fn build_adapter(&self, id: &str, config: &Value) -> Result<Box<dyn PolicyRuntime>, BuildError> {
+    pub fn build_adapter(
+        &self,
+        id: &str,
+        config: &Value,
+    ) -> Result<Box<dyn PolicyRuntime>, BuildError> {
         if let Some(factory) = self.get(id) {
             factory.build(config)
         } else {
-            Err(BuildError::InitFailed(format!("Adapter '{}' not found", id)))
+            Err(BuildError::InitFailed(format!(
+                "Adapter '{}' not found",
+                id
+            )))
         }
     }
 }
@@ -102,12 +113,12 @@ impl AdapterRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
     use async_trait::async_trait;
     use serde_json::json;
+    use std::sync::Arc;
 
     struct DummyRuntime;
-    
+
     #[async_trait]
     impl PolicyRuntime for DummyRuntime {
         async fn evaluate(&self, _input: serde_json::Value) -> Result<PolicyDecision, PolicyError> {

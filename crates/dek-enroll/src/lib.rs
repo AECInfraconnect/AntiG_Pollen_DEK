@@ -451,4 +451,3 @@ struct EnrollResp {
     #[serde(default)]
     cloud_url: Option<String>,
 }
-

@@ -54,14 +54,32 @@ mod tests {
 
     #[test]
     fn routes_by_event_type() {
-        assert_eq!(endpoint_for(&json!({"event_type":"decision"})), "/v1/telemetry/decision-logs");
-        assert_eq!(endpoint_for(&json!({"event_type":"security"})), "/v1/telemetry/security-events");
-        assert_eq!(endpoint_for(&json!({"event_type":"trace"})), "/v1/telemetry/traces");
-        assert_eq!(endpoint_for(&json!({"event_type":"ebpf_guardrail"})), "/v1/telemetry/ebpf-events");
+        assert_eq!(
+            endpoint_for(&json!({"event_type":"decision"})),
+            "/v1/telemetry/decision-logs"
+        );
+        assert_eq!(
+            endpoint_for(&json!({"event_type":"security"})),
+            "/v1/telemetry/security-events"
+        );
+        assert_eq!(
+            endpoint_for(&json!({"event_type":"trace"})),
+            "/v1/telemetry/traces"
+        );
+        assert_eq!(
+            endpoint_for(&json!({"event_type":"ebpf_guardrail"})),
+            "/v1/telemetry/ebpf-events"
+        );
         assert_eq!(endpoint_for(&json!({"event_type":"metric"})), "/v1/metrics");
         // unknown / audit -> generic events
-        assert_eq!(endpoint_for(&json!({"event_type":"os_lifecycle"})), "/v1/telemetry/events");
-        assert_eq!(endpoint_for(&json!({"event_type":"audit"})), "/v1/telemetry/events");
+        assert_eq!(
+            endpoint_for(&json!({"event_type":"os_lifecycle"})),
+            "/v1/telemetry/events"
+        );
+        assert_eq!(
+            endpoint_for(&json!({"event_type":"audit"})),
+            "/v1/telemetry/events"
+        );
         assert_eq!(endpoint_for(&json!({})), "/v1/telemetry/events");
     }
 
@@ -77,4 +95,3 @@ mod tests {
         assert_eq!(g.get("/v1/telemetry/security-events").unwrap().0.len(), 1);
     }
 }
-

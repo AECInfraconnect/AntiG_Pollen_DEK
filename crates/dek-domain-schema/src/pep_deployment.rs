@@ -16,4 +16,3 @@ pub struct PepDeployment {
     pub capabilities: Vec<String>,
     pub status: String,
 }
-

@@ -65,7 +65,10 @@ pub struct FreshnessConfig {
 
 impl Default for FreshnessConfig {
     fn default() -> Self {
-        Self { max_bundle_age_secs: 86_400, grace_secs: 600 }
+        Self {
+            max_bundle_age_secs: 86_400,
+            grace_secs: 600,
+        }
     }
 }
 
@@ -104,7 +107,9 @@ pub fn evaluate_state(
 
     // 3) Bundle's own expiry.
     if now_unix <= expires {
-        return EnforcementState::Active { expires_at_unix: expires };
+        return EnforcementState::Active {
+            expires_at_unix: expires,
+        };
     }
     // 4) Expired but within grace -> still enforce LKG.
     if now_unix <= expires + cfg.grace_secs {
@@ -163,7 +168,10 @@ mod tests {
     use super::*;
 
     fn cfg() -> FreshnessConfig {
-        FreshnessConfig { max_bundle_age_secs: 100, grace_secs: 10 }
+        FreshnessConfig {
+            max_bundle_age_secs: 100,
+            grace_secs: 10,
+        }
     }
 
     #[test]
@@ -177,7 +185,12 @@ mod tests {
     fn fresh_bundle_active() {
         // now=1000, expires=2000, synced at 990 -> active
         let s = evaluate_state(1_000, Some(2_000), Some(990), &cfg());
-        assert_eq!(s, EnforcementState::Active { expires_at_unix: 2_000 });
+        assert_eq!(
+            s,
+            EnforcementState::Active {
+                expires_at_unix: 2_000
+            }
+        );
     }
 
     #[test]
@@ -203,4 +216,3 @@ mod tests {
         assert!(s.reason().starts_with("max_bundle_age_exceeded"));
     }
 }
-

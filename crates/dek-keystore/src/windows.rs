@@ -125,4 +125,3 @@ impl Keystore for DpapiKeystore {
         Ok(())
     }
 }
-

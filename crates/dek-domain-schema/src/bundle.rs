@@ -105,10 +105,11 @@ impl LkgState {
     pub fn rollback(&mut self) -> Result<&BundleManifest, String> {
         if let Some(fallback) = self.fallback_manifest.take() {
             self.current_manifest = Some(fallback);
-            self.current_manifest.as_ref().ok_or_else(|| "impossible".to_string())
+            self.current_manifest
+                .as_ref()
+                .ok_or_else(|| "impossible".to_string())
         } else {
             Err("No LKG manifest available to rollback to".to_string())
         }
     }
 }
-

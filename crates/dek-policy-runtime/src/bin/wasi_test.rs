@@ -20,4 +20,3 @@ fn main() {
     let bytes = stdout.contents();
     println!("bytes len: {}", bytes.len());
 }
-

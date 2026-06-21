@@ -25,15 +25,14 @@ impl WfpWatchdog {
         }
     }
 
-    pub fn apply_with_fallback<F>(
-        &mut self,
-        rules: CompiledNetworkRules,
-        apply_fn: F,
-    ) -> Result<()>
+    pub fn apply_with_fallback<F>(&mut self, rules: CompiledNetworkRules, apply_fn: F) -> Result<()>
     where
         F: Fn(&CompiledNetworkRules) -> Result<()>,
     {
-        info!("Watchdog: Attempting to apply new rules (v{})", rules.version);
+        info!(
+            "Watchdog: Attempting to apply new rules (v{})",
+            rules.version
+        );
 
         match apply_fn(&rules) {
             Ok(_) => {
@@ -44,7 +43,10 @@ impl WfpWatchdog {
             Err(e) => {
                 error!("Watchdog: Failed to apply new rules: {}", e);
                 if let Some(ref lkg) = self.last_known_good {
-                    warn!("Watchdog: Rolling back to Last Known Good (v{})", lkg.version);
+                    warn!(
+                        "Watchdog: Rolling back to Last Known Good (v{})",
+                        lkg.version
+                    );
                     // Attempt rollback
                     if let Err(rollback_err) = apply_fn(lkg) {
                         error!("Watchdog: CRITICAL FAILURE: Rollback to Last Known Good also failed: {}", rollback_err);
@@ -67,4 +69,3 @@ impl WfpWatchdog {
         // In reality, this would install a hardcoded WFP block-all filter to prevent any data exfiltration.
     }
 }
-

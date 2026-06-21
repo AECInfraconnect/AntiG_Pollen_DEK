@@ -20,12 +20,12 @@ fn main() -> anyhow::Result<()> {
             "routes": [1, 2, 3]
         }
     });
-    
+
     let config: DekConfig = serde_json::from_value(json)?;
     println!("Parsed: {:?}", config);
-    
+
     let val = serde_json::to_value(&config.policy_config)?;
     println!("Serialized policy_config: {}", val);
-    
+
     Ok(())
 }

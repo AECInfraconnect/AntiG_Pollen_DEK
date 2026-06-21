@@ -47,4 +47,3 @@ pub async fn run_preflight_tests(
     info!("All preflight tests passed.");
     Ok(())
 }
-

@@ -292,10 +292,8 @@ async fn renew_csr(
 fn sign_csr(csr_pem: &str, spiffe_id: &str) -> Result<(String, String)> {
     use rcgen::{Certificate, CertificateParams, CertificateSigningRequest, KeyPair, SanType};
 
-    let ca_key_pem =
-        std::fs::read_to_string("certs/root_ca.key").context("read root_ca.key")?;
-    let ca_cert_pem =
-        std::fs::read_to_string("certs/root_ca.crt").context("read root_ca.crt")?;
+    let ca_key_pem = std::fs::read_to_string("certs/root_ca.key").context("read root_ca.key")?;
+    let ca_cert_pem = std::fs::read_to_string("certs/root_ca.crt").context("read root_ca.crt")?;
 
     let ca_key = KeyPair::from_pem(&ca_key_pem).context("parse CA key")?;
     let ca_params =
@@ -361,4 +359,3 @@ async fn get_device_status(
         (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" })))
     }
 }
-

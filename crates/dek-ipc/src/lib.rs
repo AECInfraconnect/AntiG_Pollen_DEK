@@ -41,4 +41,3 @@ pub enum IpcResponse {
     ServiceStatus(ServiceStatus),
     Error(String),
 }
-

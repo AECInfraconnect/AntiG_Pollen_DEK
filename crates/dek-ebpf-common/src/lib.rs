@@ -47,4 +47,3 @@ pub struct DnsCaptureEvent {
     pub len: u16,
     pub data: [u8; DNS_PAYLOAD_MAX],
 }
-

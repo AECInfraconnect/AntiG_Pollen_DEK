@@ -169,7 +169,8 @@ impl DeterministicDetector {
         }
 
         // 7. IP Address (v4 for now)
-        static IP_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b(?:\d{1,3}\.){3}\d{1,3}\b").unwrap());
+        static IP_RE: Lazy<Regex> =
+            Lazy::new(|| Regex::new(r"\b(?:\d{1,3}\.){3}\d{1,3}\b").unwrap());
         for cap in IP_RE.find_iter(text) {
             entities.push(DetectedEntity {
                 entity_type: "IP_ADDRESS".to_string(),
@@ -183,8 +184,10 @@ impl DeterministicDetector {
 
         // 8. UUID / Device ID
         static UUID_RE: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b")
-                .unwrap()
+            Regex::new(
+                r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
+            )
+            .unwrap()
         });
         for cap in UUID_RE.find_iter(text) {
             entities.push(DetectedEntity {
@@ -198,8 +201,9 @@ impl DeterministicDetector {
         }
 
         // 9. JWT
-        static JWT_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+").unwrap());
+        static JWT_RE: Lazy<Regex> = Lazy::new(|| {
+            Regex::new(r"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+").unwrap()
+        });
         for cap in JWT_RE.find_iter(text) {
             entities.push(DetectedEntity {
                 entity_type: "JWT".to_string(),
@@ -234,10 +238,10 @@ impl DeterministicDetector {
     pub fn redact(&self, text: &str) -> String {
         let mut result = text.to_string();
         let mut entities = self.detect(text);
-        
+
         // Sort in reverse order to replace without disrupting earlier indices
         entities.sort_by_key(|b| std::cmp::Reverse(b.start));
-        
+
         for entity in entities {
             let replacement = format!("[REDACTED_{}]", entity.entity_type);
             result.replace_range(entity.start..entity.end, &replacement);

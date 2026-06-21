@@ -25,4 +25,3 @@ pub struct McpServer {
     pub tools: Vec<McpTool>,
     pub status: String,
 }
-

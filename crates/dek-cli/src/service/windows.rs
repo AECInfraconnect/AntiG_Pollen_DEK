@@ -163,4 +163,3 @@ sc start PollenDEK
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 }
-

@@ -52,4 +52,3 @@ impl NetworkEnforcer for NeFilterClient {
         Ok(())
     }
 }
-

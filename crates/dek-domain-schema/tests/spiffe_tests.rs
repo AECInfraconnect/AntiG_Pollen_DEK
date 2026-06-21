@@ -105,4 +105,3 @@ fn test_validate_tenant_isolation_custom() {
     let invalid_id = SpiffeId::parse("spiffe://other.acme.internal/device/d-1").unwrap();
     assert!(validate_tenant_isolation(&invalid_id, &strategy, "acme", "pollen.cloud").is_err());
 }
-

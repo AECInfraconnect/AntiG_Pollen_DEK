@@ -18,4 +18,3 @@ pub struct Principal {
     pub identity_provider: String,
     pub external_subject: String,
 }
-

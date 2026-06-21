@@ -79,4 +79,3 @@ pub struct DeviceRegistrationRequest {
     pub dek_version: String,
     pub capabilities: EnforcementCapabilities,
 }
-

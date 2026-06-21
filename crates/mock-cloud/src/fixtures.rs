@@ -17,7 +17,11 @@ pub fn load_seed_data(state: &AppState, profile: &str) {
 
     let get_path = |name: &str| {
         let p = fixtures_dir.join(name);
-        if p.exists() { p } else { default_dir.join(name) }
+        if p.exists() {
+            p
+        } else {
+            default_dir.join(name)
+        }
     };
 
     if let Ok(content) = fs::read_to_string(get_path("tenant.json")) {
@@ -67,7 +71,8 @@ pub fn load_seed_data(state: &AppState, profile: &str) {
     }
     if let Ok(content) = fs::read_to_string(get_path("pep-deployment.json")) {
         if let Ok(pep) = serde_json::from_str::<PepDeployment>(&content) {
-            reg.pep_deployments.insert(pep.pep_deployment_id.clone(), pep);
+            reg.pep_deployments
+                .insert(pep.pep_deployment_id.clone(), pep);
         }
     }
 }
@@ -101,8 +106,16 @@ mod tests {
             let schema_path = schemas_dir.join(schema_name);
             let fixture_path = fixtures_dir.join(fixture_name);
 
-            assert!(schema_path.exists(), "Schema missing: {}", schema_path.display());
-            assert!(fixture_path.exists(), "Fixture missing: {}", fixture_path.display());
+            assert!(
+                schema_path.exists(),
+                "Schema missing: {}",
+                schema_path.display()
+            );
+            assert!(
+                fixture_path.exists(),
+                "Fixture missing: {}",
+                fixture_path.display()
+            );
 
             let schema_str = fs::read_to_string(&schema_path).unwrap();
             let fixture_str = fs::read_to_string(&fixture_path).unwrap();
@@ -112,9 +125,11 @@ mod tests {
 
             let compiled = jsonschema::validator_for(&schema_json).expect("Invalid JSON schema");
             if !compiled.is_valid(&fixture_json) {
-                panic!("Fixture {} failed validation against {}", fixture_name, schema_name);
+                panic!(
+                    "Fixture {} failed validation against {}",
+                    fixture_name, schema_name
+                );
             }
         }
     }
 }
-

@@ -71,19 +71,28 @@ fn generate_bundle(tenant_id: &str, generation: u64, is_canary: bool) -> BundleM
                 name: "policies.json".to_string(),
                 artifact_type: "json".to_string(),
                 sha256: "dummy_hash_for_policies".to_string(),
-                url: Some(format!("https://mock-cloud/v1/tenants/{}/bundles/artifacts/policies.json", tenant_id)),
+                url: Some(format!(
+                    "https://mock-cloud/v1/tenants/{}/bundles/artifacts/policies.json",
+                    tenant_id
+                )),
             },
             BundleArtifact {
                 name: "registry.json".to_string(),
                 artifact_type: "json".to_string(),
                 sha256: "dummy_hash_for_registry".to_string(),
-                url: Some(format!("https://mock-cloud/v1/tenants/{}/bundles/artifacts/registry.json", tenant_id)),
+                url: Some(format!(
+                    "https://mock-cloud/v1/tenants/{}/bundles/artifacts/registry.json",
+                    tenant_id
+                )),
             },
             BundleArtifact {
                 name: "network_guardrails.json".to_string(),
                 artifact_type: "json".to_string(),
                 sha256: "dummy_hash_for_network_guardrails".to_string(),
-                url: Some(format!("https://mock-cloud/v1/tenants/{}/bundles/artifacts/network_guardrails.json", tenant_id)),
+                url: Some(format!(
+                    "https://mock-cloud/v1/tenants/{}/bundles/artifacts/network_guardrails.json",
+                    tenant_id
+                )),
             },
         ],
     }
@@ -125,7 +134,10 @@ async fn publish_bundle(
     State(state): State<AppState>,
     Json(req): Json<PublishRequest>,
 ) -> impl IntoResponse {
-    let new_revision = state.revision.fetch_add(1, std::sync::atomic::Ordering::Relaxed) as u64 + 1;
+    let new_revision = state
+        .revision
+        .fetch_add(1, std::sync::atomic::Ordering::Relaxed) as u64
+        + 1;
     let is_canary = req.canary.unwrap_or(false);
     let manifest = generate_bundle(&tenant_id, new_revision, is_canary);
     (StatusCode::OK, Json(sign_bundle(&manifest)))
@@ -142,7 +154,9 @@ async fn rollback_bundle(
     let mut current = state.revision.load(std::sync::atomic::Ordering::Relaxed);
     if current > 0 {
         current -= 1;
-        state.revision.store(current, std::sync::atomic::Ordering::Relaxed);
+        state
+            .revision
+            .store(current, std::sync::atomic::Ordering::Relaxed);
     }
     let manifest = generate_bundle(&tenant_id, current as u64, false);
     (StatusCode::OK, Json(sign_bundle(&manifest)))
@@ -157,7 +171,10 @@ async fn get_invalid_signature_bundle(
     let mut signed = sign_bundle(&manifest);
     // Corrupt signature
     if let Some(obj) = signed.as_object_mut() {
-        obj.insert("signature".to_string(), json!("invalid_base64_signature!!!"));
+        obj.insert(
+            "signature".to_string(),
+            json!("invalid_base64_signature!!!"),
+        );
     }
     (StatusCode::OK, Json(signed))
 }
@@ -196,12 +213,14 @@ async fn get_network_guardrails_artifact(
     let sig = sk.sign(&signed_bytes);
 
     use base64::Engine;
-    (StatusCode::OK, Json(serde_json::json!({
-        "signed": signed,
-        "signatures": [{
-            "keyid": "bootstrap",
-            "sig": base64::prelude::BASE64_STANDARD.encode(sig.to_bytes())
-        }]
-    })))
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "signed": signed,
+            "signatures": [{
+                "keyid": "bootstrap",
+                "sig": base64::prelude::BASE64_STANDARD.encode(sig.to_bytes())
+            }]
+        })),
+    )
 }
-

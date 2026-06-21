@@ -17,7 +17,7 @@ permit(
 );
 "#;
     let adapter = CedarAdapter::new(policy_src).expect("Failed to create Cedar adapter");
-    
+
     // We will benchmark the `evaluate` method
     let input = json!({
         "principal": "User::\"alice\"",
@@ -43,4 +43,3 @@ permit(
 
 criterion_group!(benches, bench_authorize);
 criterion_main!(benches);
-

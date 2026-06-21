@@ -13,10 +13,10 @@
 //! Guardrails honored: no local authoring/compile/dry-run; fallback is LKG
 //! read-only; never fail-open; no panics on network input.
 
-pub mod state;
-pub mod gate;
 pub mod audit;
+pub mod gate;
 pub mod keys;
+pub mod state;
 pub use gate::strict_deny_reason;
 
 use crate::audit::AuditTrail;
@@ -25,6 +25,7 @@ use crate::keys as keymgr;
 use arc_swap::ArcSwap;
 use dek_bundle_sync::BundleSyncAgent;
 use dek_telemetry::CloudTelemetrySink;
+use sha2::Digest;
 use std::path::Path;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
@@ -32,7 +33,6 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
-use sha2::Digest;
 
 pub use state::{evaluate_state, EnforcementState, EnforcementStatus, FreshnessConfig};
 
@@ -45,7 +45,9 @@ pub enum SyncOutcome {
         config: Box<dek_config::DekConfig>,
         manifest_path: std::path::PathBuf,
     },
-    Failed { reason: String },
+    Failed {
+        reason: String,
+    },
     StateTransition(EnforcementState),
 }
 
@@ -113,26 +115,36 @@ impl PolicySyncer {
     /// (TUF-Lite fetch + ed25519 verify + anti-rollback + hash + atomic stage).
     /// On success, records freshness and recomputes the enforcement state.
     pub async fn sync_once(&self) -> SyncOutcome {
-        // Build a temporary reqwest client using system roots for the mtls/key endpoint. 
+        // Build a temporary reqwest client using system roots for the mtls/key endpoint.
         // In real use, this should probably come from the agent's mtls config.
         let client = reqwest::Client::new();
-        match keymgr::fetch_and_merge(&client, &self.keys_url, &self.bundle_agent.key_set_snapshot()).await {
+        match keymgr::fetch_and_merge(
+            &client,
+            &self.keys_url,
+            &self.bundle_agent.key_set_snapshot(),
+        )
+        .await
+        {
             Ok((merged, delta)) if !delta.is_empty() => {
                 self.bundle_agent.update_keys(merged);
-                self.audit.key_rotation(&delta.added, &delta.promoted, &delta.revoked);
+                self.audit
+                    .key_rotation(&delta.added, &delta.promoted, &delta.revoked);
             }
-            Ok(_) => {}                          // ไม่มีการเปลี่ยน
-            Err(e) => tracing::warn!("key refresh skipped: {e}"),  // ใช้ set เดิมต่อ (fail-safe)
+            Ok(_) => {}                                           // ไม่มีการเปลี่ยน
+            Err(e) => tracing::warn!("key refresh skipped: {e}"), // ใช้ set เดิมต่อ (fail-safe)
         }
 
         match self.bundle_agent.run_pipeline().await {
             Ok((_dek_config, manifest_path)) => {
                 let version = derive_version(&manifest_path);
-                
+
                 // (Phase 3) digest + key id จาก verify ล่าสุด
                 // For demonstration, read the raw signed payload to compute digest. In reality, BundleSyncAgent should return this.
                 let signed_bytes = std::fs::read(&manifest_path).unwrap_or_default();
-                let digest = format!("sha256:{}", hex::encode(sha2::Sha256::digest(&signed_bytes)));
+                let digest = format!(
+                    "sha256:{}",
+                    hex::encode(sha2::Sha256::digest(&signed_bytes))
+                );
                 self.audit.sync_success(&version, "active", &digest);
                 self.audit.activated(&version, "full");
 
@@ -147,7 +159,10 @@ impl PolicySyncer {
                 // Phase 1: Fetch network guardrails
                 let network_rules = match self.bundle_agent.fetch_network_guardrails().await {
                     Ok(rules) => {
-                        info!("[PolicySyncer] network guardrails fetched successfully ({} rules)", rules.len());
+                        info!(
+                            "[PolicySyncer] network guardrails fetched successfully ({} rules)",
+                            rules.len()
+                        );
                         Some(rules)
                     }
                     Err(e) => {
@@ -166,14 +181,16 @@ impl PolicySyncer {
             Err(e) => {
                 let reason = e.to_string();
                 warn!("[PolicySyncer] sync failed: {}", reason);
-                
+
                 // (Phase 3) แยก unsigned/forged push ออกจาก network error
                 if let Some(be) = e.downcast_ref::<dek_bundle_sync::BundleError>() {
                     match be {
-                        dek_bundle_sync::BundleError::SignatureRejected { role, detail } =>
-                            self.audit.unsigned_bundle_rejected(role, detail),
-                        dek_bundle_sync::BundleError::RollbackBlocked { current, incoming } =>
-                            self.audit.rollback_blocked(*current, *incoming),
+                        dek_bundle_sync::BundleError::SignatureRejected { role, detail } => {
+                            self.audit.unsigned_bundle_rejected(role, detail)
+                        }
+                        dek_bundle_sync::BundleError::RollbackBlocked { current, incoming } => {
+                            self.audit.rollback_blocked(*current, *incoming)
+                        }
                     }
                 }
 
@@ -207,16 +224,24 @@ impl PolicySyncer {
                 next.label(),
                 next.reason()
             );
-            self.audit.state_change(prev.label(), next.label(), &next.reason());
+            self.audit
+                .state_change(prev.label(), next.label(), &next.reason());
         }
 
         metrics::gauge!("dek_enforcement_state").set(next.gauge());
         self.enforcement.store(Arc::new(next.clone()));
 
         let version = self.bundle_version.load_full().as_ref().clone();
-        let status = EnforcementStatus { state: next.clone(), updated_unix: now, bundle_version: version };
+        let status = EnforcementStatus {
+            state: next.clone(),
+            updated_unix: now,
+            bundle_version: version,
+        };
         if let Err(e) = state::write_status_atomic(&status) {
-            error!("[PolicySyncer] failed to write enforcement status file: {}", e);
+            error!(
+                "[PolicySyncer] failed to write enforcement status file: {}",
+                e
+            );
         }
 
         if changed {
@@ -227,7 +252,6 @@ impl PolicySyncer {
     }
 
     // emit_state_change is now subsumed by AuditTrail
-
 
     /// Spawn the polling loop + freshness watchdog. The returned handle keeps
     /// the tasks; dropping/cancelling stops them.
@@ -246,8 +270,8 @@ impl PolicySyncer {
             loop {
                 tokio::select! {
                     _ = c1.cancelled() => break,
-                    _ = tick.tick() => { 
-                        let outcome = s1.sync_once().await; 
+                    _ = tick.tick() => {
+                        let outcome = s1.sync_once().await;
                         if let Some(tx) = &sync_tx_poll {
                             let _ = tx.send(outcome).await;
                         }
@@ -266,7 +290,7 @@ impl PolicySyncer {
             loop {
                 tokio::select! {
                     _ = c2.cancelled() => break,
-                    _ = tick.tick() => { 
+                    _ = tick.tick() => {
                         if let Some(new_state) = s2.recompute_state() {
                             if let Some(tx) = &sync_tx2 {
                                 let _ = tx.send(SyncOutcome::StateTransition(new_state)).await;
@@ -287,19 +311,27 @@ impl PolicySyncer {
                 .timeout(Duration::from_secs(3600)) // Long timeout for SSE
                 .build()
                 .unwrap_or_else(|_| reqwest::Client::new());
-                
+
             loop {
-                if c3.is_cancelled() { break; }
-                
-                match client.get(&push_url)
+                if c3.is_cancelled() {
+                    break;
+                }
+
+                match client
+                    .get(&push_url)
                     .header("Accept", "text/event-stream")
                     .send()
                     .await
                 {
                     Ok(mut resp) if resp.status().is_success() => {
-                        info!("[PolicySyncer] Connected to auto-sync push stream at {}", push_url);
+                        info!(
+                            "[PolicySyncer] Connected to auto-sync push stream at {}",
+                            push_url
+                        );
                         while let Ok(Some(chunk)) = resp.chunk().await {
-                            if c3.is_cancelled() { break; }
+                            if c3.is_cancelled() {
+                                break;
+                            }
                             if let Ok(text) = std::str::from_utf8(&chunk) {
                                 if text.contains("bundle_ready") {
                                     info!("[PolicySyncer] Received bundle_ready push event, triggering sync_once");
@@ -318,7 +350,7 @@ impl PolicySyncer {
                         warn!("[PolicySyncer] Push stream connection failed: {}", e);
                     }
                 }
-                
+
                 // Backoff before reconnecting
                 tokio::select! {
                     _ = c3.cancelled() => break,
@@ -327,7 +359,9 @@ impl PolicySyncer {
             }
         });
 
-        SyncerHandle { tasks: vec![poll, watch, sse] }
+        SyncerHandle {
+            tasks: vec![poll, watch, sse],
+        }
     }
 }
 
@@ -343,7 +377,10 @@ impl Drop for SyncerHandle {
 }
 
 fn now_unix() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
 }
 
 fn derive_version(manifest_path: &Path) -> String {
@@ -395,4 +432,3 @@ fn parse_rfc3339_to_unix(s: &str) -> Option<i64> {
     let days = era * 146_097 + doe - 719_468;
     Some(days * 86_400 + h * 3_600 + mi * 60 + sec)
 }
-

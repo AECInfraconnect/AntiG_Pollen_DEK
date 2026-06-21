@@ -37,4 +37,3 @@ pub fn handle_activation_mode(
     }
     Ok(())
 }
-

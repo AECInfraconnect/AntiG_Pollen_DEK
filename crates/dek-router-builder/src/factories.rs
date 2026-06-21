@@ -23,9 +23,12 @@ impl AdapterFactory for CedarFactory {
             .get("policy_src")
             .and_then(|v| v.as_str())
             .unwrap_or("");
-        
+
         dek_cedar::CedarAdapter::new(policy_src)
-            .map(|adapter| Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))) as Box<dyn PolicyRuntime>)
+            .map(|adapter| {
+                Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter)))
+                    as Box<dyn PolicyRuntime>
+            })
             .map_err(|e| BuildError::InitFailed(e.to_string()))
     }
 }
@@ -50,11 +53,17 @@ impl AdapterFactory for OpaFactory {
             .ok_or_else(|| BuildError::MissingConfig("policy_path".to_string()))?;
 
         if !std::path::Path::new(policy_path).exists() {
-            return Err(BuildError::InvalidConfig(format!("WASM policy file not found at: {}", policy_path)));
+            return Err(BuildError::InvalidConfig(format!(
+                "WASM policy file not found at: {}",
+                policy_path
+            )));
         }
 
         dek_opa_wasm::OpaWasmAdapter::new(policy_path, None)
-            .map(|adapter| Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))) as Box<dyn PolicyRuntime>)
+            .map(|adapter| {
+                Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter)))
+                    as Box<dyn PolicyRuntime>
+            })
             .map_err(|e| BuildError::InitFailed(e.to_string()))
     }
 }
@@ -87,7 +96,10 @@ impl AdapterFactory for OpenFgaFactory {
             .and_then(|v| serde_json::from_value(v.clone()).ok());
 
         dek_openfga::OpenFgaAdapter::new(endpoint, store_id, mtls.as_ref())
-            .map(|adapter| Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))) as Box<dyn PolicyRuntime>)
+            .map(|adapter| {
+                Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter)))
+                    as Box<dyn PolicyRuntime>
+            })
             .map_err(|e| BuildError::InitFailed(e.to_string()))
     }
 }

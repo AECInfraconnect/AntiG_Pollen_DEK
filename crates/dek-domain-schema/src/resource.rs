@@ -17,4 +17,3 @@ pub struct Resource {
     pub owner_principal_id: String,
     pub risk_level: String,
 }
-

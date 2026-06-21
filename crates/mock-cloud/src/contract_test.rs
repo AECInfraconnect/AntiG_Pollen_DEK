@@ -17,7 +17,9 @@ async fn trusted_keys_contract_path_serves_signed_envelope() {
         rsa_public_key_pem: "".to_string(),
         pending: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
         devices: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
-        telemetry_events: std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::new())),
+        telemetry_events: std::sync::Arc::new(std::sync::Mutex::new(
+            std::collections::VecDeque::new(),
+        )),
         rollout: std::sync::Arc::new(std::sync::Mutex::new(crate::state::RolloutConfig {
             latest_bundle: crate::state::PolicyBundle {
                 version: "1.0".to_string(),
@@ -28,7 +30,9 @@ async fn trusted_keys_contract_path_serves_signed_envelope() {
             canary_percentage: 0,
         })),
         audit_logs: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
-        pending_policies: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        pending_policies: std::sync::Arc::new(std::sync::Mutex::new(
+            std::collections::HashMap::new(),
+        )),
         trusted_keys: std::sync::Arc::new(std::sync::Mutex::new(vec![json!({
             "key_id": "bootstrap",
             "public_b64": crate::bundle_pubkey_b64(),
@@ -36,7 +40,9 @@ async fn trusted_keys_contract_path_serves_signed_envelope() {
         })])),
         active_seed: std::sync::Arc::new(std::sync::Mutex::new(crate::BUNDLE_SEED.to_vec())),
         revocation_list: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
-        registry: std::sync::Arc::new(std::sync::Mutex::new(crate::state::RegistryState::default())),
+        registry: std::sync::Arc::new(
+            std::sync::Mutex::new(crate::state::RegistryState::default()),
+        ),
         network_rules: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
         chaos_config: std::sync::Arc::new(std::sync::Mutex::new(crate::state::ChaosConfig {
             outage_enabled: false,
@@ -57,7 +63,9 @@ async fn trusted_keys_contract_path_serves_signed_envelope() {
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let body: Value = serde_json::from_slice(&body_bytes).unwrap();
 
     let signatures = body.get("signatures").unwrap().as_array().unwrap();
@@ -74,7 +82,10 @@ async fn trusted_keys_contract_path_serves_signed_envelope() {
 
     let sk = SigningKey::from_bytes(&crate::BUNDLE_SEED);
     let vk = sk.verifying_key();
-    assert!(vk.verify(&signed_bytes, &sig).is_ok(), "Signature must be valid");
+    assert!(
+        vk.verify(&signed_bytes, &sig).is_ok(),
+        "Signature must be valid"
+    );
 }
 
 #[tokio::test]
@@ -84,7 +95,9 @@ async fn telemetry_decision_logs_endpoint_accepts_and_redacts() {
         rsa_public_key_pem: "".to_string(),
         pending: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
         devices: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
-        telemetry_events: std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::new())),
+        telemetry_events: std::sync::Arc::new(std::sync::Mutex::new(
+            std::collections::VecDeque::new(),
+        )),
         rollout: std::sync::Arc::new(std::sync::Mutex::new(crate::state::RolloutConfig {
             latest_bundle: crate::state::PolicyBundle {
                 version: "1.0".to_string(),
@@ -95,11 +108,15 @@ async fn telemetry_decision_logs_endpoint_accepts_and_redacts() {
             canary_percentage: 0,
         })),
         audit_logs: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
-        pending_policies: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        pending_policies: std::sync::Arc::new(std::sync::Mutex::new(
+            std::collections::HashMap::new(),
+        )),
         trusted_keys: std::sync::Arc::new(std::sync::Mutex::new(vec![])),
         active_seed: std::sync::Arc::new(std::sync::Mutex::new(crate::BUNDLE_SEED.to_vec())),
         revocation_list: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
-        registry: std::sync::Arc::new(std::sync::Mutex::new(crate::state::RegistryState::default())),
+        registry: std::sync::Arc::new(
+            std::sync::Mutex::new(crate::state::RegistryState::default()),
+        ),
         network_rules: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
         chaos_config: std::sync::Arc::new(std::sync::Mutex::new(crate::state::ChaosConfig {
             outage_enabled: false,
@@ -192,4 +209,3 @@ async fn telemetry_decision_logs_endpoint_accepts_and_redacts() {
     let res2 = app.clone().oneshot(req2).await.unwrap();
     assert_eq!(res2.status(), StatusCode::BAD_REQUEST);
 }
-

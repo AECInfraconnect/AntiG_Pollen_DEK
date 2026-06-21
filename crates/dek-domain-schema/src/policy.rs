@@ -30,4 +30,3 @@ pub struct Policy {
     pub template: Option<crate::policy_template::PolicyTemplate>,
     pub version: String,
 }
-

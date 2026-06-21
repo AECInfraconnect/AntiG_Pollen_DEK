@@ -208,4 +208,3 @@ fn generate_keypair_and_csr() -> Result<(String, String)> {
     let key_pem = cert.serialize_private_key_pem();
     Ok((key_pem, csr_pem))
 }
-

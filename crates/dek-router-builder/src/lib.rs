@@ -3,24 +3,24 @@
 
 pub mod factories;
 
-use dek_policy_router::PolicyRouter;
 use dek_pdp_sdk::AdapterRegistry;
+use dek_policy_router::PolicyRouter;
 use serde_json::Value;
 use tracing::{error, warn};
 
 /// Returns a default registry with all compiled-in features enabled
 pub fn default_registry() -> AdapterRegistry {
     let mut registry = AdapterRegistry::new();
-    
+
     #[cfg(feature = "adapter-cedar")]
     registry.register(Box::new(factories::CedarFactory));
-    
+
     #[cfg(feature = "adapter-opa")]
     registry.register(Box::new(factories::OpaFactory));
-    
+
     #[cfg(feature = "adapter-openfga")]
     registry.register(Box::new(factories::OpenFgaFactory));
-    
+
     registry
 }
 
@@ -82,7 +82,10 @@ pub fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
                 router.set_routes(routes);
             }
             Err(e) => {
-                error!("Failed to parse routes from bundle: {} (routes_val: {})", e, routes_val);
+                error!(
+                    "Failed to parse routes from bundle: {} (routes_val: {})",
+                    e, routes_val
+                );
             }
         }
     }

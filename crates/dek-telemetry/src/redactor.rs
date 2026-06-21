@@ -65,4 +65,3 @@ impl Default for Redactor {
         Self::new()
     }
 }
-

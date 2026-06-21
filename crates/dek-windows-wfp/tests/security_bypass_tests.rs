@@ -5,8 +5,8 @@ use dek_domain_schema::{
     CompiledNetworkRules, NetworkConditions, NetworkDestination, NetworkFallback,
     NetworkGuardrailEffect, NetworkTargets,
 };
-use dek_windows_wfp::WfpFilterManager;
 use dek_enforcement_api::NetworkEnforcer;
+use dek_windows_wfp::WfpFilterManager;
 
 #[test]
 fn test_wfp_bypass_prevention_logic() {
@@ -84,4 +84,3 @@ fn test_fail_closed_watchdog() {
     // Should fail and trigger fail closed
     assert!(result.is_err());
 }
-

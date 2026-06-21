@@ -31,4 +31,3 @@ fn test_invalid_tenant() {
     let tenant: Result<Tenant, _> = serde_json::from_str(json_str);
     assert!(tenant.is_err());
 }
-

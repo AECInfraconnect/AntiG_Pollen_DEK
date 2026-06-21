@@ -134,4 +134,3 @@ fn test_out_of_band_requires_signature() {
     update.signature = Some("dummy-sig-123".to_string());
     assert!(updater.apply_update(update).is_ok());
 }
-

@@ -88,7 +88,10 @@ impl CircuitBreaker {
         match g.state {
             State::Closed => Admit::Allow,
             State::Open => {
-                let elapsed = g.opened_at.map(|t| now.duration_since(t)).unwrap_or_default();
+                let elapsed = g
+                    .opened_at
+                    .map(|t| now.duration_since(t))
+                    .unwrap_or_default();
                 if elapsed >= self.cfg.cooldown {
                     // move to half-open, admit a single probe
                     g.state = State::HalfOpen;
@@ -144,8 +147,12 @@ impl CircuitBreaker {
                 if g.consecutive_failures >= self.cfg.failure_threshold {
                     g.state = State::Open;
                     g.opened_at = Some(now);
-                    warn!("circuit '{}' OPEN after {} failures", self.name, g.consecutive_failures);
-                    metrics::counter!("dek_circuit_open_total", "evaluator" => self.name.clone()).increment(1);
+                    warn!(
+                        "circuit '{}' OPEN after {} failures",
+                        self.name, g.consecutive_failures
+                    );
+                    metrics::counter!("dek_circuit_open_total", "evaluator" => self.name.clone())
+                        .increment(1);
                 }
             }
             State::HalfOpen => {
@@ -172,7 +179,11 @@ mod tests {
     use super::*;
 
     fn cfg() -> CircuitConfig {
-        CircuitConfig { failure_threshold: 3, cooldown: Duration::from_secs(10), half_open_required_successes: 2 }
+        CircuitConfig {
+            failure_threshold: 3,
+            cooldown: Duration::from_secs(10),
+            half_open_required_successes: 2,
+        }
     }
 
     #[test]
@@ -211,12 +222,13 @@ mod tests {
     fn half_open_probe_failure_reopens() {
         let b = CircuitBreaker::new("pdp", cfg());
         let t0 = Instant::now();
-        for _ in 0..3 { b.on_failure_at(t0); }
+        for _ in 0..3 {
+            b.on_failure_at(t0);
+        }
         let t1 = t0 + Duration::from_secs(11);
         assert_eq!(b.permitted_at(t1), Admit::Allow); // half-open probe
-        b.on_failure_at(t1);                           // probe fails
+        b.on_failure_at(t1); // probe fails
         assert!(b.is_open());
         assert_eq!(b.permitted_at(t1), Admit::Reject);
     }
 }
-

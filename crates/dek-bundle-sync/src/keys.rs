@@ -134,7 +134,9 @@ impl TrustedKeySet {
             for key in candidates {
                 if let Ok(vk) = key.verifying_key() {
                     if vk.verify(signed, &signature).is_ok() {
-                        return VerifyOutcome::Valid { key_id: key.key_id.clone() };
+                        return VerifyOutcome::Valid {
+                            key_id: key.key_id.clone(),
+                        };
                     }
                 }
             }
@@ -152,7 +154,9 @@ impl TrustedKeySet {
                     if existing.status != inc.status {
                         if inc.status == KeyStatus::Revoked {
                             delta.revoked.push(inc.key_id.clone());
-                        } else if inc.status == KeyStatus::Active && existing.status == KeyStatus::Next {
+                        } else if inc.status == KeyStatus::Active
+                            && existing.status == KeyStatus::Next
+                        {
                             delta.promoted.push(inc.key_id.clone());
                         }
                         existing.status = inc.status.clone();
@@ -191,7 +195,10 @@ pub fn parse_signatures(signatures: &serde_json::Value) -> Vec<SignatureEntry> {
             arr.iter()
                 .filter_map(|s| {
                     let sig_b64 = s.get("sig").and_then(|v| v.as_str())?.to_string();
-                    let key_id = s.get("keyid").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    let key_id = s
+                        .get("keyid")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
                     Some(SignatureEntry { key_id, sig_b64 })
                 })
                 .collect()
@@ -222,11 +229,22 @@ mod tests {
     fn verifies_with_active_key() {
         let (sk, pk) = keypair(1);
         let set = TrustedKeySet {
-            keys: vec![TrustedKey { key_id: "k1".into(), public_b64: pk, status: KeyStatus::Active, not_before_unix: 0, not_after_unix: 0 }],
+            keys: vec![TrustedKey {
+                key_id: "k1".into(),
+                public_b64: pk,
+                status: KeyStatus::Active,
+                not_before_unix: 0,
+                not_after_unix: 0,
+            }],
         };
         let msg = b"signed-bytes";
         let out = set.verify(100, msg, &[sign_entry(&sk, "k1", msg)]);
-        assert_eq!(out, VerifyOutcome::Valid { key_id: "k1".into() });
+        assert_eq!(
+            out,
+            VerifyOutcome::Valid {
+                key_id: "k1".into()
+            }
+        );
     }
 
     #[test]
@@ -235,26 +253,59 @@ mod tests {
         let (sk_new, pk_new) = keypair(2);
         let set = TrustedKeySet {
             keys: vec![
-                TrustedKey { key_id: "old".into(), public_b64: pk_old, status: KeyStatus::Active, not_before_unix: 0, not_after_unix: 0 },
-                TrustedKey { key_id: "new".into(), public_b64: pk_new, status: KeyStatus::Next, not_before_unix: 0, not_after_unix: 0 },
+                TrustedKey {
+                    key_id: "old".into(),
+                    public_b64: pk_old,
+                    status: KeyStatus::Active,
+                    not_before_unix: 0,
+                    not_after_unix: 0,
+                },
+                TrustedKey {
+                    key_id: "new".into(),
+                    public_b64: pk_new,
+                    status: KeyStatus::Next,
+                    not_before_unix: 0,
+                    not_after_unix: 0,
+                },
             ],
         };
         let msg = b"bundle";
-        assert!(matches!(set.verify(1, msg, &[sign_entry(&sk_old, "old", msg)]), VerifyOutcome::Valid { .. }));
-        assert!(matches!(set.verify(1, msg, &[sign_entry(&sk_new, "new", msg)]), VerifyOutcome::Valid { .. }));
+        assert!(matches!(
+            set.verify(1, msg, &[sign_entry(&sk_old, "old", msg)]),
+            VerifyOutcome::Valid { .. }
+        ));
+        assert!(matches!(
+            set.verify(1, msg, &[sign_entry(&sk_new, "new", msg)]),
+            VerifyOutcome::Valid { .. }
+        ));
     }
 
     #[test]
     fn revoked_key_rejected_after_rotation() {
         let (sk_old, pk_old) = keypair(1);
         let mut set = TrustedKeySet {
-            keys: vec![TrustedKey { key_id: "old".into(), public_b64: pk_old, status: KeyStatus::Active, not_before_unix: 0, not_after_unix: 0 }],
+            keys: vec![TrustedKey {
+                key_id: "old".into(),
+                public_b64: pk_old,
+                status: KeyStatus::Active,
+                not_before_unix: 0,
+                not_after_unix: 0,
+            }],
         };
         let msg = b"bundle";
         // revoke "old"
-        let delta = set.merge_rotation(vec![TrustedKey { key_id: "old".into(), public_b64: set.keys[0].public_b64.clone(), status: KeyStatus::Revoked, not_before_unix: 0, not_after_unix: 0 }]);
+        let delta = set.merge_rotation(vec![TrustedKey {
+            key_id: "old".into(),
+            public_b64: set.keys[0].public_b64.clone(),
+            status: KeyStatus::Revoked,
+            not_before_unix: 0,
+            not_after_unix: 0,
+        }]);
         assert_eq!(delta.revoked, vec!["old".to_string()]);
-        assert_eq!(set.verify(1, msg, &[sign_entry(&sk_old, "old", msg)]), VerifyOutcome::NoUsableKeys);
+        assert_eq!(
+            set.verify(1, msg, &[sign_entry(&sk_old, "old", msg)]),
+            VerifyOutcome::NoUsableKeys
+        );
     }
 
     #[test]
@@ -262,7 +313,13 @@ mod tests {
         let (_sk_real, pk_real) = keypair(1);
         let (sk_forged, _pk) = keypair(9);
         let set = TrustedKeySet {
-            keys: vec![TrustedKey { key_id: "k1".into(), public_b64: pk_real, status: KeyStatus::Active, not_before_unix: 0, not_after_unix: 0 }],
+            keys: vec![TrustedKey {
+                key_id: "k1".into(),
+                public_b64: pk_real,
+                status: KeyStatus::Active,
+                not_before_unix: 0,
+                not_after_unix: 0,
+            }],
         };
         let msg = b"bundle";
         // forged sig (signed by a key not in the set), claims keyid k1
@@ -270,4 +327,3 @@ mod tests {
         assert_eq!(out, VerifyOutcome::NoValidSignature);
     }
 }
-

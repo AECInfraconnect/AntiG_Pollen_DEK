@@ -122,4 +122,3 @@ pub fn validate_tenant_isolation(
         TrustDomainStrategy::Federated | TrustDomainStrategy::CustomerManaged => todo!(),
     }
 }
-

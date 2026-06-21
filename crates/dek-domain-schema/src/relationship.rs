@@ -14,4 +14,3 @@ pub struct Relationship {
     pub object: String,
     pub conditions: HashMap<String, String>,
 }
-

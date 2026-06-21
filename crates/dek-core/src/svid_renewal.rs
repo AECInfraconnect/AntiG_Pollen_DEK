@@ -391,4 +391,3 @@ mod tests {
         csr.serialize_pem_with_signer(&ca).unwrap()
     }
 }
-

@@ -81,4 +81,3 @@ pub trait TransportAdapter {
         user_id: Option<&str>,
     ) -> Result<NormalizedMcpEvent>;
 }
-

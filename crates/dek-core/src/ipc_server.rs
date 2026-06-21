@@ -28,6 +28,7 @@ pub const IPC_READ_TIMEOUT_SECS: u64 = 5;
 pub const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
 pub const IPC_MAX_CONCURRENT_CONNECTIONS: usize = 32;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn spawn_ipc_server_task(
     cancel_token: CancellationToken,
     ipc_listen_addr: String,
@@ -244,4 +245,3 @@ pub async fn spawn_ipc_server_task(
         }
     }))
 }
-

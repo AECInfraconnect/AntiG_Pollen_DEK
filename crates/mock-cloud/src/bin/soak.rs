@@ -19,7 +19,7 @@ struct Args {
 
     #[arg(short, long, default_value_t = 10000)]
     requests: usize,
-    
+
     #[arg(short, long, default_value = "tenant-1")]
     tenant_id: String,
 }
@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let client = client.clone();
         let target = args.target.clone();
         let tenant_id = args.tenant_id.clone();
-        
+
         set.spawn(async move {
             let start = Instant::now();
             let payload = json!({
@@ -64,10 +64,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }]
             });
-            
+
             let url = format!("{}/v1/tenants/{}/telemetry/events", target, tenant_id);
             let res = client.post(&url).json(&payload).send().await;
-            
+
             let elapsed = start.elapsed();
             (res, elapsed)
         });
@@ -94,9 +94,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } else {
             failures += 1;
         }
-        
-        if latency > max_latency { max_latency = latency; }
-        if latency < min_latency { min_latency = latency; }
+
+        if latency > max_latency {
+            max_latency = latency;
+        }
+        if latency < min_latency {
+            min_latency = latency;
+        }
         total_latency += latency;
     }
 
@@ -114,4 +118,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
