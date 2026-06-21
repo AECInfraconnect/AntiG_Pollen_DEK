@@ -1715,8 +1715,11 @@ name = "dek-a2a-mediator"
 version = "1.0.0-beta.10"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "dek-agent-observer",
  "dek-control-plane-api",
+ "ed25519-dalek",
+ "rand 0.8.6",
  "serde",
  "serde_json",
  "tokio",
