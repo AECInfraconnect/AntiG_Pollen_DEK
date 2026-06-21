@@ -20,12 +20,12 @@ ed25519-dalek = "2.0"
 base64 = "0.22.1"
 rand = "0.10.1"
 serde_jcs = "0.2.0"
-jsonschema = "0.46.5"
+jsonschema.workspace = true
 sha2 = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
 hex = "0.4"
 arc-swap = "1"
-thiserror = "1"
+thiserror.workspace = true
 dek-control-plane-api = { version = "0.1.0", path = "../dek-control-plane-api" }
 dek-bundle-format = { version = "1.0.0-beta.1", path = "../dek-bundle-format" }
 pollen-contract = { path = "../../contracts/generated/rust/pollen-contract" }

@@ -43,5 +43,5 @@ pollen-contract = { path = "../../contracts/generated/rust/pollen-contract" }
 workspace = true
 
 [dev-dependencies]
-jsonschema = "0.46.5"
+jsonschema.workspace = true
 tower = { version = "0.4", features = ["util"] }

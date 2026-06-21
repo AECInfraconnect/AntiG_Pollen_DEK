@@ -287,6 +287,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap_or_else(|| "default".into()),
         bootstrap.device_id.clone(),
     )
+    .await
     .ok();
 
     let service = ExtAuthzService {

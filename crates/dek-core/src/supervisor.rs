@@ -140,7 +140,8 @@ impl Supervisor {
             bootstrap.local_api_token.clone(),
             tenant_id.to_string(),
             bootstrap.device_id.clone(),
-        )?;
+        )
+        .await?;
         let metrics_client = Arc::new(RwLock::new(
             bootstrap
                 .mtls

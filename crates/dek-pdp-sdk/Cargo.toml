@@ -9,7 +9,7 @@ edition.workspace = true
 [dependencies]
 dek-policy-runtime = { path = "../dek-policy-runtime" }
 serde_json.workspace = true
-thiserror = "1.0"
+thiserror.workspace = true
 tracing.workspace = true
 
 [lints]
