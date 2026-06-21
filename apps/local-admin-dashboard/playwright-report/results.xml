@@ -1,0 +1,46 @@
+<testsuites id="" name="" tests="16" failures="0" skipped="0" errors="0" time="8.888808999999998">
+<testsuite name="ai-ecosystem.spec.ts" timestamp="2026-06-21T05:29:35.577Z" hostname="chromium" tests="2" failures="0" skipped="0" time="4.629" errors="0">
+<testcase name="AI Ecosystem › view agents and models" classname="ai-ecosystem.spec.ts" time="1.867">
+</testcase>
+<testcase name="AI Ecosystem › view integrations" classname="ai-ecosystem.spec.ts" time="2.762">
+</testcase>
+</testsuite>
+<testsuite name="dashboard-navigation.spec.ts" timestamp="2026-06-21T05:29:35.577Z" hostname="chromium" tests="1" failures="0" skipped="0" time="7.129" errors="0">
+<testcase name="Dashboard Navigation › should render sidebar and navigate to all main sections" classname="dashboard-navigation.spec.ts" time="7.129">
+</testcase>
+</testsuite>
+<testsuite name="discovery.spec.ts" timestamp="2026-06-21T05:29:35.577Z" hostname="chromium" tests="1" failures="0" skipped="0" time="3.469" errors="0">
+<testcase name="load contract discovery in settings" classname="discovery.spec.ts" time="3.469">
+</testcase>
+</testsuite>
+<testsuite name="monitoring-audit.spec.ts" timestamp="2026-06-21T05:29:35.577Z" hostname="chromium" tests="3" failures="0" skipped="0" time="10.357" errors="0">
+<testcase name="Monitoring &amp; Audit › view alerts and shadow AI" classname="monitoring-audit.spec.ts" time="4.135">
+</testcase>
+<testcase name="Monitoring &amp; Audit › view audit logs" classname="monitoring-audit.spec.ts" time="3.15">
+</testcase>
+<testcase name="Monitoring &amp; Audit › view cost ledger" classname="monitoring-audit.spec.ts" time="3.072">
+</testcase>
+</testsuite>
+<testsuite name="security-policies.spec.ts" timestamp="2026-06-21T05:29:35.577Z" hostname="chromium" tests="3" failures="0" skipped="0" time="9.578" errors="0">
+<testcase name="Security &amp; Policies › create and publish policy from dashboard" classname="security-policies.spec.ts" time="3.729">
+</testcase>
+<testcase name="Security &amp; Policies › view policy presets" classname="security-policies.spec.ts" time="2.778">
+</testcase>
+<testcase name="Security &amp; Policies › view policy suggestions" classname="security-policies.spec.ts" time="3.071">
+</testcase>
+</testsuite>
+<testsuite name="system-settings.spec.ts" timestamp="2026-06-21T05:29:35.577Z" hostname="chromium" tests="6" failures="0" skipped="0" time="14.322" errors="0">
+<testcase name="System Settings › view identities" classname="system-settings.spec.ts" time="2.094">
+</testcase>
+<testcase name="System Settings › view data resources" classname="system-settings.spec.ts" time="2.123">
+</testcase>
+<testcase name="System Settings › view simulator" classname="system-settings.spec.ts" time="2.68">
+</testcase>
+<testcase name="System Settings › view bundles and sync" classname="system-settings.spec.ts" time="2.506">
+</testcase>
+<testcase name="System Settings › view auto discovery" classname="system-settings.spec.ts" time="2.544">
+</testcase>
+<testcase name="System Settings › view global settings" classname="system-settings.spec.ts" time="2.375">
+</testcase>
+</testsuite>
+</testsuites>
