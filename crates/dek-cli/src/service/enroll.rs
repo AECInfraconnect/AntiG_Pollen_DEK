@@ -35,7 +35,13 @@ pub async fn run(cloud_url: &str) -> Result<()> {
 
     // 1) Device flow.
     println!("Enrolling this device with Pollen Cloud at {cloud_url}...\n");
-    let client = EnrollClient::new(cloud_url, CLIENT_ID, SCOPE);
+    let ca_pem = if cloud_url.contains("127.0.0.1") || cloud_url.contains("localhost") {
+        // Automatically load test CA for mock cloud
+        std::fs::read_to_string("certs/root_ca.crt").ok()
+    } else {
+        None
+    };
+    let client = EnrollClient::new(cloud_url, CLIENT_ID, SCOPE, ca_pem.as_deref());
     let enrollment = client
         .run(|p: &UserPrompt| {
             println!("──────────────────────────────────────────────");

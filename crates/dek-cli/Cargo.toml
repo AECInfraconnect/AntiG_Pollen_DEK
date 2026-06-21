@@ -19,3 +19,11 @@ dek-config = { version = "0.1.0", path = "../dek-config" }
 dek-enroll = { path = "../dek-enroll" }
 dek-spire-node = { path = "../dek-spire-node" }
 dek-keystore = { path = "../dek-keystore" }
+
+[dev-dependencies]
+axum = "0.7"
+rcgen = { version = "0.11", features = ["pem", "x509-parser"] }
+serde_json = { workspace = true }
+x509-parser = "0.16"
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["full", "rt-multi-thread"] }
