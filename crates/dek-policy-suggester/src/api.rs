@@ -103,7 +103,10 @@ mod tests {
         // Because of MockCostSpikeRule returns nothing if total_cost < 25
         // And MockUnregisteredEgressRule always returns 1
         assert_eq!(suggestions.len(), 1);
-        assert!(matches!(suggestions[0].suggestion_type, SuggestionType::RestrictExternalLlmProvider));
+        assert!(matches!(
+            suggestions[0].suggestion_type,
+            SuggestionType::RestrictExternalLlmProvider
+        ));
         Ok(())
     }
 }

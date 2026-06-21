@@ -16,9 +16,9 @@ pub use engine_selector::{DecisionKind, EngineSelector};
 pub enum EnforcementMode {
     #[default]
     Standard, // Standard evaluation
-    FailClosed, // If evaluator error or missing, deny
+    FailClosed,  // If evaluator error or missing, deny
     ObserveOnly, // If evaluator error or missing, log and allow
-    BreakGlass, // Bypass evaluation for emergency, always allow
+    BreakGlass,  // Bypass evaluation for emergency, always allow
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -536,7 +536,8 @@ impl PolicyRouter {
                             );
                             combined_decision.allow = true;
                             combined_decision.decision = "allow".into();
-                            combined_decision.reason = format!("PDP unavailable but ObserveOnly: {}", msg);
+                            combined_decision.reason =
+                                format!("PDP unavailable but ObserveOnly: {}", msg);
                         } else {
                             combined_decision.allow = false;
                             combined_decision.decision = "deny".into();
@@ -562,7 +563,10 @@ impl PolicyRouter {
                             }
                         }
                         if route.enforcement_mode == EnforcementMode::ObserveOnly {
-                            tracing::warn!("PDP error but mode is ObserveOnly: {}; allowing request.", e);
+                            tracing::warn!(
+                                "PDP error but mode is ObserveOnly: {}; allowing request.",
+                                e
+                            );
                             combined_decision.allow = true;
                             combined_decision.decision = "allow".into();
                             combined_decision.reason = format!("PDP error but ObserveOnly: {}", e);
@@ -590,10 +594,13 @@ impl PolicyRouter {
                             }
                         }
                         if route.enforcement_mode == EnforcementMode::ObserveOnly {
-                            tracing::warn!("PDP timeout but mode is ObserveOnly; allowing request.");
+                            tracing::warn!(
+                                "PDP timeout but mode is ObserveOnly; allowing request."
+                            );
                             combined_decision.allow = true;
                             combined_decision.decision = "allow".into();
-                            combined_decision.reason = format!("PDP timeout but ObserveOnly for {}", ev_id);
+                            combined_decision.reason =
+                                format!("PDP timeout but ObserveOnly for {}", ev_id);
                         } else {
                             combined_decision.allow = false;
                             combined_decision.decision = "deny".into();
@@ -610,10 +617,13 @@ impl PolicyRouter {
                     route.enforcement_mode
                 );
                 if route.enforcement_mode == EnforcementMode::ObserveOnly {
-                    tracing::warn!("Evaluator not found but mode is ObserveOnly; allowing request.");
+                    tracing::warn!(
+                        "Evaluator not found but mode is ObserveOnly; allowing request."
+                    );
                     combined_decision.allow = true;
                     combined_decision.decision = "allow".into();
-                    combined_decision.reason = format!("Evaluator not found but ObserveOnly for {}", ev_id);
+                    combined_decision.reason =
+                        format!("Evaluator not found but ObserveOnly for {}", ev_id);
                 } else {
                     combined_decision.allow = false;
                     combined_decision.decision = "deny".into();

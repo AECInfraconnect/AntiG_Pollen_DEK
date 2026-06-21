@@ -116,7 +116,7 @@ async fn create_draft(
 
     // Create a policy draft from the suggestion
     let draft_id = format!("draft-{}", uuid::Uuid::new_v4());
-    
+
     // For simplicity, take the first artifact if any
     let source = if let Some(artifact) = suggestion.artifacts.first() {
         dek_control_plane_api::policy::PolicySource::RawText {
@@ -124,7 +124,9 @@ async fn create_draft(
             text: artifact.content.clone(),
         }
     } else {
-        return Err(ApiError::Internal(anyhow::anyhow!("No artifacts to create draft from")));
+        return Err(ApiError::Internal(anyhow::anyhow!(
+            "No artifacts to create draft from"
+        )));
     };
 
     let draft = dek_control_plane_api::policy::PolicyDraft {
@@ -146,9 +148,18 @@ async fn create_draft(
         description: Some(suggestion.summary.clone()),
         policy_type: dek_control_plane_api::policy::PolicyType::Cedar,
         targets: dek_control_plane_api::policy::PolicyTargets {
-            agent_ids: suggestion.target_agent_id.map(|id| vec![id]).unwrap_or_default(),
-            tool_ids: suggestion.target_tool_id.map(|id| vec![id]).unwrap_or_default(),
-            resource_ids: suggestion.target_resource_id.map(|id| vec![id]).unwrap_or_default(),
+            agent_ids: suggestion
+                .target_agent_id
+                .map(|id| vec![id])
+                .unwrap_or_default(),
+            tool_ids: suggestion
+                .target_tool_id
+                .map(|id| vec![id])
+                .unwrap_or_default(),
+            resource_ids: suggestion
+                .target_resource_id
+                .map(|id| vec![id])
+                .unwrap_or_default(),
             entity_ids: vec![],
             route_ids: vec![],
         },
@@ -185,14 +196,26 @@ async fn dismiss(
     Path((tenant, suggestion_id)): Path<(String, String)>,
     State(st): State<AppState>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    update_suggestion_status(&tenant, &suggestion_id, &st, dek_policy_suggester::model::SuggestionStatus::Dismissed).await
+    update_suggestion_status(
+        &tenant,
+        &suggestion_id,
+        &st,
+        dek_policy_suggester::model::SuggestionStatus::Dismissed,
+    )
+    .await
 }
 
 async fn approve(
     Path((tenant, suggestion_id)): Path<(String, String)>,
     State(st): State<AppState>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    update_suggestion_status(&tenant, &suggestion_id, &st, dek_policy_suggester::model::SuggestionStatus::Approved).await
+    update_suggestion_status(
+        &tenant,
+        &suggestion_id,
+        &st,
+        dek_policy_suggester::model::SuggestionStatus::Approved,
+    )
+    .await
 }
 
 async fn update_suggestion_status(
