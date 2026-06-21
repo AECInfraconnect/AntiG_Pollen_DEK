@@ -22,6 +22,9 @@ use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
 pub mod jwt_svid;
+pub mod trust_bundle;
+
+pub use trust_bundle::{TrustBundleResponse, fetch_trust_bundle, install_root, spawn_trust_bundle_poller};
 
 // ----------------------------- existing path -------------------------------
 
@@ -195,33 +198,7 @@ pub async fn renew_svid(
     })
 }
 
-#[derive(Debug, Deserialize)]
-pub struct TrustBundleResponse {
-    pub trust_bundle_pem: String,
-}
 
-/// Polls the Trust Bundle from the federation endpoint.
-pub async fn fetch_trust_bundle(
-    spire_endpoint: &str,
-    mtls_client: &reqwest::Client,
-) -> Result<String> {
-    let url = format!("{}/v1/trust-bundle", spire_endpoint.trim_end_matches('/'));
-    info!("Fetching Trust Bundle from {}", url);
-    let res = mtls_client
-        .get(&url)
-        .send()
-        .await
-        .context("send trust bundle fetch request")?;
-
-    if !res.status().is_success() {
-        let status = res.status();
-        let body = res.text().await.unwrap_or_default();
-        anyhow::bail!("Trust Bundle fetch failed: HTTP {status} — {body}");
-    }
-
-    let resp: TrustBundleResponse = res.json().await.context("parse trust bundle response")?;
-    Ok(resp.trust_bundle_pem)
-}
 
 /// Generate a keypair and a PKCS#10 CSR (empty SANs — the SPIRE server assigns
 /// the SPIFFE URI SAN at signing time).
