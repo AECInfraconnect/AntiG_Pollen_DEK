@@ -36,6 +36,7 @@ impl MtlsConfig {
 pub struct BootstrapConfig {
     pub device_id: String,
     pub mtls: MtlsConfig,
+    pub pinned_bundle_public_key: String,
 }
 
 impl BootstrapConfig {
@@ -53,6 +54,8 @@ impl BootstrapConfig {
                     client_key_path: "certs/client.key".to_string(),
                     root_ca_path: "certs/root_ca.crt".to_string(),
                 },
+                pinned_bundle_public_key: "xQyzrpVpR6jeGRNbW+JoX/NIr8Y/w0qDesoSvFwfViU="
+                    .to_string(),
             };
             let json_str = serde_json::to_string_pretty(&default_config)?;
             fs::write(p, json_str)?;
@@ -90,12 +93,18 @@ pub struct SpireServerConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JwtConfig {
+    pub public_key_pem: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DekConfig {
     pub device_id: String,
     pub tenant_id: String,
     pub mtls: MtlsConfig,
     pub spire_server: Option<SpireServerConfig>,
     pub policy_config: Option<PolicyConfig>,
+    pub jwt_config: Option<JwtConfig>,
 }
 
 impl DekConfig {

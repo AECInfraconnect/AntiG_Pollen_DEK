@@ -21,3 +21,5 @@ async-trait = "0.1.89"
 dek-config = { version = "0.1.0", path = "../dek-config" }
 notify = "8.2.0"
 base64 = "0.22"
+jsonwebtoken = "10.4.0"
+dek-router-builder = { path = "../dek-router-builder" }

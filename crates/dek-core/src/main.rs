@@ -7,8 +7,6 @@
 //! - Telemetry emission and Prometheus metrics push (OTLP/Pushgateway)
 
 use anyhow::{Context, Result};
-use tokio_retry::{Retry, RetryIf};
-use tokio_retry::strategy::ExponentialBackoff;
 use dek_config::{BootstrapConfig, DekConfig};
 use dek_ipc::{IpcMessage, IpcRequest, IpcResponse};
 use dek_telemetry::CloudTelemetrySink;
@@ -22,6 +20,8 @@ use tokio::net::TcpListener;
 use tokio::sync::{RwLock, Semaphore};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, timeout, Duration};
+use tokio_retry::strategy::ExponentialBackoff;
+use tokio_retry::{Retry, RetryIf};
 use tokio_util::codec::{Framed, LinesCodec};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn, Instrument};
@@ -37,7 +37,10 @@ fn get_env_var(key: &str, default: &str) -> String {
 
 async fn load_bootstrap(bootstrap_path: &str) -> Result<BootstrapConfig> {
     let bootstrap = BootstrapConfig::load_or_default(bootstrap_path)?;
-    info!("Loaded Bootstrap Config for device: {}", bootstrap.device_id);
+    info!(
+        "Loaded Bootstrap Config for device: {}",
+        bootstrap.device_id
+    );
     Ok(bootstrap)
 }
 
@@ -50,32 +53,36 @@ async fn run_sync_pipeline_with_retry(
         .max_delay(Duration::from_secs(30))
         .take(10); // roughly 120s max
 
-    RetryIf::spawn(strategy, || async {
-        match sync_agent.run_pipeline().await {
-            Ok(c) => Ok(c),
-            Err(e) => {
-                warn!("Pipeline run failed: {}. Retrying...", e);
-                counter!("dek_core_config_fetch_errors_total").increment(1);
-                Err(e)
+    RetryIf::spawn(
+        strategy,
+        || async {
+            match sync_agent.run_pipeline().await {
+                Ok(c) => Ok(c),
+                Err(e) => {
+                    warn!("Pipeline run failed: {}. Retrying...", e);
+                    counter!("dek_core_config_fetch_errors_total").increment(1);
+                    Err(e)
+                }
             }
-        }
-    }, |e: &anyhow::Error| {
-        if let Some(reqwest_err) = e.downcast_ref::<reqwest::Error>() {
-            if let Some(status) = reqwest_err.status() {
-                if status.is_client_error() {
-                    error!(
-                        "Fatal HTTP client error running pipeline: {}. Aborting startup.",
-                        status
-                    );
+        },
+        |e: &anyhow::Error| {
+            if let Some(reqwest_err) = e.downcast_ref::<reqwest::Error>() {
+                if let Some(status) = reqwest_err.status() {
+                    if status.is_client_error() {
+                        error!(
+                            "Fatal HTTP client error running pipeline: {}. Aborting startup.",
+                            status
+                        );
+                        return false;
+                    }
+                }
+                if reqwest_err.is_builder() || reqwest_err.is_request() {
                     return false;
                 }
             }
-            if reqwest_err.is_builder() || reqwest_err.is_request() {
-                return false;
-            }
-        }
-        true
-    })
+            true
+        },
+    )
     .await
 }
 
@@ -387,12 +394,13 @@ async fn main() -> Result<()> {
     );
 
     let bootstrap = load_bootstrap(&bootstrap_path).await?;
-    
+
     // Create BundleSyncAgent using Bootstrap mTLS
     let bundle_agent = Arc::new(dek_bundle_sync::BundleSyncAgent::new(
         &pollen_cloud_url,
         &bootstrap.device_id,
         &bootstrap.mtls,
+        &bootstrap.pinned_bundle_public_key,
     )?);
 
     // Initial startup sync using the unified pipeline

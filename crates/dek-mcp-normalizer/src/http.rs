@@ -11,7 +11,7 @@ impl TransportAdapter for HttpTransportAdapter {
     }
 
     fn normalize_request(
-        &self, 
+        &self,
         raw: serde_json::Value,
         tenant_id: &str,
         device_id: &str,
@@ -52,7 +52,7 @@ impl TransportAdapter for HttpTransportAdapter {
     }
 
     fn normalize_response(
-        &self, 
+        &self,
         raw: serde_json::Value,
         tenant_id: &str,
         device_id: &str,

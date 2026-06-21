@@ -141,10 +141,16 @@ impl PolicyRouter {
                     break;
                 }
             } else {
-                println!("Error: Required evaluator {} not found. Failing closed.", ev_id);
+                println!(
+                    "Error: Required evaluator {} not found. Failing closed.",
+                    ev_id
+                );
                 combined_decision.allow = false;
                 combined_decision.decision = "deny".into();
-                combined_decision.reason = format!("Required evaluator {} not configured or failed to load", ev_id);
+                combined_decision.reason = format!(
+                    "Required evaluator {} not configured or failed to load",
+                    ev_id
+                );
                 break;
             }
         }
@@ -156,5 +162,63 @@ impl PolicyRouter {
 impl Default for PolicyRouter {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use dek_policy_runtime::PolicyDecision;
+
+    struct DummyRuntime;
+    #[async_trait]
+    impl PolicyRuntime for DummyRuntime {
+        async fn evaluate(&self, _input: serde_json::Value) -> Result<PolicyDecision> {
+            Ok(PolicyDecision {
+                evaluator_id: "dummy".into(),
+                evaluator_type: "dummy".into(),
+                required: true,
+                status: "success".into(),
+                decision: "allow".into(),
+                allow: true,
+                reason: "mocked".into(),
+                effects: serde_json::json!({}),
+                obligations: vec![],
+                metadata: serde_json::json!({}),
+            })
+        }
+        fn version(&self) -> String {
+            "1.0".into()
+        }
+    }
+
+    #[tokio::test]
+    async fn test_empty_router_denies_all() {
+        let router = PolicyRouter::new();
+        let payload = serde_json::json!({ "request_type": "tools/call" });
+        let res = router.authorize(payload).await.unwrap();
+        assert_eq!(res.decision, "deny");
+        assert_eq!(res.reason, "no matching route");
+    }
+
+    #[tokio::test]
+    async fn test_route_matches_and_allows() {
+        let mut router = PolicyRouter::new();
+        router.register_evaluator("dummy", Box::new(DummyRuntime));
+        router.set_routes(vec![Route {
+            id: "route1".into(),
+            priority: 10,
+            match_rule: MatchRule {
+                method: Some("test".into()),
+                tool_category: None,
+            },
+            pdp_required: vec!["dummy".into()],
+            pdp_conditional: vec![],
+        }]);
+
+        let payload = serde_json::json!({ "request_type": "test" });
+        let res = router.authorize(payload).await.unwrap();
+        assert_eq!(res.decision, "allow");
     }
 }

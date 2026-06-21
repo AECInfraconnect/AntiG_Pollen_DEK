@@ -1,14 +1,14 @@
 use anyhow::Result;
 use clap::Parser;
 use dek_mcp_normalizer::{MessageDirection, NormalizedMcpEvent, TransportType};
-use dek_openfga::OpenFgaAdapter;
-use dek_policy_router::{ConditionalPdp, MatchRule, PolicyRouter, Route};
-use dek_policy_runtime::MockPolicyRuntime;
+use dek_policy_router::PolicyRouter;
 use serde_json::{json, Value};
 use std::process::Stdio;
+use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::mpsc;
+use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -47,23 +47,31 @@ async fn main() -> Result<()> {
     );
 
     // Load Bootstrap and Config
-    use dek_config::BootstrapConfig;
-    let bootstrap = BootstrapConfig::load_or_default("bootstrap.json").unwrap_or_else(|_| BootstrapConfig {
-        device_id: "local-device".into(),
-        mtls: dek_config::MtlsConfig {
-            client_cert_path: "".into(),
-            client_key_path: "".into(),
-            root_ca_path: "".into(),
-        },
-    });
+    use dek_config::{BootstrapConfig, MtlsConfig};
+    let bootstrap =
+        BootstrapConfig::load_or_default("bootstrap.json").unwrap_or_else(|_| BootstrapConfig {
+            device_id: "local-device".into(),
+            mtls: MtlsConfig {
+                client_cert_path: "certs/client.crt".to_string(),
+                client_key_path: "certs/client.key".to_string(),
+                root_ca_path: "certs/root_ca.crt".to_string(),
+            },
+            pinned_bundle_public_key: "xQyzrpVpR6jeGRNbW+JoX/NIr8Y/w0qDesoSvFwfViU=".to_string(),
+        });
 
     let mut tenant_id = "default-tenant".to_string();
     let mut spiffe_id: Option<String> = None;
+
+    // Setup Adaptive Policy Pipeline
+    let mut router = PolicyRouter::new();
 
     let staged_path = std::path::Path::new("target/active_bundle.json");
     if staged_path.exists() {
         if let Ok(content) = std::fs::read_to_string(staged_path) {
             if let Ok(payload) = serde_json::from_str::<Value>(&content) {
+                info!("Loading dynamic policy evaluator configuration from active_bundle.json");
+                dek_router_builder::load_router_config(&mut router, &payload);
+
                 if let Some(t) = payload.get("tenant_id").and_then(|v| v.as_str()) {
                     tenant_id = t.to_string();
                 }
@@ -74,42 +82,7 @@ async fn main() -> Result<()> {
         }
     }
 
-    // Setup Adaptive Policy Pipeline
-    let mut router = PolicyRouter::new();
-    router.register_evaluator(
-        "openfga",
-        Box::new(OpenFgaAdapter::new("http://localhost:8080", "store_123", None).unwrap()),
-    );
-    router.register_evaluator("opa_wasm", Box::new(MockPolicyRuntime));
-
-    let routes = vec![
-        Route {
-            id: "route_tools_call".to_string(),
-            priority: 100,
-            match_rule: MatchRule {
-                method: Some("tools/call".to_string()),
-                tool_category: None,
-            },
-            pdp_required: vec!["openfga".to_string(), "opa_wasm".to_string()],
-            pdp_conditional: vec![ConditionalPdp {
-                evaluator: "cedar".to_string(),
-                required_payload_key: "*".to_string(),
-            }],
-        },
-        Route {
-            id: "route_default".to_string(),
-            priority: 10,
-            match_rule: MatchRule {
-                method: Some("*".to_string()),
-                tool_category: None,
-            },
-            pdp_required: vec!["openfga".to_string()],
-            pdp_conditional: vec![],
-        },
-    ];
-    router.set_routes(routes);
-
-    // Spawn child process
+    let router = Arc::new(RwLock::new(router));
     let mut cmd = Command::new(&args.command_args[0]);
     cmd.args(&args.command_args[1..]);
     cmd.stdin(Stdio::piped());
@@ -193,8 +166,12 @@ async fn main() -> Result<()> {
                 policy_input["principal"] = json!(agent_id.clone());
                 policy_input["resource"] = json!(server_id.clone());
 
-                let decision = router.authorize(policy_input).await.unwrap_or_else(|_| {
-                    dek_policy_runtime::PolicyDecision {
+                let decision = router
+                    .read()
+                    .await
+                    .authorize(policy_input)
+                    .await
+                    .unwrap_or_else(|_| dek_policy_runtime::PolicyDecision {
                         evaluator_id: "wrapper".into(),
                         evaluator_type: "wrapper".into(),
                         required: true,
@@ -205,8 +182,7 @@ async fn main() -> Result<()> {
                         effects: json!({}),
                         obligations: vec![],
                         metadata: json!({}),
-                    }
-                });
+                    });
 
                 if !decision.allow {
                     warn!("[wrapper] Denied: {}", decision.reason);

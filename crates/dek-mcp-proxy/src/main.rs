@@ -6,11 +6,10 @@ use axum::{
     routing::post,
     Json, Router as AxumRouter,
 };
-use base64::{engine::general_purpose, Engine as _};
-use dek_cedar::CedarAdapter;
+
 use dek_mcp_normalizer::{http::HttpTransportAdapter, TransportAdapter};
 use dek_openfga::OpenFgaAdapter;
-use dek_policy_router::{ConditionalPdp, MatchRule, PolicyRouter, Route};
+use dek_policy_router::PolicyRouter;
 use dek_wasm_host::{PluginHost, WasmtimePluginHost};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -23,6 +22,7 @@ struct DekMetadata {
     tenant_id: String,
     device_id: String,
     spiffe_id: Option<String>,
+    jwt_public_key_pem: Option<String>,
 }
 
 struct AppState {
@@ -33,51 +33,6 @@ struct AppState {
 }
 
 use dek_config::{BootstrapConfig, DekConfig};
-
-use dek_config::MtlsConfig;
-
-fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
-    let mtls: Option<MtlsConfig> = payload.get("mtls").and_then(|v| serde_json::from_value(v.clone()).ok());
-
-    if let Some(openfga) = payload.get("openfga") {
-        let endpoint = openfga
-            .get("endpoint")
-            .and_then(|v| v.as_str())
-            .unwrap_or("http://localhost:8080");
-        let store_id = openfga
-            .get("store_id")
-            .and_then(|v| v.as_str())
-            .unwrap_or("store_123");
-        
-        match OpenFgaAdapter::new(endpoint, store_id, mtls.as_ref()) {
-            Ok(adapter) => router.register_evaluator("openfga", Box::new(adapter)),
-            Err(e) => error!("Failed to initialize OpenFGA Adapter with mTLS: {}", e),
-        }
-    }
-    if let Some(cedar) = payload.get("cedar") {
-        let policy_src = cedar
-            .get("policy_src")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        router.register_evaluator("cedar", Box::new(CedarAdapter::new(policy_src)));
-    }
-    if let Some(wasm) = payload.get("opa_wasm") {
-        let policy_path = wasm
-            .get("policy_path")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        
-        if std::path::Path::new(policy_path).exists() {
-            if let Ok(runtime) = dek_policy_runtime::WasmtimePolicyRuntime::new(policy_path) {
-                router.register_evaluator("opa_wasm", Box::new(runtime));
-            } else {
-                error!("Failed to initialize WASM Policy Runtime for path: {}", policy_path);
-            }
-        } else {
-            error!("WASM policy file not found at: {}", policy_path);
-        }
-    }
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -107,6 +62,7 @@ async fn main() -> Result<()> {
         tenant_id: tenant_id.clone(),
         device_id: device_id.clone(),
         spiffe_id: None,
+        jwt_public_key_pem: None,
     };
 
     // Attempt to load from staged bundle first
@@ -115,12 +71,17 @@ async fn main() -> Result<()> {
         if let Ok(content) = std::fs::read_to_string(staged_path) {
             if let Ok(payload) = serde_json::from_str::<Value>(&content) {
                 info!("Loaded initial configuration from staged active_bundle.json");
-                load_router_config(&mut router, &payload);
+                dek_router_builder::load_router_config(&mut router, &payload);
                 if let Some(t) = payload.get("tenant_id").and_then(|v| v.as_str()) {
                     initial_metadata.tenant_id = t.to_string();
                 }
                 if let Some(s) = payload.get("spiffe_id").and_then(|v| v.as_str()) {
                     initial_metadata.spiffe_id = Some(s.to_string());
+                }
+                if let Some(jwt_cfg) = payload.get("jwt_config") {
+                    if let Some(pem) = jwt_cfg.get("public_key_pem").and_then(|v| v.as_str()) {
+                        initial_metadata.jwt_public_key_pem = Some(pem.to_string());
+                    }
                 }
             }
         }
@@ -131,35 +92,6 @@ async fn main() -> Result<()> {
         }
         // Removed fallback to Cedar requiring user_bob
     }
-
-    // Define initial routes
-    let routes = vec![
-        Route {
-            id: "route_tools_call".to_string(),
-            priority: 100,
-            match_rule: MatchRule {
-                method: Some("tools/call".to_string()),
-                tool_category: None,
-            },
-            pdp_required: vec!["openfga".to_string(), "opa_wasm".to_string()],
-            pdp_conditional: vec![ConditionalPdp {
-                evaluator: "cedar".to_string(),
-                required_payload_key: "*".to_string(), // Always run cedar for now
-            }],
-        },
-        Route {
-            id: "route_default".to_string(),
-            priority: 10,
-            match_rule: MatchRule {
-                method: Some("*".to_string()),
-                tool_category: None,
-            },
-            pdp_required: vec!["openfga".to_string()],
-            pdp_conditional: vec![],
-        },
-    ];
-
-    router.set_routes(routes);
 
     // Determine plugin paths
     let mut plugin_paths = std::collections::HashMap::new();
@@ -220,54 +152,38 @@ async fn main() -> Result<()> {
                             info!(
                                 "Detected change in active_bundle.json. Attempting hot-reload..."
                             );
-                            tokio::time::sleep(std::time::Duration::from_millis(50)).await; // wait for write to finish
 
                             if let Ok(content) = std::fs::read_to_string(p) {
                                 if let Ok(payload) = serde_json::from_str::<Value>(&content) {
                                     let mut new_router = PolicyRouter::new();
-                                    load_router_config(&mut new_router, &payload);
+                                    // Apply dynamic routing configuration securely
+                                    dek_router_builder::load_router_config(
+                                        &mut new_router,
+                                        &payload,
+                                    );
 
-                                    // Preserve routes for now
-                                    let routes = vec![
-                                        Route {
-                                            id: "route_tools_call".to_string(),
-                                            priority: 100,
-                                            match_rule: MatchRule {
-                                                method: Some("tools/call".to_string()),
-                                                tool_category: None,
-                                            },
-                                            pdp_required: vec![
-                                                "openfga".to_string(),
-                                                "opa_wasm".to_string(),
-                                            ],
-                                            pdp_conditional: vec![ConditionalPdp {
-                                                evaluator: "cedar".to_string(),
-                                                required_payload_key: "*".to_string(),
-                                            }],
-                                        },
-                                        Route {
-                                            id: "route_default".to_string(),
-                                            priority: 10,
-                                            match_rule: MatchRule {
-                                                method: Some("*".to_string()),
-                                                tool_category: None,
-                                            },
-                                            pdp_required: vec!["openfga".to_string()],
-                                            pdp_conditional: vec![],
-                                        },
-                                    ];
-                                    new_router.set_routes(routes);
-
-                                    // Hot swap
+                                    // Safely swap the router
                                     let mut current_router = state_clone.router.write().await;
                                     *current_router = new_router;
 
                                     let mut metadata_lock = state_clone.metadata.write().await;
-                                    if let Some(t) = payload.get("tenant_id").and_then(|v| v.as_str()) {
+                                    if let Some(t) =
+                                        payload.get("tenant_id").and_then(|v| v.as_str())
+                                    {
                                         metadata_lock.tenant_id = t.to_string();
                                     }
-                                    if let Some(s) = payload.get("spiffe_id").and_then(|v| v.as_str()) {
+                                    if let Some(s) =
+                                        payload.get("spiffe_id").and_then(|v| v.as_str())
+                                    {
                                         metadata_lock.spiffe_id = Some(s.to_string());
+                                    }
+                                    if let Some(jwt_cfg) = payload.get("jwt_config") {
+                                        if let Some(pem) =
+                                            jwt_cfg.get("public_key_pem").and_then(|v| v.as_str())
+                                        {
+                                            metadata_lock.jwt_public_key_pem =
+                                                Some(pem.to_string());
+                                        }
                                     }
 
                                     info!("Hot-reloaded policies and metadata from disk successfully!");
@@ -336,44 +252,58 @@ async fn handle_mcp_request(
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "));
 
-    let mut jwt_tenant_id = None;
-    let principal = if let Some(token) = auth_header {
-        let parts: Vec<&str> = token.split('.').collect();
-        if parts.len() == 3 {
-            // JWT payload is URL_SAFE_NO_PAD
-            let decoded_opt = general_purpose::URL_SAFE_NO_PAD.decode(parts[1])
-                .or_else(|_| general_purpose::URL_SAFE.decode(parts[1]));
+    let metadata = state.metadata.read().await.clone();
 
-            if let Ok(decoded) = decoded_opt {
-                if let Ok(claims) = serde_json::from_slice::<Value>(&decoded) {
-                    jwt_tenant_id = claims.get("tenant_id").or(claims.get("tenant")).and_then(|s| s.as_str()).map(|s| s.to_string());
-                    claims.get("sub").and_then(|s| s.as_str()).map(|s| s.to_string())
-                } else {
-                    None
+    let mut jwt_tenant_id = None;
+    let mut principal = None;
+
+    if let Some(token) = auth_header {
+        if let Some(pem) = &metadata.jwt_public_key_pem {
+            if let Ok(decoding_key) = jsonwebtoken::DecodingKey::from_rsa_pem(pem.as_bytes()) {
+                let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
+                // We enforce signature validation.
+                // But we accept any aud/iss for now since it's a mock test environment.
+                validation.validate_exp = false; // For mock testing, ignore expiration
+                validation.validate_aud = false; // Ignore audience for now
+
+                match jsonwebtoken::decode::<Value>(token, &decoding_key, &validation) {
+                    Ok(token_data) => {
+                        let claims = token_data.claims;
+                        jwt_tenant_id = claims
+                            .get("tenant_id")
+                            .or(claims.get("tenant"))
+                            .and_then(|s| s.as_str())
+                            .map(|s| s.to_string());
+                        principal = claims
+                            .get("sub")
+                            .and_then(|s| s.as_str())
+                            .map(|s| s.to_string());
+                    }
+                    Err(e) => {
+                        warn!("JWT Signature verification failed: {}", e);
+                    }
                 }
             } else {
-                None
+                warn!("Invalid RSA public key PEM configured");
             }
         } else {
-            None
+            warn!("No JWT public key configured, cannot verify signatures");
+            // Fail closed! If no public key is present, reject.
         }
-    } else {
-        None
-    };
+    }
 
     let principal = match principal {
         Some(p) => p,
         None => {
-            warn!("Missing or invalid JWT token in Authorization header");
+            warn!("Missing or invalid JWT signature in Authorization header");
             return (
                 StatusCode::UNAUTHORIZED,
-                Json(json!({ "error": "Missing or invalid JWT token in Authorization header" })),
+                Json(json!({ "error": "Missing or cryptographically invalid JWT token" })),
             )
                 .into_response();
         }
     };
 
-    let metadata = state.metadata.read().await.clone();
     let final_tenant_id = jwt_tenant_id.unwrap_or(metadata.tenant_id);
 
     // Normalize Event

@@ -1,11 +1,11 @@
 use anyhow::Result;
-use tokio_retry::Retry;
-use tokio_retry::strategy::ExponentialBackoff;
 use dek_config::MtlsConfig;
 use serde_json::Value;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, RwLock};
+use tokio_retry::strategy::ExponentialBackoff;
+use tokio_retry::Retry;
 use tracing::{error, info, warn};
 
 pub struct CloudTelemetrySink {

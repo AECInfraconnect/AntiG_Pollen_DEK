@@ -1,0 +1,14 @@
+[package]
+name = "dek-router-builder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dek-policy-router = { path = "../dek-policy-router" }
+dek-cedar = { path = "../dek-cedar" }
+dek-openfga = { path = "../dek-openfga" }
+dek-policy-runtime = { path = "../dek-policy-runtime" }
+dek-config = { path = "../dek-config" }
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

@@ -72,9 +72,9 @@ impl PolicyRuntime for MockPolicyRuntime {
 }
 
 use wasmtime::*;
+use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
 use wasmtime_wasi::preview1;
 use wasmtime_wasi::WasiCtxBuilder;
-use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
 
 /// The actual WASM runtime host
 pub struct WasmtimePolicyRuntime {

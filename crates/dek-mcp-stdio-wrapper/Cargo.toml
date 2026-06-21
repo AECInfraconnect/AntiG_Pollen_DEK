@@ -18,3 +18,4 @@ dek-config = { path = "../dek-config" }
 uuid = { version = "1.10.0", features = ["v4"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
+dek-router-builder = { path = "../dek-router-builder" }
