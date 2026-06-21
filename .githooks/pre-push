@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 echo "[pre-push] cargo build + clippy..."
-cargo build --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd
-cargo clippy --workspace --exclude dek-ebpf-prog -- -D warnings
+cargo check --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin
+cargo clippy --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --all-targets -- -D warnings
 ( cd contracts && npx tsp compile spec/ && npx @stoplight/spectral-cli lint generated/openapi/pollen.v1.yaml --fail-severity=warn )
 ( cd apps/local-admin-dashboard && npm run build )
 echo "[pre-push] OK"

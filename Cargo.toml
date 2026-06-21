@@ -5,13 +5,12 @@ members = [
     "contracts/generated/rust/pollen-contract"
 ]
 exclude = [
-    "crates/dek-ebpf-prog",
-    "crates/dek-ebpfd"
+    "crates/dek-ebpf-prog"
 ]
 resolver = "2"
 
 [workspace.package]
-version = "1.0.0-beta.5"
+version = "1.0.0-beta.6"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/AECInfraconnect/AntiG_Pollen_DEK"

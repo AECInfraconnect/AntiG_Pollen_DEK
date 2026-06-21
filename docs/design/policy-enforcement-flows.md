@@ -302,7 +302,7 @@ PPI คือ policy intermediate representation ที่ UI, AI editor, compil
 ### 6.1 PPI YAML example
 
 ```yaml
-apiVersion: pollen.ai/v1alpha1
+apiVersion: <your-cloud-domain>/v1alpha1
 kind: PolicyIntent
 metadata:
   id: pol-allow-openai-for-approved-agents
@@ -367,12 +367,12 @@ spec:
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.pollen.ai/policy-intent/v1alpha1.schema.json",
+  "$id": "https://schemas.<your-cloud-domain>/policy-intent/v1alpha1.schema.json",
   "title": "Pollen Policy Intent",
   "type": "object",
   "required": ["apiVersion", "kind", "metadata", "spec"],
   "properties": {
-    "apiVersion": { "const": "pollen.ai/v1alpha1" },
+    "apiVersion": { "const": "<your-cloud-domain>/v1alpha1" },
     "kind": { "const": "PolicyIntent" },
     "metadata": {
       "type": "object",
@@ -705,7 +705,7 @@ Generated tuples:
 
 ```json
 {
-  "apiVersion": "pollen.ai/v1alpha1",
+  "apiVersion": "<your-cloud-domain>/v1alpha1",
   "kind": "OsL4Policy",
   "metadata": {
     "policy_id": "pol-allow-openai-for-approved-agents",
@@ -765,7 +765,7 @@ bundle.tar.gz
 
 ```json
 {
-  "apiVersion": "pollen.ai/v1alpha1",
+  "apiVersion": "<your-cloud-domain>/v1alpha1",
   "kind": "PollenPolicyBundle",
   "metadata": {
     "bundle_id": "bundle-20260610-001",
@@ -1374,7 +1374,7 @@ app.post("/v1/policy-intents/draft", (req, res) => {
 
   // Deterministic beta stub. Replace with AI orchestrator in Pollen Cloud.
   const ppi = {
-    apiVersion: "pollen.ai/v1alpha1",
+    apiVersion: "<your-cloud-domain>/v1alpha1",
     kind: "PolicyIntent",
     metadata: {
       id: `pol-${Date.now()}`,

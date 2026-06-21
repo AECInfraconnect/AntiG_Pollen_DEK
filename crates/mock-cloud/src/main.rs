@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
@@ -172,8 +172,19 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n"
             "/.well-known/pollen-contract",
             get(|| async {
                 Json(serde_json::json!({
-                    "contract_version": "1.0",
-                    "capabilities": ["telemetry-batches", "sse-hot-reload"]
+                    "schema_version": "contract-discovery.v1",
+                    "supported": ["1.0"],
+                    "preferred": "1.0",
+                    "minimum_dek_version": "1.0.0-beta.6",
+                    "sunset": { "0.9": "2026-10-01T00:00:00Z" },
+                    "capabilities": [
+                        "contract.discovery.v1",
+                        "bundle.signed-envelope.v1",
+                        "telemetry.batch.v1",
+                        "policy.opa-wasm.v1",
+                        "policy.cedar.v1",
+                        "policy.openfga.v1"
+                    ]
                 }))
             }),
         )

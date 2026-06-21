@@ -23,6 +23,10 @@ pub fn router() -> Router<AppState> {
             post(get_latest_bundle),
         )
         .route(
+            "/v1/tenants/:tenant_id/devices/:device_id/bundles/manifest",
+            post(get_manifest),
+        )
+        .route(
             "/v1/devices/:device_id/desired-state",
             get(get_desired_state),
         )
@@ -111,6 +115,7 @@ fn sign_bundle(manifest: &BundleManifest) -> serde_json::Value {
     let signature = signing_key.sign(payload_string.as_bytes());
 
     json!({
+        "schema_version": "bundle.signed-envelope.v1",
         "bundle_id": manifest.bundle_id.clone(),
         "version": manifest.bundle_version.clone(),
         "signature": base64::prelude::BASE64_STANDARD.encode(signature.to_bytes()),
@@ -120,6 +125,17 @@ fn sign_bundle(manifest: &BundleManifest) -> serde_json::Value {
 }
 
 async fn get_latest_bundle(
+    Path((tenant_id, _device_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+    body: Option<Json<serde_json::Value>>,
+) -> impl IntoResponse {
+    let _ = body; // ignoring the device's current manifest
+    let revision = state.revision.load(std::sync::atomic::Ordering::Relaxed) as u64;
+    let manifest = generate_bundle(&tenant_id, revision, false);
+    (StatusCode::OK, Json(json!({"envelope": sign_bundle(&manifest)})))
+}
+
+async fn get_manifest(
     Path((tenant_id, _device_id)): Path<(String, String)>,
     State(state): State<AppState>,
     body: Option<Json<serde_json::Value>>,

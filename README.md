@@ -50,21 +50,27 @@ See **[docs/quickstart_local_en.md](docs/quickstart_local_en.md)** (TH: `_th`).
 ### Pollen Cloud mode
 
 ```bash
-dek-cli profile set cloud --url https://cloud.pollen.ai --tenant-id <tenant>
-dek-cli enroll --cloud-url https://cloud.pollen.ai
+dek-cli profile set cloud --url https://cloud.<your-cloud-domain> --tenant-id <tenant>
+dek-cli enroll --cloud-url https://cloud.<your-cloud-domain>
 dek-core &
 ```
 
 ## Download & verify
 
-Binaries for Linux/macOS/Windows are on **[GitHub Releases](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases)**.
-Each asset ships with `SHA256SUMS` + a cosign signature; verify before running:
+Binaries for Linux/macOS/Windows (both x86_64 and arm64/aarch64) are on **[GitHub Releases](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases)**.
+Each asset ships with `SHA256SUMS`, GitHub Artifact Attestations (`actions/attest-build-provenance`), and a Sigstore cosign signature; verify before running:
 
 ```bash
+# 1) Check SHA256SUMS
 sha256sum -c SHA256SUMS
+
+# 2) Verify Cosign Keyless Signature
 cosign verify-blob --certificate <asset>.pem --signature <asset>.sig \
   --certificate-identity-regexp "https://github.com/AECInfraconnect/AntiG_Pollen_DEK/.*" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" <asset>
+
+# 3) Verify GitHub Artifact Attestation
+gh attestation verify <asset> -o AECInfraconnect
 ```
 
 Update in place (verifies cosign before applying, with rollback):

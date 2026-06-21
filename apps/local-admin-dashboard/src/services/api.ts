@@ -1,5 +1,8 @@
 import type { AiAgent, McpServer, Tool, Resource, Entity, Relationship, PolicyDraft, TelemetryEventEnvelope, BlackboxAiProvider } from './types';
 export type * from './types';
+import type { components } from '../../../../contracts/generated/typescript/api';
+
+export type ContractDiscoveryResponse = components['schemas']['ContractDiscoveryResponse'];
 
 export class ControlPlaneClient {
   public baseUrl: string;
@@ -15,6 +18,22 @@ export class ControlPlaneClient {
       this.mockRole = '';
     }
     this.tenantId = 'local';
+  }
+
+  get rootUrl(): string {
+    if (this.baseUrl.startsWith('http')) {
+      const url = new URL(this.baseUrl);
+      return `${url.protocol}//${url.host}`;
+    }
+    return '';
+  }
+
+  async getContractDiscovery(): Promise<ContractDiscoveryResponse> {
+    const res = await fetch(`${this.rootUrl}/.well-known/pollen-contract`);
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+    return res.json();
   }
 
   private async fetchApi(path: string, options?: RequestInit) {

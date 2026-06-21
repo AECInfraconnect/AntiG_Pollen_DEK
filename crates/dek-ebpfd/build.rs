@@ -22,5 +22,17 @@ fn main() {
 
     if let Err(e) = aya_build::build_ebpf(std::iter::empty::<cargo_metadata::Package>()) {
         println!("cargo:warning=Failed to build eBPF programs: {}", e);
+    } else {
+        // Find the compiled eBPF object and copy it to OUT_DIR/dek-ebpf-prog
+        let target_dir = env::var_os("CARGO_MANIFEST_DIR")
+            .map(|dir| Path::new(&dir).join("../../target/bpfel-unknown-none/release/dek-ebpf-prog"));
+        if let Some(src) = target_dir {
+            if src.exists() {
+                if let Some(out_dir) = env::var_os("OUT_DIR") {
+                    let dest = Path::new(&out_dir).join("dek-ebpf-prog");
+                    let _ = std::fs::copy(&src, &dest);
+                }
+            }
+        }
     }
 }

@@ -4,8 +4,8 @@ info:
   version: 1.0.0
   contact:
     name: Pollen Platform Team
-    url: https://pollen.ai
-    email: platform@pollen.ai
+    url: https://<your-cloud-domain>
+    email: platform@<your-cloud-domain>
   description: Contract between Pollen Cloud / Local Control Plane and the DEK edge enforcement plane.
 tags:
   - name: Discovery

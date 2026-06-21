@@ -11,16 +11,16 @@ pub struct WorkerLease {
 }
 
 impl WorkerLease {
-    pub fn worker_mut(&mut self) -> &mut PluginWorker {
+    pub fn worker_mut(&mut self) -> anyhow::Result<&mut PluginWorker> {
         self.worker
             .as_mut()
-            .unwrap_or_else(|| panic!("worker already taken"))
+            .ok_or_else(|| anyhow::anyhow!("worker lease already released"))
     }
 
-    fn take(mut self) -> PluginWorker {
+    fn take(mut self) -> anyhow::Result<PluginWorker> {
         self.worker
             .take()
-            .unwrap_or_else(|| panic!("worker already taken"))
+            .ok_or_else(|| anyhow::anyhow!("worker lease already released"))
     }
 }
 
@@ -110,7 +110,7 @@ impl PluginWorkerPool {
     }
 
     pub async fn release(&self, lease: WorkerLease) -> Result<()> {
-        let mut worker = lease.take();
+        let mut worker = lease.take()?;
 
         if worker.generation != self.generation {
             return Ok(()); // old generation; drop

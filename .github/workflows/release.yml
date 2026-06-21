@@ -14,7 +14,8 @@ on:
 
 permissions:
   contents: write
-  id-token: write # Required for cosign keyless (OIDC) signing
+  id-token: write # Required for cosign keyless (OIDC) signing and GitHub Attestations
+  attestations: write
 
 jobs:
   build:
@@ -26,12 +27,21 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: pollen-dek-linux-amd64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact_name: pollen-dek-linux-arm64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact_name: pollen-dek-windows-amd64.exe
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            artifact_name: pollen-dek-windows-arm64.exe
           - os: macos-latest
             target: x86_64-apple-darwin
             artifact_name: pollen-dek-macos-amd64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: pollen-dek-macos-arm64
 
     steps:
       - name: Checkout Code
@@ -41,6 +51,15 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux arm64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+
+      - name: Set cross-compilation env (Linux arm64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@main
@@ -58,6 +77,7 @@ jobs:
           cp target/${{ matrix.target }}/release/dek-core staging/dek-core || cp target/${{ matrix.target }}/release/dek-core.exe staging/dek-core.exe
           cp target/${{ matrix.target }}/release/dek-mcp-proxy staging/dek-mcp-proxy || cp target/${{ matrix.target }}/release/dek-mcp-proxy.exe staging/dek-mcp-proxy.exe
           cp target/${{ matrix.target }}/release/dek-ext-authz staging/dek-ext-authz || cp target/${{ matrix.target }}/release/dek-ext-authz.exe staging/dek-ext-authz.exe
+          cp target/${{ matrix.target }}/release/dek-cli staging/dek-cli || cp target/${{ matrix.target }}/release/dek-cli.exe staging/dek-cli.exe
           
       - name: Sign macOS Binaries
         if: matrix.os == 'macos-latest' && env.APPLE_CERT_B64 != ''
@@ -76,6 +96,7 @@ jobs:
           codesign --force --options runtime --sign "Developer ID Application" staging/dek-core
           codesign --force --options runtime --sign "Developer ID Application" staging/dek-mcp-proxy
           codesign --force --options runtime --sign "Developer ID Application" staging/dek-ext-authz
+          codesign --force --options runtime --sign "Developer ID Application" staging/dek-cli
           
           # Zip for notarization
           ditto -c -k --keepParent staging staging.zip
@@ -83,6 +104,7 @@ jobs:
           xcrun stapler staple staging/dek-core
           xcrun stapler staple staging/dek-mcp-proxy
           xcrun stapler staple staging/dek-ext-authz
+          xcrun stapler staple staging/dek-cli
 
       - name: Sign Windows Binaries
         if: matrix.os == 'windows-latest' && env.WINDOWS_PFX_B64 != ''
@@ -93,7 +115,7 @@ jobs:
         run: |
           $pfxBytes = [System.Convert]::FromBase64String($env:WINDOWS_PFX_B64)
           [IO.File]::WriteAllBytes("cert.pfx", $pfxBytes)
-          & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" sign /f cert.pfx /p $env:WINDOWS_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 staging\dek-core.exe staging\dek-mcp-proxy.exe staging\dek-ext-authz.exe
+          & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" sign /f cert.pfx /p $env:WINDOWS_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 staging\dek-core.exe staging\dek-mcp-proxy.exe staging\dek-ext-authz.exe staging\dek-cli.exe
 
       - name: Package (Linux .deb + tar.gz)
         if: matrix.os == 'ubuntu-latest'
@@ -220,6 +242,11 @@ jobs:
                 "$file"
             fi
           done
+
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'release_artifacts/*'
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

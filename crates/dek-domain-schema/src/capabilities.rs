@@ -31,17 +31,17 @@ impl EnforcementCapabilities {
             mcp_http_pep: true,
             mcp_stdio_pep: true,
             #[cfg(windows)]
-            network_filter_user_mode: true,
+            network_filter_user_mode: false,
             #[cfg(windows)]
-            network_filter_kernel: false, // WFP (Current implementation is user-mode)
+            network_filter_kernel: false,
             #[cfg(windows)]
-            network_enforcement_level: EnforcementLevel::RedirectAdvisory,
+            network_enforcement_level: EnforcementLevel::ObserveOnly,
             #[cfg(target_os = "macos")]
-            network_filter_user_mode: true, // NetworkExtension
+            network_filter_user_mode: false,
             #[cfg(target_os = "macos")]
             network_filter_kernel: false,
             #[cfg(target_os = "macos")]
-            network_enforcement_level: EnforcementLevel::RedirectAdvisory,
+            network_enforcement_level: EnforcementLevel::ObserveOnly,
             #[cfg(target_os = "linux")]
             network_filter_user_mode: false,
             #[cfg(target_os = "linux")]

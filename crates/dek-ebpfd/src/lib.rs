@@ -56,7 +56,7 @@ mod linux {
     use tokio::task::{self, JoinHandle};
     use tracing::{info, warn};
 
-    const BPFFS_PATH: &str = "/sys/fs/bpf/pollen-dek";
+    pub const BPFFS_PATH: &str = "/sys/fs/bpf/pollen-dek";
 
     /// Owns the loaded eBPF object + background tasks for the process lifetime.
     /// Dropping it aborts the tasks and detaches all programs cleanly.
@@ -124,7 +124,7 @@ mod linux {
         let mut bpf = Ebpf::load(bpf_bytes).context("load eBPF object")?;
 
         // Pin policy maps so they persist / can be updated out-of-band.
-        for name in ["VERDICT_MAP", "PORTS_MAP", "CGROUP_POLICY_MAP", "EVENTS"] {
+        for name in ["VERDICT_MAP", "PORTS_MAP", "CGROUP_POLICY_MAP", "EVENTS", "RUNTIME_MODE", "DNS_IP_CACHE_V4"] {
             if let Some(map) = bpf.map_mut(name) {
                 let pin = format!("{}/{}", BPFFS_PATH, name);
                 let _ = fs::remove_file(&pin);
@@ -190,10 +190,15 @@ mod linux {
                                     let dlen = (ev.len as usize).min(ev.data.len());
                                     if let Some(obs) = parse_dns(ev.cgroup_id, &ev.data[..dlen]) {
                                         log_observation(&obs);
-                                        // Update DNS cache for every resolved record
                                         for rec in &obs.answers {
-                                            if let std::net::IpAddr::V4(_ipv4) = rec.ip {
-                                                // ...
+                                            if let std::net::IpAddr::V4(ipv4) = rec.ip {
+                                                let _ = crate::dns_cache::update_dns_ip_cache_v4(
+                                                    ipv4,
+                                                    &obs.qname,
+                                                    std::time::Duration::from_secs(rec.ttl_secs as u64),
+                                                    0, // default policy_id
+                                                    0, // default tenant_id
+                                                );
                                             }
                                         }
                                         if let Some(tx) = &obs_tx {
@@ -220,8 +225,7 @@ mod linux {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
             loop {
                 interval.tick().await;
-                // Periodic TTL cleanup happens here using an Ebpf handle.
-                // let _ = crate::dns_cache::cleanup_expired_dns_cache_v4(&mut bpf, 10000);
+                let _ = crate::dns_cache::cleanup_expired_dns_cache_v4(10000);
             }
         }));
 

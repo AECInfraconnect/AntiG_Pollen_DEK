@@ -92,8 +92,8 @@ DEK จึงไม่รู้ว่ากำลังคุยกับ Local 
 ## เปลี่ยนไป Pollen Cloud (ภายหลัง)
 
 ```bash
-dek-cli profile set cloud --url https://cloud.pollen.ai --tenant-id your-tenant
-dek-cli enroll --cloud-url https://cloud.pollen.ai
+dek-cli profile set cloud --url https://cloud.<your-cloud-domain> --tenant-id your-tenant
+dek-cli enroll --cloud-url https://cloud.<your-cloud-domain>
 ```
 
 ## Guardrails (เปิดตลอด)

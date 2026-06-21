@@ -105,8 +105,8 @@ So the DEK never knows whether it's talking to Local or Cloud.
 ## Switching to Pollen Cloud (later)
 
 ```bash
-dek-cli profile set cloud --url https://cloud.pollen.ai --tenant-id your-tenant
-dek-cli enroll --cloud-url https://cloud.pollen.ai
+dek-cli profile set cloud --url https://cloud.<your-cloud-domain> --tenant-id your-tenant
+dek-cli enroll --cloud-url https://cloud.<your-cloud-domain>
 # restart dek-core — same enforcement, multi-tenant control plane
 ```
 

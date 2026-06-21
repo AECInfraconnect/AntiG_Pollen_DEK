@@ -1,9 +1,7 @@
 #[cfg(target_os = "linux")]
 use anyhow::{Context, Result};
 #[cfg(target_os = "linux")]
-use aya::maps::HashMap;
-#[cfg(target_os = "linux")]
-use aya::Ebpf;
+use aya::maps::{LruHashMap, MapData};
 #[cfg(target_os = "linux")]
 use byteorder::{ByteOrder, NetworkEndian};
 #[cfg(target_os = "linux")]
@@ -29,17 +27,15 @@ fn hash_domain(domain: &str) -> [u8; DEK_DOMAIN_HASH_LEN] {
 
 #[cfg(target_os = "linux")]
 pub fn update_dns_ip_cache_v4(
-    bpf: &mut Ebpf,
     ip: Ipv4Addr,
     domain: &str,
     ttl: Duration,
     policy_id: u32,
     tenant_id: u32,
 ) -> Result<()> {
-    let mut map: HashMap<_, DekIp4Key, DekDnsCacheValue> = HashMap::try_from(
-        bpf.map_mut("DNS_IP_CACHE_V4")
-            .context("DNS_IP_CACHE_V4 map not found")?,
-    )?;
+    let pin_path = format!("{}/DNS_IP_CACHE_V4", crate::linux::BPFFS_PATH);
+    let map_data = MapData::from_pin(&pin_path).context("load pinned DNS_IP_CACHE_V4")?;
+    let mut map: LruHashMap<_, DekIp4Key, DekDnsCacheValue> = LruHashMap::try_from(map_data)?;
 
     let now = now_ns();
     let key = DekIp4Key {
@@ -59,7 +55,6 @@ pub fn update_dns_ip_cache_v4(
         flags: 0,
     };
 
-    // Kernel LRU map will evict an old entry if capacity is reached.
     map.insert(key, value, 0)
         .with_context(|| format!("failed to update DNS cache for {domain} -> {ip}"))?;
 
@@ -67,11 +62,10 @@ pub fn update_dns_ip_cache_v4(
 }
 
 #[cfg(target_os = "linux")]
-pub fn cleanup_expired_dns_cache_v4(bpf: &mut Ebpf, scan_limit: usize) -> Result<usize> {
-    let mut map: HashMap<_, DekIp4Key, DekDnsCacheValue> = HashMap::try_from(
-        bpf.map_mut("DNS_IP_CACHE_V4")
-            .context("DNS_IP_CACHE_V4 map not found")?,
-    )?;
+pub fn cleanup_expired_dns_cache_v4(scan_limit: usize) -> Result<usize> {
+    let pin_path = format!("{}/DNS_IP_CACHE_V4", crate::linux::BPFFS_PATH);
+    let map_data = MapData::from_pin(&pin_path).context("load pinned DNS_IP_CACHE_V4")?;
+    let mut map: LruHashMap<_, DekIp4Key, DekDnsCacheValue> = LruHashMap::try_from(map_data)?;
 
     let now = now_ns();
     let mut deleted = 0usize;
