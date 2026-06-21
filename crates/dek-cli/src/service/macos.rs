@@ -64,7 +64,7 @@ impl ServiceManager for OsServiceManager {
 
         fs::write(&self.plist_path, plist_content)?;
         Command::new("launchctl")
-            .args(&["load", "-w", &self.plist_path.to_string_lossy()])
+            .args(["load", "-w", &self.plist_path.to_string_lossy()])
             .status()
             .context("Failed to load plist into launchd")?;
 
@@ -73,7 +73,7 @@ impl ServiceManager for OsServiceManager {
 
     fn uninstall(&self) -> Result<()> {
         Command::new("launchctl")
-            .args(&["unload", "-w", &self.plist_path.to_string_lossy()])
+            .args(["unload", "-w", &self.plist_path.to_string_lossy()])
             .status()
             .context("Failed to unload plist from launchd")?;
         if self.plist_path.exists() {
@@ -84,7 +84,7 @@ impl ServiceManager for OsServiceManager {
 
     fn start(&self) -> Result<()> {
         Command::new("launchctl")
-            .args(&["start", self.service_label])
+            .args(["start", self.service_label])
             .status()
             .context("Failed to start service")?;
         Ok(())
@@ -92,7 +92,7 @@ impl ServiceManager for OsServiceManager {
 
     fn stop(&self) -> Result<()> {
         Command::new("launchctl")
-            .args(&["stop", self.service_label])
+            .args(["stop", self.service_label])
             .status()
             .context("Failed to stop service")?;
         Ok(())
@@ -100,7 +100,7 @@ impl ServiceManager for OsServiceManager {
 
     fn status(&self) -> Result<String> {
         let output = Command::new("launchctl")
-            .args(&["list", self.service_label])
+            .args(["list", self.service_label])
             .output()
             .context("Failed to get status")?;
         Ok(String::from_utf8_lossy(&output.stdout).to_string())

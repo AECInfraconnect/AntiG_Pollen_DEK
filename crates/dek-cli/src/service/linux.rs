@@ -80,7 +80,7 @@ ExecStart=/bin/sh -c 'if [ -f {exe_path}.bak ]; then mv {exe_path}.bak {exe_path
             .status()
             .context("Failed to reload systemd daemon")?;
         Command::new("systemctl")
-            .args(&["enable", self.service_name])
+            .args(["enable", self.service_name])
             .status()
             .context("Failed to enable service")?;
 
@@ -90,7 +90,7 @@ ExecStart=/bin/sh -c 'if [ -f {exe_path}.bak ]; then mv {exe_path}.bak {exe_path
     fn uninstall(&self) -> Result<()> {
         let _ = self.stop();
         Command::new("systemctl")
-            .args(&["disable", self.service_name])
+            .args(["disable", self.service_name])
             .status()
             .context("Failed to disable service")?;
         if self.unit_path.exists() {
@@ -105,7 +105,7 @@ ExecStart=/bin/sh -c 'if [ -f {exe_path}.bak ]; then mv {exe_path}.bak {exe_path
 
     fn start(&self) -> Result<()> {
         Command::new("systemctl")
-            .args(&["start", self.service_name])
+            .args(["start", self.service_name])
             .status()
             .context("Failed to start service")?;
         Ok(())
@@ -113,7 +113,7 @@ ExecStart=/bin/sh -c 'if [ -f {exe_path}.bak ]; then mv {exe_path}.bak {exe_path
 
     fn stop(&self) -> Result<()> {
         Command::new("systemctl")
-            .args(&["stop", self.service_name])
+            .args(["stop", self.service_name])
             .status()
             .context("Failed to stop service")?;
         Ok(())
@@ -121,7 +121,7 @@ ExecStart=/bin/sh -c 'if [ -f {exe_path}.bak ]; then mv {exe_path}.bak {exe_path
 
     fn status(&self) -> Result<String> {
         let output = Command::new("systemctl")
-            .args(&["status", self.service_name])
+            .args(["status", self.service_name])
             .output()
             .context("Failed to get status")?;
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
