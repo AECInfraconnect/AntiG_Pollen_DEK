@@ -10,3 +10,4 @@ serde_json = { workspace = true }
 thiserror = "2.0"
 tracing = { workspace = true }
 tokio = { workspace = true, features = ["time"] }
+gethostname = "1.1.0"

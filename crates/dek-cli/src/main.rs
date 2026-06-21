@@ -47,6 +47,17 @@ enum Commands {
     },
     /// Trigger an emergency rollback of the Pollen DEK Core
     Rollback,
+    /// Unenroll device (removes local identity and config)
+    Unenroll,
+    /// Revoke device identity on Cloud and remove locally
+    RevokeLocal {
+        #[arg(long)]
+        reason: String,
+    },
+    /// Check system configuration and permissions
+    Doctor,
+    /// Rotate device identity manually
+    RotateIdentity,
     /// Manage the DEK background service lifecycle
     Service {
         /// The service action to perform: install, uninstall, start, stop, status
@@ -168,6 +179,30 @@ async fn main() -> Result<()> {
         Commands::Rollback => {
             if let Err(e) = service::rollback::run() {
                 error!("Rollback failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::Unenroll => {
+            if let Err(e) = service::unenroll::run() {
+                error!("Unenroll failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::RevokeLocal { reason } => {
+            if let Err(e) = service::revoke::run(&reason).await {
+                error!("Revoke failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::Doctor => {
+            if let Err(e) = service::doctor::run() {
+                error!("Doctor check failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::RotateIdentity => {
+            if let Err(e) = service::rotate::run(&cli.host, cli.port).await {
+                error!("Rotate identity failed: {}", e);
                 std::process::exit(1);
             }
         }
