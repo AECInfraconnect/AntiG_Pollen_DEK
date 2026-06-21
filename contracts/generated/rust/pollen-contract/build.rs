@@ -1,9 +1,9 @@
 use std::{env, fs, path::PathBuf};
 
-fn main() {
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
     let schemas_dir = manifest_dir.join("../../../schemas");
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let out_dir = PathBuf::from(env::var("OUT_DIR")?);
 
     let schema_files = [
         "bundle-envelope.v1.schema.json",
@@ -25,17 +25,16 @@ fn main() {
     );
 
     for file in schema_files {
-        let content = fs::read_to_string(schemas_dir.join(file))
-            .unwrap_or_else(|e| panic!("failed to read schema {file}: {e}"));
-        let schema: schemars::schema::RootSchema = serde_json::from_str(&content)
-            .unwrap_or_else(|e| panic!("invalid JSON schema {file}: {e}"));
+        let content = fs::read_to_string(schemas_dir.join(file))?;
+        let schema: schemars::schema::RootSchema = serde_json::from_str(&content)?;
 
-        type_space.add_root_schema(schema).unwrap();
+        type_space.add_root_schema(schema)?;
     }
 
     generated.push_str(&type_space.to_stream().to_string());
     generated.push('\n');
 
-    fs::write(out_dir.join("generated.rs"), generated).unwrap();
+    fs::write(out_dir.join("generated.rs"), generated)?;
     println!("cargo:rerun-if-changed={}", schemas_dir.display());
+    Ok(())
 }

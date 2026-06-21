@@ -24,7 +24,7 @@ use aya_ebpf::{
     programs::{SkBuffContext, SockAddrContext},
 };
 use dek_ebpf_common::{
-    DekDnsCacheValue, DekIp4Key, DekMetrics, DnsCaptureEvent, EgressEvent, Ipv4LpmKey,
+    DekDnsCacheValue, DekIp4Key, DekMetrics, DnsCaptureEvent, EgressEvent,
     PolicyVerdict, CGROUP_MAP_CAPACITY, DEK_DNS_CACHE_MAX_ENTRIES, DNS_PAYLOAD_MAX,
     LPM_MAP_CAPACITY, PORTS_MAP_CAPACITY,
 };
@@ -159,12 +159,10 @@ fn try_capture(ctx: &SkBuffContext) -> Result<(), ()> {
 
 #[cgroup_sock_addr(connect4)]
 pub fn dek_connect4(ctx: SockAddrContext) -> i32 {
-    let mode = unsafe {
-        RUNTIME_MODE
-            .get(0)
-            .map(|m| m.default_action)
-            .unwrap_or(1)
-    };
+    let mode = RUNTIME_MODE
+        .get(0)
+        .map(|m| m.default_action)
+        .unwrap_or(1);
     try_dek_connect4(&ctx, mode).unwrap_or(mode as i32)
 }
 
@@ -201,9 +199,7 @@ fn try_dek_connect4(ctx: &SockAddrContext, default_action: u32) -> Result<i32, (
     }
 
     if is_expired {
-        unsafe {
-            let _ = DNS_IP_CACHE_V4.remove(&dns_key);
-        }
+        let _ = DNS_IP_CACHE_V4.remove(&dns_key);
     }
 
     if !has_dns_context {
@@ -215,14 +211,14 @@ fn try_dek_connect4(ctx: &SockAddrContext, default_action: u32) -> Result<i32, (
     }
 
     // 1) cgroup-specific policy
-    if let Some(v) = unsafe { CGROUP_POLICY_MAP.get(&cgroup_id) } {
+    if let Some(v) = CGROUP_POLICY_MAP.get(&cgroup_id) {
         verdict = *v;
     } else {
         // 2) LPM trie (IP/CIDR)
         let key = aya_ebpf::maps::lpm_trie::Key::new(32, dest_ip);
-        if let Some(v) = unsafe { VERDICT_MAP.get(&key) } {
+        if let Some(v) = VERDICT_MAP.get(&key) {
             verdict = *v;
-        } else if let Some(v) = unsafe { PORTS_MAP.get(&dest_port) } {
+        } else if let Some(v) = PORTS_MAP.get(&dest_port) {
             // 3) port policy
             verdict = *v;
         }
