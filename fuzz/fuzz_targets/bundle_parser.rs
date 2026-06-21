@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 AEC Infraconnect
+
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
@@ -10,3 +13,4 @@ fuzz_target!(|data: &[u8]| {
         let _ = serde_json::from_str::<Value>(s);
     }
 });
+

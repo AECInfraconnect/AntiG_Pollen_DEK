@@ -1,80 +1,56 @@
-# Pollen DEK - Desktop Enforcement Kit
+# Pollen DEK - Open Source Desktop Enforcement Kit
 
-> Pollen DEK v1.0.0-beta is a cross-platform local enforcement and observability kit for testing AI Agent/MCP policy enforcement with Mock Pollen Cloud. It supports sandbox enrollment, signed policy bundle sync, MCP HTTP/stdio enforcement, telemetry upload, hot reload scenarios, local fallback behavior, and GitHub release distribution. Linux includes experimental eBPF guardrail support. Windows/macOS network guardrails remain opt-in redirect only in beta.
+Pollen DEK is an Apache-2.0 open-source runtime for enforcing and observing AI agent, MCP, API, and tool-call activity at the desktop/edge.
 
-Pollen DEK is an extensible, highly concurrent and robust edge computing proxy node written in Rust. It serves as a secure, local interception point for traffic and events routing between applications and the Pollen Cloud.
+It can run fully locally with the Local Admin Dashboard, or connect to Pollen Cloud for managed enterprise policy, observability, compliance workflows, and support.
 
-## AI Central Control and Observability Plane for Enterprise
+## Quickstart
 
-Pollen DEK provides a centralized governance, telemetry, and metrics gathering solution tailored for AI and MCP (Model Context Protocol) interactions across the enterprise. 
-- **Universal Observability**: Captures deep telemetry, performance metrics, and policy decisions locally and streams them directly to Pollen Cloud.
-- **Enterprise Governance**: Enforces dynamic policies over LLM tool-calling and API invocations to ensure compliance and security boundaries.
-- **Supply-Chain Security**: Distributed as a trusted artifact with full CycloneDX SBOMs, `cargo auditable` provenance, and cosign keyless (OIDC) signatures.
+### Local-only mode
 
-## Architecture
+```bash
+pollen-dek local-admin start
+pollen-dek service start --control-plane http://127.0.0.1:8787
+pollen-dek mcp-proxy start
+```
 
-- **dek-core**: Supervisor service managing the device lifecycle, configuration bootstrapping via mTLS, telemetry emission, and bundle synchronization.
-- **dek-policy-router**: Acts as an API proxy forwarding payloads to WebAssembly components based on dynamic policies.
-- **dek-policy-runtime**: WASI-based runtime embedded via Wasmtime for executing isolated, dynamic WebAssembly modules (with strict CPU/Memory resource constraints).
-- **dek-telemetry**: Streams telemetry and Prometheus metrics back to Pollen Cloud.
-- **dek-metrics**: Shared metrics bootstrap crate offering global Prometheus recording and resilient pushing.
-- **dek-resilience**: Core resilience primitives (CircuitBreaker, AdmissionControl) for SaaS-scale reliability and per-tenant resource isolation.
-- **dek-keystore**: Cross-platform secure enclave abstraction leveraging OS-native keychain APIs (Windows DPAPI, macOS Keychain, Linux Secret Service).
-- **dek-openfga** and **dek-cedar**: Integrations for fine-grained authorization with external stores (OpenFGA) and Cedar policy engine.
-- **mock-cloud**: A deterministic, mock Pollen Cloud for development and integration testing.
-- **Key Rotation & Audit Trails**: Implements robust, fail-safe key rotation with `TrustedKeySet` and cryptographic audit logs using SHA-256 hash chains for SIEM integration.
+### Pollen Cloud mode
 
-## PEP Enforcement Model
+```bash
+pollen-dek enroll --cloud https://cloud.pollen.ai --tenant <tenant>
+pollen-dek service start
+```
 
-Pollen DEK shifts from a purely cooperative policy enforcement to a machine-level enforcement architecture. The model is structured into two layers, with strict "enforcement ceilings" defined for each Operating System to balance security and system stability.
+## Download
 
-### Layer 1: Application-Layer MCP (All OS - Core)
-- **Mechanism:** Deep policy inspection on JSON-RPC and MCP payloads using `dek-mcp-proxy` and `dek-mcp-stdio-wrapper`.
-- **Scope:** Available universally across Linux, Windows, and macOS.
-- **Role:** Remains the primary and deepest point of policy enforcement for all connected applications.
+See GitHub Releases.
 
-### Layer 2: Network Egress Guardrails (OS-Specific)
-- **Linux (via eBPF / WS-D):** 
-  - Implements coarse L3/L4 network egress guardrails.
-  - Enforces traffic policies at the kernel level, catching and blocking unauthorized traffic even if a rogue or misconfigured application attempts to bypass the Layer 1 proxy.
-- **Windows & macOS (Phase 1):** 
-  - **eBPF Acceleration**: Bypass TCP overhead for extreme throughput.
-- **WFP (Windows Filtering Platform) Support**: High-performance local proxy on Windows.
-- **WASM Policy Evaluation**: Dynamic Open Policy Agent (OPA) integration for Edge decisions.
+### Install on Linux
+```bash
+curl -L https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/latest/download/pollen-dek-linux-amd64.tar.gz -o pollen-dek.tar.gz
+tar -xzf pollen-dek.tar.gz
+sudo ./pollen-dek/install.sh
+```
 
-## Architecture
+### Install on Windows
+```powershell
+Invoke-WebRequest -Uri "https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/latest/download/pollen-dek-windows-amd64.msi" -OutFile "pollen-dek.msi"
+Start-Process msiexec.exe -Wait -ArgumentList '/i pollen-dek.msi /qn'
+```
 
-Pollen DEK acts as a secure boundary and router, intercepting requests and delegating decisions to local or remote Policy Decision Points (PDPs).
+### Install on macOS
+```bash
+curl -L https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases/latest/download/pollen-dek-macos-universal.pkg -o pollen-dek.pkg
+sudo installer -pkg pollen-dek.pkg -target /
+```
 
-## Open Source vs Enterprise Tiering
+## Plugin Architecture
 
-This repository follows a tiered licensing model:
-
-| Component | Description | License |
-|-----------|-------------|---------|
-| `dek-pdp-sdk` | Plugin SDK for building custom PDP adapters | Apache-2.0 |
-| Core Runtime & CLI | `dek-core`, `dek-cli`, `dek-agent`, `dek-updater` | Apache-2.0 |
-| Example PDP Adapters | `dek-cedar`, `dek-openfga`, `dek-opa` | Apache-2.0 |
-| Sample Policies | Examples under `examples/policies/` | Apache-2.0 |
-| Advanced OS Integrations | eBPF (Linux), WFP (Windows), NE (macOS) | Custom / Enterprise |
-
-The `dek-pdp-sdk` provides an extension point allowing community members to build and plug in custom PDPs into the Pollen DEK runtime seamlessly via the `dek-router-builder`. See `crates/dek-pdp-sdk` for more details.
-
-## Quick Start
-
-> [!WARNING]
-> **Enforcement Ceiling:** It is critical to understand that Windows and macOS currently have a lower enforcement ceiling than Linux. While Linux guarantees network-level egress enforcement via eBPF regardless of application behavior, Windows and macOS rely strictly on Layer 1 App-layer MCP proxies and cooperative opt-in network redirects.
-
-## Known Beta Limitations
-
-1. Pollen Cloud production integration is not final; beta uses Mock-Cloud.
-2. Windows/macOS network egress enforcement is opt-in redirect only.
-3. Linux eBPF guardrail is experimental.
-4. Auto-update is beta/opt-in.
-5. High availability and enterprise multi-tenant scale are not validated.
-6. Kernel-level Windows/macOS enforcement is future roadmap.
-7. Pollen Cloud repo `pollenwithclaw` was not publicly accessible during this review, so final contract alignment must be validated when available.
+- Policy evaluators: OPA, Cedar, OpenFGA
+- Transform plugins: PII Redactor
+- Telemetry sinks
+- Enforcement providers
 
 ## License
 
-This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for more information.
+Pollen DEK is Apache-2.0. Pollen Cloud is commercial.

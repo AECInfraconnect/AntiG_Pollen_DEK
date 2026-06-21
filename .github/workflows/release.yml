@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - 'v*.*.*'
+      - 'v*.*.*-*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag"
+        required: true
+        default: "v1.0.0-beta.1"
 
 permissions:
   contents: write
@@ -191,6 +198,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             release_artifacts/*
           generate_release_notes: true
