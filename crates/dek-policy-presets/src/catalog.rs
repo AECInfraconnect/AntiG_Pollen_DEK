@@ -4,10 +4,7 @@
 use crate::model::*;
 
 pub fn builtin_presets() -> Vec<PolicyPreset> {
-    vec![
-        shadow_ai_preset(),
-        require_approval_preset(),
-    ]
+    vec![shadow_ai_preset(), require_approval_preset()]
 }
 
 pub fn get_builtin_preset(id: &str) -> Option<PolicyPreset> {
@@ -19,7 +16,8 @@ fn shadow_ai_preset() -> PolicyPreset {
         preset_id: "rego.shadow_ai_block_external_llm".into(),
         version: "1.0.0".into(),
         display_name: "Block Shadow AI External LLM".into(),
-        description: "Block unregistered/shadow AI agents from reaching public LLM providers.".into(),
+        description: "Block unregistered/shadow AI agents from reaching public LLM providers."
+            .into(),
         category: PresetCategory::ShadowAi,
         language: PresetLanguage::Rego,
         recommended_pep_types: vec!["linux_ebpf".into(), "http_gateway".into()],
@@ -65,7 +63,8 @@ warn := true if {
   input.network.fqdn in llm_domains
   input.control_level in {"observe_only", "warn"}
 }
-"#.into(),
+"#
+            .into(),
             entrypoint: Some("pollen/presets/shadow_ai_block_external_llm/allow".into()),
         },
         test_cases: vec![],
@@ -103,7 +102,8 @@ when {
   context.control_level in ["require_approval", "enforce", "strict_deny"] &&
   context.approval_ticket == ""
 };
-"#.into(),
+"#
+            .into(),
             entrypoint: None,
         },
         test_cases: vec![],

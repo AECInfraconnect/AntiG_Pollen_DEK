@@ -82,7 +82,9 @@ impl SuggestionRule for HighRiskResourceRule {
         for event in events {
             if let Some(risk) = &event.risk_level {
                 if risk == "high" || risk == "critical" {
-                    if let (Some(agent_id), Some(resource_id)) = (&event.agent_id, &event.resource_id) {
+                    if let (Some(agent_id), Some(resource_id)) =
+                        (&event.agent_id, &event.resource_id)
+                    {
                         let suggestion = PolicySuggestion {
                             suggestion_id: format!("high-risk-{}-{}", agent_id, resource_id),
                             tenant_id: event.tenant_id.clone(),

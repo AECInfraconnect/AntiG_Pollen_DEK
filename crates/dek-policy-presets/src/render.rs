@@ -15,10 +15,7 @@ pub struct RenderedPreset {
     pub warnings: Vec<String>,
 }
 
-pub fn render(
-    preset: &PolicyPreset,
-    req: &PresetApplyRequest,
-) -> anyhow::Result<RenderedPreset> {
+pub fn render(preset: &PolicyPreset, req: &PresetApplyRequest) -> anyhow::Result<RenderedPreset> {
     let mut source = preset.template.source.clone();
 
     for (key, value) in &req.params {
@@ -84,7 +81,11 @@ pub fn to_policy_draft(
             status: dek_control_plane_api::registry::RegistryStatus::Draft,
             tags: vec![],
         },
-        policy_id: format!("pol_{}_{}", preset.preset_id.replace('.', "_"), uuid::Uuid::new_v4().simple()),
+        policy_id: format!(
+            "pol_{}_{}",
+            preset.preset_id.replace('.', "_"),
+            uuid::Uuid::new_v4().simple()
+        ),
         name: preset.display_name.clone(),
         description: Some(preset.description.clone()),
         policy_type,

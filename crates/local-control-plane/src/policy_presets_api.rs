@@ -15,7 +15,10 @@ use crate::{
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/v1/tenants/:tenant/policy-presets", get(list_presets))
-        .route("/v1/tenants/:tenant/policy-presets/:preset_id", get(get_preset))
+        .route(
+            "/v1/tenants/:tenant/policy-presets/:preset_id",
+            get(get_preset),
+        )
         .route(
             "/v1/tenants/:tenant/policy-presets/:preset_id/preview",
             post(preview_preset),
@@ -52,10 +55,9 @@ async fn preview_preset(
 ) -> ApiResult<Json<serde_json::Value>> {
     let preset = dek_policy_presets::catalog::get_builtin_preset(&preset_id)
         .ok_or_else(|| ApiError::NotFound(preset_id.clone()))?;
-    
-    let rendered = dek_policy_presets::render::render(&preset, &req)
-        .map_err(ApiError::Internal)?;
-        
+
+    let rendered = dek_policy_presets::render::render(&preset, &req).map_err(ApiError::Internal)?;
+
     Ok(Json(serde_json::json!({
         "schema_version": "policy-preset-preview.v1",
         "preset_id": preset_id,
@@ -73,11 +75,12 @@ async fn create_draft(
 ) -> ApiResult<Json<serde_json::Value>> {
     let preset = dek_policy_presets::catalog::get_builtin_preset(&preset_id)
         .ok_or_else(|| ApiError::NotFound(preset_id.clone()))?;
-        
+
     let draft = dek_policy_presets::render::to_policy_draft(&tenant, &preset, &req)
         .map_err(ApiError::Internal)?;
 
-    let saved = st.policy_store
+    let saved = st
+        .policy_store
         .upsert_policy(draft)
         .await
         .map_err(ApiError::Internal)?;

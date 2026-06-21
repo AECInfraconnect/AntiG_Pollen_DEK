@@ -8,14 +8,14 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    error::ApiResult,
-    state::AppState,
-};
+use crate::{error::ApiResult, state::AppState};
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/v1/tenants/:tenant/pep-capabilities", get(list_capabilities))
+        .route(
+            "/v1/tenants/:tenant/pep-capabilities",
+            get(list_capabilities),
+        )
         .route(
             "/v1/tenants/:tenant/pep-capabilities/check",
             post(check_capabilities),
@@ -78,7 +78,10 @@ async fn check_capabilities(
         recommended = "linux_ebpf".to_string();
     } else if req.requested_pep_types.contains(&"mcp_proxy".to_string()) {
         recommended = "mcp_proxy".to_string();
-    } else if req.requested_pep_types.contains(&"http_gateway".to_string()) {
+    } else if req
+        .requested_pep_types
+        .contains(&"http_gateway".to_string())
+    {
         recommended = "http_gateway".to_string();
     } else if let Some(first) = req.requested_pep_types.first() {
         recommended = first.clone();
