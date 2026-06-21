@@ -29,7 +29,11 @@ pub fn render(preset: &PolicyPreset, req: &PresetApplyRequest) -> anyhow::Result
             // Check allowed values
             if let Some(allowed) = &param.allowed_values {
                 if !allowed.contains(val) {
-                    return Err(anyhow::anyhow!("Value {} for parameter {} is not in allowed values", val, param.key));
+                    return Err(anyhow::anyhow!(
+                        "Value {} for parameter {} is not in allowed values",
+                        val,
+                        param.key
+                    ));
                 }
             }
         } else if param.required {
@@ -127,7 +131,9 @@ pub fn to_policy_draft(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{ControlLevel, PresetCategory, PresetLanguage, PresetParameter, PresetTemplate};
+    use crate::model::{
+        ControlLevel, PresetCategory, PresetLanguage, PresetParameter, PresetTemplate,
+    };
     use std::collections::HashMap;
 
     fn mock_preset() -> PolicyPreset {
@@ -181,7 +187,9 @@ mod tests {
         };
         let res = render(&preset, &req);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err().to_string(), "Missing required parameter: req_param");
+        if let Err(e) = res {
+            assert_eq!(e.to_string(), "Missing required parameter: req_param");
+        }
     }
 
     #[test]
@@ -197,7 +205,9 @@ mod tests {
         };
         let res = render(&preset, &req);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err().to_string(), "Unknown parameter: unknown");
+        if let Err(e) = res {
+            assert_eq!(e.to_string(), "Unknown parameter: unknown");
+        }
     }
 
     #[test]
@@ -213,7 +223,12 @@ mod tests {
         };
         let res = render(&preset, &req);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err().to_string(), "Value \"C\" for parameter enum_param is not in allowed values");
+        if let Err(e) = res {
+            assert_eq!(
+                e.to_string(),
+                "Value \"C\" for parameter enum_param is not in allowed values"
+            );
+        }
     }
 
     #[test]
@@ -227,7 +242,10 @@ mod tests {
             control_level: ControlLevel::ObserveOnly,
             params,
         };
-        let res = render(&preset, &req).unwrap();
-        assert_eq!(res.content, "hello world");
+        let res = render(&preset, &req);
+        assert!(res.is_ok());
+        if let Ok(res) = res {
+            assert_eq!(res.content, "hello world");
+        }
     }
 }
