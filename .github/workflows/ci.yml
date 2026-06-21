@@ -44,12 +44,13 @@ jobs:
 
   ebpf_build:
     name: eBPF Build (Linux Only)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - name: Install Rust nightly for eBPF
-      uses: dtolnay/rust-toolchain@nightly
+      uses: dtolnay/rust-toolchain@master
       with:
+        toolchain: nightly-2024-05-20
         components: rust-src, llvm-tools-preview
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
