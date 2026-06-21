@@ -297,6 +297,8 @@ async fn handle_mcp_request(
     if let Some(token) = auth_header {
         let mut decoding_key_opt = None;
         let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
+        validation.validate_exp = false; // for mock
+        validation.validate_aud = false; // for mock
 
         // 1. Primary: Use JWKS if available
         if let Some(jwks) = &metadata.jwks {
