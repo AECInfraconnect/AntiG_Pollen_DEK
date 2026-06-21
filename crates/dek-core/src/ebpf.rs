@@ -37,32 +37,25 @@ pub fn probe_ebpf_support() -> bool {
 }
 
 #[cfg(target_os = "linux")]
-pub fn load_and_attach() -> anyhow::Result<()> {
-    info!("Probing eBPF support...");
+pub async fn load_and_attach(
+    obs_tx: Option<tokio::sync::mpsc::Sender<dek_ebpfd::DnsObservation>>,
+) -> Option<dek_ebpfd::EbpfHandle> {
     if !probe_ebpf_support() {
-        warn!("eBPF support check failed. Gracefully degrading to App-Layer-Only (Layer 3/7).");
-        return Ok(());
+        warn!("eBPF unsupported; degrading to app-layer only.");
+        return None;
     }
-
-    info!("Initializing WS-D eBPFD Subsystem...");
-    
-    // eBPFD is spawned asynchronously to manage BPF maps and ringbuf
-    // Passing the cgroup path of the supervised processes
-    let cgroup_path = "/sys/fs/cgroup/pollen-dek-supervised";
-    
-    // Start supervisor logic
-    tokio::spawn(async move {
-        if let Err(e) = dek_ebpfd::daemon::start_ebpfd_supervisor(cgroup_path).await {
-            tracing::error!("eBPFD Supervisor failed: {}", e);
-        }
-    });
-
-    Ok(())
+    let cgroup = "/sys/fs/cgroup/pollen-dek-supervised";
+    match dek_ebpfd::start_ebpfd_supervisor(cgroup, obs_tx).await {
+        Ok(handle) => { info!("eBPF Control Point active."); Some(handle) }
+        Err(e) => { tracing::error!("eBPFD failed: {e}"); None }
+    }
 }
 
 #[cfg(not(target_os = "linux"))]
-pub fn load_and_attach() -> anyhow::Result<()> {
+pub async fn load_and_attach(
+    _obs_tx: Option<tokio::sync::mpsc::Sender<dek_ebpfd::DnsObservation>>,
+) -> Option<dek_ebpfd::EbpfHandle> {
     info!("Layer 2 eBPF WS-D guardrails are skipped on non-Linux platforms.");
     warn!("Platform relies solely on App-layer MCP and opt-in proxy redirect.");
-    Ok(())
+    Some(dek_ebpfd::EbpfHandle)
 }

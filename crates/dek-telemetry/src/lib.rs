@@ -17,7 +17,7 @@ use tokio_retry::Retry;
 use tracing::{error, info, warn};
 
 use crate::redactor::Redactor;
-use crate::spooler::{Priority, Spooler};
+pub use crate::spooler::{Priority, Spooler};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TelemetryEnvelope {
