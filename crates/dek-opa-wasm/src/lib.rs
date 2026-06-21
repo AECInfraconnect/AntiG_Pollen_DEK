@@ -50,8 +50,12 @@ impl OpaWasmAdapter {
             "env",
             "opa_abort",
             |mut caller: Caller<'_, RuntimeState>, addr: i32| {
-                let Some(mem_export) = caller.get_export("memory") else { return; };
-                let Some(mem) = mem_export.into_memory() else { return; };
+                let Some(mem_export) = caller.get_export("memory") else {
+                    return;
+                };
+                let Some(mem) = mem_export.into_memory() else {
+                    return;
+                };
                 let data = mem.data(&caller);
                 let mut end = addr as usize;
                 while end < data.len() && data[end] != 0 {
@@ -66,8 +70,12 @@ impl OpaWasmAdapter {
             "env",
             "opa_println",
             |mut caller: Caller<'_, RuntimeState>, addr: i32| {
-                let Some(mem_export) = caller.get_export("memory") else { return; };
-                let Some(mem) = mem_export.into_memory() else { return; };
+                let Some(mem_export) = caller.get_export("memory") else {
+                    return;
+                };
+                let Some(mem) = mem_export.into_memory() else {
+                    return;
+                };
                 let data = mem.data(&caller);
                 let mut end = addr as usize;
                 while end < data.len() && data[end] != 0 {
