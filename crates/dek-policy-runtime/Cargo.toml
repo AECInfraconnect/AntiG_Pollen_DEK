@@ -1,0 +1,17 @@
+[package]
+name = "dek-policy-runtime"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+wasmtime = "14.0.0"
+async-trait = "0.1.89"
+wasmtime-wasi = "14.0.0"
+cap-std = "2.0.0"
+wasi-common = "=14.0.0"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }

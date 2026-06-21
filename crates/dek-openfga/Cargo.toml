@@ -1,0 +1,13 @@
+[package]
+name = "dek-openfga"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dek-policy-runtime = { path = "../dek-policy-runtime" }
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+async-trait = "0.1.89"
+reqwest = { workspace = true, features = ["json"] }

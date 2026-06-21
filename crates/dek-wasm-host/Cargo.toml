@@ -1,0 +1,13 @@
+[package]
+name = "dek-wasm-host"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+wasmtime = "14.0.0"
+wasmtime-wasi = "14.0.0"
+cap-std = "2.0.0"
+wasi-common = "=14.0.0"

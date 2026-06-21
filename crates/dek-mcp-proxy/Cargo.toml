@@ -1,0 +1,23 @@
+[package]
+name = "dek-mcp-proxy"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dek-policy-runtime = { path = "../dek-policy-runtime" }
+dek-policy-router = { path = "../dek-policy-router" }
+dek-cedar = { path = "../dek-cedar" }
+dek-openfga = { path = "../dek-openfga" }
+dek-mcp-normalizer = { path = "../dek-mcp-normalizer" }
+dek-wasm-host = { path = "../dek-wasm-host" }
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["rt"] }
+anyhow.workspace = true
+axum = "0.7"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+async-trait = "0.1.89"
+dek-config = { version = "0.1.0", path = "../dek-config" }
+notify = "8.2.0"
+base64 = "0.22"
