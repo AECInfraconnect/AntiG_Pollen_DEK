@@ -2,9 +2,7 @@ use crate::Keystore;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::PathBuf;
-
-// In a real implementation, this would use security-framework to store items in the macOS Keychain.
-// For scaffolding without a complex keychain setup, we simulate it similarly to Windows DPAPI.
+use std::os::unix::fs::PermissionsExt;
 
 pub struct KeychainKeystore {
     store_dir: PathBuf,
@@ -12,31 +10,30 @@ pub struct KeychainKeystore {
 
 impl KeychainKeystore {
     pub fn new() -> Self {
+        tracing::warn!("macOS secure Keystore not fully implemented. Falling back to 0600 file-based storage. Hardened key storage will follow in the next Phase.");
         let mut dir = dirs_next::data_local_dir().unwrap_or_else(|| PathBuf::from("/Library/Application Support"));
         dir.push("pollen-dek");
-        dir.push("keychain-sim");
+        dir.push("keystore");
         let _ = fs::create_dir_all(&dir);
+        let _ = fs::set_permissions(&dir, fs::Permissions::from_mode(0o700));
         Self { store_dir: dir }
     }
 }
 
 impl Keystore for KeychainKeystore {
     fn store_key(&self, alias: &str, data: &[u8]) -> Result<()> {
-        tracing::info!("(Simulated) Writing {} to macOS Keychain", alias);
         let path = self.store_dir.join(alias);
-        use base64::Engine;
-        let encoded = base64::prelude::BASE64_STANDARD.encode(data);
-        fs::write(&path, encoded).context("Failed to write to Keychain sim")?;
+        fs::write(&path, data).context("Failed to write to keystore file")?;
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).context("Failed to set 0600 permissions")?;
         Ok(())
     }
 
     fn load_key(&self, alias: &str) -> Result<Vec<u8>> {
-        tracing::info!("(Simulated) Reading {} from macOS Keychain", alias);
         let path = self.store_dir.join(alias);
-        let encoded = fs::read_to_string(&path).context("Failed to read from Keychain sim")?;
-        use base64::Engine;
-        let decoded = base64::prelude::BASE64_STANDARD.decode(encoded.trim())?;
-        Ok(decoded)
+        if !path.exists() {
+            anyhow::bail!("Key {} not found", alias);
+        }
+        fs::read(&path).context("Failed to read from keystore file")
     }
 
     fn delete_key(&self, alias: &str) -> Result<()> {

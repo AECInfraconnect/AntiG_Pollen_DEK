@@ -2,10 +2,10 @@ use crate::Keystore;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::PathBuf;
-
-// In a real production DPAPI implementation, we would call CryptProtectData and store the encrypted blob.
-// For this scaffolding, we simulate it by storing a base64 encoded file representing the encrypted blob.
-// A full implementation requires unsafe blocks interacting with winapi::um::dpapi::CryptProtectData.
+use std::ptr;
+use winapi::um::dpapi::{CryptProtectData, CryptUnprotectData, CRYPTPROTECT_UI_FORBIDDEN};
+use winapi::um::wincrypt::CRYPTOAPI_BLOB;
+use winapi::um::winbase::LocalFree;
 
 pub struct DpapiKeystore {
     store_dir: PathBuf,
@@ -23,22 +23,85 @@ impl DpapiKeystore {
 
 impl Keystore for DpapiKeystore {
     fn store_key(&self, alias: &str, data: &[u8]) -> Result<()> {
-        tracing::info!("(Simulated) Encrypting {} with DPAPI", alias);
         let path = self.store_dir.join(alias);
-        // SIMULATION: encode instead of encrypt
-        use base64::Engine;
-        let encoded = base64::prelude::BASE64_STANDARD.encode(data);
-        fs::write(&path, encoded).context("Failed to write to DPAPI store path")?;
-        Ok(())
+        
+        let mut data_blob = CRYPTOAPI_BLOB {
+            cbData: data.len() as u32,
+            pbData: data.as_ptr() as *mut u8,
+        };
+        
+        let mut out_blob = CRYPTOAPI_BLOB {
+            cbData: 0,
+            pbData: ptr::null_mut(),
+        };
+        
+        let success = unsafe {
+            CryptProtectData(
+                &mut data_blob,
+                ptr::null(), // description
+                ptr::null_mut(), // entropy
+                ptr::null_mut(), // reserved
+                ptr::null_mut(), // prompt struct
+                CRYPTPROTECT_UI_FORBIDDEN, // flags
+                &mut out_blob,
+            )
+        };
+        
+        if success == 0 {
+            anyhow::bail!("CryptProtectData failed with error code: {}", std::io::Error::last_os_error());
+        }
+        
+        let encrypted = unsafe { std::slice::from_raw_parts(out_blob.pbData, out_blob.cbData as usize) };
+        let res = fs::write(&path, encrypted).context("Failed to write DPAPI encrypted blob");
+        
+        unsafe {
+            LocalFree(out_blob.pbData as _);
+        }
+        
+        res
     }
 
     fn load_key(&self, alias: &str) -> Result<Vec<u8>> {
-        tracing::info!("(Simulated) Decrypting {} with DPAPI", alias);
         let path = self.store_dir.join(alias);
-        let encoded = fs::read_to_string(&path).context("Failed to read from DPAPI store path")?;
-        use base64::Engine;
-        let decoded = base64::prelude::BASE64_STANDARD.decode(encoded.trim())?;
-        Ok(decoded)
+        if !path.exists() {
+            anyhow::bail!("Key {} not found", alias);
+        }
+        
+        let encrypted = fs::read(&path).context("Failed to read from DPAPI store path")?;
+        
+        let mut data_blob = CRYPTOAPI_BLOB {
+            cbData: encrypted.len() as u32,
+            pbData: encrypted.as_ptr() as *mut u8,
+        };
+        
+        let mut out_blob = CRYPTOAPI_BLOB {
+            cbData: 0,
+            pbData: ptr::null_mut(),
+        };
+        
+        let success = unsafe {
+            CryptUnprotectData(
+                &mut data_blob,
+                ptr::null_mut(), // description
+                ptr::null_mut(), // entropy
+                ptr::null_mut(), // reserved
+                ptr::null_mut(), // prompt struct
+                CRYPTPROTECT_UI_FORBIDDEN, // flags
+                &mut out_blob,
+            )
+        };
+        
+        if success == 0 {
+            anyhow::bail!("CryptUnprotectData failed with error code: {}", std::io::Error::last_os_error());
+        }
+        
+        let decrypted = unsafe { std::slice::from_raw_parts(out_blob.pbData, out_blob.cbData as usize).to_vec() };
+        
+        unsafe {
+            LocalFree(out_blob.pbData as _);
+        }
+        
+        Ok(decrypted)
     }
 
     fn delete_key(&self, alias: &str) -> Result<()> {
@@ -49,3 +112,5 @@ impl Keystore for DpapiKeystore {
         Ok(())
     }
 }
+
+

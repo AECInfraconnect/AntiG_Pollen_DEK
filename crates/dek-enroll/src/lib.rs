@@ -40,6 +40,70 @@ impl EnrollError {
     fn retryable(&self) -> bool {
         matches!(self, EnrollError::Network(..) | EnrollError::BadResponse(..))
     }
+
+    pub fn into_envelope(self) -> dek_errors::ErrorEnvelope {
+        use dek_errors::{ErrorDomain, ErrorEnvelope, RetryClass, SafetyAction};
+        let (code, msg, retry, rem) = match &self {
+            EnrollError::Network(u, e) => (
+                "NETWORK_ERROR",
+                format!("Network error talking to {}: {}", u, e),
+                RetryClass::RetryWithBackoff,
+                Some("Check your internet connection and proxy settings.".to_string())
+            ),
+            EnrollError::DeviceAuth(e) => (
+                "DEVICE_AUTH_REJECTED",
+                format!("Device authorization rejected: {}", e),
+                RetryClass::NoRetry,
+                Some("Ensure you are using the correct Pollen Cloud URL and your client ID is valid.".to_string())
+            ),
+            EnrollError::Expired => (
+                "DEVICE_CODE_EXPIRED",
+                "The user did not approve before the code expired".to_string(),
+                RetryClass::RetryImmediate,
+                Some("Run the enrollment command again and approve promptly.".to_string())
+            ),
+            EnrollError::AccessDenied => (
+                "ACCESS_DENIED",
+                "Authorization was denied by the user".to_string(),
+                RetryClass::NoRetry,
+                Some("User must approve the prompt to enroll the device.".to_string())
+            ),
+            EnrollError::EnrollHttp(s) => (
+                "ENROLL_ENDPOINT_FAILED",
+                format!("Enrollment endpoint failed: HTTP {}", s),
+                if *s >= 500 { RetryClass::RetryWithBackoff } else { RetryClass::NoRetry },
+                Some("Contact the cloud administrator if this persists.".to_string())
+            ),
+            EnrollError::BadResponse(s) => (
+                "MALFORMED_RESPONSE",
+                format!("Malformed response from {}", s),
+                RetryClass::RetryWithBackoff,
+                Some("The cloud service returned invalid data. Try again later.".to_string())
+            ),
+            EnrollError::RetriesExhausted(n, last) => (
+                "RETRIES_EXHAUSTED",
+                format!("Gave up after {} attempts. Last error: {}", n, last),
+                RetryClass::NoRetry,
+                Some("Check your network stability and try again.".to_string())
+            ),
+        };
+
+        ErrorEnvelope {
+            error_id: uuid::Uuid::new_v4().to_string(),
+            domain: ErrorDomain::Enrollment,
+            code: code.to_string(),
+            message: msg.clone(),
+            safe_message: msg,
+            retry_class: retry,
+            safety_action: SafetyAction::DenyRequest,
+            tenant_id: None,
+            device_id: None,
+            bundle_version: None,
+            request_id: None,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            remediation: rem,
+        }
+    }
 }
 
 /// Backoff configuration for transient failures.

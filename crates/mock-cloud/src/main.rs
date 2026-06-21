@@ -118,6 +118,9 @@ async fn main() -> Result<()> {
         .route("/v1/tenants/:tenant_id/devices/:device_id/spire/svid/renew", post(renew_csr))
         .route("/v1/tenants/:tenant_id/devices/:device_id/decision-logs", post(ingest_decision_logs))
         .route("/v1/tenants/:tenant_id/devices/:device_id/health", post(report_health))
+        .route("/v1/tenants/:tenant_id/devices/:device_id/rotate", post(rotate_device))
+        .route("/v1/tenants/:tenant_id/devices/:device_id/revoke", post(revoke_device))
+        .route("/v1/tenants/:tenant_id/devices/:device_id/status", get(get_device_status))
         .with_state(state.clone());
 
     // ---- Enrollment listener (PRE-identity, NO client cert) ----
@@ -602,6 +605,34 @@ async fn report_health(Path((_tenant_id, device_id)): Path<(String, String)>, St
         dev.last_health = Utc::now().to_rfc3339();
     }
     Json(json!({ "status": "ok" }))
+}
+
+async fn rotate_device(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(payload): Json<Value>) -> impl IntoResponse {
+    info!("CLOUD RECEIVED ROTATE REQUEST from {}: {}", device_id, payload);
+    if is_device_revoked(&state, &device_id) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "device revoked"})));
+    }
+    // Issue a new join_token
+    let join_token = rand_hex(16);
+    (StatusCode::OK, Json(json!({ "join_token": join_token })))
+}
+
+async fn revoke_device(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>, Json(payload): Json<Value>) -> impl IntoResponse {
+    info!("CLOUD RECEIVED REVOKE REQUEST from {}: {}", device_id, payload);
+    let mut devices = state.devices.lock().unwrap();
+    if let Some(dev) = devices.get_mut(&device_id) {
+        dev.revoked = true;
+    }
+    (StatusCode::OK, Json(json!({ "status": "revoked" })))
+}
+
+async fn get_device_status(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>) -> impl IntoResponse {
+    let devices = state.devices.lock().unwrap();
+    if let Some(dev) = devices.get(&device_id) {
+        (StatusCode::OK, Json(json!({ "status": if dev.revoked { "revoked" } else { "active" } })))
+    } else {
+        (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" })))
+    }
 }
 
 async fn get_latest_bundle(Path((_tenant_id, device_id)): Path<(String, String)>, State(state): State<AppState>) -> impl IntoResponse {
