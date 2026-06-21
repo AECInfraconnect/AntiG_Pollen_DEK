@@ -11,7 +11,7 @@ security-testing:
   - type: "fuzzing"
     url: "https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/fuzz.yml"
   - type: "sast"
-    url: "https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/clippy.yml"
+    url: "https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/codeql.yml"
 vulnerability-reporting:
   accepts-vulnerability-reports: true
   email: "security@aecinfraconnect.com"
