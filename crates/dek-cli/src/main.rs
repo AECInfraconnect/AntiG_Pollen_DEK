@@ -29,6 +29,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Enroll device
+    Enroll {
+        #[arg(long)]
+        cloud_url: String,
+    },
     /// Check health of DEK Core
     Health,
     /// Detailed local status of DEK Core
@@ -112,6 +117,9 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
+        Commands::Enroll { cloud_url } => {
+            service::enroll::run(&cloud_url).await?;
+        }
         Commands::Health => {
             info!("Sending health check request to DEK Core...");
             match send_ipc_request(&cli.host, cli.port, IpcRequest::HealthCheck).await {

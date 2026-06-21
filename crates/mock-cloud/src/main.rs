@@ -27,6 +27,7 @@ struct AppState {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    rustls::crypto::ring::default_provider().install_default().expect("Failed to install rustls crypto provider");
     tracing_subscriber::fmt::init();
     info!("Starting Mock Pollen Cloud Server with MTLS...");
 
@@ -47,6 +48,9 @@ async fn main() -> Result<()> {
         .route("/telemetry", post(ingest_telemetry))
         .route("/bundles/latest", get(get_latest_bundle))
         .route("/config/:device_id", get(get_config))
+        .route("/oauth/device_authorization", post(device_authorization))
+        .route("/oauth/token", post(oauth_token))
+        .route("/enroll", post(enroll))
         .route("/spire/node/attest", post(attest_node))
         .with_state(state);
 
@@ -59,8 +63,9 @@ async fn main() -> Result<()> {
     let ca_certs = load_certs("../../certs/root_ca.crt")?;
     root_cert_store.add_parsable_certificates(ca_certs);
 
-    // Create client verifier requiring client certificate
+    // Create client verifier requiring client certificate optionally (for enroll)
     let client_verifier = WebPkiClientVerifier::builder(Arc::new(root_cert_store))
+        .allow_unauthenticated()
         .build()
         .context("Failed to build client verifier")?;
 
@@ -307,6 +312,12 @@ async fn attest_node(Json(payload): Json<Value>) -> Json<Value> {
         .get("device_id")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown-device");
+        
+    let csr_pem = payload
+        .get("csr_pem")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+        
     let spiffe_id = format!(
         "spiffe://pollen.cloud/tenant-production-1/device/{}",
         device_id
@@ -315,8 +326,80 @@ async fn attest_node(Json(payload): Json<Value>) -> Json<Value> {
         "CLOUD: Attesting node {}, issuing SPIFFE ID: {}",
         device_id, spiffe_id
     );
+    
+    let root_ca_cert = std::fs::read_to_string("../../certs/root_ca.crt").unwrap_or_default();
+    let root_ca_key = std::fs::read_to_string("../../certs/root_ca.key").unwrap_or_default();
+    
+    let (svid_cert_pem, svid_key_pem) = if !root_ca_cert.is_empty() && !root_ca_key.is_empty() {
+        let key_pair = rcgen::KeyPair::from_pem(&root_ca_key).expect("parse ca key");
+        
+        let mut ca_params = rcgen::CertificateParams::new(vec!["Pollen Cloud Root CA".to_string()]).expect("ca params");
+        ca_params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
+        ca_params.distinguished_name.push(rcgen::DnType::OrganizationName, "Pollen DEK Project");
+        ca_params.distinguished_name.push(rcgen::DnType::CommonName, "Pollen Cloud Root CA");
+        
+        let ca_cert = ca_params.self_signed(&key_pair).expect("create ca cert");
+        
+        let mut params = rcgen::CertificateParams::new(Vec::<String>::new()).expect("create params");
+        params.use_authority_key_identifier_extension = true;
+        // Add the SPIFFE ID to the URI SAN
+        params.subject_alt_names = vec![rcgen::SanType::URI(
+            spiffe_id.clone().try_into().unwrap()
+        )];
+        
+        let subject_kp = rcgen::KeyPair::generate().expect("generate subject kp");
+        let cert = params.signed_by(&subject_kp, &ca_cert, &key_pair).expect("create svid cert");
+        
+        (cert.pem(), subject_kp.serialize_pem())
+    } else {
+        ("DUMMY_SVID_CERT".to_string(), "DUMMY_SVID_KEY".to_string())
+    };
+
     Json(json!({
-        "spiffe_id": spiffe_id
+        "spiffe_id": spiffe_id,
+        "svid_cert_pem": svid_cert_pem,
+        "svid_key_pem": svid_key_pem,
+        "trust_bundle_pem": root_ca_cert
+    }))
+}
+
+async fn device_authorization() -> Json<Value> {
+    info!("CLOUD: Device Authorization requested");
+    Json(json!({
+        "device_code": "mock-device-code-123",
+        "user_code": "ABCD-WXYZ",
+        "verification_uri": "http://127.0.0.1:43891/device",
+        "verification_uri_complete": "http://127.0.0.1:43891/device?user_code=ABCD-WXYZ",
+        "expires_in": 300,
+        "interval": 5
+    }))
+}
+
+use axum::extract::Form;
+use std::collections::HashMap;
+
+async fn oauth_token(Form(form): Form<HashMap<String, String>>) -> Json<Value> {
+    info!("CLOUD: Token polling requested: {:?}", form);
+    // Simulate user immediately approving for the mock server
+    Json(json!({
+        "access_token": "mock-access-token-456",
+        "token_type": "bearer",
+        "expires_in": 3600
+    }))
+}
+
+async fn enroll() -> Json<Value> {
+    info!("CLOUD: Enrollment requested");
+    let root_ca_cert = std::fs::read_to_string("../../certs/root_ca.crt").unwrap_or_default();
+    Json(json!({
+        "join_token": "mock-join-token-789",
+        "spire_endpoint": "https://127.0.0.1:43891/spire",
+        "trust_bundle_pem": root_ca_cert,
+        "pinned_bundle_public_key": "xQyzrpVpR6jeGRNbW+JoX/NIr8Y/w0qDesoSvFwfViU=",
+        "tenant_id": "tenant-production-1",
+        "device_id": "device-001",
+        "spiffe_id": "spiffe://pollen.cloud/tenant-production-1/device/device-001",
+        "cloud_url": "https://127.0.0.1:43891"
     }))
 }
 

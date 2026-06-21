@@ -45,6 +45,13 @@ pub struct BootstrapConfig {
     pub device_id: String,
     pub mtls: MtlsConfig,
     pub pinned_bundle_public_key: String,
+
+    #[serde(default)]
+    pub cloud_url: String,
+    #[serde(default)]
+    pub spiffe_id: Option<String>,
+    #[serde(default)]
+    pub tenant_id: Option<String>,
 }
 
 impl BootstrapConfig {
@@ -64,6 +71,9 @@ impl BootstrapConfig {
                 },
                 pinned_bundle_public_key: "xQyzrpVpR6jeGRNbW+JoX/NIr8Y/w0qDesoSvFwfViU="
                     .to_string(),
+                cloud_url: String::new(),
+                spiffe_id: None,
+                tenant_id: None,
             };
             let json_str = serde_json::to_string_pretty(&default_config)?;
             if let Some(parent) = p.parent() {

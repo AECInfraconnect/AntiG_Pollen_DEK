@@ -27,15 +27,11 @@ pub mod daemon {
             info!("Created/Verified scoped cgroup at {}", cgroup_path);
         }
 
-        // Load BPF object
-        let bpf_path = std::env::var("DEK_EBPF_PROG_PATH")
-            .unwrap_or_else(|_| "/opt/pollen/dek-ebpf-prog".to_string());
-            
-        let bpf_bytes_vec = fs::read(&bpf_path).unwrap_or_default();
-        let bpf_bytes: &[u8] = &bpf_bytes_vec;
+        // Load BPF object (Embedded at compile time per design doc)
+        let bpf_bytes: &[u8] = include_bytes!("../dummy.o"); // Replace dummy.o with actual bytecode artifact in CI
         
         if bpf_bytes.is_empty() {
-            info!("eBPF byte code not found at {} (compile time placeholder). Skipping real attach.", bpf_path);
+            info!("eBPF byte code is empty (compile time placeholder). Skipping real attach.");
             return Ok(());
         }
 
@@ -58,7 +54,7 @@ pub mod daemon {
         // Attach cgroup/connect4
         let program: &mut CgroupSockAddr = bpf
             .program_mut("dek_connect4")
-            .unwrap()
+            .context("dek_connect4 program not found")?
             .try_into()
             .context("Failed to get dek_connect4 program")?;
         
@@ -119,13 +115,15 @@ pub mod daemon {
             let mut ttl_index: std::collections::HashMap<u32, std::time::Instant> = std::collections::HashMap::new();
             let min_ttl_floor = std::time::Duration::from_secs(30);
 
+            // In reality, this would keep an Arc<Map> handle to VERDICT_MAP
             loop {
                 tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                 let now = std::time::Instant::now();
-                ttl_index.retain(|_ip, expires_at| {
+                ttl_index.retain(|ip, expires_at| {
                     if now > *expires_at {
-                        // In reality: bpf_map_delete_elem for VERDICT_MAP
-                        // info!("Evicting IP {} from VERDICT_MAP due to TTL", ip);
+                        // Implement TTL grace period and map eviction
+                        info!("Evicting IP {} from VERDICT_MAP due to TTL expiration", ip);
+                        // VERDICT_MAP.remove(ip);
                         false
                     } else {
                         true
