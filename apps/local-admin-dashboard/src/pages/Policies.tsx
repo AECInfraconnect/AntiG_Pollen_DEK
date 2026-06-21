@@ -173,18 +173,70 @@ export function Policies() {
 }
 
 function PolicyEditor({ mode, policy, onClose, onCreated }: { mode: 'create' | 'edit' | 'view'; policy?: PolicyDraft; onClose: () => void; onCreated: () => void }) {
+  const DEFAULT_TEMPLATES: Record<PolicyType, string> = {
+    cedar: 'permit(principal, action, resource);',
+    rego: 'package authz\n\ndefault allow = false\n\nallow {\n  input.action == "read"\n}',
+    open_fga: 'model\n  schema 1.1\ntype user\ntype document\n  relations\n    define viewer: [user]',
+    pii_redaction: '',
+    route: '',
+    composite: ''
+  };
+
   const [name, setName] = useState(policy?.name ?? "");
   const [type, setType] = useState<PolicyType>(policy?.policy_type ?? "cedar");
-  const initialText = policy?.source?.kind === "raw_text" ? policy.source.text : 'permit(principal, action, resource);';
+  const initialText = policy?.source?.kind === "raw_text" ? policy.source.text : DEFAULT_TEMPLATES["cedar"];
   const [text, setText] = useState(initialText);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track if text was manually edited so we don't overwrite user's typing
+  const [isTyping, setIsTyping] = useState(mode !== 'create');
+
+  // Change template when type changes (if not typing)
+  useEffect(() => {
+    if (mode === 'create' && !isTyping) {
+      setText(DEFAULT_TEMPLATES[type] || '');
+    }
+  }, [type, mode, isTyping]);
+
+  // Auto-detect engine from text
+  const handleTextChange = (newText: string) => {
+    setText(newText);
+    setIsTyping(true);
+    if (mode === 'create') {
+      if (newText.includes('permit(') || newText.includes('forbid(')) {
+        setType('cedar');
+      } else if (newText.includes('package ')) {
+        setType('rego');
+      } else if (newText.includes('model') && newText.includes('type ')) {
+        setType('open_fga');
+      }
+    }
+  };
 
   const readOnly = mode === 'view';
   const langFor: Record<string, string> = { cedar: "cedar", rego: "rego", open_fga: "fga" };
 
   const save = async () => {
     setSaving(true); setError(null);
+
+    // Basic Syntax Validation
+    if (type === 'rego' && !text.includes('package')) {
+      setError('Invalid OPA/Rego policy: Must contain a "package" declaration.');
+      setSaving(false);
+      return;
+    }
+    if (type === 'cedar' && !text.includes('permit') && !text.includes('forbid')) {
+      setError('Invalid Cedar policy: Must contain at least one "permit" or "forbid" statement.');
+      setSaving(false);
+      return;
+    }
+    if (type === 'open_fga' && !text.includes('model')) {
+      setError('Invalid OpenFGA model: Must contain a "model" declaration.');
+      setSaving(false);
+      return;
+    }
+
     const now = new Date().toISOString();
     const policy_id = policy?.policy_id ?? `pol-${Date.now()}`;
     const draft: PolicyDraft = {
@@ -230,17 +282,17 @@ function PolicyEditor({ mode, policy, onClose, onCreated }: { mode: 'create' | '
           <div>
             <label htmlFor="policy-engine" className="text-xs font-medium text-muted-foreground">Engine</label>
             <select id="policy-engine" value={type} onChange={(e) => setType(e.target.value as PolicyType)} disabled={readOnly || mode === 'edit'}
-              className="mt-1 w-full rounded-md border bg-transparent px-3 py-2 text-sm disabled:opacity-50">
-              <option value="cedar">Cedar</option>
-              <option value="rego">OPA / Rego</option>
-              <option value="open_fga">OpenFGA</option>
+              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50">
+              <option value="cedar" className="bg-background text-foreground">Cedar</option>
+              <option value="rego" className="bg-background text-foreground">OPA / Rego</option>
+              <option value="open_fga" className="bg-background text-foreground">OpenFGA</option>
             </select>
           </div>
         </div>
 
         <div>
           <label htmlFor="policy-source" className="text-xs font-medium text-muted-foreground">Policy source (compiled on the control plane, not the DEK)</label>
-          <textarea id="policy-source" value={text} onChange={(e) => setText(e.target.value)} rows={10} disabled={readOnly}
+          <textarea id="policy-source" value={text} onChange={(e) => handleTextChange(e.target.value)} rows={10} disabled={readOnly}
             className="mt-1 w-full rounded-md border bg-black/30 px-3 py-2 font-mono text-xs disabled:opacity-50" spellCheck={false} />
         </div>
 
