@@ -48,9 +48,10 @@ jobs:
       uses: dtolnay/rust-toolchain@nightly
       with:
         components: rust-src, llvm-tools-preview
-    - uses: cargo-bins/cargo-binstall@main
+    - name: Rust Cache
+      uses: Swatinem/rust-cache@v2
     - name: Install bpf-linker
-      run: cargo binstall -y bpf-linker
+      run: cargo install bpf-linker
     - name: Build eBPF Prog
       run: cargo build --manifest-path crates/dek-ebpf-prog/Cargo.toml --target bpfel-unknown-none -Z build-std=core
     - name: Build eBPF Daemon
