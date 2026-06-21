@@ -2,7 +2,7 @@
 //! bundle.rs — build signed policy bundles in the SAME format as Pollen Cloud
 
 use anyhow::{Context, Result};
-use dek_control_plane_api::bundle::{BundleArtifact, BundleSignature, PollenPolicyBundleManifest};
+use dek_control_plane_api::bundle::{BundleArtifactV2, BundleSignature, PollenPolicyBundleManifestV2, ActivationStrategy};
 use sha2::{Digest, Sha256};
 use serde_json::Value;
 
@@ -16,7 +16,7 @@ pub struct CompiledArtifact {
 }
 
 pub struct SignedBundle {
-    pub manifest: PollenPolicyBundleManifest,
+    pub manifest: PollenPolicyBundleManifestV2,
     pub blobs: Vec<(String, Vec<u8>)>,
 }
 
@@ -52,17 +52,22 @@ pub async fn build_signed_bundle(
         let blob_path = format!("artifacts/{}", sha);
         blobs.push((blob_path.clone(), ca.bytes.clone()));
         
-        artifacts.push(BundleArtifact {
+        artifacts.push(BundleArtifactV2 {
             artifact_id: ca.artifact_id,
             adapter_id: ca.adapter_id,
             artifact_type: ca.artifact_type,
             sha256: sha,
             size_bytes: ca.bytes.len() as u64,
             path: blob_path,
+            entrypoint: None,
+            data_path: None,
+            schema_path: None,
+            entities_path: None,
         });
     }
 
-    let mut manifest = PollenPolicyBundleManifest {
+    let mut manifest = PollenPolicyBundleManifestV2 {
+        schema_version: "2.0".to_string(),
         bundle_version: bundle_version.clone(),
         bundle_id: format!("bundle-local-{}", build_number),
         tenant_id: tenant_id.to_string(),
@@ -77,6 +82,7 @@ pub async fn build_signed_bundle(
         artifacts,
         signatures: vec![],
         min_dek_version: "1.0.0-beta.1".to_string(),
+        activation_strategy: ActivationStrategy::AtomicAllOrNothing,
         rollback_from: rollback_from.map(|s| s.to_string()),
     };
 
@@ -102,7 +108,7 @@ pub async fn build_signed_bundle(
     Ok(SignedBundle { manifest, blobs })
 }
 
-pub fn verify_bundle(manifest: &PollenPolicyBundleManifest, public_b64: &str) -> bool {
+pub fn verify_bundle(manifest: &PollenPolicyBundleManifestV2, public_b64: &str) -> bool {
     let mut copy = manifest.clone();
     let sigs = copy.signatures.clone();
     copy.signatures.clear();

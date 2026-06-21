@@ -40,6 +40,51 @@ impl WasmtimePluginHost {
         let mut linker = Linker::new(&engine);
         preview1::add_to_linker_sync(&mut linker, |s| s)?;
 
+        linker.func_wrap(
+            "pollen_env",
+            "ner_predict",
+            |mut caller: Caller<'_, wasmtime_wasi::preview1::WasiP1Ctx>,
+             ptr: u32,
+             len: u32,
+             out_ptr: u32,
+             max_out_len: u32|
+             -> u32 {
+                let memory = match caller.get_export("memory") {
+                    Some(Extern::Memory(m)) => m,
+                    _ => return 0,
+                };
+                let mem_slice = memory.data(&caller);
+                
+                let start = ptr as usize;
+                let end = start + len as usize;
+                if end > mem_slice.len() {
+                    return 0;
+                }
+                
+                let text = match std::str::from_utf8(&mem_slice[start..end]) {
+                    Ok(s) => s,
+                    Err(_) => return 0,
+                };
+
+                // NER mock for gliner-pii-small local inference
+                // In a real scenario, we'd make a blocking HTTP call to a local sidecar
+                let redacted = text.replace("John Doe", "[REDACTED_NAME]").replace("Acme Corp", "[REDACTED_ORG]");
+                let redacted_bytes = redacted.as_bytes();
+                
+                let out_len = redacted_bytes.len().min(max_out_len as usize);
+                
+                let out_start = out_ptr as usize;
+                let out_end = out_start + out_len;
+                let mem_mut = memory.data_mut(&mut caller);
+                if out_end > mem_mut.len() {
+                    return 0;
+                }
+                mem_mut[out_start..out_end].copy_from_slice(&redacted_bytes[..out_len]);
+                
+                out_len as u32
+            },
+        )?;
+
         for (plugin_id, path) in plugin_paths {
             let p = std::path::Path::new(&path);
             if p.exists() {
