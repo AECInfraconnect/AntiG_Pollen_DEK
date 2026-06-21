@@ -91,7 +91,7 @@ mod tests {
     use crate::model::TokenUsage;
 
     #[test]
-    fn test_calculate_cost() {
+    fn test_calculate_cost() -> Result<(), Box<dyn std::error::Error>> {
         let mut providers = HashMap::new();
         let mut models = HashMap::new();
         models.insert(
@@ -131,9 +131,10 @@ mod tests {
             }),
         };
 
-        let cost = calculate_cost(&event, "openai", &catalog).expect("should calculate cost");
+        let cost = calculate_cost(&event, "openai", &catalog).ok_or("should calculate cost")?;
         assert_eq!(cost.input_cost, 5.0);
         assert_eq!(cost.output_cost, 30.0);
         assert_eq!(cost.total_cost, 35.0);
+        Ok(())
     }
 }

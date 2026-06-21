@@ -19,3 +19,6 @@ serde_json.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Dependencies for macOS specific IPC (mach ports / XPC or unix domain sockets) would go here
+
+[lints]
+workspace = true

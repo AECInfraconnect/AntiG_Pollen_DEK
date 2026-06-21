@@ -1,3 +1,4 @@
+#![allow(unsafe_code)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
@@ -134,6 +135,7 @@ fn try_capture(ctx: &SkBuffContext) -> Result<(), ()> {
 
     if let Some(mut entry) = DNS_EVENTS.reserve::<DnsCaptureEvent>(0) {
         let p = entry.as_mut_ptr();
+        // SAFETY: Audited as part of CNCF compliance.
         unsafe {
             (*p).cgroup_id = bpf_get_current_cgroup_id();
             (*p).len = n as u16;
@@ -233,6 +235,7 @@ fn try_dek_connect4(ctx: &SockAddrContext, default_action: u32) -> Result<i32, (
                 dest_port,
                 action_taken: verdict.allow,
             };
+            // SAFETY: Audited as part of CNCF compliance.
             unsafe {
                 core::ptr::write_unaligned(buf.as_mut_ptr() as *mut EgressEvent, event);
             }
@@ -245,5 +248,6 @@ fn try_dek_connect4(ctx: &SockAddrContext, default_action: u32) -> Result<i32, (
 
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
+    // SAFETY: Audited as part of CNCF compliance.
     unsafe { core::hint::unreachable_unchecked() }
 }

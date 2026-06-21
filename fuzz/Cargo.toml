@@ -17,3 +17,6 @@ name = "bundle_parser"
 path = "fuzz_targets/bundle_parser.rs"
 test = false
 doc = false
+
+[lints]
+workspace = true

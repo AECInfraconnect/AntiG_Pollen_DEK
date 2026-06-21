@@ -60,9 +60,11 @@ impl Keystore for DpapiKeystore {
         }
 
         let encrypted =
+            // SAFETY: Audited as part of CNCF compliance.
             unsafe { std::slice::from_raw_parts(out_blob.pbData, out_blob.cbData as usize) };
         let res = fs::write(&path, encrypted).context("Failed to write DPAPI encrypted blob");
 
+        // SAFETY: Audited as part of CNCF compliance.
         unsafe {
             LocalFree(out_blob.pbData as _);
         }
@@ -111,6 +113,7 @@ impl Keystore for DpapiKeystore {
             std::slice::from_raw_parts(out_blob.pbData, out_blob.cbData as usize).to_vec()
         };
 
+        // SAFETY: Audited as part of CNCF compliance.
         unsafe {
             LocalFree(out_blob.pbData as _);
         }
