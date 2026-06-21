@@ -1,3 +1,5 @@
+pub mod paths;
+
 use anyhow::{Context, Result};
 use reqwest::{Certificate, Identity};
 use serde::{Deserialize, Serialize};
@@ -13,7 +15,7 @@ pub struct MtlsConfig {
 
 impl MtlsConfig {
     pub fn build_client(&self) -> Result<reqwest::Client> {
-        let root_ca_der = fs::read(&self.root_ca_path).context("Failed to read root CA")?;
+        let root_ca_der = fs::read(&self.root_ca_path).context(format!("Failed to read root CA from {}", self.root_ca_path))?;
         let root_ca = Certificate::from_pem(&root_ca_der)?;
 
         let client_cert = fs::read(&self.client_cert_path).context("Failed to read client cert")?;
@@ -50,15 +52,18 @@ impl BootstrapConfig {
             let default_config = Self {
                 device_id: "device-001".to_string(),
                 mtls: MtlsConfig {
-                    client_cert_path: "certs/client.crt".to_string(),
-                    client_key_path: "certs/client.key".to_string(),
-                    root_ca_path: "certs/root_ca.crt".to_string(),
+                    client_cert_path: paths::get_config_dir().join("certs").join("client.crt").to_string_lossy().into_owned(),
+                    client_key_path: paths::get_config_dir().join("certs").join("client.key").to_string_lossy().into_owned(),
+                    root_ca_path: paths::get_config_dir().join("certs").join("root_ca.crt").to_string_lossy().into_owned(),
                 },
                 pinned_bundle_public_key: "xQyzrpVpR6jeGRNbW+JoX/NIr8Y/w0qDesoSvFwfViU="
                     .to_string(),
             };
             let json_str = serde_json::to_string_pretty(&default_config)?;
-            fs::write(p, json_str)?;
+            if let Some(parent) = p.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            let _ = fs::write(p, json_str); // Ignore initial write failure if lack of permission (e.g. proxy starting before daemon)
             Ok(default_config)
         }
     }

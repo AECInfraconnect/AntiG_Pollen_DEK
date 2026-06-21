@@ -4,6 +4,9 @@ use dek_agent_connector::{AgentConfigRewriter, ClaudeDesktopRewriter};
 use dek_ipc::{IpcRequest, IpcResponse};
 use std::path::PathBuf;
 
+mod service;
+use service::{ServiceManager, OsServiceManager};
+
 use tokio::net::TcpStream;
 use tracing::{error, info};
 
@@ -32,6 +35,11 @@ enum Commands {
     Agent {
         #[command(subcommand)]
         agent_command: AgentCommands,
+    },
+    /// Manage the DEK background service lifecycle
+    Service {
+        /// The service action to perform: install, uninstall, start, stop, status
+        action: String,
     },
 }
 
@@ -166,6 +174,41 @@ async fn main() -> Result<()> {
                         }
                         Err(e) => error!("Failed to restore: {}", e),
                     }
+                }
+            }
+        }
+        Commands::Service { action } => {
+            let manager = OsServiceManager::new();
+            match action.as_str() {
+                "install" => {
+                    info!("Installing Pollen DEK service...");
+                    manager.install()?;
+                    info!("Service installed successfully.");
+                }
+                "uninstall" => {
+                    info!("Uninstalling Pollen DEK service...");
+                    manager.uninstall()?;
+                    info!("Service uninstalled successfully.");
+                }
+                "start" => {
+                    info!("Starting Pollen DEK service...");
+                    manager.start()?;
+                    info!("Service started.");
+                }
+                "stop" => {
+                    info!("Stopping Pollen DEK service...");
+                    manager.stop()?;
+                    info!("Service stopped.");
+                }
+                "status" => {
+                    match manager.status() {
+                        Ok(s) => info!("Service Status:\n{}", s),
+                        Err(e) => error!("Failed to get status: {}", e),
+                    }
+                }
+                _ => {
+                    error!("Unknown service action: {}. Valid actions: install, uninstall, start, stop, status", action);
+                    std::process::exit(1);
                 }
             }
         }
