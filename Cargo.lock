@@ -1711,6 +1711,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-a2a-mediator"
+version = "1.0.0-beta.6"
+dependencies = [
+ "anyhow",
+ "dek-agent-observer",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "dek-activation"
 version = "0.1.0"
 dependencies = [
@@ -1901,7 +1913,9 @@ dependencies = [
  "arc-swap",
  "axum",
  "chrono",
+ "dek-a2a-mediator",
  "dek-activation",
+ "dek-agent-observer",
  "dek-bundle-format",
  "dek-bundle-sync",
  "dek-config",
@@ -2039,6 +2053,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-execution-sandbox"
+version = "1.0.0-beta.6"
+dependencies = [
+ "anyhow",
+ "dek-mcp-normalizer",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "dek-ext-authz"
 version = "0.1.0"
 dependencies = [
@@ -2143,6 +2169,7 @@ dependencies = [
  "dek-config",
  "dek-decision",
  "dek-domain-schema",
+ "dek-execution-sandbox",
  "dek-mcp-normalizer",
  "dek-openfga",
  "dek-plugin-host",

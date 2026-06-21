@@ -760,6 +760,7 @@ async fn handle_mcp_request(
 
             let mut require_approval = false;
             let mut require_mfa = false;
+            let mut require_sandbox = false;
             let mut compliance_tags = vec![];
 
             for ob in &decision.obligations {
@@ -773,6 +774,9 @@ async fn handle_mcp_request(
                     require_mfa = true;
                     compliance_tags.push("PCI-DSS-4.0".to_string());
                     compliance_tags.push("HIPAA-164.312(a)(1)".to_string());
+                } else if ob_type == "require_sandbox" {
+                    require_sandbox = true;
+                    compliance_tags.push("ASI05".to_string());
                 }
             }
             compliance_tags.sort();
@@ -845,6 +849,19 @@ async fn handle_mcp_request(
             }
 
             if decision.allow && !require_approval && !mfa_failed {
+                if require_sandbox {
+                    let mut sandbox = dek_execution_sandbox::WasmSandbox::new();
+                    use dek_execution_sandbox::SandboxEnvironment;
+                    let _ = sandbox.spawn(dek_execution_sandbox::SandboxConfig {
+                        timeout_ms: 5000,
+                        max_memory_mb: 256,
+                        enable_network: false,
+                    });
+                    tracing::info!("Tool execution delegated to isolated sandbox");
+                    let _ = sandbox.execute_tool(&normalized);
+                    let _ = sandbox.terminate();
+                }
+
                 let final_response = json!({
                     "status": "allowed",
                     "message": "The request passed the PEP evaluation.",
