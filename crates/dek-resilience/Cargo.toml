@@ -13,7 +13,7 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["sync", "time", "rt", "macros"] }
-metrics = "0.22"
+metrics = "0.24"
 tracing = "0.1"
 
 [dev-dependencies]
