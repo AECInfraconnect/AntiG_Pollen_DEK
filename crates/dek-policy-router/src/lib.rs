@@ -17,6 +17,7 @@ pub enum EnforcementMode {
     #[default]
     Standard, // Standard evaluation
     FailClosed, // If evaluator error or missing, deny
+    ObserveOnly, // If evaluator error or missing, log and allow
     BreakGlass, // Bypass evaluation for emergency, always allow
 }
 
@@ -528,13 +529,23 @@ impl PolicyRouter {
                                 stats.lock_safe().failures += 1;
                             }
                         }
-                        combined_decision.allow = false;
-                        combined_decision.decision = "deny".into();
-                        combined_decision.reason = format!(
-                            "required PDP unavailable: {} (Mode: {:?})",
-                            msg, route.enforcement_mode
-                        );
-                        break;
+                        if route.enforcement_mode == EnforcementMode::ObserveOnly {
+                            tracing::warn!(
+                                "required PDP unavailable but mode is ObserveOnly: {}; allowing request.",
+                                msg
+                            );
+                            combined_decision.allow = true;
+                            combined_decision.decision = "allow".into();
+                            combined_decision.reason = format!("PDP unavailable but ObserveOnly: {}", msg);
+                        } else {
+                            combined_decision.allow = false;
+                            combined_decision.decision = "deny".into();
+                            combined_decision.reason = format!(
+                                "required PDP unavailable: {} (Mode: {:?})",
+                                msg, route.enforcement_mode
+                            );
+                            break;
+                        }
                     }
                     Ok(Err(e)) => {
                         if !dry_run {
@@ -550,11 +561,18 @@ impl PolicyRouter {
                                 stats.lock_safe().failures += 1;
                             }
                         }
-                        combined_decision.allow = false;
-                        combined_decision.decision = "deny".into();
-                        combined_decision.reason =
-                            format!("PDP error: {} (Mode: {:?})", e, route.enforcement_mode);
-                        break;
+                        if route.enforcement_mode == EnforcementMode::ObserveOnly {
+                            tracing::warn!("PDP error but mode is ObserveOnly: {}; allowing request.", e);
+                            combined_decision.allow = true;
+                            combined_decision.decision = "allow".into();
+                            combined_decision.reason = format!("PDP error but ObserveOnly: {}", e);
+                        } else {
+                            combined_decision.allow = false;
+                            combined_decision.decision = "deny".into();
+                            combined_decision.reason =
+                                format!("PDP error: {} (Mode: {:?})", e, route.enforcement_mode);
+                            break;
+                        }
                     }
                     Err(_) => {
                         // Timeout elapsed
@@ -571,11 +589,18 @@ impl PolicyRouter {
                                 stats.lock_safe().failures += 1;
                             }
                         }
-                        combined_decision.allow = false;
-                        combined_decision.decision = "deny".into();
-                        combined_decision.reason =
-                            format!("PDP timeout ({} ms) for {}", self.pdp_timeout_ms, ev_id);
-                        break;
+                        if route.enforcement_mode == EnforcementMode::ObserveOnly {
+                            tracing::warn!("PDP timeout but mode is ObserveOnly; allowing request.");
+                            combined_decision.allow = true;
+                            combined_decision.decision = "allow".into();
+                            combined_decision.reason = format!("PDP timeout but ObserveOnly for {}", ev_id);
+                        } else {
+                            combined_decision.allow = false;
+                            combined_decision.decision = "deny".into();
+                            combined_decision.reason =
+                                format!("PDP timeout ({} ms) for {}", self.pdp_timeout_ms, ev_id);
+                            break;
+                        }
                     }
                 }
             } else {
@@ -584,13 +609,20 @@ impl PolicyRouter {
                     ev_id,
                     route.enforcement_mode
                 );
-                combined_decision.allow = false;
-                combined_decision.decision = "deny".into();
-                combined_decision.reason = format!(
-                    "Required evaluator {} not configured or failed to load (Mode: {:?})",
-                    ev_id, route.enforcement_mode
-                );
-                break;
+                if route.enforcement_mode == EnforcementMode::ObserveOnly {
+                    tracing::warn!("Evaluator not found but mode is ObserveOnly; allowing request.");
+                    combined_decision.allow = true;
+                    combined_decision.decision = "allow".into();
+                    combined_decision.reason = format!("Evaluator not found but ObserveOnly for {}", ev_id);
+                } else {
+                    combined_decision.allow = false;
+                    combined_decision.decision = "deny".into();
+                    combined_decision.reason = format!(
+                        "Required evaluator {} not configured or failed to load (Mode: {:?})",
+                        ev_id, route.enforcement_mode
+                    );
+                    break;
+                }
             }
         }
 

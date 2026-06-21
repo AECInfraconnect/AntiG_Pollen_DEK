@@ -31,6 +31,7 @@ dek-spire-node = { path = "../dek-spire-node" }
 dek-decision = { path = "../dek-decision" }
 dek-policy-runtime = { path = "../dek-policy-runtime" }
 dek-a2a-mediator = { path = "../dek-a2a-mediator" }
+dek-policy-presets = { path = "../dek-policy-presets" }
 dek-agent-observer = { path = "../dek-agent-observer" }
 axum = "0.7"
 arc-swap = "1.7"

@@ -125,6 +125,7 @@ pub trait ObservabilityStore: Send + Sync {
     async fn insert_observation_event(&self, event: &AgentObservationEvent) -> Result<()>;
     async fn list_observation_events(&self, tenant_id: &str) -> Result<Vec<AgentObservationEvent>>;
     async fn insert_cost_ledger(&self, entry: &CostLedgerEntry) -> Result<()>;
+    async fn list_cost_ledger(&self) -> Result<Vec<CostLedgerEntry>>;
     async fn upsert_policy_suggestion(&self, suggestion: &PolicySuggestion) -> Result<()>;
     async fn list_policy_suggestions(&self, tenant_id: &str) -> Result<Vec<PolicySuggestion>>;
 }
@@ -735,6 +736,31 @@ impl ObservabilityStore for SqliteStore {
         Ok(())
     }
 
+    async fn list_cost_ledger(&self) -> Result<Vec<CostLedgerEntry>> {
+        let rows = sqlx::query("SELECT id, agent_id, provider, model, input_tokens, output_tokens, total_tokens, input_cost, output_cost, total_cost, currency, estimated, timestamp FROM cost_ledger ORDER BY timestamp DESC")
+            .fetch_all(&self.pool)
+            .await?;
+        let mut out = Vec::new();
+        for r in rows {
+            out.push(CostLedgerEntry {
+                event_id: r.try_get("id")?,
+                agent_id: r.try_get("agent_id")?,
+                provider: r.try_get("provider")?,
+                model: r.try_get("model")?,
+                input_tokens: r.try_get("input_tokens")?,
+                output_tokens: r.try_get("output_tokens")?,
+                total_tokens: r.try_get("total_tokens")?,
+                input_cost: r.try_get("input_cost")?,
+                output_cost: r.try_get("output_cost")?,
+                total_cost: r.try_get("total_cost")?,
+                currency: r.try_get("currency")?,
+                estimated: r.try_get("estimated")?,
+                timestamp: r.try_get("timestamp")?,
+            });
+        }
+        Ok(out)
+    }
+
     async fn upsert_policy_suggestion(&self, suggestion: &PolicySuggestion) -> Result<()> {
         let payload = serde_json::to_string(suggestion)?;
         sqlx::query(
@@ -750,8 +776,8 @@ impl ObservabilityStore for SqliteStore {
         .bind(&suggestion.tenant_id)
         .bind(&suggestion.target_agent_id)
         .bind(&suggestion.target_resource_id)
-        .bind(&suggestion.suggestion_type)
-        .bind(&suggestion.status)
+        .bind(format!("{:?}", suggestion.suggestion_type))
+        .bind(format!("{:?}", suggestion.status))
         .bind(&suggestion.created_at)
         .bind(&payload)
         .execute(&self.pool)

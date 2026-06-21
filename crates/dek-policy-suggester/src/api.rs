@@ -44,22 +44,22 @@ impl crate::rules::SuggestionRule for MockCostSpikeRule {
             target_agent_id: None,
             target_resource_id: None,
             target_tool_id: None,
-            suggestion_type: "EnforceCostBudget".into(),
+            suggestion_type: SuggestionType::EnforceCostBudget,
             title: "AI usage cost exceeded suggested daily threshold".into(),
             summary: format!(
                 "Observed estimated cost ${:.2}. Suggest daily budget guardrail.",
                 total_cost
             ),
-            severity: "medium".into(),
+            severity: SuggestionSeverity::Medium,
             confidence: 0.75,
-            recommended_policy_type: "rego".into(),
+            recommended_policy_type: SuggestedPolicyLanguage::Rego,
             recommended_pep_type: "forward_proxy".into(),
             artifacts: vec![PolicyArtifact {
-                language: "rego".into(),
+                language: SuggestedPolicyLanguage::Rego,
                 name: "daily_ai_cost_budget.rego".into(),
                 content: include_str!("../templates/daily_ai_cost_budget.rego").to_string(),
             }],
-            status: "suggested".into(),
+            status: SuggestionStatus::Draft,
             created_at: chrono::Utc::now().to_rfc3339(),
         }])
     }
@@ -78,15 +78,15 @@ impl crate::rules::SuggestionRule for MockUnregisteredEgressRule {
             target_agent_id: None,
             target_resource_id: Some("online.api_endpoint".into()),
             target_tool_id: None,
-            suggestion_type: "RestrictExternalLlmProvider".into(),
+            suggestion_type: SuggestionType::RestrictExternalLlmProvider,
             title: "Block Unregistered AI Egress".into(),
             summary: "An unregistered process attempted to access api.openai.com. We suggest deploying a Rego policy to block this egress until the agent is registered.".into(),
-            severity: "high".into(),
+            severity: SuggestionSeverity::High,
             confidence: 0.9,
-            recommended_policy_type: "rego".into(),
+            recommended_policy_type: SuggestedPolicyLanguage::Rego,
             recommended_pep_type: "envoy_proxy".into(),
             artifacts: vec![],
-            status: "suggested".into(),
+            status: SuggestionStatus::Draft,
             created_at: chrono::Utc::now().to_rfc3339(),
         }])
     }
@@ -103,10 +103,7 @@ mod tests {
         // Because of MockCostSpikeRule returns nothing if total_cost < 25
         // And MockUnregisteredEgressRule always returns 1
         assert_eq!(suggestions.len(), 1);
-        assert_eq!(
-            suggestions[0].suggestion_type,
-            "RestrictExternalLlmProvider"
-        );
+        assert!(matches!(suggestions[0].suggestion_type, SuggestionType::RestrictExternalLlmProvider));
         Ok(())
     }
 }

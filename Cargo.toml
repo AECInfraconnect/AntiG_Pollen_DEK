@@ -3,7 +3,11 @@ members = [
     "crates/*",
     "plugins/*",
     "contracts/generated/rust/pollen-contract",
-    "crates/dek-agent-observer"
+    "crates/dek-agent-observer",
+    "crates/dek-resilience",
+    "crates/dek-a2a-mediator",
+    "crates/dek-execution-sandbox",
+    "crates/dek-policy-presets"
 ]
 exclude = [
     "crates/dek-ebpf-prog"

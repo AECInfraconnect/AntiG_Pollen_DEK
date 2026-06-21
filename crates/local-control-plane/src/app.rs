@@ -9,7 +9,8 @@ use tower_http::services::{ServeDir, ServeFile};
 
 use crate::{
     agent_discovery_api, auth, bundle, connectors, discovery, observation_api, policy,
-    policy_suggestions_api, push, registry, state::AppState, telemetry,
+    policy_suggestions_api, push, registry, state::AppState, telemetry, policy_presets_api,
+    pep_capabilities_api,
 };
 
 pub async fn local_tenant_guard(
@@ -42,6 +43,8 @@ pub fn create_app(state: AppState, static_dir: &str) -> Router {
     let api_routes = Router::new()
         .merge(registry::router())
         .merge(agent_discovery_api::router())
+        .merge(policy_presets_api::router())
+        .merge(pep_capabilities_api::router())
         .merge(policy_suggestions_api::router())
         .merge(observation_api::router())
         .merge(policy::router())

@@ -35,31 +35,77 @@ impl RuleEngine {
     }
 }
 
-pub struct LowTrustRule {
-    pub threshold: i32,
+pub struct ShadowAgentDetectionRule;
+
+impl SuggestionRule for ShadowAgentDetectionRule {
+    fn evaluate(&self, events: &[AgentObservationEvent]) -> Result<Vec<PolicySuggestion>> {
+        let mut suggestions = Vec::new();
+        // Detect shadow agents that appeared more than once
+        let mut shadow_counts = std::collections::HashMap::new();
+        for event in events {
+            if let Some(shadow_id) = &event.shadow_candidate_id {
+                *shadow_counts.entry(shadow_id.clone()).or_insert(0) += 1;
+            }
+        }
+
+        for (shadow_id, count) in shadow_counts {
+            if count >= 3 {
+                let suggestion = PolicySuggestion {
+                    suggestion_id: format!("shadow-detect-{}", shadow_id),
+                    tenant_id: "default".into(),
+                    target_agent_id: Some(shadow_id.clone()),
+                    target_resource_id: None,
+                    target_tool_id: None,
+                    suggestion_type: crate::model::SuggestionType::RegisterShadowAgent,
+                    title: format!("Unregistered Agent Detected: {}", shadow_id),
+                    summary: format!("An unregistered agent (ID: {}) was detected performing {} actions. Consider registering it or blocking it.", shadow_id, count),
+                    severity: crate::model::SuggestionSeverity::High,
+                    confidence: 0.9,
+                    recommended_policy_type: crate::model::SuggestedPolicyLanguage::Cedar,
+                    recommended_pep_type: "mcp_proxy".into(),
+                    artifacts: vec![],
+                    status: crate::model::SuggestionStatus::Draft,
+                    created_at: chrono::Utc::now().to_rfc3339(),
+                };
+                suggestions.push(suggestion);
+            }
+        }
+        Ok(suggestions)
+    }
 }
 
-impl SuggestionRule for LowTrustRule {
-    fn evaluate(&self, _events: &[AgentObservationEvent]) -> Result<Vec<PolicySuggestion>> {
-        // ในสถานการณ์จริงจะวิเคราะห์จาก TrustScore ของ Agent
-        // สำหรับ Phase A จะจำลองการทำงานคืนค่า PolicySuggestion
-        let suggestion = PolicySuggestion {
-            suggestion_id: "mock_uuid".into(),
-            tenant_id: "default".into(),
-            target_agent_id: Some("suspicious_agent".into()),
-            target_resource_id: None,
-            target_tool_id: Some("*".into()),
-            suggestion_type: "RestrictMcpTool".into(),
-            title: "Restrict suspicious agent".into(),
-            summary: "Agent trust score dropped below threshold".into(),
-            severity: "High".into(),
-            confidence: 0.85,
-            recommended_policy_type: "Cedar".into(),
-            recommended_pep_type: "mcp_proxy".into(),
-            artifacts: vec![],
-            status: "draft".into(),
-            created_at: "2026-06-21T00:00:00Z".into(),
-        };
-        Ok(vec![suggestion])
+pub struct HighRiskResourceRule;
+
+impl SuggestionRule for HighRiskResourceRule {
+    fn evaluate(&self, events: &[AgentObservationEvent]) -> Result<Vec<PolicySuggestion>> {
+        let mut suggestions = Vec::new();
+        for event in events {
+            if let Some(risk) = &event.risk_level {
+                if risk == "high" || risk == "critical" {
+                    if let (Some(agent_id), Some(resource_id)) = (&event.agent_id, &event.resource_id) {
+                        let suggestion = PolicySuggestion {
+                            suggestion_id: format!("high-risk-{}-{}", agent_id, resource_id),
+                            tenant_id: event.tenant_id.clone(),
+                            target_agent_id: Some(agent_id.clone()),
+                            target_resource_id: Some(resource_id.clone()),
+                            target_tool_id: event.tool_id.clone(),
+                            suggestion_type: crate::model::SuggestionType::RequireApprovalForSensitiveResource,
+                            title: "High Risk Resource Access Detected".into(),
+                            summary: format!("Agent '{}' accessed high-risk resource '{}'. Consider requiring explicit approval.", agent_id, resource_id),
+                            severity: crate::model::SuggestionSeverity::Critical,
+                            confidence: 0.95,
+                            recommended_policy_type: crate::model::SuggestedPolicyLanguage::Cedar,
+                            recommended_pep_type: "stdio_wrapper".into(),
+                            artifacts: vec![],
+                            status: crate::model::SuggestionStatus::Draft,
+                            created_at: chrono::Utc::now().to_rfc3339(),
+                        };
+                        suggestions.push(suggestion);
+                        break; // Only suggest once per evaluate call to avoid spam
+                    }
+                }
+            }
+        }
+        Ok(suggestions)
     }
 }

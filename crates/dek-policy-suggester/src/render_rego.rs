@@ -6,7 +6,7 @@ pub fn render_rego(suggestion: &PolicySuggestion) -> PolicyArtifact {
         suggestion.title, suggestion.summary
     );
     PolicyArtifact {
-        language: "rego".to_string(),
+        language: crate::model::SuggestedPolicyLanguage::Rego,
         name: "policy.rego".to_string(),
         content,
     }

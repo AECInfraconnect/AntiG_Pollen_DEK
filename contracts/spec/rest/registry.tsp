@@ -43,10 +43,39 @@ model AgentObservationEvent {
   token_usage?: TokenUsage;
 }
 
+enum SuggestionType {
+  RestrictMcpTool,
+  RequireApprovalForSensitiveResource,
+  RegisterShadowAgent,
+  EnforceCostBudget,
+  RestrictExternalLlmProvider,
+}
+
+enum SuggestedPolicyLanguage {
+  Rego,
+  Cedar,
+  OpenFga,
+}
+
+enum SuggestionSeverity {
+  Low,
+  Medium,
+  High,
+  Critical,
+}
+
+enum SuggestionStatus {
+  Draft,
+  Suggested,
+  Approved,
+  Dismissed,
+  Applied,
+}
+
 model PolicyArtifact {
   name: string;
   content: string;
-  language: string;
+  language: SuggestedPolicyLanguage;
 }
 
 model PolicySuggestion {
@@ -55,15 +84,15 @@ model PolicySuggestion {
   target_agent_id?: string;
   target_resource_id?: string;
   target_tool_id?: string;
-  suggestion_type: string;
+  suggestion_type: SuggestionType;
   title: string;
   summary: string;
-  severity: string;
+  severity: SuggestionSeverity;
   confidence: float32;
-  recommended_policy_type: string;
+  recommended_policy_type: SuggestedPolicyLanguage;
   recommended_pep_type: string;
   artifacts: PolicyArtifact[];
-  status: string;
+  status: SuggestionStatus;
   created_at: string;
 }
 
@@ -122,6 +151,16 @@ model SandboxConfig {
 
 model CostLedgerListResponse {
   items: CostLedgerEntry[];
+}
+
+model CostSummaryResponse {
+  schema_version: "cost-summary.v1";
+  tenant_id: string;
+  period: string;
+  total_estimated_cost_usd: float32;
+  total_tokens: int64;
+  provider_breakdown: Record<float32>;
+  agent_breakdown: Record<float32>;
 }
 
 model PolicySuggestionListResponse {
@@ -255,7 +294,7 @@ interface ObservationApi {
   @get getResourceObservations(@path tenant_id: string, @path resource_id: string): AgentObservationEventListResponse | PollenError;
 
   @route("costs")
-  @get getCosts(@path tenant_id: string): CostLedgerListResponse | PollenError;
+  @get getCosts(@path tenant_id: string): CostSummaryResponse | PollenError;
 
   @route("coverage")
   @get getCoverage(@path tenant_id: string): PolicyCoverageSummary | PollenError;
@@ -305,4 +344,34 @@ interface PolicySuggestionsApi {
 
   @route("{suggestion_id}/simulate")
   @post simulate(@path tenant_id: string, @path suggestion_id: string): void | PollenError;
+
+  @route("{suggestion_id}/approve")
+  @post approve(@path tenant_id: string, @path suggestion_id: string): void | PollenError;
+}
+
+@tag("PolicyPresets")
+@route("/v1/tenants/{tenant_id}/policy-presets")
+interface PolicyPresetsApi {
+  @get listPresets(@path tenant_id: string): unknown | PollenError;
+
+  @route("{preset_id}")
+  @get getPreset(@path tenant_id: string, @path preset_id: string): unknown | PollenError;
+
+  @route("{preset_id}/preview")
+  @post previewPreset(@path tenant_id: string, @path preset_id: string, @body body: unknown): unknown | PollenError;
+
+  @route("{preset_id}/create-draft")
+  @post createDraft(@path tenant_id: string, @path preset_id: string, @body body: unknown): unknown | PollenError;
+
+  @route("{preset_id}/simulate")
+  @post simulatePreset(@path tenant_id: string, @path preset_id: string, @body body: unknown): unknown | PollenError;
+}
+
+@tag("PepCapabilities")
+@route("/v1/tenants/{tenant_id}/pep-capabilities")
+interface PepCapabilitiesApi {
+  @get listCapabilities(@path tenant_id: string): unknown | PollenError;
+
+  @route("check")
+  @post checkCapabilities(@path tenant_id: string, @body body: unknown): unknown | PollenError;
 }
