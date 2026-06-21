@@ -76,23 +76,25 @@ async fn wait_https(url: &str, tries: u32) -> Result<()> {
 
 /// Build workspace + generate certs + start mock-cloud. Returns the running proc.
 async fn setup() -> Result<Proc> {
-    assert!(
-        Command::new("cargo")
-            .args([
-                "build",
-                "--workspace",
-                "--exclude",
-                "dek-ebpf-prog",
-                "--exclude",
-                "dek-ebpfd",
-                "--exclude",
-                "pii-redactor-plugin",
-            ])
-            .status()
-            .await?
-            .success(),
-        "workspace build failed"
-    );
+    if std::env::var("DEK_SKIP_HARNESS_BUILD").is_err() {
+        assert!(
+            Command::new("cargo")
+                .args([
+                    "build",
+                    "--workspace",
+                    "--exclude",
+                    "dek-ebpf-prog",
+                    "--exclude",
+                    "dek-ebpfd",
+                    "--exclude",
+                    "pii-redactor-plugin",
+                ])
+                .status()
+                .await?
+                .success(),
+            "workspace build failed"
+        );
+    }
     // certs for mTLS (cert-gen writes ./certs)
     let _ = Command::new(bin("cert-gen"))
         .arg("certs")
