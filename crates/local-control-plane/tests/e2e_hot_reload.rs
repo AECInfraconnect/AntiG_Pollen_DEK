@@ -16,7 +16,11 @@ async fn e2e_hot_reload_sse() {
     let client = Client::new();
 
     // Spawn a task to listen to SSE
-    let mut resp = client.get(format!("{base}/v1/tenants/local/devices/dev-1/events")).send().await.unwrap();
+    let mut resp = client
+        .get(format!("{base}/v1/tenants/local/devices/dev-1/events"))
+        .send()
+        .await
+        .unwrap();
 
     assert!(resp.status().is_success());
 

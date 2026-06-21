@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let store = DefaultOsKeyStore::new(std::path::PathBuf::from("master.key.fallback"));
 
     #[cfg(target_os = "macos")]
-    let store = DefaultOsKeyStore::new();
+    let store = DefaultOsKeyStore::new(std::path::PathBuf::from("master.key.fallback"));
 
     let key_manager = SpoolKeyManager::new(store);
     let active_key = key_manager.active_aead_key()?;
