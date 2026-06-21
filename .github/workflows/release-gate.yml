@@ -24,7 +24,7 @@ jobs:
           components: clippy, rustfmt
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
       - name: Clippy (Enforce unwrap/expect gate)
         run: cargo clippy --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin -- -D warnings -D clippy::unwrap_used -D clippy::expect_used
