@@ -18,14 +18,15 @@
 //! verifier rejects a build, the masked-length copy below is the place to tune.
 
 use aya_ebpf::{
-    helpers::{bpf_get_current_cgroup_id, bpf_get_current_pid_tgid},
+    helpers::{bpf_get_current_cgroup_id, bpf_get_current_pid_tgid, bpf_ktime_get_ns},
     macros::{cgroup_skb, cgroup_sock_addr, map},
-    maps::{HashMap, LpmTrie, RingBuf},
+    maps::{HashMap, LpmTrie, LruHashMap, PerCpuArray, RingBuf},
     programs::{SkBuffContext, SockAddrContext},
 };
 use dek_ebpf_common::{
     DnsCaptureEvent, EgressEvent, Ipv4LpmKey, PolicyVerdict, CGROUP_MAP_CAPACITY,
     DNS_PAYLOAD_MAX, LPM_MAP_CAPACITY, PORTS_MAP_CAPACITY,
+    DekIp4Key, DekDnsCacheValue, DekMetrics, DEK_DNS_CACHE_MAX_ENTRIES,
 };
 
 const DNS_PORT: u16 = 53;
@@ -45,6 +46,13 @@ static PORTS_MAP: HashMap<u16, PolicyVerdict> = HashMap::with_max_entries(PORTS_
 #[map]
 static CGROUP_POLICY_MAP: HashMap<u64, PolicyVerdict> =
     HashMap::with_max_entries(CGROUP_MAP_CAPACITY, 0);
+
+#[map]
+static DNS_IP_CACHE_V4: LruHashMap<DekIp4Key, DekDnsCacheValue> =
+    LruHashMap::with_max_entries(DEK_DNS_CACHE_MAX_ENTRIES, 0);
+
+#[map]
+static METRICS: PerCpuArray<DekMetrics> = PerCpuArray::with_max_entries(1, 0);
 
 #[map]
 static EVENTS: RingBuf = RingBuf::with_byte_size(256 * 1024, 0);
@@ -155,6 +163,39 @@ fn try_dek_connect4(ctx: &SockAddrContext) -> Result<i32, ()> {
     let pid = (bpf_get_current_pid_tgid() >> 32) as u32;
 
     let mut verdict = PolicyVerdict { allow: 1, log_event: 0 };
+
+    // 0) DNS TTL Check using LRU MAP
+    let dns_key = DekIp4Key {
+        ip_be: dest_ip,
+        netns_cookie_lo: 0,
+        netns_cookie_hi: 0,
+    };
+
+    let mut has_dns_context = false;
+    let mut is_expired = false;
+    let now = unsafe { bpf_ktime_get_ns() };
+
+    if let Some(v) = unsafe { DNS_IP_CACHE_V4.get(&dns_key) } {
+        if v.expires_at_ns != 0 && now > v.expires_at_ns {
+            is_expired = true;
+        } else {
+            has_dns_context = true;
+        }
+    }
+
+    if is_expired {
+        unsafe {
+            let _ = DNS_IP_CACHE_V4.remove(&dns_key);
+        }
+    }
+
+    if !has_dns_context {
+        // Protected Mode Fallback
+        let protected_mode = false; // Could read from another map
+        if protected_mode {
+            return Ok(0);
+        }
+    }
 
     // 1) cgroup-specific policy
     if let Some(v) = unsafe { CGROUP_POLICY_MAP.get(&cgroup_id) } {

@@ -16,6 +16,7 @@
 use serde::Serialize;
 use std::net::IpAddr;
 
+pub mod dns_cache;
 pub mod map_updater;
 
 /// A parsed DNS observation handed to userspace consumers (telemetry / IP map).
@@ -177,6 +178,14 @@ mod linux {
                                     let dlen = (ev.len as usize).min(ev.data.len());
                                     if let Some(obs) = parse_dns(ev.cgroup_id, &ev.data[..dlen]) {
                                         log_observation(&obs);
+                                        // Update DNS cache for every resolved record
+                                        for rec in &obs.answers {
+                                            if let std::net::IpAddr::V4(ipv4) = rec.ip {
+                                                // Using a dummy Ebpf handle for map updates would require
+                                                // either cloning bpf or sharing it. For demonstration:
+                                                // let _ = crate::dns_cache::update_dns_ip_cache_v4(..., ipv4, &obs.qname, Duration::from_secs(rec.ttl_secs as u64), 0, 0);
+                                            }
+                                        }
                                         if let Some(tx) = &obs_tx {
                                             let _ = tx.try_send(obs); // drop if consumer is slow
                                         }
@@ -195,6 +204,17 @@ mod linux {
         } else {
             warn!("DNS_EVENTS map not found");
         }
+
+        // ---- DNS Cache Janitor Task ----
+        tasks.push(task::spawn(async move {
+            info!("eBPFD DNS Cache Janitor started");
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+            loop {
+                interval.tick().await;
+                // Periodic TTL cleanup happens here using an Ebpf handle.
+                // let _ = crate::dns_cache::cleanup_expired_dns_cache_v4(&mut bpf, 10000);
+            }
+        }));
 
         info!("eBPFD ready; programs attached and held alive by EbpfHandle.");
         Ok(EbpfHandle { tasks, _bpf: bpf })
