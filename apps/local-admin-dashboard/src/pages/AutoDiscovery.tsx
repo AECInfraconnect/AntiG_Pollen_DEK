@@ -119,13 +119,30 @@ export function AutoDiscovery() {
     );
   };
 
-  const handleRegister = async (candidate: DiscoveredAgentCandidateV2) => {
+  const [registerModal, setRegisterModal] = useState<{
+    show: boolean;
+    candidate: DiscoveredAgentCandidateV2 | null;
+    name: string;
+  }>({ show: false, candidate: null, name: "" });
+
+  const openRegisterModal = (candidate: DiscoveredAgentCandidateV2) => {
+    setRegisterModal({
+      show: true,
+      candidate,
+      name: candidate.suggested_registration?.name || candidate.display_name || "Unknown Agent",
+    });
+  };
+
+  const handleConfirmRegister = async () => {
+    const candidate = registerModal.candidate;
+    if (!candidate) return;
     try {
       await RegistryApi.registerDiscoveryCandidate(candidate.candidate_id, {
-        agent_name: candidate.suggested_registration.name,
+        agent_name: registerModal.name,
       });
-      alert(`Successfully registered ${candidate.suggested_registration.name}`);
+      alert(`Successfully registered ${registerModal.name}`);
       fetchCandidates();
+      setRegisterModal({ show: false, candidate: null, name: "" });
     } catch (err) {
       console.error(err);
       alert("Failed to register: " + err);
@@ -233,7 +250,7 @@ export function AutoDiscovery() {
                           </span>
                         ) : (
                           <button
-                            onClick={() => handleRegister(c)}
+                            onClick={() => openRegisterModal(c)}
                             className="text-xs border px-3 py-1.5 rounded hover:bg-primary hover:text-primary-foreground font-medium"
                           >
                             Register Agent
@@ -241,13 +258,15 @@ export function AutoDiscovery() {
                         )}
                       </div>
                     </div>
-                    <p className="text-muted-foreground text-sm">
-                      Risk Score: {c.risk_score} | Confidence:{" "}
-                      {(c.confidence * 100).toFixed(0)}% <br />
-                      Candidate ID: {c.candidate_id} <br />
-                      First seen: {new Date(c.first_seen).toLocaleString()}{" "}
-                      <br />
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground text-sm font-mono bg-muted/20 inline-block px-2 py-0.5 rounded border mb-1">
+                        ID: {c.candidate_id}
+                      </p>
+                      <p className="text-muted-foreground text-sm">
+                        <span className="font-medium">Risk Score:</span> {c.risk_score} | <span className="font-medium">Confidence:</span> {(c.confidence * 100).toFixed(0)}% <br />
+                        <span className="font-medium">First seen:</span> {new Date(c.first_seen).toLocaleString()}
+                      </p>
+                    </div>
 
                     {c.discovered_mcp_servers &&
                       c.discovered_mcp_servers.length > 0 && (
@@ -304,13 +323,13 @@ export function AutoDiscovery() {
                       key={idx}
                       className="border rounded-lg overflow-hidden"
                     >
-                      <div className="bg-muted/30 p-3 border-b">
+                      <div className="bg-muted/30 p-3 border-b flex justify-between items-center">
                         <h4 className="font-medium">
-                          {c.display_name}{" "}
-                          <span className="text-xs text-muted-foreground font-normal">
-                            ({c.candidate_id})
-                          </span>
+                          {c.display_name}
                         </h4>
+                        <span className="text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-0.5 rounded border">
+                          ID: {c.candidate_id}
+                        </span>
                       </div>
                       <div className="p-4 space-y-3">
                         {c.suggested_control_bindings.map(
@@ -499,6 +518,46 @@ export function AutoDiscovery() {
                 className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
               >
                 Start Scan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {registerModal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-xl font-bold mb-4">Register Agent</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Please confirm or update the name for this agent before registering.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Agent Name</label>
+                <input
+                  type="text"
+                  value={registerModal.name}
+                  onChange={(e) =>
+                    setRegisterModal({ ...registerModal, name: e.target.value })
+                  }
+                  className="w-full border rounded px-3 py-2 text-sm bg-background focus:ring-2 focus:ring-primary focus:outline-none"
+                  placeholder="e.g. Claude Desktop"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setRegisterModal({ show: false, candidate: null, name: "" })}
+                className="px-4 py-2 text-sm border rounded hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRegister}
+                disabled={!registerModal.name.trim()}
+                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
+              >
+                Register
               </button>
             </div>
           </div>

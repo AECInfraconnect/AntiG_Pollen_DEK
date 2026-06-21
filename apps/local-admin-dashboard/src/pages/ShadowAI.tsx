@@ -55,16 +55,39 @@ export function ShadowAI({ hideHeader = false }: { hideHeader?: boolean }) {
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5 text-destructive" />
                     <h4 className="font-medium text-lg">
-                      Candidate: {c.candidate_id}
+                      {c.display_name || "Unknown Agent Activity"}{" "}
+                      {c.inferred_agent_type && (
+                        <span className="text-xs text-muted-foreground font-normal">
+                          ({c.inferred_agent_type})
+                        </span>
+                      )}
                     </h4>
                   </div>
                 </div>
-                <p className="text-muted-foreground text-sm">
-                  First seen: {new Date(c.first_seen).toLocaleString()} <br />
-                  Last seen: {new Date(c.last_seen).toLocaleString()} <br />
-                  {c.heuristics_matched &&
-                    `Heuristics matched: ${c.heuristics_matched.join(", ")}`}
-                </p>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-sm font-mono bg-muted/20 inline-block px-2 py-0.5 rounded border mb-2">
+                    ID: {c.candidate_id}
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    <span className="font-medium">First seen:</span> {new Date(c.first_seen).toLocaleString()} <br />
+                    <span className="font-medium">Last seen:</span> {new Date(c.last_seen).toLocaleString()}
+                  </p>
+                  {c.heuristics_matched && c.heuristics_matched.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-destructive/10">
+                      <p className="text-sm font-medium mb-1">Suspicious Heuristics Detected:</p>
+                      <ul className="list-disc pl-5 text-xs text-muted-foreground">
+                        {c.heuristics_matched.map((h: string, i: number) => (
+                          <li key={i}>{h.replace(/_/g, " ")}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {c.evidence && c.evidence.length > 0 && (
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      <span className="font-medium">Evidence Sources:</span> {c.evidence.map((e: any) => e.source).join(", ")}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
