@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pollen DEK Integration Guide: P1 & P2</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+            --header-bg: #2c3e50;
+            --header-color: #ecf0f1;
+            --card-bg: #fff;
+            --accent: #e74c3c;
+            --success: #27ae60;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #1a1a2e;
+                --text-color: #e0e0e0;
+                --header-bg: #16213e;
+                --header-color: #fff;
+                --card-bg: #0f3460;
+                --accent: #e94560;
+                --success: #4cd137;
+            }
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        header {
+            background: var(--header-bg);
+            color: var(--header-color);
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        h2 { border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+        .card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        .step-number {
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 1rem;
+            flex-shrink: 0;
+        }
+        .step-content { flex-grow: 1; }
+        pre {
+            background: #2d2d2d;
+            color: #ccc;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .flow-diagram {
+            border-left: 3px solid var(--success);
+            padding-left: 1rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Pollen DEK Integration Guide</h1>
+    <p>Phase 1 (Rollback Loop) & Phase 2 (State Consistency & Supervisor)</p>
+</header>
+
+<div class="container">
+    
+    <div class="card">
+        <h2>System Architecture Overview</h2>
+        <p>The Pollen DEK Supervisor handles high-availability background execution, policy proxying (MCP), and resilient binary updates across Windows and Linux. The updates include strict health-gating and crash-loop automatic rollbacks.</p>
+    </div>
+
+    <div class="card">
+        <h2>The Full Crash-Loop Rollback Flow</h2>
+        <p>When an over-the-air binary update is applied, the system uses a state machine to guarantee safety. If the new binary is corrupted, panics, or cannot reach the cloud, it will revert itself.</p>
+        <div class="flow-diagram">
+            <strong>1. Update Staged:</strong> The old binary downloads the new binary, swaps it to the target location, creates an <code>update_pending.json</code> marker, and exits. <br><br>
+            <strong>2. Service Restart:</strong> Systemd or Windows Service Manager restarts the process (which is now the new binary). <br><br>
+            <strong>3. Probation Boot:</strong> The new binary detects the marker. It starts all modules (IPC, Telemetry, Proxy) and delays committing the update.<br><br>
+            <strong>4. Health Gating:</strong> <code>probation.rs</code> pings the local IPC (<code>ipc_client.rs</code>), checks mTLS with the cloud, and verifies bundle parsing. <br><br>
+            <strong>5a. Commit (Success):</strong> If 3 consecutive health checks pass, the marker and <code>.bak</code> are deleted. Probation ends.<br><br>
+            <strong>5b. Exit (Failure):</strong> If health checks fail within 60s, the process gracefully restores the <code>.bak</code> via <code>self_replace</code> and exits, causing the Service Manager to restart into the old binary.<br><br>
+            <strong>5c. Crash-Loop (Panic):</strong> If the binary panics immediately (e.g., segfault), Systemd watchdog triggers. After 5 restarts in 60s (<code>StartLimitBurst</code>), Systemd invokes <code>dek-rollback.service</code> via <code>OnFailure=</code>. <br><br>
+            <strong>6. dekctl rollback:</strong> The oneshot service runs <code>dekctl rollback</code>, reads the marker, restores the binary, and restarts <code>pollen-dek.service</code>.
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Integration Steps Completed</h2>
+        
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <strong>Real IPC Health Client</strong>
+                <p>Created <code>dek-core/src/ipc_client.rs</code> using <code>LinesCodec</code> to send <code>IpcRequest::HealthCheck</code> and parse <code>HEALTHY</code> status. Replaces the placeholder TCP connect.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <strong>Emergency Rollback CLI</strong>
+                <p>Added <code>dekctl rollback</code> logic inside <code>dek-cli/src/service/rollback.rs</code> to safely restore the <code>.bak</code> executable using OS-specific extensions (<code>std::env::consts::EXE_EXTENSION</code>).</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <strong>Updater Marker Precision</strong>
+                <p>Updated <code>dek-core/src/updater.rs</code> to include <code>target_path</code> in the marker JSON so the rollback tool knows exactly where to restore.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+                <strong>Systemd Units</strong>
+                <p>Created <code>packaging/systemd/units.service</code> detailing the <code>Type=notify</code>, <code>WatchdogSec</code>, and <code>OnFailure=dek-rollback.service</code> properties.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">5</div>
+            <div class="step-content">
+                <strong>Proxy Policy Snapshot</strong>
+                <p>Migrated <code>dek-mcp-proxy</code> state to a lock-free <code>ArcSwap&lt;PolicySnapshot&gt;</code>. This binds <code>DekMetadata</code>, <code>Verifier</code>, and <code>PolicyRouter</code> together, ensuring atomic hot-reloads and eliminating race conditions.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">6</div>
+            <div class="step-content">
+                <strong>Supervisor Extraction</strong>
+                <p>Split the monolithic 839-line <code>main.rs</code> into a structured <code>Supervisor</code> holding a <code>JoinSet</code> and <code>CancellationToken</code>. Network logic moved to <code>ipc_server.rs</code>, <code>bundle_loop.rs</code>, and <code>metrics_push.rs</code>.</p>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>
