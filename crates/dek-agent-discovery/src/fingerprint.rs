@@ -28,9 +28,17 @@ pub fn infer_agent_type_from_name(name: &str) -> InferredAgentType {
     let lower = name.to_ascii_lowercase();
     if lower.contains("claude") {
         InferredAgentType::DesktopAgent
-    } else if lower.contains("cursor") || lower.contains("code") || lower.contains("windsurf") || lower.contains("zed") {
+    } else if lower.contains("cursor")
+        || lower.contains("code")
+        || lower.contains("windsurf")
+        || lower.contains("zed")
+    {
         InferredAgentType::IdeAgent
-    } else if lower.contains("ollama") || lower.contains("lmstudio") || lower.contains("vllm") || lower.contains("llama") {
+    } else if lower.contains("ollama")
+        || lower.contains("lmstudio")
+        || lower.contains("vllm")
+        || lower.contains("llama")
+    {
         InferredAgentType::LocalModelServer
     } else if lower.contains("python") || lower.contains("node") || lower.contains("n8n") {
         InferredAgentType::AutomationAgent

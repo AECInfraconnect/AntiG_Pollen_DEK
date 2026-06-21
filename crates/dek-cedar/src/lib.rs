@@ -57,7 +57,9 @@ impl CedarAdapter {
             }),
             context: std::collections::BTreeMap::new(),
         };
-        self.evaluate(req).await.map_err(|e| anyhow::anyhow!("Probe failed: {:?}", e))
+        self.evaluate(req)
+            .await
+            .map_err(|e| anyhow::anyhow!("Probe failed: {:?}", e))
     }
 }
 

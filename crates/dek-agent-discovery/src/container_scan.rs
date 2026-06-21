@@ -6,17 +6,37 @@ pub fn scan_containers() -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
 
     // Check if docker is available
-    if let Ok(output) = Command::new("docker").args(["ps", "--format", "{{json .}}"]).output() {
+    if let Ok(output) = Command::new("docker")
+        .args(["ps", "--format", "{{json .}}"])
+        .output()
+    {
         if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
             for line in stdout.lines() {
                 if let Ok(container) = serde_json::from_str::<serde_json::Value>(line) {
-                    let image = container.get("Image").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
-                    let names = container.get("Names").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
-                    let id = container.get("ID").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
-                    
+                    let image = container
+                        .get("Image")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_lowercase();
+                    let names = container
+                        .get("Names")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_lowercase();
+                    let id = container
+                        .get("ID")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown")
+                        .to_string();
+
                     // Look for AI agent / model server containers
-                    if image.contains("ollama") || image.contains("vllm") || image.contains("llama") || image.contains("mcp") || names.contains("mcp") {
+                    if image.contains("ollama")
+                        || image.contains("vllm")
+                        || image.contains("llama")
+                        || image.contains("mcp")
+                        || names.contains("mcp")
+                    {
                         evidence.push(DiscoveryEvidenceV2 {
                             evidence_id: uuid::Uuid::new_v4().to_string(),
                             source: EvidenceSource::Container,
@@ -31,7 +51,10 @@ pub fn scan_containers() -> Result<Vec<DiscoveryEvidenceV2>> {
                                 "engine": "docker"
                             }),
                             merge_key: Some(id.clone()),
-                            source_path_hash: Some(crate::redaction::sha256_string(&format!("docker_{}", id))),
+                            source_path_hash: Some(crate::redaction::sha256_string(&format!(
+                                "docker_{}",
+                                id
+                            ))),
                             source_path_redacted: Some(format!("docker_{}", id)),
                         });
                     }
