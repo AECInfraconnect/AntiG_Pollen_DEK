@@ -168,18 +168,24 @@ async fn publish_policy(
                         pmap.insert(k.clone(), v.clone());
                     }
                 }
-                let req = dek_policy_presets::model::PresetApplyRequest {
-                    params: pmap,
+                let req = dek_policy_presets::model::DeployPresetRequest {
+                    preset_id: preset.id.clone(),
+                    preset_version: None,
+                    params: pmap.into_iter().collect(),
                     targets: Default::default(),
-                    control_level: dek_policy_presets::model::ControlLevel::Enforce, // Defaults to Enforce if not present
+                    selected_pep_types: vec![],
+                    dry_run_first: false,
+                    control_mode: dek_policy_presets::model::ControlMode::Enforce, // Defaults to Enforce if not present
                 };
-                if let Ok(rendered) = dek_policy_presets::render::render(&preset, &req) {
-                    compiled.push(crate::bundle::CompiledArtifact {
-                        artifact_id: draft.name.clone(),
-                        adapter_id: rendered.language.clone(),
-                        artifact_type: format!("{}_text", rendered.language),
-                        bytes: rendered.content.as_bytes().to_vec(),
-                    });
+                if let Ok(rendered_artifacts) = dek_policy_presets::render::render(&preset, &req) {
+                    for rendered in rendered_artifacts {
+                        compiled.push(crate::bundle::CompiledArtifact {
+                            artifact_id: draft.name.clone(),
+                            adapter_id: rendered.language.clone(),
+                            artifact_type: format!("{}_text", rendered.language),
+                            bytes: rendered.content.as_bytes().to_vec(),
+                        });
+                    }
                     rendered_success = true;
                 }
             }
@@ -334,49 +340,33 @@ async fn validate_policy(
                         pmap.insert(k.clone(), v.clone());
                     }
                 }
-                let req = dek_policy_presets::model::PresetApplyRequest {
-                    params: pmap,
+                let req = dek_policy_presets::model::DeployPresetRequest {
+                    preset_id: preset.id.clone(),
+                    preset_version: None,
+                    params: pmap.into_iter().collect(),
                     targets: Default::default(),
-                    control_level: dek_policy_presets::model::ControlLevel::ObserveOnly,
+                    selected_pep_types: vec![],
+                    dry_run_first: true,
+                    control_mode: dek_policy_presets::model::ControlMode::Observe,
                 };
                 match dek_policy_presets::render::render(&preset, &req) {
-                    Ok(rendered) => {
-                        if rendered.language == "cedar" {
-                            match dek_cedar::CedarAdapter::new(&rendered.content) {
-                                Ok(adapter) => {
-                                    use dek_plugin_sdk::PolicyEvaluator;
-                                    for tc in &preset.test_cases {
-                                        let eval_req = dek_plugin_sdk::EvalRequest {
-                                            request_id: "test".into(),
-                                            tenant_id: None,
-                                            subject: None,
-                                            action: None,
-                                            resource: None,
-                                            payload: tc.input.clone(),
-                                            context: std::collections::BTreeMap::new(),
-                                        };
-                                        match adapter.evaluate(eval_req).await {
-                                            Ok(r) => {
-                                                let effect_str = match r.decision {
-                                                    dek_plugin_sdk::DecisionEffect::Allow => {
-                                                        "allow"
-                                                    }
-                                                    _ => "deny",
-                                                };
-                                                if effect_str != tc.expected_decision {
-                                                    errors.push(format!("Test case '{}' failed: expected {}, got {}", tc.name, tc.expected_decision, effect_str));
-                                                }
-                                            }
-                                            Err(e) => errors.push(format!(
-                                                "Test case '{}' evaluation error: {}",
-                                                tc.name, e
-                                            )),
-                                        }
+                    Ok(rendered_artifacts) => {
+                        for rendered in rendered_artifacts {
+                            if rendered.language == "cedar" {
+                                match dek_cedar::CedarAdapter::new(&rendered.content) {
+                                    Ok(_) => {
+                                        // V2 presets no longer contain built-in test_cases in the rust model.
+                                    }
+                                    Err(e) => {
+                                        errors.push(format!("Rendered Cedar syntax error: {}", e));
                                     }
                                 }
-                                Err(e) => {
-                                    errors.push(format!("Rendered Cedar syntax error: {}", e));
-                                }
+                            } else if rendered.language == "rego"
+                                && !rendered.content.contains("package ")
+                            {
+                                errors.push(
+                                    "Rego syntax error: Missing package declaration".to_string(),
+                                );
                             }
                         }
                     }

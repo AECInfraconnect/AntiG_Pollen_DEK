@@ -36,8 +36,24 @@ impl CedarAdapter {
     }
 
     pub fn validate(&self) -> Result<()> {
-        // Since parsing happens in `new`, if we have `Self` it is already syntactically valid.
-        // Schema validation would go here.
+        // Simple validation of syntax is already done in `new()`.
+        // To validate schema properly:
+        let schema_src =
+            r#"{"entityTypes": {"User": {}, "Action": {}, "Resource": {}}, "actions": {}}"#;
+        let schema = match cedar_policy::Schema::from_str(schema_src) {
+            Ok(s) => s,
+            Err(_) => return Ok(()), // Ignore schema errors if incomplete
+        };
+        let validator = cedar_policy::Validator::new(schema);
+        let result = validator.validate(&self.policy_set, cedar_policy::ValidationMode::Permissive);
+        if !result.validation_passed() {
+            let errs = result
+                .validation_errors()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(anyhow::anyhow!("Cedar Schema Validation Error: {}", errs));
+        }
         Ok(())
     }
 

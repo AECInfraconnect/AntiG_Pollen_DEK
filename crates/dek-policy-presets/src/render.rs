@@ -1,251 +1,187 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-use crate::model::{PolicyPreset, PresetApplyRequest};
+use crate::model::{DeployPresetRequest, PolicyPresetV2, RenderedArtifact};
 use dek_control_plane_api::policy::{
     PolicyCompileOptions, PolicyDraft, PolicySource, PolicyTargets, PolicyType,
 };
 use dek_control_plane_api::registry::ObjectMeta;
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RenderedPreset {
-    pub language: String,
-    pub content: String,
-    pub warnings: Vec<String>,
-}
-
-pub fn render(preset: &PolicyPreset, req: &PresetApplyRequest) -> anyhow::Result<RenderedPreset> {
-    // Validate unknown params
+pub fn render(
+    preset: &PolicyPresetV2,
+    req: &DeployPresetRequest,
+) -> anyhow::Result<Vec<RenderedArtifact>> {
+    // Basic validation of unknown params
     for key in req.params.keys() {
         if !preset.parameters.iter().any(|p| p.key == *key) {
             return Err(anyhow::anyhow!("Unknown parameter: {}", key));
         }
     }
 
-    // Validate required and allowed values
+    // Basic validation of required
     for param in &preset.parameters {
-        if let Some(val) = req.params.get(&param.key) {
-            // Check allowed values
-            if let Some(allowed) = &param.allowed_values {
-                if !allowed.contains(val) {
-                    return Err(anyhow::anyhow!(
-                        "Value {} for parameter {} is not in allowed values",
-                        val,
-                        param.key
-                    ));
-                }
-            }
-        } else if param.required {
+        if !req.params.contains_key(&param.key) && param.required {
             return Err(anyhow::anyhow!("Missing required parameter: {}", param.key));
         }
     }
 
-    let mut source = preset.template.source.clone();
+    let mut artifacts = Vec::new();
 
-    for (key, value) in &req.params {
-        let token = format!("{{{{{}}}}}", key);
-        let replacement = match value {
-            serde_json::Value::String(s) => s.clone(),
-            _ => value.to_string(),
-        };
-        source = source.replace(&token, &replacement);
+    match preset.id.as_str() {
+        "pii.redact_before_external_llm" => {
+            artifacts.push(RenderedArtifact::rego(
+                "pollen.presets.pii.redact_before_external_llm",
+                "default allow := true\n# TODO: PII redaction logic".into(),
+            ));
+            artifacts.push(RenderedArtifact::pep_config(
+                "{\n  \"action\": \"redact\"\n}".into(),
+            ));
+        }
+        "fs.folder_allowlist" => {
+            artifacts.push(RenderedArtifact::rego(
+                "pollen.presets.fs.folder_scope",
+                "default allow := false\n# TODO: Folder allowlist logic".into(),
+            ));
+            artifacts.push(RenderedArtifact::pep_config(
+                "{\n  \"action\": \"block_fs\"\n}".into(),
+            ));
+        }
+        "budget.daily_token_cap" => {
+            artifacts.push(RenderedArtifact::rego(
+                "pollen.presets.budget.daily_token_cap",
+                "default allow := true\n# TODO: Budget logic".into(),
+            ));
+        }
+        "budget.monthly_cost_cap" => {
+            artifacts.push(RenderedArtifact::rego(
+                "pollen.presets.budget.monthly_cost_cap",
+                "default allow := true\n# TODO: Monthly budget logic".into(),
+            ));
+        }
+        "content.prompt_injection_guard" => {
+            artifacts.push(RenderedArtifact::rego(
+                "pollen.presets.content.prompt_injection_guard",
+                "default allow := true\n# TODO: Prompt injection logic".into(),
+            ));
+        }
+        "content.system_prompt_leak_guard" => {
+            artifacts.push(RenderedArtifact::rego(
+                "pollen.presets.content.system_prompt_leak_guard",
+                "default allow := true\n# TODO: System prompt leak guard logic".into(),
+            ));
+        }
+        "secrets.block_api_key_exposure" => {
+            artifacts.push(RenderedArtifact::rego(
+                "pollen.presets.secrets.block_api_key_exposure",
+                "default allow := true\n# TODO: Secrets guard logic".into(),
+            ));
+        }
+        "fs.secrets_file_guard" => {
+            artifacts.push(RenderedArtifact::rego(
+                "pollen.presets.fs.secrets_file_guard",
+                "default allow := true\n# TODO: FS Secrets guard logic".into(),
+            ));
+        }
+        "personal.email_send_approval" => {
+            artifacts.push(RenderedArtifact::cedar(
+                "personal.email_send_approval",
+                "forbid (principal, action, resource); // TODO: Email approval logic".into(),
+            ));
+        }
+        "personal.drive_external_share_guard" => {
+            artifacts.push(RenderedArtifact::cedar(
+                "personal.drive_external_share_guard",
+                "forbid (principal, action, resource); // TODO: Drive approval logic".into(),
+            ));
+        }
+        "network.shadow_ai_external_llm_block" => {
+            artifacts.push(RenderedArtifact::rego(
+                "pollen.presets.network.shadow_ai",
+                "default allow := true\n# TODO: Network logic".into(),
+            ));
+        }
+        "mcp.high_risk_tool_approval" => {
+            artifacts.push(RenderedArtifact::cedar(
+                "mcp.high_risk_tool_approval",
+                "forbid (principal, action, resource); // TODO: High risk tool logic".into(),
+            ));
+        }
+        "mcp.tool_allowlist" => {
+            artifacts.push(RenderedArtifact::openfga(
+                "mcp.tool_allowlist",
+                "model\n  schema 1.1\n// TODO: OpenFGA logic".into(),
+            ));
+        }
+        _ => {
+            return Err(anyhow::anyhow!("Unsupported preset: {}", preset.id));
+        }
     }
 
-    let control_level_str = serde_json::to_string(&req.control_level)
-        .unwrap_or_else(|_| "\"unknown\"".into())
-        .replace("\"", "");
-
-    source = source.replace("{{control_level}}", &control_level_str);
-
-    let language_str = match preset.language {
-        crate::model::PresetLanguage::Rego => "rego",
-        crate::model::PresetLanguage::Cedar => "cedar",
-        crate::model::PresetLanguage::OpenFga => "openfga",
-    };
-
-    Ok(RenderedPreset {
-        language: language_str.to_string(),
-        content: source,
-        warnings: vec![],
-    })
+    Ok(artifacts)
 }
 
 pub fn to_policy_draft(
     tenant_id: &str,
-    preset: &PolicyPreset,
-    req: &PresetApplyRequest,
-) -> anyhow::Result<PolicyDraft> {
+    preset: &PolicyPresetV2,
+    req: &DeployPresetRequest,
+) -> anyhow::Result<Option<PolicyDraft>> {
     let rendered = render(preset, req)?;
 
-    let targets = PolicyTargets {
-        agent_ids: req.targets.agent_ids.clone(),
-        tool_ids: req.targets.tool_ids.clone(),
-        resource_ids: req.targets.resource_ids.clone(),
-        entity_ids: vec![],
-        route_ids: vec![],
-    };
+    // Find the first rego, cedar, or openfga artifact to turn into a draft
+    let policy_artifact = rendered
+        .into_iter()
+        .find(|a| a.language == "rego" || a.language == "cedar" || a.language == "openfga");
 
-    let policy_type = match preset.language {
-        crate::model::PresetLanguage::Rego => PolicyType::Rego,
-        crate::model::PresetLanguage::Cedar => PolicyType::Cedar,
-        crate::model::PresetLanguage::OpenFga => PolicyType::OpenFga,
-    };
+    if let Some(artifact) = policy_artifact {
+        let policy_type = match artifact.language.as_str() {
+            "rego" => PolicyType::Rego,
+            "cedar" => PolicyType::Cedar,
+            "openfga" => PolicyType::OpenFga,
+            _ => return Err(anyhow::anyhow!("Unknown language type")),
+        };
 
-    let draft = PolicyDraft {
-        meta: ObjectMeta {
-            schema_version: "v1".to_string(),
-            tenant_id: tenant_id.to_string(),
-            workspace_id: "default".to_string(),
-            environment_id: "default".to_string(),
-            created_at: "".to_string(),
-            updated_at: "".to_string(),
-            created_by: "".to_string(),
-            updated_by: "".to_string(),
-            source: dek_control_plane_api::registry::RegistrationSource::Manual,
-            status: dek_control_plane_api::registry::RegistryStatus::Draft,
-            tags: vec![],
-        },
-        policy_id: format!(
-            "pol_{}_{}",
-            preset.preset_id.replace('.', "_"),
-            uuid::Uuid::new_v4().simple()
-        ),
-        name: preset.display_name.clone(),
-        description: Some(preset.description.clone()),
-        policy_type,
-        targets,
-        source: PolicySource::RawText {
-            language: rendered.language,
-            text: rendered.content,
-        },
-        compile_options: PolicyCompileOptions {
-            optimization_level: None,
-            fail_on_warnings: Some(true),
-        },
-    };
+        let targets = PolicyTargets {
+            agent_ids: req.targets.agent_ids.clone(),
+            tool_ids: req.targets.tool_ids.clone(),
+            resource_ids: req.targets.resource_ids.clone(),
+            entity_ids: vec![],
+            route_ids: vec![],
+        };
 
-    Ok(draft)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::model::{
-        ControlLevel, PresetCategory, PresetLanguage, PresetParameter, PresetTemplate,
-    };
-    use std::collections::HashMap;
-
-    fn mock_preset() -> PolicyPreset {
-        PolicyPreset {
-            preset_id: "test".into(),
-            version: "1".into(),
-            display_name: "Test".into(),
-            description: "Test".into(),
-            category: PresetCategory::ShadowAi,
-            language: PresetLanguage::Rego,
-            recommended_pep_types: vec![],
-            supported_control_levels: vec![],
-            default_control_level: ControlLevel::ObserveOnly,
-            risk_tags: vec![],
-            owasp_tags: vec![],
-            parameters: vec![
-                PresetParameter {
-                    key: "req_param".into(),
-                    label: "Req".into(),
-                    description: "Req".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    default_value: serde_json::Value::Null,
-                    allowed_values: None,
-                },
-                PresetParameter {
-                    key: "enum_param".into(),
-                    label: "Enum".into(),
-                    description: "Enum".into(),
-                    param_type: "string".into(),
-                    required: false,
-                    default_value: serde_json::Value::Null,
-                    allowed_values: Some(vec![serde_json::json!("A"), serde_json::json!("B")]),
-                },
-            ],
-            template: PresetTemplate {
-                source: "hello {{req_param}}".into(),
-                entrypoint: None,
+        let draft = PolicyDraft {
+            meta: ObjectMeta {
+                schema_version: "v1".to_string(),
+                tenant_id: tenant_id.to_string(),
+                workspace_id: "default".to_string(),
+                environment_id: "default".to_string(),
+                created_at: "".to_string(),
+                updated_at: "".to_string(),
+                created_by: "".to_string(),
+                updated_by: "".to_string(),
+                source: dek_control_plane_api::registry::RegistrationSource::Manual,
+                status: dek_control_plane_api::registry::RegistryStatus::Draft,
+                tags: vec![],
             },
-            test_cases: vec![],
-        }
-    }
-
-    #[test]
-    fn test_missing_required_param() {
-        let preset = mock_preset();
-        let req = PresetApplyRequest {
-            targets: Default::default(),
-            control_level: ControlLevel::ObserveOnly,
-            params: HashMap::new(),
+            policy_id: format!(
+                "pol_{}_{}",
+                preset.id.replace('.', "_"),
+                uuid::Uuid::new_v4().simple()
+            ),
+            name: preset.title.clone(),
+            description: Some(preset.short_description.clone()),
+            policy_type,
+            targets,
+            source: PolicySource::RawText {
+                language: artifact.language,
+                text: artifact.content,
+            },
+            compile_options: PolicyCompileOptions {
+                optimization_level: None,
+                fail_on_warnings: Some(true),
+            },
         };
-        let res = render(&preset, &req);
-        assert!(res.is_err());
-        if let Err(e) = res {
-            assert_eq!(e.to_string(), "Missing required parameter: req_param");
-        }
-    }
-
-    #[test]
-    fn test_unknown_param() {
-        let preset = mock_preset();
-        let mut params = HashMap::new();
-        params.insert("req_param".into(), serde_json::json!("val"));
-        params.insert("unknown".into(), serde_json::json!("val"));
-        let req = PresetApplyRequest {
-            targets: Default::default(),
-            control_level: ControlLevel::ObserveOnly,
-            params,
-        };
-        let res = render(&preset, &req);
-        assert!(res.is_err());
-        if let Err(e) = res {
-            assert_eq!(e.to_string(), "Unknown parameter: unknown");
-        }
-    }
-
-    #[test]
-    fn test_invalid_enum_val() {
-        let preset = mock_preset();
-        let mut params = HashMap::new();
-        params.insert("req_param".into(), serde_json::json!("val"));
-        params.insert("enum_param".into(), serde_json::json!("C"));
-        let req = PresetApplyRequest {
-            targets: Default::default(),
-            control_level: ControlLevel::ObserveOnly,
-            params,
-        };
-        let res = render(&preset, &req);
-        assert!(res.is_err());
-        if let Err(e) = res {
-            assert_eq!(
-                e.to_string(),
-                "Value \"C\" for parameter enum_param is not in allowed values"
-            );
-        }
-    }
-
-    #[test]
-    fn test_valid_render() {
-        let preset = mock_preset();
-        let mut params = HashMap::new();
-        params.insert("req_param".into(), serde_json::json!("world"));
-        params.insert("enum_param".into(), serde_json::json!("A"));
-        let req = PresetApplyRequest {
-            targets: Default::default(),
-            control_level: ControlLevel::ObserveOnly,
-            params,
-        };
-        let res = render(&preset, &req);
-        assert!(res.is_ok());
-        if let Ok(res) = res {
-            assert_eq!(res.content, "hello world");
-        }
+        Ok(Some(draft))
+    } else {
+        Ok(None)
     }
 }

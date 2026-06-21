@@ -51,50 +51,71 @@ async fn get_preset(
 
 async fn preview_preset(
     Path((_tenant, preset_id)): Path<(String, String)>,
-    Json(req): Json<dek_policy_presets::model::PresetApplyRequest>,
+    Json(req): Json<dek_policy_presets::model::DeployPresetRequest>,
 ) -> ApiResult<Json<serde_json::Value>> {
     let preset = dek_policy_presets::catalog::get_builtin_preset(&preset_id)
         .ok_or_else(|| ApiError::NotFound(preset_id.clone()))?;
 
-    let rendered = dek_policy_presets::render::render(&preset, &req).map_err(ApiError::Internal)?;
+    let rendered_artifacts =
+        dek_policy_presets::render::render(&preset, &req).map_err(ApiError::Internal)?;
+
+    let artifacts_json: Vec<_> = rendered_artifacts
+        .into_iter()
+        .map(|a| {
+            serde_json::json!({
+                "language": a.language,
+                "content": a.content,
+                "warnings": a.warnings
+            })
+        })
+        .collect();
 
     Ok(Json(serde_json::json!({
-        "schema_version": "policy-preset-preview.v1",
+        "schema_version": "policy-preset-preview.v2",
         "preset_id": preset_id,
-        "policy_type": rendered.language,
         "recommended_pep_types": preset.recommended_pep_types,
-        "generated_source": rendered.content,
-        "warnings": rendered.warnings
+        "artifacts": artifacts_json
     })))
 }
 
 async fn create_draft(
     Path((tenant, preset_id)): Path<(String, String)>,
     State(st): State<AppState>,
-    Json(req): Json<dek_policy_presets::model::PresetApplyRequest>,
+    Json(req): Json<dek_policy_presets::model::DeployPresetRequest>,
 ) -> ApiResult<Json<serde_json::Value>> {
     let preset = dek_policy_presets::catalog::get_builtin_preset(&preset_id)
         .ok_or_else(|| ApiError::NotFound(preset_id.clone()))?;
 
-    let draft = dek_policy_presets::render::to_policy_draft(&tenant, &preset, &req)
+    let draft_opt = dek_policy_presets::render::to_policy_draft(&tenant, &preset, &req)
         .map_err(ApiError::Internal)?;
 
-    let saved = st
-        .policy_store
-        .upsert_policy(draft)
-        .await
-        .map_err(ApiError::Internal)?;
+    match draft_opt {
+        Some(draft) => {
+            let saved = st
+                .policy_store
+                .upsert_policy(draft)
+                .await
+                .map_err(ApiError::Internal)?;
 
-    Ok(Json(serde_json::json!({
-        "schema_version": "policy-preset-create-draft-response.v1",
-        "policy_id": saved.policy_id,
-        "status": "draft"
-    })))
+            Ok(Json(serde_json::json!({
+                "schema_version": "policy-preset-create-draft-response.v2",
+                "policy_id": saved.policy_id,
+                "status": "draft"
+            })))
+        }
+        None => {
+            // Some presets might not generate a PolicyDraft (e.g., only generate a PepBinding).
+            Ok(Json(serde_json::json!({
+                "schema_version": "policy-preset-create-draft-response.v2",
+                "status": "no_policy_draft_generated"
+            })))
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SimulatePresetRequest {
-    pub apply_request: dek_policy_presets::model::PresetApplyRequest,
+    pub apply_request: dek_policy_presets::model::DeployPresetRequest,
     pub input: serde_json::Value,
 }
 
@@ -105,16 +126,18 @@ async fn simulate_preset(
     let preset = dek_policy_presets::catalog::get_builtin_preset(&preset_id)
         .ok_or_else(|| ApiError::NotFound(preset_id.clone()))?;
 
-    let rendered = dek_policy_presets::render::render(&preset, &req.apply_request)
+    let rendered_artifacts = dek_policy_presets::render::render(&preset, &req.apply_request)
         .map_err(ApiError::Internal)?;
 
     let mut result = serde_json::json!({
-        "schema_version": "policy-preset-simulation.v1",
+        "schema_version": "policy-preset-simulation.v2",
         "preset_id": preset_id,
-        "policy_type": rendered.language,
     });
 
-    if rendered.language == "cedar" {
+    // Find a cedar policy artifact to simulate
+    let cedar_artifact = rendered_artifacts.iter().find(|a| a.language == "cedar");
+
+    if let Some(rendered) = cedar_artifact {
         match dek_cedar::CedarAdapter::new(&rendered.content) {
             Ok(adapter) => {
                 use dek_plugin_sdk::PolicyEvaluator;
@@ -158,11 +181,10 @@ async fn simulate_preset(
             }
         }
     } else {
-        // Handle Error when PDP is missing/not found
         result["result"] = serde_json::json!({
             "allowed": false,
             "decision": "error",
-            "reason": format!("Error: No active PDP found for language '{}'. Simulation not supported.", rendered.language),
+            "reason": "Error: No active PDP found for the generated artifacts. Simulation not supported locally.",
         });
     }
 

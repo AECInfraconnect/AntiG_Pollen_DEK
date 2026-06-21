@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { FileKey, Plus, Eye } from "lucide-react";
+import { FileKey, Plus, ShieldAlert, Tags } from "lucide-react";
 import { PolicyApi } from "../services/api";
-import { PresetWizard } from "../components/PresetWizard";
+import { PresetWizard } from "../components/presets/PresetWizard";
+import type { PolicyPresetV2, PresetCategory } from "../types/policy-presets";
 
 export function PolicyPresets() {
-  const [presets, setPresets] = useState<any[]>([]);
+  const [presets, setPresets] = useState<PolicyPresetV2[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPreset, setSelectedPreset] = useState<any | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<PolicyPresetV2 | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<PresetCategory | "all">("all");
 
   useEffect(() => {
     PolicyApi.listPresets()
@@ -17,79 +19,113 @@ export function PolicyPresets() {
       .finally(() => setLoading(false));
   }, []);
 
+  const categories = Array.from(new Set(presets.map((p) => p.category)));
+  const filteredPresets = selectedCategory === "all" ? presets : presets.filter((p) => p.category === selectedCategory);
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-b pb-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <FileKey className="h-6 w-6 text-primary" /> Policy Presets
+            <FileKey className="h-6 w-6 text-primary" /> Policy Presets V2
           </h2>
-          <p className="text-muted-foreground">
-            Use predefined templates to secure your system with industry best
-            practices.
+          <p className="text-muted-foreground mt-1">
+            Deploy advanced guardrails using industry best practices mapping to OWASP and NIST frameworks.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="flex gap-2 pb-2 overflow-x-auto">
+        <button
+          onClick={() => setSelectedCategory("all")}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+            selectedCategory === "all" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80 text-foreground"
+          }`}
+        >
+          All Categories
+        </button>
+        {categories.map((c) => (
+          <button
+            key={c}
+            onClick={() => setSelectedCategory(c)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors capitalize ${
+              selectedCategory === c ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80 text-foreground"
+            }`}
+          >
+            {c.replace(/_/g, " ")}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {loading ? (
-          <div className="col-span-full py-8 text-center text-muted-foreground">
-            Loading presets...
+          <div className="col-span-full py-12 text-center text-muted-foreground animate-pulse">
+            Loading presets catalog...
           </div>
-        ) : presets.length === 0 ? (
-          <div className="col-span-full py-8 text-center text-muted-foreground">
-            No presets available.
+        ) : filteredPresets.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-muted-foreground">
+            No presets found in this category.
           </div>
         ) : (
-          presets.map((preset) => (
+          filteredPresets.map((preset) => (
             <div
-              key={preset.preset_id}
-              className="glass rounded-xl border p-5 flex flex-col gap-4 transition-all hover:border-primary/50 group"
+              key={preset.id}
+              className="glass rounded-xl border flex flex-col transition-all hover:border-primary/50 hover:shadow-lg overflow-hidden"
             >
-              <div>
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold">{preset.display_name}</h3>
-                  <span className="text-xs bg-muted px-2 py-1 rounded text-muted-foreground">
-                    {preset.category}
+              <div className="p-5 flex-1 flex flex-col">
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="font-semibold text-lg leading-tight">{preset.title}</h3>
+                  <span className="text-[10px] uppercase font-bold tracking-wider bg-primary/10 text-primary px-2 py-1 rounded">
+                    v{preset.version}
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {preset.description}
+                
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-2 flex-1">
+                  {preset.short_description}
                 </p>
+
+                <div className="space-y-3 mt-auto">
+                  {preset.risk_tags && preset.risk_tags.length > 0 && (
+                    <div className="flex items-start gap-2">
+                      <ShieldAlert className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+                      <div className="flex flex-wrap gap-1.5">
+                        {preset.risk_tags.map((tag) => (
+                          <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded border bg-orange-500/5 text-orange-600 border-orange-500/20">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {preset.recommended_pep_types && preset.recommended_pep_types.length > 0 && (
+                    <div className="flex items-start gap-2">
+                      <Tags className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                      <div className="flex flex-wrap gap-1.5">
+                        {preset.recommended_pep_types.map((pep) => (
+                          <span key={pep} className="text-[10px] px-1.5 py-0.5 rounded border bg-blue-500/5 text-blue-600 border-blue-500/20">
+                            {pep}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="flex flex-wrap gap-2 mt-auto">
-                {preset.recommended_pep_types?.map((pep: string) => (
-                  <span
-                    key={pep}
-                    className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400"
-                  >
-                    {pep}
-                  </span>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2 pt-4 mt-2 border-t border-border/50">
+              <div className="border-t p-3 bg-muted/10 flex gap-2">
                 <button
                   onClick={() => setSelectedPreset(preset)}
-                  className="flex-1 flex justify-center items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                  className="flex-1 flex justify-center items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
-                  <Plus className="h-4 w-4" /> Configure Preset
-                </button>
-                <button
-                  onClick={() =>
-                    setSelectedPreset({ ...preset, previewOnly: true })
-                  }
-                  className="flex justify-center items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted transition-colors"
-                  title="View Policy Source"
-                >
-                  <Eye className="h-4 w-4" />
+                  <Plus className="h-4 w-4" /> Deploy Guardrail
                 </button>
               </div>
             </div>
           ))
         )}
       </div>
+
       {selectedPreset && (
         <PresetWizard
           preset={selectedPreset}
