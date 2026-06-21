@@ -43,8 +43,14 @@ impl MtlsConfig {
             id_pem.extend_from_slice(b"\n");
             id_pem.extend_from_slice(&key);
 
-            if let Ok(identity) = Identity::from_pem(&id_pem) {
-                builder = builder.tls_built_in_root_certs(false).identity(identity);
+            match Identity::from_pem(&id_pem) {
+                Ok(identity) => {
+                    builder = builder.tls_built_in_root_certs(false).identity(identity);
+                }
+                Err(e) => {
+                    tracing::error!("Identity::from_pem failed: {:?}", e);
+                    panic!("Identity::from_pem failed: {:?}", e);
+                }
             }
         }
 
