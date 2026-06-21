@@ -288,6 +288,7 @@ mod tests {
             client_key_path: key_path.to_string_lossy().into_owned(),
             root_ca_path: ca_path.to_string_lossy().into_owned(),
         };
+        #[allow(clippy::panic)]
         let client = mtls.build_client(None).unwrap_or_else(|e| {
             let mut msg = format!("build mtls client from disk identity: {e:?}");
             let mut source = e.source();
