@@ -1,13 +1,13 @@
-use sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditEntry {
     pub seq: u64,
     pub timestamp: String,
     pub payload_json: String,
-    pub prev_hash: String,   // hash ของ entry ก่อนหน้า
-    pub entry_hash: String,  // hash(prev_hash + payload)
+    pub prev_hash: String,  // hash ของ entry ก่อนหน้า
+    pub entry_hash: String, // hash(prev_hash + payload)
 }
 
 impl AuditEntry {
@@ -15,8 +15,18 @@ impl AuditEntry {
         let mut h = Sha256::new();
         h.update(prev_hash.as_bytes());
         h.update(payload_json.as_bytes());
-        let entry_hash = h.finalize().iter().map(|b| format!("{:02x}", b)).collect::<String>();
-        Self { seq, timestamp, payload_json, prev_hash: prev_hash.to_string(), entry_hash }
+        let entry_hash = h
+            .finalize()
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<String>();
+        Self {
+            seq,
+            timestamp,
+            payload_json,
+            prev_hash: prev_hash.to_string(),
+            entry_hash,
+        }
     }
 }
 
@@ -24,8 +34,7 @@ impl AuditEntry {
 pub fn verify_chain(entries: &[AuditEntry]) -> Result<(), u64> {
     let mut prev = "GENESIS".to_string();
     for e in entries {
-        let recomputed = AuditEntry::new(e.seq, e.timestamp.clone(),
-                                         e.payload_json.clone(), &prev);
+        let recomputed = AuditEntry::new(e.seq, e.timestamp.clone(), e.payload_json.clone(), &prev);
         if recomputed.entry_hash != e.entry_hash {
             return Err(e.seq); // คืน seq ที่ถูกแก้
         }
@@ -44,7 +53,7 @@ mod tests {
         let mut e1 = AuditEntry::new(1, "t1".into(), "decision:deny".into(), &e0.entry_hash);
         let chain_ok = vec![e0.clone(), e1.clone()];
         assert!(verify_chain(&chain_ok).is_ok());
-        
+
         // แก้ payload หลังบันทึก → chain พัง
         e1.payload_json = "decision:allow".into();
         assert_eq!(verify_chain(&vec![e0, e1]), Err(1));

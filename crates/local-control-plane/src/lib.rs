@@ -6,6 +6,7 @@ pub mod config;
 pub mod connectors;
 pub mod discovery;
 pub mod error;
+pub mod governance;
 pub mod policy;
 pub mod push;
 pub mod registry;
@@ -13,8 +14,6 @@ pub mod signing;
 pub mod state;
 pub mod store;
 pub mod telemetry;
-pub mod governance;
-
 
 pub mod agent_discovery_api;
 
