@@ -6,7 +6,7 @@ pub fn render_cedar(suggestion: &PolicySuggestion) -> PolicyArtifact {
         suggestion.title, suggestion.summary
     );
     PolicyArtifact {
-        language: "cedar".to_string(),
+        language: crate::model::SuggestedPolicyLanguage::Cedar,
         name: "policy.cedar".to_string(),
         content,
     }

@@ -1927,6 +1927,7 @@ dependencies = [
  "dek-keystore",
  "dek-macos-nefilter",
  "dek-pdp-sdk",
+ "dek-policy-presets",
  "dek-policy-router",
  "dek-policy-runtime",
  "dek-policy-syncer",
@@ -2320,6 +2321,19 @@ version = "1.0.0-beta.7"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "dek-policy-presets"
+version = "1.0.0-beta.7"
+dependencies = [
+ "anyhow",
+ "dek-control-plane-api",
+ "dek-domain-schema",
+ "schemars 0.8.22",
+ "serde",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]
@@ -4331,6 +4345,7 @@ dependencies = [
  "dek-plugin-sdk",
  "dek-policy-compiler",
  "dek-policy-intent",
+ "dek-policy-presets",
  "dek-policy-router",
  "dek-policy-runtime",
  "dek-policy-suggester",

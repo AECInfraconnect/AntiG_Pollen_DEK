@@ -156,14 +156,35 @@ async fn publish_policy(
                 )));
             }
         }
-        _ => {
-            compiled.push(crate::bundle::CompiledArtifact {
-                artifact_id: draft.name.clone(),
-                adapter_id: "cedar".into(),
-                artifact_type: "cedar_text".into(),
-                bytes: b"permit(principal,action,resource);".to_vec(),
-            });
+        dek_control_plane_api::policy::PolicySource::Template { template_id, params } => {
+            let mut rendered_success = false;
+            if let Some(preset) = dek_policy_presets::catalog::get_builtin_preset(template_id) {
+                let mut pmap = std::collections::HashMap::new();
+                if let Some(obj) = params.as_object() {
+                    for (k, v) in obj {
+                        pmap.insert(k.clone(), v.clone());
+                    }
+                }
+                let req = dek_policy_presets::model::PresetApplyRequest {
+                    params: pmap,
+                    targets: Default::default(),
+                    control_level: dek_policy_presets::model::ControlLevel::Enforce, // Defaults to Enforce if not present
+                };
+                if let Ok(rendered) = dek_policy_presets::render::render(&preset, &req) {
+                        compiled.push(crate::bundle::CompiledArtifact {
+                            artifact_id: draft.name.clone(),
+                            adapter_id: rendered.language.clone(),
+                            artifact_type: format!("{}_text", rendered.language),
+                            bytes: rendered.content.as_bytes().to_vec(),
+                        });
+                        rendered_success = true;
+                    }
+            }
+            if !rendered_success {
+                return Err(ApiError::Internal(anyhow::anyhow!("Failed to render template")));
+            }
         }
+
     }
 
     let agents = st
@@ -233,7 +254,7 @@ async fn publish_policy(
 
     draft.meta.status = dek_control_plane_api::registry::RegistryStatus::Published;
     st.policy_store
-        .upsert_policy(draft)
+        .upsert_policy(draft.clone())
         .await
         .map_err(ApiError::Internal)?;
 
@@ -251,6 +272,10 @@ async fn publish_policy(
         Json(json!({
             "published": true,
             "bundle_id": built.manifest.metadata.bundle_id,
+            "policy_id": draft.policy_id,
+            "build_number": build_number,
+            "active_pep_targets": ["mcp_proxy"],
+            "warnings": [],
             "manifest": built.envelope
         })),
     ))
@@ -273,9 +298,85 @@ async fn validate_policy(
 
     let mut errors = vec![];
 
-    if let PolicySource::Structured { ir } = policy.source {
-        if let Err(e) = serde_json::from_value::<dek_policy_intent::PolicyIntent>(ir) {
-            errors.push(format!("PPI Validation Error: {}", e));
+    match &policy.source {
+        PolicySource::Structured { ir } => {
+            if let Err(e) = serde_json::from_value::<dek_policy_intent::PolicyIntent>(ir.clone()) {
+                errors.push(format!("PPI Validation Error: {}", e));
+            }
+        }
+        PolicySource::RawText { language, text } => {
+            if language == "cedar" {
+                if let Err(e) = dek_cedar::CedarAdapter::new(text) {
+                    errors.push(format!("Cedar syntax error: {}", e));
+                }
+            } else if language == "rego" {
+                // Basic check for package keyword
+                if !text.contains("package ") {
+                    errors.push("Rego syntax error: Missing package declaration".to_string());
+                }
+            } else if language == "openfga" {
+                if !text.contains("model") && !text.contains("type ") {
+                    errors.push("OpenFGA syntax error: Missing model or type definitions".to_string());
+                }
+            }
+        }
+        PolicySource::Template { template_id, params } => {
+            // Render template first to validate
+            if let Some(preset) = dek_policy_presets::catalog::get_builtin_preset(template_id) {
+                let mut pmap = std::collections::HashMap::new();
+                if let Some(obj) = params.as_object() {
+                    for (k, v) in obj {
+                        pmap.insert(k.clone(), v.clone());
+                    }
+                }
+                let req = dek_policy_presets::model::PresetApplyRequest {
+                    params: pmap,
+                    targets: Default::default(),
+                    control_level: dek_policy_presets::model::ControlLevel::ObserveOnly,
+                };
+                match dek_policy_presets::render::render(&preset, &req) {
+                        Ok(rendered) => {
+                            if rendered.language == "cedar" {
+                                match dek_cedar::CedarAdapter::new(&rendered.content) {
+                                    Ok(adapter) => {
+                                        use dek_plugin_sdk::PolicyEvaluator;
+                                        for tc in &preset.test_cases {
+                                            let eval_req = dek_plugin_sdk::EvalRequest {
+                                                request_id: "test".into(),
+                                                tenant_id: None,
+                                                subject: None,
+                                                action: None,
+                                                resource: None,
+                                                payload: tc.input.clone(),
+                                                context: std::collections::BTreeMap::new(),
+                                            };
+                                            match adapter.evaluate(eval_req).await {
+                                                Ok(r) => {
+                                                    let effect_str = match r.decision {
+                                                        dek_plugin_sdk::DecisionEffect::Allow => "allow",
+                                                        _ => "deny",
+                                                    };
+                                                    if effect_str != tc.expected_decision {
+                                                        errors.push(format!("Test case '{}' failed: expected {}, got {}", tc.name, tc.expected_decision, effect_str));
+                                                    }
+                                                }
+                                                Err(e) => errors.push(format!("Test case '{}' evaluation error: {}", tc.name, e)),
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        errors.push(format!("Rendered Cedar syntax error: {}", e));
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            errors.push(format!("Template rendering error: {}", e));
+                        }
+                    }
+            } else {
+                errors.push(format!("Preset template '{}' not found", template_id));
+            }
         }
     }
 

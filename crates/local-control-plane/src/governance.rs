@@ -1,12 +1,13 @@
 use crate::state::AppState;
-use dek_policy_suggester::rules::{LowTrustRule, RuleEngine};
+use dek_policy_suggester::rules::{HighRiskResourceRule, RuleEngine, ShadowAgentDetectionRule};
 use std::time::Duration;
 use tracing::{info, warn};
 
 pub async fn start_governance_loop(state: AppState) -> anyhow::Result<()> {
     tokio::spawn(async move {
         let mut suggester = RuleEngine::new();
-        suggester.add_rule(Box::new(LowTrustRule { threshold: 60 }));
+        suggester.add_rule(Box::new(ShadowAgentDetectionRule));
+        suggester.add_rule(Box::new(HighRiskResourceRule));
 
         loop {
             // 1) OBSERVE: ดึง observation ล่าสุดจาก observer store (สมมติว่าเป็นทุก tenant หรือ default)

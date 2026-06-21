@@ -5,7 +5,7 @@ pub fn render_openfga(_suggestion: &PolicySuggestion) -> PolicyArtifact {
         "model\n  schema 1.1\n\ntype user\ntype resource\n  relations\n    define viewer: [user]"
             .to_string();
     PolicyArtifact {
-        language: "openfga".to_string(),
+        language: crate::model::SuggestedPolicyLanguage::OpenFga,
         name: "model.fga".to_string(),
         content,
     }

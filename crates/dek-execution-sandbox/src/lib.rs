@@ -82,11 +82,23 @@ mod tests {
             .is_ok());
 
         let event = NormalizedMcpEvent {
-            tool_name: Some("high_risk_tool".into()),
+            event_id: "test-event".into(),
+            transport: dek_mcp_normalizer::TransportType::Http,
+            direction: dek_mcp_normalizer::MessageDirection::Request,
+            request_type: "tools/call".into(),
+            jsonrpc_id: None,
+            tenant_id: "test-tenant".into(),
+            device_id: "test-device".into(),
+            spiffe_id: None,
+            user_id: None,
             agent_id: Some("agent-1".into()),
+            server_id: None,
+            tool_name: Some("high_risk_tool".into()),
             resource_uri: None,
+            prompt_name: None,
             payload: serde_json::json!({}),
-            original_json: "{}".into(),
+            session: serde_json::json!({}),
+            runtime: serde_json::json!({}),
         };
 
         let result = sandbox.execute_tool(&event);
