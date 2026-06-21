@@ -68,17 +68,21 @@ pub mod daemon {
             
         info!("Attached cgroup/connect4 to {}", cgroup_path);
 
-        // Start DNS Telemetry RingBuf Reader
+        // Start DNS Telemetry RingBuf Reader and Map Updater
+        let bpf_fs_path = BPFFS_PATH.to_string();
         if let Ok(dns_events_map) = bpf.take_map("DNS_EVENTS") {
             if let Ok(mut ring_buf) = aya::maps::AsyncRingBuf::try_from(dns_events_map) {
                 task::spawn(async move {
                     info!("eBPFD DNS RingBuf Reader started");
                     use hickory_proto::op::Message;
-                    use bytes::Bytes;
+                    use hickory_proto::rr::RecordType;
+                    use aya::maps::MapData;
+                    
+                    // We open VERDICT_MAP from the pinned path to insert IPs dynamically
+                    let verdict_map_path = format!("{}/VERDICT_MAP", bpf_fs_path);
                     
                     loop {
                         if let Some(item) = ring_buf.next().await {
-                            // The item is a pointer to DnsCaptureEvent bytes
                             if item.len() >= std::mem::size_of::<dek_ebpf_common::DnsCaptureEvent>() {
                                 let event: dek_ebpf_common::DnsCaptureEvent = unsafe { std::ptr::read_unaligned(item.as_ptr() as *const _) };
                                 let dlen = event.len as usize;
@@ -86,13 +90,28 @@ pub mod daemon {
                                     if let Ok(msg) = Message::from_vec(&event.data[..dlen]) {
                                         let queries = msg.queries();
                                         for q in queries {
-                                            info!(
-                                                "DNS Query Captured [cgroup: {}]: {} ({:?})",
-                                                event.cgroup_id,
-                                                q.name(),
-                                                q.query_type()
-                                            );
-                                            // TODO: Log to telemetry endpoint
+                                            info!("DNS Query Captured: {} ({:?})", q.name(), q.query_type());
+                                        }
+                                        
+                                        // Attempt to open the map and inject IPs
+                                        if let Ok(aya::maps::Map::LpmTrie(mut map)) = aya::maps::Map::open(&verdict_map_path, aya::maps::MapData::from_fd(0)) {
+                                            for answer in msg.answers() {
+                                                if answer.record_type() == RecordType::A {
+                                                    if let Some(data) = answer.data() {
+                                                        if let Some(ip) = data.as_a() {
+                                                            let ip_u32 = u32::from_be_bytes(ip.0);
+                                                            let key = dek_ebpf_common::Ipv4LpmKey { prefix_len: 32, ip: ip_u32 };
+                                                            let verdict = dek_ebpf_common::PolicyVerdict { allow: 1, log_event: 1 };
+                                                            if let Err(e) = map.insert(&key, &verdict, 0) {
+                                                                tracing::error!("Failed to insert IP into VERDICT_MAP: {}", e);
+                                                            } else {
+                                                                info!("Added IP {} to VERDICT_MAP (DNS-observe)", ip);
+                                                                // Future: Also send this to TTL sweeper channel
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -110,25 +129,30 @@ pub mod daemon {
         }
 
         // Start Map Compiler & TTL Sweeper Loop
+        let bpf_fs_path2 = BPFFS_PATH.to_string();
         task::spawn(async move {
             info!("eBPFD Map Compiler & TTL Sweeper started");
             let mut ttl_index: std::collections::HashMap<u32, std::time::Instant> = std::collections::HashMap::new();
-            let min_ttl_floor = std::time::Duration::from_secs(30);
+            // Note: In a complete implementation, the DNS reader task would send newly observed IPs 
+            // over an mpsc::channel to this TTL sweeper loop to populate `ttl_index`.
 
-            // In reality, this would keep an Arc<Map> handle to VERDICT_MAP
             loop {
                 tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                 let now = std::time::Instant::now();
-                ttl_index.retain(|ip, expires_at| {
-                    if now > *expires_at {
-                        // Implement TTL grace period and map eviction
-                        info!("Evicting IP {} from VERDICT_MAP due to TTL expiration", ip);
-                        // VERDICT_MAP.remove(ip);
-                        false
-                    } else {
-                        true
-                    }
-                });
+                let verdict_map_path = format!("{}/VERDICT_MAP", bpf_fs_path2);
+                
+                if let Ok(aya::maps::Map::LpmTrie(mut map)) = aya::maps::Map::open(&verdict_map_path, aya::maps::MapData::from_fd(0)) {
+                    ttl_index.retain(|ip, expires_at| {
+                        if now > *expires_at {
+                            info!("Evicting IP {} from VERDICT_MAP due to TTL expiration", ip);
+                            let key = dek_ebpf_common::Ipv4LpmKey { prefix_len: 32, ip: *ip };
+                            let _ = map.remove(&key);
+                            false
+                        } else {
+                            true
+                        }
+                    });
+                }
             }
         });
 
