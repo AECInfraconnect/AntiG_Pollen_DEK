@@ -11,66 +11,29 @@
 //!     # jsonwebtoken can be dropped here once all JWT logic lives in dek-auth
 
 use arc_swap::{ArcSwap, ArcSwapOption};
-use dek_auth::{Verifier, VerifierConfig};
-use dek_policy_router::PolicyRouter;
+use dek_activation::snapshot::{RuntimeSnapshot, DekMetadata};
 use dek_wasm_host::WasmtimePluginHost;
 use dek_mcp_normalizer::http::HttpTransportAdapter;
 use std::sync::Arc;
-
-#[derive(Clone, Default)]
-pub struct DekMetadata {
-    pub tenant_id: String,
-    pub device_id: String,
-    pub spiffe_id: Option<String>,
-    pub jwt_public_key_pem: Option<String>,
-    pub jwks: Option<jsonwebtoken::jwk::JwkSet>,
-    pub issuer_url: Option<String>,
-    /// NEW: enforced audience(s). Wire this from bundle `jwt_config.audience`.
-    pub audience: Option<Vec<String>>,
-}
-
-/// One immutable snapshot of everything that hot-reload swaps together.
-/// Building these as a unit keeps router/metadata/verifier consistent.
-pub struct PolicySnapshot {
-    pub router: PolicyRouter,
-    pub metadata: DekMetadata,
-    pub verifier: Verifier,
-}
-
-impl PolicySnapshot {
-    pub fn build(router: PolicyRouter, metadata: DekMetadata) -> Self {
-        let verifier = Verifier::new(VerifierConfig {
-            jwks: metadata.jwks.clone(),
-            public_key_pem: metadata.jwt_public_key_pem.clone(),
-            issuer: metadata.issuer_url.clone(),
-            audience: metadata.audience.clone(),
-            leeway_secs: 60,
-        });
-        Self { router, metadata, verifier }
-    }
-}
 use dek_telemetry::CloudTelemetrySink;
 
 pub struct AppState {
-    pub plugin_host: WasmtimePluginHost,
     pub http_adapter: HttpTransportAdapter,
     /// Lock-free, atomically swappable policy snapshot.
-    pub snapshot: ArcSwap<PolicySnapshot>,
+    pub snapshot: ArcSwap<RuntimeSnapshot>,
     /// Shadow snapshot for parallel evaluation.
-    pub shadow_snapshot: ArcSwapOption<PolicySnapshot>,
+    pub shadow_snapshot: ArcSwapOption<RuntimeSnapshot>,
     /// Telemetry Sink
     pub telemetry: Option<Arc<CloudTelemetrySink>>,
 }
 
 impl AppState {
     pub fn new(
-        plugin_host: WasmtimePluginHost,
         http_adapter: HttpTransportAdapter,
-        initial: PolicySnapshot,
+        initial: RuntimeSnapshot,
         telemetry: Option<Arc<CloudTelemetrySink>>,
     ) -> Arc<Self> {
         Arc::new(Self {
-            plugin_host,
             http_adapter,
             snapshot: ArcSwap::from_pointee(initial),
             shadow_snapshot: ArcSwapOption::empty(),
@@ -78,13 +41,13 @@ impl AppState {
         })
     }
 
-    /// Atomic hot-reload — called by the bundle file-watcher.
-    pub fn reload(&self, snapshot: PolicySnapshot) {
+    /// Atomic hot-reload.
+    pub fn reload(&self, snapshot: RuntimeSnapshot) {
         self.snapshot.store(Arc::new(snapshot));
     }
 
     /// Atomic hot-reload of the shadow bundle.
-    pub fn reload_shadow(&self, snapshot: PolicySnapshot) {
+    pub fn reload_shadow(&self, snapshot: RuntimeSnapshot) {
         self.shadow_snapshot.store(Some(Arc::new(snapshot)));
     }
 }

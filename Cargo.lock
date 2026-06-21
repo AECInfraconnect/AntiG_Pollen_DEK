@@ -1227,6 +1227,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-activation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "chrono",
+ "dek-auth",
+ "dek-cedar",
+ "dek-config",
+ "dek-openfga",
+ "dek-policy-router",
+ "dek-router-builder",
+ "dek-wasm-host",
+ "jsonwebtoken 9.3.1",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "dek-agent-connector"
 version = "0.1.0"
 dependencies = [
@@ -1328,10 +1349,12 @@ dependencies = [
  "anyhow",
  "axum",
  "base64 0.22.1",
+ "dek-activation",
  "dek-agent-connector",
  "dek-bundle-sync",
  "dek-cedar",
  "dek-config",
+ "dek-ebpf-common",
  "dek-ebpfd",
  "dek-ipc",
  "dek-keystore",
@@ -1340,6 +1363,8 @@ dependencies = [
  "dek-router-builder",
  "dek-spire-node",
  "dek-telemetry",
+ "dek-updater",
+ "dek-wasm-host",
  "ed25519-dalek",
  "futures",
  "libc",
@@ -1468,6 +1493,7 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "chrono",
+ "dek-activation",
  "dek-auth",
  "dek-cedar",
  "dek-config",

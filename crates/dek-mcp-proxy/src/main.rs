@@ -19,9 +19,10 @@ use tokio::net::TcpListener;
 use tracing::{error, info, warn};
 
 mod state;
-use state::{AppState, DekMetadata, PolicySnapshot};
+use state::AppState;
 
 use dek_config::{BootstrapConfig, DekConfig};
+use dek_activation::snapshot::{RuntimeSnapshot, DekMetadata};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -119,7 +120,8 @@ async fn main() -> Result<()> {
         }
     }
 
-    let initial_snapshot = PolicySnapshot::build(router, initial_metadata);
+    let plugin_host = Arc::new(WasmtimePluginHost::new(plugin_paths)?);
+    let initial_snapshot = RuntimeSnapshot::new(0, "initial".into(), 0, Arc::new(router), initial_metadata, plugin_host.clone());
 
     // Init telemetry
     let telemetry_db = dek_config::paths::get_data_dir().join("telemetry.db");
@@ -131,7 +133,6 @@ async fn main() -> Result<()> {
     ).ok();
 
     let state = AppState::new(
-        WasmtimePluginHost::new(plugin_paths)?,
         HttpTransportAdapter,
         initial_snapshot,
         telemetry,
@@ -226,7 +227,14 @@ async fn main() -> Result<()> {
                                         }
                                     }
 
-                                    let new_snapshot = PolicySnapshot::build(new_router, metadata_clone);
+                                    let new_snapshot = RuntimeSnapshot::new(
+                                        0,
+                                        "hot-reload".into(),
+                                        0,
+                                        Arc::new(new_router),
+                                        metadata_clone,
+                                        old_snapshot.plugin_host.clone()
+                                    );
                                     
                                     if is_active {
                                         // Clear cache of the old router before replacing
@@ -454,7 +462,7 @@ async fn handle_mcp_request(
                 });
 
                 // Apply PII redaction plugin if required
-                if let Ok(redacted) = state.plugin_host.invoke("pii-redactor", response.clone()) {
+                if let Ok(redacted) = snapshot.plugin_host.invoke("pii-redactor", response.clone()) {
                     info!("Applied PII redaction plugin successfully.");
                     (StatusCode::OK, Json(redacted)).into_response()
                 } else {
@@ -523,9 +531,9 @@ async fn handle_filter_response(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
 ) -> Response {
-    let _snapshot = state.snapshot.load();
+    let snapshot = state.snapshot.load();
     // Apply redaction plugin
-    if let Ok(redacted) = state.plugin_host.invoke("pii-redactor", payload.clone()) {
+    if let Ok(redacted) = snapshot.plugin_host.invoke("pii-redactor", payload.clone()) {
         (StatusCode::OK, Json(redacted)).into_response()
     } else {
         (StatusCode::OK, Json(payload)).into_response()

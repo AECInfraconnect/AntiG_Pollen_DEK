@@ -1,0 +1,25 @@
+[package]
+name = "dek-activation"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+arc-swap = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
+
+dek-config = { path = "../dek-config" }
+dek-policy-router = { path = "../dek-policy-router" }
+dek-router-builder = { path = "../dek-router-builder" }
+dek-openfga = { path = "../dek-openfga" }
+dek-cedar = { path = "../dek-cedar" }
+dek-auth = { path = "../dek-auth" }
+dek-wasm-host = { path = "../dek-wasm-host" }
+jsonwebtoken = "9.3.1"
+
+[lints]
+workspace = true
