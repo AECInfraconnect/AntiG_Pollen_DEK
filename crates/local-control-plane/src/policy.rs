@@ -115,7 +115,7 @@ async fn publish_policy(
         .get_policy(&tenant, &policy_id)
         .await
         .map_err(ApiError::Internal)?;
-        
+
     let mut draft = match item {
         Some(d) => d,
         None => return Err(ApiError::NotFound(policy_id)),
