@@ -15,7 +15,7 @@ impl Default for DiscoveryConfig {
             default_retention_days: 14,
             enable_browser_history_scan: false, // Privacy guard: default to false requiring user consent
             enable_browser_session_scan: false, // Privacy guard: default to false requiring user consent
-            enable_network_sni_scan: true, // SNI does not expose private URLs, on by default
+            enable_network_sni_scan: true,      // SNI does not expose private URLs, on by default
         }
     }
 }
