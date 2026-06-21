@@ -1,13 +1,13 @@
 use metrics_exporter_prometheus::PrometheusHandle;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::Retry;
 use tokio::sync::Notify;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
+#[allow(dead_code)]
 pub async fn run(
     shutdown: Arc<Notify>,
     metrics_client: Arc<RwLock<reqwest::Client>>,

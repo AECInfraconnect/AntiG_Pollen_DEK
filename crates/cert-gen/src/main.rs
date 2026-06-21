@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use rcgen::{Certificate, CertificateParams, DnType, IsCa};
+use rcgen::{CertificateParams, DnType, IsCa};
 use std::fs;
 use std::path::Path;
 

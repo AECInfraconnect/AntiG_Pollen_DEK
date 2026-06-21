@@ -32,6 +32,7 @@ pub struct ProbationMarker {
     #[serde(default)]
     pub target_version: String,
     #[serde(default)]
+    #[allow(dead_code)]
     pub timestamp: u64,
 }
 
