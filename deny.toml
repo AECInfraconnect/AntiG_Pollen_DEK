@@ -22,18 +22,18 @@ license-files = [
 
 [advisories]
 ignore = [
-    # owner: @AECInfraconnect, expiry: 2026-12-31, issue: #1, reason: Pending deep audit
+    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
     "RUSTSEC-2025-0134",
-    # owner: @AECInfraconnect, expiry: 2026-12-31, issue: #1, reason: Pending deep audit
+    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
     "RUSTSEC-2026-0086",
-    # owner: @AECInfraconnect, expiry: 2026-12-31, issue: #1, reason: Pending deep audit
+    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
     "RUSTSEC-2026-0088",
-    # owner: @AECInfraconnect, expiry: 2026-12-31, issue: #1, reason: Pending deep audit
+    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
     "RUSTSEC-2026-0089",
-    # owner: @AECInfraconnect, expiry: 2026-12-31, issue: #1, reason: Pending deep audit
+    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
     "RUSTSEC-2026-0094",
-    # owner: @AECInfraconnect, expiry: 2026-12-31, issue: #1, reason: Pending deep audit
+    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
     "RUSTSEC-2026-0095",
-    # owner: @AECInfraconnect, expiry: 2026-12-31, issue: #1, reason: Pending deep audit
+    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
     "RUSTSEC-2026-0096",
 ]
