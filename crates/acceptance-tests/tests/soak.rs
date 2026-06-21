@@ -163,7 +163,7 @@ async fn soak_harness() -> Result<()> {
         "device_id": "device-001",
         "principal": { "id": "user_bob", "roles": [] },
         "action": "tools/call",
-        "resource": { "kind": "mcp_tool", "id": "some_tool" },
+        "resource": { "resource_type": "mcp_tool", "resource_id": "some_tool" },
         "context": {},
         "input_hash": "dummy_hash"
     });

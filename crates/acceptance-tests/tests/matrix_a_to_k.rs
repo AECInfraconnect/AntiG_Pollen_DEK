@@ -102,10 +102,14 @@ async fn setup() -> Result<Proc> {
         .status()
         .await;
 
+    let tmp_logs = workspace_dir().join("target").join("tmp_logs");
+    let _ = std::fs::create_dir_all(&tmp_logs);
+
     let mock = Command::new(bin("mock-cloud"))
         .current_dir(workspace_dir())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
+        .env("DEK_LOG_DIR", &tmp_logs)
         .spawn()
         .context("spawn mock-cloud")?;
     wait_https("https://127.0.0.1:43892/admin/dashboard", 20).await?;
@@ -117,15 +121,19 @@ async fn setup() -> Result<Proc> {
 async fn enroll_and_start_core() -> Result<Proc> {
     let tmp_config = workspace_dir().join("target").join("tmp_config");
     let tmp_data = workspace_dir().join("target").join("tmp_data");
+    let tmp_logs = workspace_dir().join("target").join("tmp_logs");
     let _ = std::fs::remove_dir_all(&tmp_config);
     let _ = std::fs::remove_dir_all(&tmp_data);
+    let _ = std::fs::remove_dir_all(&tmp_logs);
     std::fs::create_dir_all(&tmp_config).unwrap();
     std::fs::create_dir_all(&tmp_data).unwrap();
+    std::fs::create_dir_all(&tmp_logs).unwrap();
 
     let status = Command::new(bin("dek-cli"))
         .args(["enroll", "--cloud-url", "https://127.0.0.1:43892"])
         .env("DEK_CONFIG_DIR", &tmp_config)
         .env("DEK_DATA_DIR", &tmp_data)
+        .env("DEK_LOG_DIR", &tmp_logs)
         .current_dir(workspace_dir())
         .status()
         .await
@@ -135,6 +143,7 @@ async fn enroll_and_start_core() -> Result<Proc> {
     let core = Command::new(bin("dek-core"))
         .env("DEK_CONFIG_DIR", &tmp_config)
         .env("DEK_DATA_DIR", &tmp_data)
+        .env("DEK_LOG_DIR", &tmp_logs)
         .env("DEK_BUNDLE_SYNC_INTERVAL", "2")
         .env("DEK_MAX_STALE_SECS", "4")
         .env("RUST_BACKTRACE", "1")
@@ -195,7 +204,7 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
         "device_id": "device-001",
         "principal": { "id": "user_bob", "roles": [] },
         "action": "tools/call",
-        "resource": { "kind": "mcp_tool", "id": "some_tool" },
+        "resource": { "resource_type": "mcp_tool", "resource_id": "some_tool" },
         "context": {},
         "input_hash": "dummy_hash"
     });

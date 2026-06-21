@@ -4,6 +4,21 @@
 use tracing::{info, warn};
 
 #[cfg(target_os = "linux")]
+pub type EbpfHandle = dek_ebpfd::EbpfHandle;
+#[cfg(target_os = "linux")]
+pub type DnsObservation = dek_ebpfd::DnsObservation;
+
+#[cfg(not(target_os = "linux"))]
+pub struct EbpfHandle;
+#[cfg(not(target_os = "linux"))]
+pub struct DnsObservation {
+    pub cgroup_id: u64,
+    pub qname: String,
+    pub answers: Vec<String>,
+    pub is_response: bool,
+}
+
+#[cfg(target_os = "linux")]
 fn has_bpf_caps() -> bool {
     if let Ok(content) = std::fs::read_to_string("/proc/self/status") {
         for line in content.lines() {
@@ -41,8 +56,8 @@ pub fn probe_ebpf_support() -> bool {
 
 #[cfg(target_os = "linux")]
 pub async fn load_and_attach(
-    obs_tx: Option<tokio::sync::mpsc::Sender<dek_ebpfd::DnsObservation>>,
-) -> Option<dek_ebpfd::EbpfHandle> {
+    obs_tx: Option<tokio::sync::mpsc::Sender<DnsObservation>>,
+) -> Option<EbpfHandle> {
     if !probe_ebpf_support() {
         warn!("eBPF unsupported; degrading to app-layer only.");
         return None;
@@ -62,9 +77,9 @@ pub async fn load_and_attach(
 
 #[cfg(not(target_os = "linux"))]
 pub async fn load_and_attach(
-    _obs_tx: Option<tokio::sync::mpsc::Sender<dek_ebpfd::DnsObservation>>,
-) -> Option<dek_ebpfd::EbpfHandle> {
+    _obs_tx: Option<tokio::sync::mpsc::Sender<DnsObservation>>,
+) -> Option<EbpfHandle> {
     info!("Layer 2 eBPF WS-D guardrails are skipped on non-Linux platforms.");
     warn!("Platform relies solely on App-layer MCP and opt-in proxy redirect.");
-    Some(dek_ebpfd::EbpfHandle)
+    Some(EbpfHandle)
 }

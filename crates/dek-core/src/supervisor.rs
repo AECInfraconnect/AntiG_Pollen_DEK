@@ -49,7 +49,7 @@ pub struct Supervisor {
     cancel: CancellationToken,
     start_time: Instant,
     pending_update: Option<crate::probation::ProbationMarker>,
-    _ebpf: Option<dek_ebpfd::EbpfHandle>,
+    _ebpf: Option<crate::ebpf::EbpfHandle>,
 }
 
 impl Supervisor {
@@ -146,7 +146,7 @@ impl Supervisor {
                 .context("build metrics mTLS client")?,
         ));
 
-        let (dns_tx, mut dns_rx) = tokio::sync::mpsc::channel::<dek_ebpfd::DnsObservation>(1024);
+        let (dns_tx, mut dns_rx) = tokio::sync::mpsc::channel::<crate::ebpf::DnsObservation>(1024);
         let sink = telemetry_sink.clone();
         tokio::spawn(async move {
             while let Some(obs) = dns_rx.recv().await {
