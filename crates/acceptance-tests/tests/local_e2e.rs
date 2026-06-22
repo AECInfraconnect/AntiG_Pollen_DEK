@@ -159,6 +159,7 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
             .env("DEK_LCP_DATA", &lcp_data)
             .env("DEK_LCP_DB", "sqlite::memory:")
             .env("DEK_LCP_AUTH_DISABLE", "1")
+            .env("DEK_LCP_BIND", "127.0.0.1:3000")
             .env("RUST_LOG", "info")
             .env_remove("DEK_PINNED_KEY_OVERRIDE")
             .spawn()

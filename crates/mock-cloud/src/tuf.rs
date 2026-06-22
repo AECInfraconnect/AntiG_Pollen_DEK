@@ -213,6 +213,32 @@ async fn get_tuf_artifact(
         (StatusCode::OK, Json(routes_json))
     } else if hash == manifest_hash {
         (StatusCode::OK, Json(manifest_json))
+    } else if hash == "dummy_hash_for_policies" {
+        let cedar_src = _state.rollout.lock().unwrap().latest_bundle.cedar_src.clone();
+        let payload = json!({
+            "policies": [
+                {
+                    "id": "pol_1",
+                    "type": "cedar",
+                    "content": cedar_src
+                }
+            ],
+            "routes": [
+                {
+                    "id": "route_tools_call",
+                    "priority": 100,
+                    "match_rule": {
+                        "method": "tools/call",
+                        "tool_category": null,
+                        "resource_type": "mcp_tool"
+                    },
+                    "pdp_required": ["cedar"]
+                }
+            ]
+        });
+        (StatusCode::OK, Json(payload))
+    } else if hash == "dummy_hash_for_registry" {
+        (StatusCode::OK, Json(json!({ "registry": {} })))
     } else {
         (
             StatusCode::NOT_FOUND,
