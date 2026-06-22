@@ -66,9 +66,19 @@ pub trait RegistryStore: Send + Sync {
     async fn list_relationships(&self, tenant_id: &str) -> Result<Vec<Relationship>>;
     async fn delete_relationship(&self, tenant_id: &str, relationship_id: &str) -> Result<bool>;
 
-    async fn upsert_agent_inventory(&self, inventory: dek_domain_schema::AgentCapabilityInventory) -> Result<dek_domain_schema::AgentCapabilityInventory>;
-    async fn get_agent_inventory(&self, tenant_id: &str, agent_id: &str) -> Result<Option<dek_domain_schema::AgentCapabilityInventory>>;
-    async fn list_agent_inventories(&self, tenant_id: &str) -> Result<Vec<dek_domain_schema::AgentCapabilityInventory>>;
+    async fn upsert_agent_inventory(
+        &self,
+        inventory: dek_domain_schema::AgentCapabilityInventory,
+    ) -> Result<dek_domain_schema::AgentCapabilityInventory>;
+    async fn get_agent_inventory(
+        &self,
+        tenant_id: &str,
+        agent_id: &str,
+    ) -> Result<Option<dek_domain_schema::AgentCapabilityInventory>>;
+    async fn list_agent_inventories(
+        &self,
+        tenant_id: &str,
+    ) -> Result<Vec<dek_domain_schema::AgentCapabilityInventory>>;
     async fn delete_agent_inventory(&self, tenant_id: &str, agent_id: &str) -> Result<bool>;
 }
 
@@ -105,12 +115,32 @@ pub trait PolicyStore: Send + Sync {
     async fn put_blob(&self, tenant: &str, path: &str, bytes: &[u8]) -> Result<()>;
     async fn get_blob(&self, tenant: &str, path: &str) -> Result<Option<Vec<u8>>>;
 
-    async fn upsert_preset_deployment(&self, tenant_id: &str, deployment_id: &str, data: &serde_json::Value) -> Result<()>;
-    async fn get_preset_deployment(&self, tenant_id: &str, deployment_id: &str) -> Result<Option<serde_json::Value>>;
+    async fn upsert_preset_deployment(
+        &self,
+        tenant_id: &str,
+        deployment_id: &str,
+        data: &serde_json::Value,
+    ) -> Result<()>;
+    async fn get_preset_deployment(
+        &self,
+        tenant_id: &str,
+        deployment_id: &str,
+    ) -> Result<Option<serde_json::Value>>;
     async fn list_preset_deployments(&self, tenant_id: &str) -> Result<Vec<serde_json::Value>>;
-    
-    async fn upsert_pep_binding(&self, tenant_id: &str, binding_id: &str, deployment_id: &str, pep_type: &str, data: &serde_json::Value) -> Result<()>;
-    async fn list_pep_bindings(&self, tenant_id: &str, deployment_id: &str) -> Result<Vec<serde_json::Value>>;
+
+    async fn upsert_pep_binding(
+        &self,
+        tenant_id: &str,
+        binding_id: &str,
+        deployment_id: &str,
+        pep_type: &str,
+        data: &serde_json::Value,
+    ) -> Result<()>;
+    async fn list_pep_bindings(
+        &self,
+        tenant_id: &str,
+        deployment_id: &str,
+    ) -> Result<Vec<serde_json::Value>>;
 }
 
 #[async_trait::async_trait]
@@ -531,7 +561,10 @@ impl RegistryStore for SqliteStore {
             .await
     }
 
-    async fn upsert_agent_inventory(&self, inventory: dek_domain_schema::AgentCapabilityInventory) -> Result<dek_domain_schema::AgentCapabilityInventory> {
+    async fn upsert_agent_inventory(
+        &self,
+        inventory: dek_domain_schema::AgentCapabilityInventory,
+    ) -> Result<dek_domain_schema::AgentCapabilityInventory> {
         let json_data = serde_json::to_string(&inventory)?;
         let now = chrono::Utc::now().timestamp();
         sqlx::query(
@@ -542,7 +575,7 @@ impl RegistryStore for SqliteStore {
                 device_id=excluded.device_id,
                 inventory_json=excluded.inventory_json,
                 updated_at=excluded.updated_at
-            "#
+            "#,
         )
         .bind(&inventory.tenant_id)
         .bind(&inventory.agent_id)
@@ -554,12 +587,18 @@ impl RegistryStore for SqliteStore {
         Ok(inventory)
     }
 
-    async fn get_agent_inventory(&self, tenant_id: &str, agent_id: &str) -> Result<Option<dek_domain_schema::AgentCapabilityInventory>> {
-        let row = sqlx::query("SELECT inventory_json FROM agent_inventory WHERE tenant = ?1 AND agent_id = ?2")
-            .bind(tenant_id)
-            .bind(agent_id)
-            .fetch_optional(&self.pool)
-            .await?;
+    async fn get_agent_inventory(
+        &self,
+        tenant_id: &str,
+        agent_id: &str,
+    ) -> Result<Option<dek_domain_schema::AgentCapabilityInventory>> {
+        let row = sqlx::query(
+            "SELECT inventory_json FROM agent_inventory WHERE tenant = ?1 AND agent_id = ?2",
+        )
+        .bind(tenant_id)
+        .bind(agent_id)
+        .fetch_optional(&self.pool)
+        .await?;
         if let Some(r) = row {
             let json_str: String = r.try_get("inventory_json")?;
             let inv: dek_domain_schema::AgentCapabilityInventory = serde_json::from_str(&json_str)?;
@@ -569,7 +608,10 @@ impl RegistryStore for SqliteStore {
         }
     }
 
-    async fn list_agent_inventories(&self, tenant_id: &str) -> Result<Vec<dek_domain_schema::AgentCapabilityInventory>> {
+    async fn list_agent_inventories(
+        &self,
+        tenant_id: &str,
+    ) -> Result<Vec<dek_domain_schema::AgentCapabilityInventory>> {
         let rows = sqlx::query("SELECT inventory_json FROM agent_inventory WHERE tenant = ?1")
             .bind(tenant_id)
             .fetch_all(&self.pool)
@@ -689,13 +731,33 @@ impl PolicyStore for SqliteStore {
             Ok(None)
         }
     }
-    async fn upsert_preset_deployment(&self, tenant_id: &str, deployment_id: &str, data: &serde_json::Value) -> Result<()> {
+    async fn upsert_preset_deployment(
+        &self,
+        tenant_id: &str,
+        deployment_id: &str,
+        data: &serde_json::Value,
+    ) -> Result<()> {
         let preset_id = data.get("preset_id").and_then(|v| v.as_str()).unwrap_or("");
-        let preset_version = data.get("preset_version").and_then(|v| v.as_str()).unwrap_or("");
-        let control_mode = data.get("control_mode").and_then(|v| v.as_str()).unwrap_or("Observe");
-        let status = data.get("status").and_then(|v| v.as_str()).unwrap_or("active");
-        let target_scopes_json = data.get("targets").map(|v| v.to_string()).unwrap_or_else(|| "{}".to_string());
-        let parameters_json = data.get("params").map(|v| v.to_string()).unwrap_or_else(|| "{}".to_string());
+        let preset_version = data
+            .get("preset_version")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let control_mode = data
+            .get("control_mode")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Observe");
+        let status = data
+            .get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("active");
+        let target_scopes_json = data
+            .get("targets")
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "{}".to_string());
+        let parameters_json = data
+            .get("params")
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "{}".to_string());
         let now = chrono::Utc::now().to_rfc3339();
 
         sqlx::query(
@@ -726,12 +788,18 @@ impl PolicyStore for SqliteStore {
         Ok(())
     }
 
-    async fn get_preset_deployment(&self, tenant_id: &str, deployment_id: &str) -> Result<Option<serde_json::Value>> {
-        let row = sqlx::query("SELECT * FROM policy_preset_deployments WHERE tenant_id = ?1 AND deployment_id = ?2")
-            .bind(tenant_id)
-            .bind(deployment_id)
-            .fetch_optional(&self.pool)
-            .await?;
+    async fn get_preset_deployment(
+        &self,
+        tenant_id: &str,
+        deployment_id: &str,
+    ) -> Result<Option<serde_json::Value>> {
+        let row = sqlx::query(
+            "SELECT * FROM policy_preset_deployments WHERE tenant_id = ?1 AND deployment_id = ?2",
+        )
+        .bind(tenant_id)
+        .bind(deployment_id)
+        .fetch_optional(&self.pool)
+        .await?;
         if let Some(r) = row {
             let mut val = serde_json::json!({
                 "deployment_id": r.try_get::<String, _>("deployment_id")?,
@@ -777,9 +845,19 @@ impl PolicyStore for SqliteStore {
         Ok(out)
     }
 
-    async fn upsert_pep_binding(&self, tenant_id: &str, binding_id: &str, deployment_id: &str, pep_type: &str, data: &serde_json::Value) -> Result<()> {
+    async fn upsert_pep_binding(
+        &self,
+        tenant_id: &str,
+        binding_id: &str,
+        deployment_id: &str,
+        pep_type: &str,
+        data: &serde_json::Value,
+    ) -> Result<()> {
         let config_json = serde_json::to_string(data)?;
-        let status = data.get("status").and_then(|v| v.as_str()).unwrap_or("active");
+        let status = data
+            .get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("active");
         let now = chrono::Utc::now().to_rfc3339();
 
         sqlx::query(
@@ -806,12 +884,17 @@ impl PolicyStore for SqliteStore {
         Ok(())
     }
 
-    async fn list_pep_bindings(&self, tenant_id: &str, deployment_id: &str) -> Result<Vec<serde_json::Value>> {
-        let rows = sqlx::query("SELECT * FROM pep_bindings WHERE tenant_id = ?1 AND deployment_id = ?2")
-            .bind(tenant_id)
-            .bind(deployment_id)
-            .fetch_all(&self.pool)
-            .await?;
+    async fn list_pep_bindings(
+        &self,
+        tenant_id: &str,
+        deployment_id: &str,
+    ) -> Result<Vec<serde_json::Value>> {
+        let rows =
+            sqlx::query("SELECT * FROM pep_bindings WHERE tenant_id = ?1 AND deployment_id = ?2")
+                .bind(tenant_id)
+                .bind(deployment_id)
+                .fetch_all(&self.pool)
+                .await?;
         let mut out = Vec::new();
         for r in rows {
             let mut val = serde_json::json!({
@@ -1453,4 +1536,3 @@ impl ObservabilityStore for SqliteStore {
         Ok(out)
     }
 }
-

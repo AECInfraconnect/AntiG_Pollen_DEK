@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-pub mod watchdog;
 pub mod sni_observe;
+pub mod watchdog;
 
 use anyhow::Result;
 use dek_domain_schema::CompiledNetworkRules;
@@ -16,10 +16,10 @@ use windows::Win32::Foundation::HANDLE;
 #[cfg(windows)]
 use windows::Win32::NetworkManagement::WindowsFilteringPlatform::{
     FwpmEngineClose0, FwpmEngineOpen0, FwpmFilterAdd0, FwpmFilterDeleteById0,
-    FWPM_CONDITION_IP_REMOTE_ADDRESS, FWPM_CONDITION_IP_REMOTE_PORT,
-    FWPM_FILTER0, FWPM_FILTER_CONDITION0, FWPM_LAYER_ALE_AUTH_CONNECT_V4, FWPM_SESSION0,
-    FWP_ACTION_BLOCK, FWP_CONDITION_VALUE0, FWP_CONDITION_VALUE0_0, FWP_MATCH_EQUAL,
-    FWP_UINT16, FWP_UINT32, FWP_VALUE0, FWP_DATA_TYPE, FWP_UINT8
+    FWPM_CONDITION_IP_REMOTE_ADDRESS, FWPM_CONDITION_IP_REMOTE_PORT, FWPM_FILTER0,
+    FWPM_FILTER_CONDITION0, FWPM_LAYER_ALE_AUTH_CONNECT_V4, FWPM_SESSION0, FWP_ACTION_BLOCK,
+    FWP_CONDITION_VALUE0, FWP_CONDITION_VALUE0_0, FWP_DATA_TYPE, FWP_MATCH_EQUAL, FWP_UINT16,
+    FWP_UINT32, FWP_UINT8, FWP_VALUE0,
 };
 
 pub fn probe_available() -> bool {
@@ -79,7 +79,9 @@ impl WfpFilterManager {
                 matchType: FWP_MATCH_EQUAL,
                 conditionValue: FWP_CONDITION_VALUE0 {
                     r#type: FWP_UINT16,
-                    Anonymous: FWP_CONDITION_VALUE0_0 { uint16: remote_port },
+                    Anonymous: FWP_CONDITION_VALUE0_0 {
+                        uint16: remote_port,
+                    },
                 },
             });
         }
@@ -87,7 +89,7 @@ impl WfpFilterManager {
         let mut filter = FWPM_FILTER0::default();
         filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V4;
         filter.action.r#type = FWP_ACTION_BLOCK;
-        
+
         filter.weight = FWP_VALUE0 {
             r#type: FWP_UINT8 as FWP_DATA_TYPE, // Weight is usually uint8
             Anonymous: windows::Win32::NetworkManagement::WindowsFilteringPlatform::FWP_VALUE0_0 {
@@ -106,22 +108,18 @@ impl WfpFilterManager {
             anyhow::bail!("FwpmFilterAdd0 failed: {}", status);
         }
 
-        info!(
-            filter_id,
-            remote_ip, remote_port, "WFP block filter added"
-        );
+        info!(filter_id, remote_ip, remote_port, "WFP block filter added");
         Ok(filter_id)
     }
 
     #[cfg(windows)]
     fn add_app_filter(&self, app_path: &str, action: u32, weight: u8) -> Result<u64> {
-        use windows::Win32::NetworkManagement::WindowsFilteringPlatform::{
-            FwpmGetAppIdFromFileName0, FwpmFreeMemory0, FWP_BYTE_BLOB,
-            FWPM_CONDITION_ALE_APP_ID, FWP_BYTE_BLOB_TYPE,
-            FWP_ACTION_TYPE, FWP_VALUE0, FWP_DATA_TYPE, FWP_UINT8,
-        };
-        use windows::core::HSTRING;
         use std::ptr;
+        use windows::core::HSTRING;
+        use windows::Win32::NetworkManagement::WindowsFilteringPlatform::{
+            FwpmFreeMemory0, FwpmGetAppIdFromFileName0, FWPM_CONDITION_ALE_APP_ID, FWP_ACTION_TYPE,
+            FWP_BYTE_BLOB, FWP_BYTE_BLOB_TYPE, FWP_DATA_TYPE, FWP_UINT8, FWP_VALUE0,
+        };
 
         let Some(engine) = self.engine_handle else {
             anyhow::bail!("WFP engine not open");
@@ -178,9 +176,7 @@ impl WfpFilterManager {
 
         let mut filter_id: u64 = 0;
         // SAFETY: engine handle valid, filter+conditions valid for the duration
-        let status = unsafe {
-            FwpmFilterAdd0(engine, &filter, None, Some(&mut filter_id))
-        };
+        let status = unsafe { FwpmFilterAdd0(engine, &filter, None, Some(&mut filter_id)) };
         if status != 0 {
             anyhow::bail!("FwpmFilterAdd0 failed: {status}");
         }
@@ -248,7 +244,7 @@ impl NetworkEnforcer for WfpFilterManager {
         #[cfg(windows)]
         {
             let mut added = Vec::new();
-            
+
             // Basic parsing of rules.conditions.destinations
             for dest in &rules.conditions.destinations {
                 let mut remote_ip: u32 = 0;
@@ -259,7 +255,7 @@ impl NetworkEnforcer for WfpFilterManager {
                         if let Some(ip_str) = dest.value.as_str() {
                             let ip_part = ip_str.split('/').next().unwrap_or("");
                             if let Ok(ip_addr) = ip_part.parse::<std::net::Ipv4Addr>() {
-                                // WFP expects host byte order or big endian? 
+                                // WFP expects host byte order or big endian?
                                 // FwpmFilterCondition0 IP is host byte order typically (u32 from bytes is big endian usually, but Windows might use Network Byte Order)
                                 // Let's use u32::from_be_bytes(ip_addr.octets())
                                 remote_ip = u32::from_be_bytes(ip_addr.octets());
@@ -277,7 +273,7 @@ impl NetworkEnforcer for WfpFilterManager {
                     }
                     _ => {}
                 }
-                
+
                 if remote_ip != 0 || remote_port != 0 {
                     match self.add_block_filter(remote_ip, remote_port, 10) {
                         Ok(id) => added.push(id),
@@ -295,7 +291,7 @@ impl NetworkEnforcer for WfpFilterManager {
                 policy = %rules.policy_id,
                 "WFP filters applied (REAL)"
             );
-            
+
             if let Some(spool) = &self.spool {
                 let event = serde_json::json!({
                     "decision": "block",

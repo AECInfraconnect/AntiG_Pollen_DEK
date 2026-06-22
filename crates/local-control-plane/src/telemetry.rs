@@ -58,10 +58,7 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/logs/policy-deployments",
             get(list_policy_deployments),
         )
-        .route(
-            "/v1/tenants/:tenant/logs/pep-health",
-            get(list_pep_health),
-        )
+        .route("/v1/tenants/:tenant/logs/pep-health", get(list_pep_health))
 }
 
 #[derive(serde::Deserialize)]

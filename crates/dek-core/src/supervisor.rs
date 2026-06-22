@@ -50,7 +50,9 @@ pub struct Supervisor {
     start_time: Instant,
     pending_update: Option<crate::probation::ProbationMarker>,
     _ebpf: Option<crate::ebpf::EbpfHandle>,
-    active_network_rules: std::sync::Arc<tokio::sync::RwLock<Vec<dek_domain_schema::network_guardrail::CompiledNetworkRules>>>,
+    active_network_rules: std::sync::Arc<
+        tokio::sync::RwLock<Vec<dek_domain_schema::network_guardrail::CompiledNetworkRules>>,
+    >,
 }
 
 impl Supervisor {
@@ -150,7 +152,9 @@ impl Supervisor {
                 .context("build metrics mTLS client")?,
         ));
 
-        let active_network_rules = Arc::new(RwLock::new(Vec::<dek_domain_schema::network_guardrail::CompiledNetworkRules>::new()));
+        let active_network_rules = Arc::new(RwLock::new(Vec::<
+            dek_domain_schema::network_guardrail::CompiledNetworkRules,
+        >::new()));
         let active_rules_for_dns = active_network_rules.clone();
 
         let (dns_tx, mut dns_rx) = tokio::sync::mpsc::channel::<crate::ebpf::DnsObservation>(1024);
@@ -173,7 +177,11 @@ impl Supervisor {
                     use dek_domain_schema::network_guardrail::NetworkGuardrailEffect;
                     let rules = active_rules_for_dns.read().await;
                     for r in rules.iter() {
-                        let allow = if r.effect == NetworkGuardrailEffect::Allow { 1 } else { 0 };
+                        let allow = if r.effect == NetworkGuardrailEffect::Allow {
+                            1
+                        } else {
+                            0
+                        };
                         for dest in &r.conditions.destinations {
                             if dest.r#type == "domain" {
                                 if let Some(domain) = dest.value.as_str() {
@@ -196,9 +204,12 @@ impl Supervisor {
                                             allow,
                                             log_event: 1,
                                         };
-                                        let ips: Vec<std::net::IpAddr> = obs.answers.iter().map(|ans| ans.ip).collect();
+                                        let ips: Vec<std::net::IpAddr> =
+                                            obs.answers.iter().map(|ans| ans.ip).collect();
                                         if !ips.is_empty() {
-                                            let _ = dek_ebpfd::dns_cache::on_dns_response(&obs.qname, &ips, verdict);
+                                            let _ = dek_ebpfd::dns_cache::on_dns_response(
+                                                &obs.qname, &ips, verdict,
+                                            );
                                         }
                                     }
                                 }

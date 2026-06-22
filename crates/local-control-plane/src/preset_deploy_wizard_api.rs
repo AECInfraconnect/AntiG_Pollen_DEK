@@ -101,7 +101,7 @@ async fn simulate_deployment(
         .await
         .map_err(ApiError::Internal)?;
 
-    let matched_agents = agents; 
+    let matched_agents = agents;
 
     // 3. Generate Control Bindings based on PEP capabilities
     let mut control_bindings = Vec::new();
@@ -163,7 +163,15 @@ async fn execute_deployment(
         "status": "applied",
         "timestamp": chrono::Utc::now().to_rfc3339()
     });
-    let _ = st.telemetry_store.put_telemetry(&tenant, "policy_deployment", event["event_id"].as_str().unwrap(), &event).await;
+    let _ = st
+        .telemetry_store
+        .put_telemetry(
+            &tenant,
+            "policy_deployment",
+            event["event_id"].as_str().unwrap(),
+            &event,
+        )
+        .await;
 
     Ok(Json(deployment))
 }

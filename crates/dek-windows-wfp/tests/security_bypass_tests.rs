@@ -16,7 +16,7 @@ use dek_windows_wfp::WfpFilterManager;
 
 #[test]
 fn test_wfp_bypass_prevention_logic() {
-    let mut manager = WfpFilterManager::new();
+    let mut manager = WfpFilterManager::new(None);
     let _ = manager.start(); // This currently fails because it's a stub
 
     let rules = CompiledNetworkRules {

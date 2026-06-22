@@ -15,9 +15,18 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/v1/tenants/:tenant/policy-presets/deploy", post(deploy_preset))
-        .route("/v1/tenants/:tenant/policy-presets/deployments/:deployment_id/rollback", post(rollback_deployment))
-        .route("/v1/tenants/:tenant/policy-presets/deployments", get(list_deployments))
+        .route(
+            "/v1/tenants/:tenant/policy-presets/deploy",
+            post(deploy_preset),
+        )
+        .route(
+            "/v1/tenants/:tenant/policy-presets/deployments/:deployment_id/rollback",
+            post(rollback_deployment),
+        )
+        .route(
+            "/v1/tenants/:tenant/policy-presets/deployments",
+            get(list_deployments),
+        )
 }
 
 async fn deploy_preset(
@@ -35,8 +44,8 @@ async fn deploy_preset(
     let deployment_id = Uuid::new_v4().to_string();
 
     // 2. Render artifacts
-    let rendered_artifacts = dek_policy_presets::render::render(&preset, &req)
-        .map_err(ApiError::Internal)?;
+    let rendered_artifacts =
+        dek_policy_presets::render::render(&preset, &req).map_err(ApiError::Internal)?;
 
     // 3. Save to Store
     let deployment_data = serde_json::json!({
@@ -71,7 +80,13 @@ async fn deploy_preset(
         });
 
         st.policy_store
-            .upsert_pep_binding(&tenant, &binding_id, &deployment_id, pep_type, &binding_data)
+            .upsert_pep_binding(
+                &tenant,
+                &binding_id,
+                &deployment_id,
+                pep_type,
+                &binding_data,
+            )
             .await
             .map_err(ApiError::Internal)?;
 
@@ -90,7 +105,9 @@ async fn rollback_deployment(
     Path((tenant, deployment_id)): Path<(String, String)>,
     State(st): State<AppState>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let mut deployment = st.policy_store.get_preset_deployment(&tenant, &deployment_id)
+    let mut deployment = st
+        .policy_store
+        .get_preset_deployment(&tenant, &deployment_id)
         .await
         .map_err(ApiError::Internal)?
         .ok_or_else(|| ApiError::NotFound(deployment_id.clone()))?;
@@ -114,7 +131,9 @@ async fn list_deployments(
     Path(tenant): Path<String>,
     State(st): State<AppState>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let deployments = st.policy_store.list_preset_deployments(&tenant)
+    let deployments = st
+        .policy_store
+        .list_preset_deployments(&tenant)
         .await
         .map_err(ApiError::Internal)?;
 

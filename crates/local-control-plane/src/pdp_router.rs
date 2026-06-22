@@ -350,7 +350,7 @@ impl PdpRouterService {
                 "#;
                 if let Ok(adapter) = dek_cedar::CedarAdapter::new(default_policy) {
                     use dek_plugin_sdk::PolicyEvaluator;
-                    
+
                     let req = dek_plugin_sdk::EvalRequest {
                         request_id: format!("req_{}", uuid::Uuid::new_v4()),
                         tenant_id: Some(tenant.to_string()),
@@ -360,7 +360,7 @@ impl PdpRouterService {
                         payload: payload.clone(),
                         context: std::collections::BTreeMap::new(),
                     };
-                    
+
                     if let Ok(res) = adapter.evaluate(req).await {
                         let dec = match res.decision {
                             dek_plugin_sdk::DecisionEffect::Allow => "Allow",

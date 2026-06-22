@@ -241,5 +241,3 @@ async fn generate_control_plan(
         }
     })))
 }
-
-

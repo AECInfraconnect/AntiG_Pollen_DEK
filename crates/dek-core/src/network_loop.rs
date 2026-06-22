@@ -208,7 +208,11 @@ pub mod ebpf_backend {
 
 /// Build the platform enforcer. Returns None on unsupported platforms (the
 /// driver then no-ops, but MCP-plane enforcement is unaffected).
-pub fn platform_enforcer(_tenant_id: &str, _device_id: &str, _spool: Option<std::sync::Arc<dek_secure_spool::Spool>>) -> Option<Box<dyn NetworkEnforcer>> {
+pub fn platform_enforcer(
+    _tenant_id: &str,
+    _device_id: &str,
+    _spool: Option<std::sync::Arc<dek_secure_spool::Spool>>,
+) -> Option<Box<dyn NetworkEnforcer>> {
     #[cfg(windows)]
     {
         return wfp_backend::WfpEnforcer::new(_spool)

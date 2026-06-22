@@ -16,8 +16,14 @@ use crate::{
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/v1/tenants/:tenant/agent-inventory", get(list_inventory))
-        .route("/v1/tenants/:tenant/agent-inventory/:agent_id", get(get_inventory))
-        .route("/v1/tenants/:tenant/agent-inventory/rebuild", post(rebuild_inventory))
+        .route(
+            "/v1/tenants/:tenant/agent-inventory/:agent_id",
+            get(get_inventory),
+        )
+        .route(
+            "/v1/tenants/:tenant/agent-inventory/rebuild",
+            post(rebuild_inventory),
+        )
 }
 
 async fn list_inventory(
@@ -58,9 +64,13 @@ async fn rebuild_inventory(
     let mut rebuilt_count = 0;
 
     for raw in candidates_raw {
-        if let Ok(candidate) = serde_json::from_value::<dek_agent_discovery::model::DiscoveredAgentCandidateV2>(raw) {
-            let agent_kind_str = serde_json::to_string(&candidate.inferred_agent_type).unwrap_or_else(|_| "\"UnknownAiProcess\"".to_string());
-            let agent_kind: dek_domain_schema::AgentKind = serde_json::from_str(&agent_kind_str).unwrap_or(dek_domain_schema::AgentKind::UnknownAiProcess);
+        if let Ok(candidate) =
+            serde_json::from_value::<dek_agent_discovery::model::DiscoveredAgentCandidateV2>(raw)
+        {
+            let agent_kind_str = serde_json::to_string(&candidate.inferred_agent_type)
+                .unwrap_or_else(|_| "\"UnknownAiProcess\"".to_string());
+            let agent_kind: dek_domain_schema::AgentKind = serde_json::from_str(&agent_kind_str)
+                .unwrap_or(dek_domain_schema::AgentKind::UnknownAiProcess);
 
             let mut mcp_surfaces = Vec::new();
             for mcp in &candidate.discovered_mcp_servers {
@@ -113,5 +123,7 @@ async fn rebuild_inventory(
         }
     }
 
-    Ok(Json(serde_json::json!({"status": "rebuilt", "count": rebuilt_count})))
+    Ok(Json(
+        serde_json::json!({"status": "rebuilt", "count": rebuilt_count}),
+    ))
 }

@@ -1242,4 +1242,3 @@ The best path is not to build a generic "Add Connector" page. Pollen DEK should 
 - What logs prove control is working?
 
 This will make Pollen DEK credible as a local Device Enforcement Kit: it can discover, observe, control, enforce, and report telemetry with accurate guarantees instead of optimistic UI state.
-

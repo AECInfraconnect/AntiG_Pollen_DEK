@@ -120,7 +120,11 @@ pub async fn start_cloud_registry_sync_loop(state: AppState) -> anyhow::Result<(
             }
 
             // Telemetry: Deployments (Phase 7)
-            if let Ok(deployments) = state.telemetry_store.list_telemetry(tenant_id, "policy_deployment").await {
+            if let Ok(deployments) = state
+                .telemetry_store
+                .list_telemetry(tenant_id, "policy_deployment")
+                .await
+            {
                 for item in deployments {
                     all_objects.push(serde_json::json!({
                         "type": "telemetry_policy_deployment",
@@ -130,7 +134,11 @@ pub async fn start_cloud_registry_sync_loop(state: AppState) -> anyhow::Result<(
             }
 
             // Telemetry: Tool Invocations (Phase 7)
-            if let Ok(invocations) = state.telemetry_store.list_telemetry(tenant_id, "tool_invocation").await {
+            if let Ok(invocations) = state
+                .telemetry_store
+                .list_telemetry(tenant_id, "tool_invocation")
+                .await
+            {
                 for item in invocations {
                     all_objects.push(serde_json::json!({
                         "type": "telemetry_tool_invocation",
@@ -140,7 +148,11 @@ pub async fn start_cloud_registry_sync_loop(state: AppState) -> anyhow::Result<(
             }
 
             // Telemetry: Resource Access (Phase 7)
-            if let Ok(accesses) = state.telemetry_store.list_telemetry(tenant_id, "resource_access").await {
+            if let Ok(accesses) = state
+                .telemetry_store
+                .list_telemetry(tenant_id, "resource_access")
+                .await
+            {
                 for item in accesses {
                     all_objects.push(serde_json::json!({
                         "type": "telemetry_resource_access",
@@ -199,7 +211,7 @@ pub async fn start_cloud_registry_sync_loop(state: AppState) -> anyhow::Result<(
                 cloud_url.trim_end_matches('/'),
                 tenant_id
             );
-            
+
             let mut pull_req = client.get(&bundles_endpoint);
             if !api_key.is_empty() {
                 pull_req = pull_req.bearer_auth(&api_key);

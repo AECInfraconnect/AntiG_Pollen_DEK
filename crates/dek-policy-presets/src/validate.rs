@@ -63,7 +63,10 @@ pub fn validate_pep_selection(
     }
 
     if !preset.supported_control_modes.contains(control_mode) {
-        anyhow::bail!("Control mode '{:?}' is not supported by this preset", control_mode);
+        anyhow::bail!(
+            "Control mode '{:?}' is not supported by this preset",
+            control_mode
+        );
     }
 
     for pep in selected_peps {
@@ -75,10 +78,7 @@ pub fn validate_pep_selection(
     Ok(())
 }
 
-pub fn validate_request(
-    preset: &PolicyPresetV2,
-    req: &DeployPresetRequest,
-) -> anyhow::Result<()> {
+pub fn validate_request(preset: &PolicyPresetV2, req: &DeployPresetRequest) -> anyhow::Result<()> {
     validate_params(preset, &req.params)?;
     validate_pep_selection(preset, &req.selected_pep_types, &req.control_mode)?;
     Ok(())

@@ -157,6 +157,11 @@ pub fn on_dns_response(
             }
         }
     }
-    tracing::info!(domain, count = resolved_ips.len(), action = if verdict.allow == 1 { "allow" } else { "block" }, "domain policy → IP verdicts pushed");
+    tracing::info!(
+        domain,
+        count = resolved_ips.len(),
+        action = if verdict.allow == 1 { "allow" } else { "block" },
+        "domain policy → IP verdicts pushed"
+    );
     Ok(())
 }
