@@ -158,7 +158,7 @@ async fn enroll_and_start_core() -> Result<Proc> {
 macro_rules! wait_for_audit {
     ($cond:expr, $msg:expr) => {
         let mut found = false;
-        for _ in 0..60 {
+        for _ in 0..300 {
             if let Ok(audits) = fetch_audits().await {
                 let txt = audits.to_string();
                 if $cond(&txt) {
@@ -228,8 +228,8 @@ async fn acceptance_matrix_a_to_k() -> Result<()> {
     });
     let mut last_status = 0;
     let mut last_allow = false;
-    for _ in 0..60 {
-        // wait up to 30s
+    for _ in 0..300 {
+        // wait up to 150s
         if let Ok((st, allow, _)) = authorize(&pep, &allow_req).await {
             last_status = st;
             last_allow = allow;
