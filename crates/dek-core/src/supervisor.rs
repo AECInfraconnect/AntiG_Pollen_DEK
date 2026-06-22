@@ -244,6 +244,9 @@ impl Supervisor {
     }
 
     pub async fn run(mut self) -> Result<()> {
+        let liveness = crate::watchdog::Liveness::default();
+        let _wd_handle = crate::watchdog::spawn(liveness.clone(), self.cancel.clone());
+
         let reload_coordinator = Arc::new(crate::reload_coordinator::ReloadCoordinator::new());
 
         let renew_cfg = crate::svid_renewal::RenewalConfig {
@@ -431,7 +434,16 @@ impl Supervisor {
         };
 
         // 4) Wait for shutdown signal -> cancel -> bounded drain.
-        Self::wait_for_signal().await;
+        let mut ticker = tokio::time::interval(std::time::Duration::from_secs(5));
+        tokio::select! {
+            _ = async {
+                loop {
+                    ticker.tick().await;
+                    liveness.tick();
+                }
+            } => {},
+            _ = Self::wait_for_signal() => {}
+        }
         info!("Shutdown signal received; cancelling tasks...");
         self.cancel.cancel();
 

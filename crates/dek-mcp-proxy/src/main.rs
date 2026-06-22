@@ -71,6 +71,12 @@ use dek_config::{BootstrapConfig, DekConfig};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        rustls::crypto::ring::default_provider()
+            .install_default()
+            .map_err(|_| ())
+            .ok();
+    }
     #[allow(clippy::print_stderr)]
     {
         dek_config::logging::init_logging("dek-mcp-proxy").unwrap_or_else(|e| {

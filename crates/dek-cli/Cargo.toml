@@ -23,6 +23,7 @@ dek-enroll = { path = "../dek-enroll" }
 dek-spire-node = { path = "../dek-spire-node" }
 dek-keystore = { path = "../dek-keystore" }
 webbrowser = "1.2.1"
+rustls.workspace = true
 reqwest.workspace = true
 rcgen = "0.13"
 

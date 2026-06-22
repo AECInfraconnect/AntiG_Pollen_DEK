@@ -190,6 +190,12 @@ async fn send_ipc_request(host: &str, port: u16, req_payload: IpcRequest) -> Res
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        rustls::crypto::ring::default_provider()
+            .install_default()
+            .map_err(|_| ())
+            .ok();
+    }
     tracing_subscriber::fmt()
         .with_env_filter("info")
         .without_time()

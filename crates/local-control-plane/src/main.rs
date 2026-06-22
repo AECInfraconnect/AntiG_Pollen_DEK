@@ -15,6 +15,12 @@ use local_control_plane::store;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        rustls::crypto::ring::default_provider()
+            .install_default()
+            .map_err(|_| ())
+            .ok();
+    }
     tracing_subscriber::fmt::init();
 
     let cfg = LocalControlPlaneConfig::from_env()?;

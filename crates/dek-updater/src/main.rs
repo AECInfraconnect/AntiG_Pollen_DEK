@@ -63,6 +63,12 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        rustls::crypto::ring::default_provider()
+            .install_default()
+            .map_err(|_| ())
+            .ok();
+    }
     let cli = Cli::parse();
 
     match cli.command {

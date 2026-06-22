@@ -23,6 +23,7 @@ dek-resilience = { path = "../dek-resilience" }
 uuid = { version = "1.10", features = ["v4"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
+rustls.workspace = true
 
 metrics-exporter-prometheus = { version = "0.13", default-features = false, features = ["http-listener"] }
 dek-telemetry = { version = "0.1.0", path = "../dek-telemetry" }

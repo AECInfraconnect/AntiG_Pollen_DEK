@@ -20,7 +20,11 @@ mod supervisor;
 mod svid_renewal;
 mod svid_renewal_failclosed;
 
+pub mod crypto_init;
+pub mod watchdog;
+
 fn main() -> anyhow::Result<()> {
+    crypto_init::install_crypto_provider();
     #[cfg(windows)]
     service_integration::run_as_service_if_needed(async { run().await })?;
     #[cfg(not(windows))]

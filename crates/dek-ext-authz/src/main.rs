@@ -231,6 +231,12 @@ impl Authorization for ExtAuthzService {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        rustls::crypto::ring::default_provider()
+            .install_default()
+            .map_err(|_| ())
+            .ok();
+    }
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
         .init();

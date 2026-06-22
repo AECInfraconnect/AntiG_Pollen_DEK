@@ -22,19 +22,19 @@ license-files = [
 
 [advisories]
 ignore = [
-    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
+    # owner: @AECInfraconnect/security, expiry: 2026-09-20, issue: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/issues/1001, reason: Awaiting upstream patch from ring/aws-lc-rs for exploitability
     "RUSTSEC-2025-0134",
-    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
+    # owner: @AECInfraconnect/security, expiry: 2026-09-20, issue: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/issues/1002, reason: Under investigation for impact on local-control-plane
     "RUSTSEC-2026-0086",
-    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
+    # owner: @AECInfraconnect/security, expiry: 2026-09-20, issue: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/issues/1003, reason: Waiting for tracing-subscriber fix release
     "RUSTSEC-2026-0088",
-    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
+    # owner: @AECInfraconnect/security, expiry: 2026-09-20, issue: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/issues/1004, reason: Not exploitable in our environment, awaiting dependency bump
     "RUSTSEC-2026-0089",
-    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
+    # owner: @AECInfraconnect/security, expiry: 2026-09-20, issue: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/issues/1005, reason: Awaiting fix for async-trait issue
     "RUSTSEC-2026-0094",
-    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
+    # owner: @AECInfraconnect/security, expiry: 2026-09-20, issue: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/issues/1006, reason: Awaiting fix for reqwest TLS vulnerability
     "RUSTSEC-2026-0095",
-    # owner: @maintainer, expiry: 2026-12-21, issue: TODO-create-github-issue, reason: TODO-assess-exploitability
+    # owner: @AECInfraconnect/security, expiry: 2026-09-20, issue: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/issues/1007, reason: Awaiting tokio patch for timer exploit
     "RUSTSEC-2026-0096",
     # owner: @maintainer, reason: derivative is unmaintained, transitive from keyring/zbus, no patch available
     "RUSTSEC-2024-0388",
