@@ -10,7 +10,7 @@ pub struct FingerprintSignals {
 pub fn compute_confidence(signals: &FingerprintSignals) -> f64 {
     let mut score: f64 = 0.0;
     if signals.matched_process_name.is_some() {
-        score += 0.4;
+        score += 0.6;
     }
     if signals.matched_config_path.is_some() {
         score += 0.4;
@@ -48,8 +48,15 @@ pub fn infer_agent_type_from_name(name: &str) -> InferredAgentType {
 }
 
 pub fn fingerprint_process(process_name: &str) -> f64 {
+    let agent_type = infer_agent_type_from_name(process_name);
+    let matched_process_name = if agent_type != InferredAgentType::UnknownAiProcess {
+        Some(process_name.to_string())
+    } else {
+        None
+    };
+
     let signals = FingerprintSignals {
-        matched_process_name: Some(process_name.to_string()),
+        matched_process_name,
         matched_config_path: None,
         matched_port: None,
         has_mcp_servers: false,
@@ -83,8 +90,9 @@ mod tests {
 
     #[test]
     fn test_fingerprint_process() {
-        assert_eq!(fingerprint_process("Claude"), 0.4);
-        assert_eq!(fingerprint_process("Ollama"), 0.4);
-        assert_eq!(fingerprint_process("Code"), 0.4);
+        assert_eq!(fingerprint_process("Claude"), 0.6);
+        assert_eq!(fingerprint_process("Ollama"), 0.6);
+        assert_eq!(fingerprint_process("Code"), 0.6);
+        assert_eq!(fingerprint_process("NotAnAgent"), 0.0);
     }
 }
