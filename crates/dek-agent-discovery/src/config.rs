@@ -14,8 +14,8 @@ impl Default for DiscoveryConfig {
             cost_alert_threshold_usd: 25.0,
             default_retention_days: 14,
             enable_browser_history_scan: false, // Privacy guard: default to false requiring user consent
-            enable_browser_session_scan: true,  // Privacy guard: session scan is safe as it only sees open tabs
-            enable_network_sni_scan: true,      // SNI does not expose private URLs, on by default
+            enable_browser_session_scan: true, // Privacy guard: session scan is safe as it only sees open tabs
+            enable_network_sni_scan: true,     // SNI does not expose private URLs, on by default
         }
     }
 }

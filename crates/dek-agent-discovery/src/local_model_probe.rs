@@ -14,7 +14,11 @@ pub async fn probe_local_models() -> Result<Vec<DiscoveryEvidenceV2>> {
         let client_cl = client.clone();
         tasks.push(tokio::spawn(async move {
             let mut local_ev = Vec::new();
-            if let Ok(res) = client_cl.get("http://127.0.0.1:11434/api/tags").send().await {
+            if let Ok(res) = client_cl
+                .get("http://127.0.0.1:11434/api/tags")
+                .send()
+                .await
+            {
                 if res.status().is_success() {
                     if let Ok(json) = res.json::<serde_json::Value>().await {
                         let models = json
@@ -63,7 +67,7 @@ pub async fn probe_local_models() -> Result<Vec<DiscoveryEvidenceV2>> {
         ("llama.cpp/localai", 8080),
         ("text-gen-webui", 5000),
     ];
-    
+
     for (provider, port) in openai_probes {
         let client_cl = client.clone();
         tasks.push(tokio::spawn(async move {

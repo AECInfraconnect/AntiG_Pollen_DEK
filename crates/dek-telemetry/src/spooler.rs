@@ -228,9 +228,8 @@ impl Spooler {
 
     pub fn peek_recent(&self, limit: usize) -> Result<Vec<(i64, Value)>> {
         let conn = self.conn.lock_safe();
-        let mut stmt = conn.prepare(
-            "SELECT id, payload, nonce FROM events ORDER BY id DESC LIMIT ?1",
-        )?;
+        let mut stmt =
+            conn.prepare("SELECT id, payload, nonce FROM events ORDER BY id DESC LIMIT ?1")?;
 
         let rows = stmt.query_map([limit as i64], |row| {
             let id: i64 = row.get(0)?;
@@ -252,7 +251,10 @@ impl Spooler {
                     }
                 }
                 Err(e) => {
-                    warn!("Failed to decrypt spooled event id {} during peek: {}", id, e);
+                    warn!(
+                        "Failed to decrypt spooled event id {} during peek: {}",
+                        id, e
+                    );
                 }
             }
         }

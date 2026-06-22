@@ -77,7 +77,9 @@ fn expand_tilde(path: &str, home: &str) -> PathBuf {
 }
 
 fn find_python_environments() -> Vec<PathBuf> {
-    let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).unwrap_or_default();
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_default();
     let mut envs = vec![];
     for p in [
         "~/.virtualenvs",
@@ -113,6 +115,8 @@ fn make_framework_evidence(name: &str, pkg: &str, venv: &Path) -> DiscoveryEvide
         }),
         merge_key: Some(format!("py_framework:{}", pkg)),
         source_path_hash: Some(crate::redaction::sha256_string(&venv.to_string_lossy())),
-        source_path_redacted: Some(crate::redaction::redact_path_for_ui(&venv.to_string_lossy())),
+        source_path_redacted: Some(crate::redaction::redact_path_for_ui(
+            &venv.to_string_lossy(),
+        )),
     }
 }

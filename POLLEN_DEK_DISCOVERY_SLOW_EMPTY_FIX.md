@@ -23,11 +23,13 @@
 **ข้อสรุป:** ถ้าเครื่องทดสอบเปิดแค่ Claude/ChatGPT/DeepSeek ใน **browser tab** (ไม่มี Ollama/MCP/desktop app) → **ทุก scanner ที่จะเจอมันถูกปิดหรือไม่มี source** → เจอ 0 ตัว ตรงกับอาการเป๊ะ
 
 โค้ดยืนยัน (`config.rs`):
+
 ```rust
 enable_browser_history_scan: false,  // ← ปิด (privacy guard)
 enable_browser_session_scan: false,  // ← ปิด
 enable_network_sni_scan: true,       // เปิด แต่...
 ```
+
 และ `grep impl SniFlowSource` = **ไม่มี** → SNI scan เปิดแต่ไม่มีตัวป้อน flow → ไม่ทำงาน
 
 ### 1.2 ทำไม "นานมาก" — scan แบบ sequential + ไม่มี timeout รวม
@@ -42,6 +44,7 @@ enable_network_sni_scan: true,       // เปิด แต่...
 ```
 
 จุดที่ทำให้ช้า:
+
 - **local model probe เรียงกัน** — probe 11434 (500ms) + 1234 (500ms) + 8000 (500ms) ถ้า port ปิดต้องรอ timeout ครบ = 1.5s+ เฉพาะ probe (ควร parallel)
 - **process scan** วน process ทั้งหมดในเครื่อง (อาจหลายร้อย) เทียบ fingerprint
 - **browser history** (ถ้าเปิด) copy SQLite + query 1000 rows ต่อ profile ต่อ browser
@@ -320,6 +323,7 @@ pub enum ScanProgress {
 ## 5. แผน Implement
 
 ### Phase A — แก้ "ไม่เจอ" (impact สูงสุด)
+
 ```
 A1  เปิด enable_browser_session_scan default = true  [§2.1]
 A2  impl SpoolFlowSource + wire เข้า orchestrator  [§2.2]
@@ -327,6 +331,7 @@ A3  ยืนยัน session scan เจอ Claude/ChatGPT/DeepSeek ใน tab
 ```
 
 ### Phase B — แก้ "นาน"
+
 ```
 B1  scanner รัน parallel (tokio::join!) + overall timeout 15s  [§2.3]
 B2  probe port parallel (join_all)  [§2.4]
@@ -334,6 +339,7 @@ B3  stream progress + incremental candidate → UI  [§4]
 ```
 
 ### Phase C — ขยาย coverage
+
 ```
 C1  เพิ่ม local model servers (jan/gpt4all/localai/text-gen-webui)  [§3.4]
 C2  python_framework_scan (langchain/crewai/autogen/...)  [§3.3]
@@ -342,6 +348,7 @@ C4  เพิ่ม CLI agents (aider/goose/open-interpreter/cline)
 ```
 
 ### Acceptance
+
 1. เปิด Claude/ChatGPT/DeepSeek ใน tab → Deep Scan เจอครบใน < 15s
 2. scan ไม่เกิน 15s แม้ไม่เจ��อะไร (มี deadline)
 3. candidate ทยอยขึ้นทันทีที่เจอ (ไม่ต้องรอจบ)
@@ -355,6 +362,7 @@ C4  เพิ่ม CLI agents (aider/goose/open-interpreter/cline)
 ## 6. สรุป
 
 **สาเหตุ "นานแต่ไม่เจอ" (2 ปัญหาแยกกัน):**
+
 - **ไม่เจอ:** เครื่องทดสอบเปิด AI ใน **browser tab** แต่ `enable_browser_session_scan = false` (ปิด) + `SniFlowSource` ไม่มี implementation → scanner ที่จะเจอ web AI ถูกปิดหมด → เจอ 0
 - **นาน:** scan แบบ **sequential** + probe port timeout สะสม (3s+) + ไม่มี overall deadline → user รอจนกด cancel
 
