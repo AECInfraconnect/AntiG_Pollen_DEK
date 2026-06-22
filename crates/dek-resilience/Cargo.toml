@@ -17,7 +17,7 @@ metrics = "0.24"
 tracing = "0.1"
 
 [dev-dependencies]
-tokio = { version = "1", features = ["full", "test-util"] }
+tokio = { version = "1", features = ["rt", "macros", "sync", "time", "test-util"] }
 
 [lints]
 workspace = true

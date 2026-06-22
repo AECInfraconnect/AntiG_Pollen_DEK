@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
     let error_count = Arc::new(AtomicUsize::new(0));
 
     // Channel for collecting latencies
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<u64>();
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<u64>(1000);
 
     let start_time = Instant::now();
     let duration = Duration::from_secs(args.duration);

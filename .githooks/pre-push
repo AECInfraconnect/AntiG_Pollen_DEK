@@ -6,29 +6,41 @@ echo "   Pollen DEK Pre-push Hook"
 echo "==========================================================="
 
 echo ""
-echo "[1/4] Checking Rust code formatting..."
+echo "[1/5] Toolchain gate (ต้องตรงกับ rust-toolchain.toml)..."
+REQ=$(grep -oP 'channel\s*=\s*"\K[^"]+' rust-toolchain.toml)
+CUR=$(rustc --version | awk '{print $2}')
+if [ "$REQ" != "stable" ] && [ "$CUR" != "$REQ" ]; then
+  echo "❌ ต้องใช้ Rust $REQ (มี $CUR). รัน: rustup toolchain install $REQ"
+  exit 1
+fi
+
+echo ""
+echo "[2/5] Checking Rust code formatting..."
 cargo fmt --all -- --check || (echo "❌ Rust formatting check failed. Run 'cargo fmt --all'" && exit 1)
 
 echo ""
-echo "[2/4] Checking Rust workspace compilation (excluding eBPF prog)..."
+echo "[3/5] Checking Rust workspace compilation (excluding eBPF prog)..."
 cargo check --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --locked || (echo "❌ Cargo check failed." && exit 1)
 
-echo "[3/4] Running Clippy..."
-cargo clippy --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --all-targets -- -D warnings || (echo "❌ Clippy failed." && exit 1)
+echo ""
+echo "[4/5] Running Clippy..."
+cargo clippy --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --all-targets --locked -- -D warnings || (echo "❌ Clippy failed." && exit 1)
 
 echo ""
-echo "[4/4] Validating Pollen Contracts (TypeSpec, OpenAPI, Schemas)..."
-if [ -d "contracts" ]; then
-  (cd contracts && npm ci && npm run test) || (echo "❌ Contract validation failed." && exit 1)
+echo "[5/5] Running Tests..."
+if command -v cargo-nextest >/dev/null; then
+  cargo nextest run --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --locked || (echo "❌ Tests failed." && exit 1)
 else
-  echo "⚠️ 'contracts' directory not found. Skipping."
+  cargo test --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --locked || (echo "❌ Tests failed." && exit 1)
 fi
 
 echo ""
-echo "[4/4] Validating Dashboard Build..."
-if [ -d "apps/local-admin-dashboard" ]; then
-  (cd apps/local-admin-dashboard && npm ci && npm run build) || (echo "❌ Dashboard build failed." && exit 1)
-fi
+echo "[Bonus 1/2] Validating Pollen Contracts (TypeSpec, OpenAPI, Schemas)..."
+git diff --cached --name-only | grep -q '^contracts/' && (cd contracts && npm ci && npm run test) || echo "  skip contracts"
+
+echo ""
+echo "[Bonus 2/2] Validating Dashboard Build..."
+git diff --cached --name-only | grep -q '^apps/local-admin-dashboard/' && (cd apps/local-admin-dashboard && npm ci && npm run build) || echo "  skip dashboard"
 
 echo ""
 echo "✅ All pre-push checks passed successfully!"

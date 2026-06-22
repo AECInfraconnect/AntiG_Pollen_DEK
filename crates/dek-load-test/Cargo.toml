@@ -9,7 +9,7 @@ repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 [dependencies]
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "time", "net", "signal"] }
 reqwest = { workspace = true }
 clap = { version = "4.4", features = ["derive"] }
 futures = "0.3"

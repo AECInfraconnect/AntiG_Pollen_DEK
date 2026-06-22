@@ -45,3 +45,8 @@ ignore = [
     # owner: @maintainer, reason: paste is unmaintained, transitive from wasmtime
     "RUSTSEC-2024-0436",
 ]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+skip = []

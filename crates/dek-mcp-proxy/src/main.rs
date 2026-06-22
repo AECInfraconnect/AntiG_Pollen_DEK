@@ -257,7 +257,7 @@ async fn main() -> Result<()> {
     tokio::spawn(async move {
         use notify::event::ModifyKind;
         use notify::{EventKind, RecursiveMode, Watcher};
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1000);
 
         let mut watcher = match notify::recommended_watcher(move |res| {
             if let Ok(event) = res {

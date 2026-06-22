@@ -18,7 +18,7 @@ serde_json.workspace = true
 async-trait.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true, features = ["rt", "macros", "sync", "time"] }
 
 [lints]
 workspace = true

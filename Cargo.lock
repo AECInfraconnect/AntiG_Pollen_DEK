@@ -2001,6 +2001,7 @@ dependencies = [
  "dek-ebpf-common",
  "dek-ebpfd",
  "dek-enforcement-api",
+ "dek-errors",
  "dek-ipc",
  "dek-keystore",
  "dek-macos-nefilter",
@@ -2129,10 +2130,12 @@ dependencies = [
 name = "dek-errors"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "serde",
  "serde_json",
  "tonic 0.14.6",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -2193,6 +2196,7 @@ dependencies = [
 name = "dek-ipc"
 version = "0.1.0"
 dependencies = [
+ "dek-errors",
  "serde",
  "serde_json",
 ]
@@ -4446,6 +4450,7 @@ dependencies = [
  "dek-config",
  "dek-control-plane-api",
  "dek-domain-schema",
+ "dek-errors",
  "dek-plugin-sdk",
  "dek-policy-compiler",
  "dek-policy-intent",

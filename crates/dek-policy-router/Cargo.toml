@@ -22,7 +22,7 @@ metrics = "0.24"
 tokio = { workspace = true, features = ["time"] }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["full", "test-util"] }
+tokio = { workspace = true, features = ["rt", "macros", "sync", "time", "test-util"] }
 criterion = "0.5"
 
 [[bench]]

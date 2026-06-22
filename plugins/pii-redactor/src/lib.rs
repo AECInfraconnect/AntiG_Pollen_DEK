@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-#![allow(clippy::unwrap_used)]
+
 #![allow(unsafe_code)]
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -86,7 +86,7 @@ impl DeterministicDetector {
 
         // 1. Email
         static EMAIL_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"(?i)[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}").unwrap());
+            Lazy::new(|| Regex::new(r"(?i)[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}").expect("PII regex is a valid compile-time constant"));
         for cap in EMAIL_RE.find_iter(text) {
             entities.push(DetectedEntity {
                 entity_type: "EMAIL".to_string(),
@@ -100,7 +100,7 @@ impl DeterministicDetector {
 
         // 2. Phone Number (Thai + Int)
         static PHONE_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"(\+66|0)\s?[689]\s?\d{3}\s?\d{4}").unwrap());
+            Lazy::new(|| Regex::new(r"(\+66|0)\s?[689]\s?\d{3}\s?\d{4}").expect("PII regex is a valid compile-time constant"));
         for cap in PHONE_RE.find_iter(text) {
             entities.push(DetectedEntity {
                 entity_type: "PHONE".to_string(),
@@ -114,7 +114,7 @@ impl DeterministicDetector {
 
         // 3. Credit Card
         static CC_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"\b(?:\d{4}[-\s]?){3}\d{4}\b").unwrap());
+            Lazy::new(|| Regex::new(r"\b(?:\d{4}[-\s]?){3}\d{4}\b").expect("PII regex is a valid compile-time constant"));
         for cap in CC_RE.find_iter(text) {
             entities.push(DetectedEntity {
                 entity_type: "CREDIT_CARD".to_string(),
@@ -128,7 +128,7 @@ impl DeterministicDetector {
 
         // 4. Thai National ID / Tax ID
         static THAI_ID_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"\b[1-8]-?\d{4}-?\d{5}-?\d{2}-?\d{1}\b").unwrap());
+            Lazy::new(|| Regex::new(r"\b[1-8]-?\d{4}-?\d{5}-?\d{2}-?\d{1}\b").expect("PII regex is a valid compile-time constant"));
         for cap in THAI_ID_RE.find_iter(text) {
             entities.push(DetectedEntity {
                 entity_type: "THAI_NATIONAL_ID".to_string(),
@@ -141,7 +141,7 @@ impl DeterministicDetector {
         }
 
         // 5. Passport (General alphanumeric 8-9 chars)
-        static PASSPORT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[A-Z0-9]{8,9}\b").unwrap());
+        static PASSPORT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[A-Z0-9]{8,9}\b").expect("PII regex is a valid compile-time constant"));
         for cap in PASSPORT_RE.find_iter(text) {
             // Because this is generic, confidence is lower. We might want additional context checks.
             entities.push(DetectedEntity {
@@ -156,7 +156,7 @@ impl DeterministicDetector {
 
         // 6. Bank Account (Thai formats, generally 10-12 digits with hyphens)
         static BANK_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"\b\d{3}-?\d{1}-?\d{5}-?\d{1}\b").unwrap());
+            Lazy::new(|| Regex::new(r"\b\d{3}-?\d{1}-?\d{5}-?\d{1}\b").expect("PII regex is a valid compile-time constant"));
         for cap in BANK_RE.find_iter(text) {
             entities.push(DetectedEntity {
                 entity_type: "BANK_ACCOUNT".to_string(),
@@ -170,7 +170,7 @@ impl DeterministicDetector {
 
         // 7. IP Address (v4 for now)
         static IP_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"\b(?:\d{1,3}\.){3}\d{1,3}\b").unwrap());
+            Lazy::new(|| Regex::new(r"\b(?:\d{1,3}\.){3}\d{1,3}\b").expect("PII regex is a valid compile-time constant"));
         for cap in IP_RE.find_iter(text) {
             entities.push(DetectedEntity {
                 entity_type: "IP_ADDRESS".to_string(),
@@ -187,7 +187,7 @@ impl DeterministicDetector {
             Regex::new(
                 r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
             )
-            .unwrap()
+            .expect("PII regex is a valid compile-time constant")
         });
         for cap in UUID_RE.find_iter(text) {
             entities.push(DetectedEntity {
@@ -202,7 +202,7 @@ impl DeterministicDetector {
 
         // 9. JWT
         static JWT_RE: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+").unwrap()
+            Regex::new(r"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+").expect("PII regex is a valid compile-time constant")
         });
         for cap in JWT_RE.find_iter(text) {
             entities.push(DetectedEntity {
@@ -217,7 +217,7 @@ impl DeterministicDetector {
 
         // 10. Generic API Keys / Access Tokens (starts with generic prefixes or long base64 strings)
         static API_KEY_RE: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"(?i)(?:api_key|access_token|secret)[=:\s]+['\x22]?([a-zA-Z0-9_\-\.]{16,})['\x22]?").unwrap()
+            Regex::new(r"(?i)(?:api_key|access_token|secret)[=:\s]+['\x22]?([a-zA-Z0-9_\-\.]{16,})['\x22]?").expect("PII regex is a valid compile-time constant")
         });
         for cap in API_KEY_RE.captures_iter(text) {
             if let Some(m) = cap.get(1) {

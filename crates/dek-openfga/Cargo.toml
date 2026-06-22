@@ -19,7 +19,7 @@ moka = { version = "0.12", features = ["future"] }
 thiserror.workspace = true
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["full", "test-util"] }
+tokio = { workspace = true, features = ["rt", "macros", "sync", "time", "test-util"] }
 
 [lints]
 workspace = true

@@ -47,8 +47,9 @@ pub fn group_by_endpoint(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use serde_json::json;
 

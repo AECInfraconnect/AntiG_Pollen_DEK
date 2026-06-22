@@ -33,3 +33,9 @@ Pollen_*.md
 AI_INSTRUCTIONS.md
 
 pollen-local.db
+pollen-local.db-shm
+pollen-local.db-wal
+*.pdb
+**/temp_*.rs
+/query/
+/test_*.rs

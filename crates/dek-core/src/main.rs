@@ -22,8 +22,10 @@ mod svid_renewal_failclosed;
 
 pub mod crypto_init;
 pub mod watchdog;
+pub mod panic_guard;
 
 fn main() -> anyhow::Result<()> {
+    panic_guard::install_panic_hook();
     crypto_init::install_crypto_provider();
     #[cfg(windows)]
     service_integration::run_as_service_if_needed(async { run().await })?;
