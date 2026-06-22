@@ -12,3 +12,5 @@ tracing = { workspace = true }
 chrono = { workspace = true }
 semver = "1.0"
 dek-bundle-sync = { path = "../dek-bundle-sync" }
+regex = "1.12.4"
+lazy_static = "1.5.0"

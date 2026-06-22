@@ -20,9 +20,13 @@ pub fn aggregate_evidence(
 
     for (_key, group) in groups {
         let mut max_confidence = 0.0;
-        let risk_score = 10;
+        let mut risk_score = 10;
         let mut agent_type = InferredAgentType::UnknownAiProcess;
         let mut name = "Unknown Agent".to_string();
+        let mut vendor = None;
+        let mut product = None;
+        let mut capability_tags = Vec::new();
+        let mut status = DiscoveryStatus::Discovered;
 
         let mut process_hash = None;
         let mut mcp_servers = Vec::new();
@@ -109,6 +113,34 @@ pub fn aggregate_evidence(
                         });
                     }
                     ctx.listening_ports.push(80);
+
+                    if let Some(models_val) = ev.data.get("models") {
+                        if let Some(arr) = models_val.as_array() {
+                            if let Some(clf_def) = &dek_fingerprint_defs::embedded_baseline().model_classifier {
+                                let clf = dek_fingerprint_defs::model_classifier::ModelClassifier::new(clf_def);
+                                for v in arr {
+                                    if let Some(m_name) = v.as_str() {
+                                        let mc = clf.classify(m_name);
+                                        for cap in mc.capability_tags {
+                                            if !capability_tags.contains(&cap) {
+                                                capability_tags.push(cap);
+                                            }
+                                        }
+                                        let r = (mc.risk_score * 100.0) as u32;
+                                        if r > risk_score {
+                                            risk_score = r;
+                                        }
+                                        if mc.needs_human {
+                                            status = DiscoveryStatus::PendingApproval;
+                                        }
+                                    }
+                                }
+                            }
+                            if !capability_tags.contains(&"model.server".to_string()) {
+                                capability_tags.push("model.server".to_string());
+                            }
+                        }
+                    }
                 }
                 EvidenceSource::PortProbe => {
                     if let Some(key_url) = &ev.merge_key {
@@ -143,11 +175,6 @@ pub fn aggregate_evidence(
             }
         }
 
-        let mut vendor = None;
-        let mut product = None;
-        let mut capability_tags = Vec::new();
-        let mut status = DiscoveryStatus::Discovered;
-
         if let Some(best) = decision.best {
             name = best.display_name.clone();
             vendor = best.vendor.clone();
@@ -163,7 +190,11 @@ pub fn aggregate_evidence(
                 _ => InferredAgentType::AutomationAgent,
             };
             max_confidence = f64::max(max_confidence, best.confidence);
-            capability_tags = best.capability_tags.clone();
+            for cap in best.capability_tags {
+                if !capability_tags.contains(&cap) {
+                    capability_tags.push(cap);
+                }
+            }
         }
 
         if decision.needs_human {

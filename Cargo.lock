@@ -2191,6 +2191,8 @@ dependencies = [
  "anyhow",
  "chrono",
  "dek-bundle-sync",
+ "lazy_static",
+ "regex",
  "semver",
  "serde",
  "serde_json",

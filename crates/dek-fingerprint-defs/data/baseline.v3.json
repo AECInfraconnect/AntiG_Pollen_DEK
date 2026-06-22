@@ -1,0 +1,1899 @@
+{
+  "schema_version": "pollen.def.v3",
+  "definition_version": 20260621000,
+  "released_at": "2026-06-21T00:00:00Z",
+  "min_engine_version": "1.0.0",
+  "kind": "full",
+  "base_version": null,
+  "removed_ids": [],
+  "catalog_hash": "sha256:dummyhashforbaseline",
+  "signatures": [
+    {
+      "id": "claude_desktop",
+      "display_name": "Claude Desktop",
+      "agent_type": "desktop_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Anthropic Claude Desktop app with MCP support",
+        "references": [
+          "https://anthropic.com/claude"
+        ],
+        "added_in": "20260621000",
+        "tags": [
+          "desktop",
+          "mcp-client"
+        ]
+      },
+      "process_names": [
+        "Claude",
+        "claude-desktop"
+      ],
+      "binary_hashes": [],
+      "config_paths": {
+        "macos": [
+          "~/Library/Application Support/Claude/claude_desktop_config.json"
+        ],
+        "windows": [
+          "%APPDATA%\\Claude\\claude_desktop_config.json"
+        ]
+      },
+      "config_parsers": [
+        "claude_desktop_json"
+      ],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
+      "risk_weight": 0.8,
+      "capability_tags": [
+        "mcp.client",
+        "tool.use"
+      ]
+    },
+    {
+      "id": "cursor",
+      "display_name": "Cursor IDE",
+      "agent_type": "ide",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Cursor AI Code Editor",
+        "references": [
+          "https://cursor.sh"
+        ],
+        "added_in": "20260621000",
+        "tags": [
+          "ide",
+          "mcp-client"
+        ]
+      },
+      "process_names": [
+        "Cursor",
+        "cursor"
+      ],
+      "binary_hashes": [],
+      "config_paths": {
+        "all": [
+          ".cursor/mcp.json"
+        ]
+      },
+      "config_parsers": [
+        "cursor_json"
+      ],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
+      "risk_weight": 0.7,
+      "capability_tags": [
+        "code.agentic",
+        "ide"
+      ]
+    },
+    {
+      "id": "vscode",
+      "display_name": "VS Code (with MCP)",
+      "agent_type": "ide",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Visual Studio Code",
+        "references": [
+          "https://code.visualstudio.com"
+        ],
+        "added_in": "20260621000",
+        "tags": [
+          "ide",
+          "mcp-client"
+        ]
+      },
+      "process_names": [
+        "Code",
+        "code"
+      ],
+      "binary_hashes": [],
+      "config_paths": {
+        "all": [
+          ".vscode/settings.json"
+        ]
+      },
+      "config_parsers": [
+        "vscode_json"
+      ],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
+      "risk_weight": 0.6
+    },
+    {
+      "id": "windsurf",
+      "display_name": "Windsurf IDE",
+      "agent_type": "ide",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Codeium Windsurf IDE",
+        "references": [
+          "https://codeium.com/windsurf"
+        ],
+        "added_in": "20260621000",
+        "tags": [
+          "ide",
+          "mcp-client"
+        ]
+      },
+      "process_names": [
+        "Windsurf",
+        "windsurf"
+      ],
+      "binary_hashes": [],
+      "config_paths": {
+        "all": [
+          "~/.windsurf/config.json"
+        ]
+      },
+      "config_parsers": [
+        "windsurf_json"
+      ],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
+      "risk_weight": 0.7,
+      "capability_tags": [
+        "code.agentic",
+        "ide"
+      ]
+    },
+    {
+      "id": "cline",
+      "display_name": "Cline CLI",
+      "agent_type": "cli_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Cline CLI Agent",
+        "references": [
+          "https://github.com/cline/cline"
+        ],
+        "added_in": "20260621000",
+        "tags": [
+          "cli",
+          "mcp-client"
+        ]
+      },
+      "process_names": [
+        "cline",
+        "node"
+      ],
+      "binary_hashes": [],
+      "config_paths": {
+        "all": [
+          "~/.cline/config.json"
+        ]
+      },
+      "config_parsers": [
+        "cline_json"
+      ],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
+      "risk_weight": 0.7,
+      "capability_tags": [
+        "code.agentic",
+        "mcp.client"
+      ]
+    },
+    {
+      "id": "claude_code",
+      "display_name": "Claude Code CLI",
+      "agent_type": "cli_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Anthropic Claude Code CLI tool",
+        "references": [
+          "https://anthropic.com"
+        ],
+        "added_in": "20260621000",
+        "tags": [
+          "cli",
+          "mcp-client"
+        ]
+      },
+      "process_names": [
+        "claude",
+        "node"
+      ],
+      "binary_hashes": [],
+      "config_paths": {
+        "all": [
+          "~/.claude.json"
+        ]
+      },
+      "config_parsers": [
+        "claude_json"
+      ],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
+      "risk_weight": 0.7,
+      "capability_tags": [
+        "code.agentic",
+        "mcp.client",
+        "tool.use"
+      ]
+    },
+    {
+      "id": "ollama",
+      "display_name": "Ollama Local Model Server",
+      "agent_type": "local_model",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Ollama local LLM runner",
+        "references": [
+          "https://ollama.com"
+        ],
+        "added_in": "20260621000",
+        "tags": [
+          "local_model",
+          "server"
+        ]
+      },
+      "process_names": [
+        "ollama"
+      ],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [
+        11434
+      ],
+      "port_probe": {
+        "kind": "openai_compat",
+        "path": "/api/tags"
+      },
+      "detection_logic": "process_or_config_with_port",
+      "control_strategies": [
+        "network_egress_pep",
+        "observe_only"
+      ],
+      "risk_weight": 0.5,
+      "capability_tags": [
+        "model.server"
+      ]
+    },
+    {
+      "id": "lmstudio",
+      "display_name": "LM Studio Local Model Server",
+      "agent_type": "local_model",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "LM Studio local LLM runner",
+        "references": [
+          "https://lmstudio.ai"
+        ],
+        "added_in": "20260621000",
+        "tags": [
+          "local_model",
+          "server"
+        ]
+      },
+      "process_names": [
+        "lmstudio",
+        "LM Studio"
+      ],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [
+        1234
+      ],
+      "port_probe": {
+        "kind": "openai_compat",
+        "path": "/v1/models"
+      },
+      "detection_logic": "process_or_config_with_port",
+      "control_strategies": [
+        "network_egress_pep",
+        "observe_only"
+      ],
+      "risk_weight": 0.5,
+      "capability_tags": [
+        "model.server"
+      ]
+    },
+    {
+      "id": "openclaw",
+      "display_name": "OpenClaw Gateway",
+      "agent_type": "automation_agent",
+      "revision": 1,
+      "vendor": "OpenClaw",
+      "product": "OpenClaw Personal AI Gateway",
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Self-hosted Node.js AI assistant gateway; multi-channel, browser/file tools, auto credential provisioning (high Shadow-AI risk)",
+        "references": [
+          "https://github.com/openclaw/openclaw",
+          "https://docs.openclaw.ai/"
+        ],
+        "added_in": "20260622000",
+        "tags": [
+          "claw-family",
+          "shadow-ai",
+          "node",
+          "gateway",
+          "mcp-client"
+        ]
+      },
+      "process_names": [
+        "node",
+        "node.exe"
+      ],
+      "binary_hashes": [],
+      "config_paths": {
+        "all": [
+          "~/.openclaw/openclaw.json"
+        ]
+      },
+      "config_parsers": [
+        "openclaw_json"
+      ],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "any_of",
+      "cmd_patterns": [
+        "(?i)\\bopenclaw\\b",
+        "node_modules[\\\\/]openclaw[\\\\/]"
+      ],
+      "exe_path_patterns": [
+        "**/node_modules/openclaw/**",
+        "**/.openclaw/**"
+      ],
+      "install_markers": [
+        {
+          "path": "~/.openclaw/openclaw.json",
+          "os": null,
+          "weight": 0.6
+        },
+        {
+          "path": "~/.openclaw/agents",
+          "os": null,
+          "weight": 0.4
+        }
+      ],
+      "cli_binaries": [
+        "openclaw"
+      ],
+      "package_markers": [
+        {
+          "ecosystem": "npm",
+          "name": "openclaw",
+          "global": true
+        }
+      ],
+      "env_markers": [
+        "OPENCLAW_HOME",
+        "OPENCLAW_PROFILE"
+      ],
+      "egress_hosts": [
+        "api.anthropic.com",
+        "api.openai.com",
+        "api.z.ai"
+      ],
+      "capability_tags": [
+        "claw-family",
+        "channel.messaging",
+        "cred.provision"
+      ],
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "network_egress_pep",
+        "observe_only"
+      ],
+      "risk_weight": 0.9
+    },
+    {
+      "id": "hiclaw",
+      "display_name": "HiClaw Controller",
+      "agent_type": "automation_agent",
+      "revision": 1,
+      "vendor": "agentscope-ai",
+      "product": "HiClaw Multi-Agent Control Plane",
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Kubernetes-native multi-agent orchestrator; manages OpenClaw/QwenPaw/Hermes workers via Matrix",
+        "references": [
+          "https://github.com/agentscope-ai/hiclaw"
+        ],
+        "added_in": "20260622000",
+        "tags": [
+          "claw-family",
+          "shadow-ai",
+          "orchestrator",
+          "kubernetes"
+        ]
+      },
+      "process_names": [
+        "node",
+        "node.exe",
+        "python",
+        "python.exe"
+      ],
+      "binary_hashes": [],
+      "config_paths": {
+        "all": [
+          "~/.hiclaw"
+        ]
+      },
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "any_of",
+      "cmd_patterns": [
+        "(?i)\\bhiclaw\\b",
+        "(?i)hiclaw-(controller|manager|worker)"
+      ],
+      "exe_path_patterns": [
+        "**/hiclaw/**"
+      ],
+      "install_markers": [
+        {
+          "path": "~/.hiclaw",
+          "os": null,
+          "weight": 0.55
+        }
+      ],
+      "cli_binaries": [
+        "hiclaw"
+      ],
+      "package_markers": [],
+      "env_markers": [
+        "HICLAW_HOME"
+      ],
+      "egress_hosts": [],
+      "capability_tags": [
+        "claw-family",
+        "code.exec"
+      ],
+      "control_strategies": [
+        "network_egress_pep",
+        "observe_only"
+      ],
+      "risk_weight": 0.95
+    },
+    {
+      "id": "claw_orchestrator",
+      "display_name": "Claw Orchestrator (clawo-mcp)",
+      "agent_type": "mcp_server",
+      "revision": 1,
+      "vendor": "Enderfga",
+      "product": "claw-orchestrator unified coding runtime",
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Wraps Claude Code/Codex/Gemini/Cursor as one MCP runtime (65 tools); registers in ~/.openclaw/openclaw.json",
+        "references": [
+          "https://github.com/Enderfga/claw-orchestrator"
+        ],
+        "added_in": "20260622000",
+        "tags": [
+          "claw-family",
+          "shadow-ai",
+          "mcp-server",
+          "code"
+        ]
+      },
+      "process_names": [
+        "node",
+        "node.exe"
+      ],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "any_of",
+      "cmd_patterns": [
+        "(?i)clawo-mcp",
+        "@enderfga[\\\\/]claw-orchestrator"
+      ],
+      "exe_path_patterns": [
+        "**/claw-orchestrator/**",
+        "**/clawo-mcp*"
+      ],
+      "install_markers": [],
+      "cli_binaries": [
+        "clawo-mcp"
+      ],
+      "package_markers": [
+        {
+          "ecosystem": "npm",
+          "name": "@enderfga/claw-orchestrator",
+          "global": true
+        }
+      ],
+      "env_markers": [
+        "CLAWO_MCP_TOOLS"
+      ],
+      "egress_hosts": [],
+      "capability_tags": [
+        "mcp.server",
+        "code.exec",
+        "fs.write"
+      ],
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
+      "risk_weight": 0.9
+    },
+    {
+      "id": "codex_cli",
+      "display_name": "OpenAI Codex CLI",
+      "agent_type": "cli_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for OpenAI Codex CLI",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "code.agentic",
+          "mcp.server"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {
+        "any": [
+          "~/.codex/config.toml",
+          "~/.codex/AGENTS.md"
+        ]
+      },
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [
+        "codex"
+      ],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "code.agentic",
+        "mcp.server"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "gemini_cli",
+      "display_name": "Gemini CLI",
+      "agent_type": "cli_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for Gemini CLI",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "code.agentic"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {
+        "any": [
+          "~/.gemini/settings.json",
+          "GEMINI.md"
+        ]
+      },
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [
+        "gemini"
+      ],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "code.agentic"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "antigravity_cli",
+      "display_name": "Antigravity CLI",
+      "agent_type": "cli_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for Antigravity CLI",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "code.agentic"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {
+        "any": [
+          ".agents/"
+        ]
+      },
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [
+        "antigravity"
+      ],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "code.agentic"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "opencode",
+      "display_name": "OpenCode",
+      "agent_type": "cli_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for OpenCode",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "code.agentic"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [
+        "opencode",
+        "opencode-ai"
+      ],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "code.agentic"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "aider",
+      "display_name": "Aider",
+      "agent_type": "cli_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for Aider",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "code.agentic",
+          "code.generation"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {
+        "any": [
+          "~/.aider.conf.yml"
+        ]
+      },
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [
+        "aider"
+      ],
+      "package_markers": [
+        {
+          "ecosystem": "pip",
+          "name": "aider-chat",
+          "global": true
+        }
+      ],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "code.agentic",
+        "code.generation"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "goose",
+      "display_name": "Goose",
+      "agent_type": "cli_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for Goose",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "code.agentic",
+          "mcp.client"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {
+        "any": [
+          "~/.config/goose/config.toml"
+        ]
+      },
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [
+        "goose"
+      ],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "code.agentic",
+        "mcp.client"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "open_interpreter",
+      "display_name": "Open Interpreter",
+      "agent_type": "cli_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for Open Interpreter",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "code.exec",
+          "tool.use"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {
+        "any": [
+          "~/.config/open-interpreter/"
+        ]
+      },
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [
+        "interpreter"
+      ],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "code.exec",
+        "tool.use"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "copilot_cli",
+      "display_name": "GitHub Copilot CLI",
+      "agent_type": "cli_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for GitHub Copilot CLI",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "code.agentic"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {
+        "any": [
+          ".github/copilot-instructions.md"
+        ]
+      },
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [
+        "gh copilot"
+      ],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "code.agentic"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "vllm",
+      "display_name": "vLLM",
+      "agent_type": "mcp_server",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for vLLM",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "model.server"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [
+        8000
+      ],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [
+        "python -m vllm"
+      ],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [],
+      "package_markers": [
+        {
+          "ecosystem": "pip",
+          "name": "vllm",
+          "global": true
+        }
+      ],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "model.server"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "llamacpp",
+      "display_name": "llama.cpp server",
+      "agent_type": "mcp_server",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for llama.cpp server",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "model.server"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [
+        8080
+      ],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [
+        "llama-server"
+      ],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "model.server"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "nim",
+      "display_name": "NVIDIA NIM",
+      "agent_type": "mcp_server",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for NVIDIA NIM",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "model.server"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {
+        "any": [
+          "~/.cache/nim"
+        ]
+      },
+      "config_parsers": [],
+      "ports": [
+        8000
+      ],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [
+        "nvcr.io/nim/"
+      ],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "model.server"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "jan",
+      "display_name": "Jan",
+      "agent_type": "desktop_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for Jan",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "model.server",
+          "desktop"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [
+        1337
+      ],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "model.server",
+        "desktop"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "localai",
+      "display_name": "LocalAI",
+      "agent_type": "mcp_server",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for LocalAI",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "model.server"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [
+        8080
+      ],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "model.server"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "gpt4all",
+      "display_name": "GPT4All",
+      "agent_type": "desktop_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for GPT4All",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "model.server",
+          "rag.retrieval"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [
+        4891
+      ],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "model.server",
+        "rag.retrieval"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "koboldcpp",
+      "display_name": "KoboldCpp",
+      "agent_type": "mcp_server",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for KoboldCpp",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "model.server"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [
+        5001
+      ],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "model.server"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "text_gen_webui",
+      "display_name": "text-generation-webui",
+      "agent_type": "mcp_server",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for text-generation-webui",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "model.server"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {
+        "any": [
+          "~/.cache/oobabooga"
+        ]
+      },
+      "config_parsers": [],
+      "ports": [
+        5000,
+        7860
+      ],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "model.server"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "open_webui",
+      "display_name": "Open WebUI",
+      "agent_type": "mcp_server",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for Open WebUI",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "chat.ui"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [
+        3000,
+        8080
+      ],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [],
+      "package_markers": [
+        {
+          "ecosystem": "pip",
+          "name": "open-webui",
+          "global": true
+        }
+      ],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "chat.ui"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "clawo_mcp",
+      "display_name": "Claw Orchestrator",
+      "agent_type": "mcp_server",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for Claw Orchestrator",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "claw-family",
+          "mcp.server",
+          "code.exec"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [
+        "clawo-mcp"
+      ],
+      "package_markers": [
+        {
+          "ecosystem": "npm",
+          "name": "@enderfga/claw-orchestrator",
+          "global": true
+        }
+      ],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "claw-family",
+        "mcp.server",
+        "code.exec"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "n8n",
+      "display_name": "n8n",
+      "agent_type": "automation",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for n8n",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "automation",
+          "tool.use"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [
+        5678
+      ],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "automation",
+        "tool.use"
+      ],
+      "signal_weights": null
+    },
+    {
+      "id": "flowise",
+      "display_name": "Flowise",
+      "agent_type": "automation",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Signature for Flowise",
+        "references": [],
+        "added_in": "20260622000",
+        "tags": [
+          "automation",
+          "tool.use"
+        ]
+      },
+      "process_names": [],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [
+        3000
+      ],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [],
+      "risk_weight": 0.5,
+      "cmd_patterns": [],
+      "exe_path_patterns": [],
+      "install_markers": [],
+      "cli_binaries": [],
+      "package_markers": [],
+      "env_markers": [],
+      "egress_hosts": [],
+      "vendor": null,
+      "product": null,
+      "capability_tags": [
+        "automation",
+        "tool.use"
+      ],
+      "signal_weights": null
+    }
+  ],
+  "model_classifier": {
+    "vendors": [
+      {
+        "ns": [
+          "meta-llama"
+        ],
+        "vendor": "Meta",
+        "license_class": "llama",
+        "flags": []
+      },
+      {
+        "ns": [
+          "qwen",
+          "huihui_ai"
+        ],
+        "vendor": "Alibaba",
+        "flags": [
+          "data.egress.cn"
+        ]
+      },
+      {
+        "ns": [
+          "deepseek-ai",
+          "deepseek"
+        ],
+        "vendor": "DeepSeek",
+        "flags": [
+          "data.egress.cn"
+        ]
+      },
+      {
+        "ns": [
+          "google"
+        ],
+        "vendor": "Google",
+        "flags": []
+      },
+      {
+        "ns": [
+          "mistralai",
+          "mistral"
+        ],
+        "vendor": "Mistral",
+        "flags": []
+      },
+      {
+        "ns": [
+          "microsoft"
+        ],
+        "vendor": "Microsoft",
+        "flags": []
+      },
+      {
+        "ns": [
+          "openai"
+        ],
+        "vendor": "OpenAI",
+        "flags": []
+      },
+      {
+        "ns": [
+          "nvidia"
+        ],
+        "vendor": "NVIDIA",
+        "flags": []
+      },
+      {
+        "ns": [
+          "01-ai"
+        ],
+        "vendor": "01.AI",
+        "flags": [
+          "data.egress.cn"
+        ]
+      },
+      {
+        "ns": [
+          "cohere"
+        ],
+        "vendor": "Cohere",
+        "flags": []
+      },
+      {
+        "ns": [
+          "tiiuae"
+        ],
+        "vendor": "TII",
+        "flags": []
+      },
+      {
+        "ns": [
+          "ibm"
+        ],
+        "vendor": "IBM",
+        "flags": []
+      },
+      {
+        "ns": [
+          "bigcode"
+        ],
+        "vendor": "BigCode",
+        "flags": []
+      },
+      {
+        "ns": [
+          "allenai"
+        ],
+        "vendor": "AllenAI",
+        "flags": []
+      },
+      {
+        "ns": [
+          "huggingface"
+        ],
+        "vendor": "HuggingFace",
+        "flags": []
+      },
+      {
+        "ns": [
+          "internlm"
+        ],
+        "vendor": "Shanghai AI Lab",
+        "flags": [
+          "data.egress.cn"
+        ]
+      },
+      {
+        "ns": [
+          "ai21"
+        ],
+        "vendor": "AI21 Labs",
+        "flags": []
+      }
+    ],
+    "family_rules": [
+      {
+        "id": "llama",
+        "pattern": "(?i)\\\\b(llama-?3\\\\.?[0-3]?|llama-?2)\\\\b",
+        "family": "Llama",
+        "vendor": "Meta",
+        "risk_base": 0.2
+      },
+      {
+        "id": "qwen",
+        "pattern": "(?i)\\\\b(qwen-?2\\\\.?[5]?-?(vl|coder|math)?|qwen-?1\\\\.?[5]?)\\\\b",
+        "family": "Qwen",
+        "vendor": "Alibaba",
+        "risk_base": 0.3
+      },
+      {
+        "id": "deepseek",
+        "pattern": "(?i)\\\\b(deepseek-?(r1|v3|v2|coder|llm))\\\\b",
+        "family": "DeepSeek",
+        "vendor": "DeepSeek",
+        "risk_base": 0.3
+      },
+      {
+        "id": "gemma",
+        "pattern": "(?i)\\\\b(gemma-?2b?|codegemma|paligemma)\\\\b",
+        "family": "Gemma",
+        "vendor": "Google",
+        "risk_base": 0.2
+      },
+      {
+        "id": "mistral",
+        "pattern": "(?i)\\\\b(mistral|mixtral|mathstral|codestral)\\\\b",
+        "family": "Mistral",
+        "vendor": "Mistral",
+        "risk_base": 0.2
+      },
+      {
+        "id": "phi",
+        "pattern": "(?i)\\\\b(phi-?3\\\\.?[5]?-?(mini|small|medium|vision)?|phi-?4)\\\\b",
+        "family": "Phi",
+        "vendor": "Microsoft",
+        "risk_base": 0.2
+      },
+      {
+        "id": "nemotron",
+        "pattern": "(?i)\\\\b(nemotron|nemoguard)\\\\b",
+        "family": "Nemotron",
+        "vendor": "NVIDIA",
+        "risk_base": 0.2
+      },
+      {
+        "id": "glm",
+        "pattern": "(?i)\\\\b(glm-?4|chatglm)\\\\b",
+        "family": "GLM",
+        "vendor": "Zhipu",
+        "risk_base": 0.3
+      },
+      {
+        "id": "kimi",
+        "pattern": "(?i)\\\\b(moonshot)\\\\b",
+        "family": "Moonshot",
+        "vendor": "Moonshot AI",
+        "risk_base": 0.3
+      },
+      {
+        "id": "yi",
+        "pattern": "(?i)\\\\b(yi-?(1\\\\.5|34b|9b|6b|vision))\\\\b",
+        "family": "Yi",
+        "vendor": "01.AI",
+        "risk_base": 0.3
+      },
+      {
+        "id": "command-r",
+        "pattern": "(?i)\\\\b(command-?r-?(plus)?)\\\\b",
+        "family": "Command",
+        "vendor": "Cohere",
+        "risk_base": 0.2
+      },
+      {
+        "id": "falcon",
+        "pattern": "(?i)\\\\b(falcon-?(180b|40b|7b|mamba))\\\\b",
+        "family": "Falcon",
+        "vendor": "TII",
+        "risk_base": 0.2
+      },
+      {
+        "id": "granite",
+        "pattern": "(?i)\\\\b(granite-?(code|chat)?)\\\\b",
+        "family": "Granite",
+        "vendor": "IBM",
+        "risk_base": 0.2
+      },
+      {
+        "id": "starcoder",
+        "pattern": "(?i)\\\\b(starcoder-?2?)\\\\b",
+        "family": "StarCoder",
+        "vendor": "BigCode",
+        "risk_base": 0.2
+      },
+      {
+        "id": "olmo",
+        "pattern": "(?i)\\\\b(olmo-?(1b|7b)?)\\\\b",
+        "family": "OLMo",
+        "vendor": "AllenAI",
+        "risk_base": 0.2
+      },
+      {
+        "id": "smollm",
+        "pattern": "(?i)\\\\b(smollm-?(135m|360m|1\\\\.7b)?)\\\\b",
+        "family": "SmolLM",
+        "vendor": "HuggingFace",
+        "risk_base": 0.2
+      },
+      {
+        "id": "internlm",
+        "pattern": "(?i)\\\\b(internlm-?2\\\\.?[5]?-?(math|chat)?)\\\\b",
+        "family": "InternLM",
+        "vendor": "Shanghai AI Lab",
+        "risk_base": 0.3
+      },
+      {
+        "id": "jamba",
+        "pattern": "(?i)\\\\b(jamba-?(1\\\\.5-?(mini|large))?)\\\\b",
+        "family": "Jamba",
+        "vendor": "AI21 Labs",
+        "risk_base": 0.2
+      },
+      {
+        "id": "qwq",
+        "pattern": "(?i)\\\\b(qwq-?(32b)?)\\\\b",
+        "family": "Qwen",
+        "vendor": "Alibaba",
+        "risk_base": 0.3
+      },
+      {
+        "id": "cogito",
+        "pattern": "(?i)\\\\b(cogvlm|cogagent)\\\\b",
+        "family": "Cogito",
+        "vendor": "Zhipu",
+        "risk_base": 0.3
+      },
+      {
+        "id": "llava",
+        "pattern": "(?i)\\\\b(llava-?(v1\\\\.5|v1\\\\.6|next)?)\\\\b",
+        "family": "LLaVA",
+        "vendor": "Haotian Liu",
+        "tags": [
+          "vision.input"
+        ],
+        "risk_base": 0.2
+      },
+      {
+        "id": "whisper",
+        "pattern": "(?i)\\\\b(whisper-?(large|medium|small|base|tiny)?)\\\\b",
+        "family": "Whisper",
+        "vendor": "OpenAI",
+        "tags": [
+          "audio.input"
+        ],
+        "risk_base": 0.1
+      },
+      {
+        "id": "parakeet",
+        "pattern": "(?i)\\\\b(parakeet)\\\\b",
+        "family": "Parakeet",
+        "vendor": "NVIDIA",
+        "tags": [
+          "audio.input"
+        ],
+        "risk_base": 0.1
+      },
+      {
+        "id": "canary",
+        "pattern": "(?i)\\\\b(canary)\\\\b",
+        "family": "Canary",
+        "vendor": "NVIDIA",
+        "tags": [
+          "audio.input"
+        ],
+        "risk_base": 0.1
+      },
+      {
+        "id": "embedding",
+        "pattern": "(?i)(embed|bge|e5|nomic)",
+        "family": "Embedding",
+        "tags": [
+          "embedding"
+        ],
+        "risk_base": 0.1
+      },
+      {
+        "id": "sd",
+        "pattern": "(?i)\\\\b(stable-?diffusion|sdxl|flux)\\\\b",
+        "family": "ImageGen",
+        "tags": [
+          "image.generation"
+        ],
+        "risk_base": 0.3
+      }
+    ],
+    "attribute_parsers": {
+      "params_b": "(?i)(\\\\d+(?:\\\\.\\\\d+)?)b",
+      "params_m": "(?i)(\\\\d+(?:\\\\.\\\\d+)?)m",
+      "moe_active_b": "(?i)-[aA](\\\\d+(?:\\\\.\\\\d+)?)b",
+      "moe_experts": "(?i)(\\\\d+)x\\\\d+(?:\\\\.\\\\d+)?b",
+      "context_hint": "(?i)-(\\\\d+)k",
+      "quant": "(?i)(q\\\\d_[0-4a-z_]+|fp16|bf16|fp8|int8|int4)",
+      "variant": {
+        "instruct": "(?i)(instruct|chat|it)",
+        "reasoning": "(?i)(reasoning|r1|o1)",
+        "coder": "(?i)(coder|code)",
+        "vision": "(?i)(vision|vl|v)",
+        "audio": "(?i)(audio)"
+      }
+    },
+    "risk_flags": [
+      {
+        "pattern": "(?i)(abliterated|uncensored|dolphin|nsfw)",
+        "flag": "safety_bypassed",
+        "risk_add": 0.5,
+        "tags": [
+          "safety_bypassed"
+        ],
+        "note": "jailbreak"
+      },
+      {
+        "pattern": "(?i)(roleplay|rp)",
+        "flag": "roleplay",
+        "risk_add": 0.1
+      },
+      {
+        "pattern": "(?i)llama-?3\\\\.1-?405b",
+        "flag": "license.restricted",
+        "risk_add": 0.1,
+        "note": "Meta MAU >700M limit"
+      }
+    ],
+    "popular_models": [
+      {
+        "match_pattern": "^deepseek-r1:32b$",
+        "display": "DeepSeek-R1 (MoE distill 32B)",
+        "vendor": "DeepSeek",
+        "family": "DeepSeek-R1",
+        "license": "MIT",
+        "arch": "moe",
+        "params_total_b": 32,
+        "modality": [
+          "text"
+        ],
+        "popularity": "high",
+        "tags": [
+          "reasoning.cot"
+        ],
+        "risk_base": 0.3
+      },
+      {
+        "match_pattern": "^nomic-embed-text.*$",
+        "display": "Nomic Embed Text",
+        "vendor": "Nomic AI",
+        "family": "Embedding",
+        "license": "Apache-2.0",
+        "params_total_b": 0.137,
+        "modality": [
+          "text"
+        ],
+        "popularity": "high",
+        "tags": [
+          "embedding"
+        ],
+        "risk_base": 0.1
+      },
+      {
+        "match_pattern": "^nvidia/llama-3.1-nemotron-70b-instruct.*$",
+        "display": "Llama 3.1 Nemotron 70B Instruct",
+        "vendor": "NVIDIA",
+        "family": "Nemotron",
+        "license": "Llama 3.1",
+        "params_total_b": 70,
+        "modality": [
+          "text"
+        ],
+        "popularity": "high",
+        "tags": [
+          "tool.use"
+        ],
+        "risk_base": 0.2
+      },
+      {
+        "match_pattern": "^llama3\\\\.2:1b$",
+        "display": "Llama 3.2 1B",
+        "vendor": "Meta",
+        "family": "Llama",
+        "license": "Llama 3.2",
+        "params_total_b": 1.2,
+        "modality": [
+          "text"
+        ],
+        "tags": [
+          "tool.use"
+        ],
+        "risk_base": 0.2
+      },
+      {
+        "match_pattern": "^qwen2\\\\.5-coder:32b$",
+        "display": "Qwen 2.5 Coder 32B",
+        "vendor": "Alibaba",
+        "family": "Qwen",
+        "license": "Apache-2.0",
+        "params_total_b": 32,
+        "modality": [
+          "text"
+        ],
+        "tags": [
+          "code.generation"
+        ],
+        "risk_base": 0.3
+      }
+    ]
+  }
+}
