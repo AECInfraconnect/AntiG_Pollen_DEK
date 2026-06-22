@@ -64,7 +64,7 @@ export class ControlPlaneClient {
     return res.json();
   }
 
-  private async fetchApi(path: string, options?: RequestInit) {
+  public async fetchApi(path: string, options?: RequestInit) {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
@@ -379,6 +379,36 @@ const getStoredProfile = (): "local" | "mock-cloud" => {
 
 // Global default client
 export const defaultClient = new ControlPlaneClient(getStoredProfile());
+
+export const DeploymentApi = {
+  listInventory: () => defaultClient.fetchApi("/agent-inventory"),
+  getInventory: (agentId: string) => defaultClient.fetchApi(`/agent-inventory/${agentId}`),
+  recommend: (payload: any) => defaultClient.fetchApi("/policy-deployment/recommend", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }),
+  preview: (payload: any) => defaultClient.fetchApi("/policy-deployment/preview", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }),
+  simulate: (payload: any) => defaultClient.fetchApi("/policy-deployment/simulate", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }),
+  deploy: (payload: any) => defaultClient.fetchApi("/policy-deployment/deploy", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }),
+  rollback: (deploymentId: string) => defaultClient.fetchApi(`/policy-deployment/${deploymentId}/rollback`, { method: "POST" }),
+};
+
+export const LogApi = {
+  decisions: () => defaultClient.fetchApi("/telemetry/decision-logs"),
+  toolInvocations: () => defaultClient.fetchApi("/logs/tool-invocations"),
+  resourceAccess: () => defaultClient.fetchApi("/logs/resource-access"),
+  deployments: () => defaultClient.fetchApi("/logs/policy-deployments"),
+  pepHealth: () => defaultClient.fetchApi("/logs/pep-health"),
+};
 
 // Helper to switch profile
 export const switchProfile = (profile: "local" | "mock-cloud") => {

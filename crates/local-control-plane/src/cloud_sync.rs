@@ -107,6 +107,48 @@ pub async fn start_cloud_registry_sync_loop(state: AppState) -> anyhow::Result<(
                 }
             }
 
+            // Agent Inventories (Phase 7)
+            if let Ok(inventories) = state.registry_store.list_agent_inventories(tenant_id).await {
+                for item in inventories {
+                    if let Ok(val) = serde_json::to_value(item) {
+                        all_objects.push(serde_json::json!({
+                            "type": "agent_inventory",
+                            "data": val
+                        }));
+                    }
+                }
+            }
+
+            // Telemetry: Deployments (Phase 7)
+            if let Ok(deployments) = state.telemetry_store.list_telemetry(tenant_id, "policy_deployment").await {
+                for item in deployments {
+                    all_objects.push(serde_json::json!({
+                        "type": "telemetry_policy_deployment",
+                        "data": item
+                    }));
+                }
+            }
+
+            // Telemetry: Tool Invocations (Phase 7)
+            if let Ok(invocations) = state.telemetry_store.list_telemetry(tenant_id, "tool_invocation").await {
+                for item in invocations {
+                    all_objects.push(serde_json::json!({
+                        "type": "telemetry_tool_invocation",
+                        "data": item
+                    }));
+                }
+            }
+
+            // Telemetry: Resource Access (Phase 7)
+            if let Ok(accesses) = state.telemetry_store.list_telemetry(tenant_id, "resource_access").await {
+                for item in accesses {
+                    all_objects.push(serde_json::json!({
+                        "type": "telemetry_resource_access",
+                        "data": item
+                    }));
+                }
+            }
+
             // Push to cloud endpoint
             if all_objects.is_empty() {
                 continue;
@@ -148,6 +190,58 @@ pub async fn start_cloud_registry_sync_loop(state: AppState) -> anyhow::Result<(
                         "Cloud Sync Loop: Connection error while syncing to cloud: {}",
                         e
                     );
+                }
+            }
+
+            // Phase 7: Pull managed policy bundles
+            let bundles_endpoint = format!(
+                "{}/v1/tenants/{}/bundles/latest",
+                cloud_url.trim_end_matches('/'),
+                tenant_id
+            );
+            
+            let mut pull_req = client.get(&bundles_endpoint);
+            if !api_key.is_empty() {
+                pull_req = pull_req.bearer_auth(&api_key);
+            }
+
+            match pull_req.send().await {
+                Ok(resp) => {
+                    if resp.status().is_success() {
+                        info!("Cloud Sync Loop: Successfully pulled latest managed bundles");
+                        // If we had a real cloud, we would parse and save it via state.policy_store
+                    } else if resp.status() != reqwest::StatusCode::NOT_FOUND {
+                        // Mock cloud might return 404, which is fine
+                        warn!(
+                            "Cloud Sync Loop: Failed to pull bundles. Status: {}",
+                            resp.status()
+                        );
+                    }
+                }
+                Err(e) => {
+                    warn!("Cloud Sync Loop: Error pulling bundles: {}", e);
+                }
+            }
+
+            // Phase 7: Pull Cloud PDP route suggestions
+            let routes_endpoint = format!(
+                "{}/v1/tenants/{}/pdp/routes/suggested",
+                cloud_url.trim_end_matches('/'),
+                tenant_id
+            );
+            let mut route_req = client.get(&routes_endpoint);
+            if !api_key.is_empty() {
+                route_req = route_req.bearer_auth(&api_key);
+            }
+
+            match route_req.send().await {
+                Ok(resp) => {
+                    if resp.status().is_success() {
+                        info!("Cloud Sync Loop: Successfully pulled cloud PDP route suggestions");
+                    }
+                }
+                Err(e) => {
+                    warn!("Cloud Sync Loop: Error pulling PDP routes: {}", e);
                 }
             }
         }

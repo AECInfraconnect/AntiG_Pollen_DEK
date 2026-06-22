@@ -4438,6 +4438,7 @@ dependencies = [
  "dek-cedar",
  "dek-config",
  "dek-control-plane-api",
+ "dek-domain-schema",
  "dek-plugin-sdk",
  "dek-policy-compiler",
  "dek-policy-intent",

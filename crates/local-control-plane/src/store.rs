@@ -65,6 +65,11 @@ pub trait RegistryStore: Send + Sync {
     ) -> Result<Option<Relationship>>;
     async fn list_relationships(&self, tenant_id: &str) -> Result<Vec<Relationship>>;
     async fn delete_relationship(&self, tenant_id: &str, relationship_id: &str) -> Result<bool>;
+
+    async fn upsert_agent_inventory(&self, inventory: dek_domain_schema::AgentCapabilityInventory) -> Result<dek_domain_schema::AgentCapabilityInventory>;
+    async fn get_agent_inventory(&self, tenant_id: &str, agent_id: &str) -> Result<Option<dek_domain_schema::AgentCapabilityInventory>>;
+    async fn list_agent_inventories(&self, tenant_id: &str) -> Result<Vec<dek_domain_schema::AgentCapabilityInventory>>;
+    async fn delete_agent_inventory(&self, tenant_id: &str, agent_id: &str) -> Result<bool>;
 }
 
 #[async_trait::async_trait]
@@ -524,6 +529,68 @@ impl RegistryStore for SqliteStore {
     async fn delete_relationship(&self, tenant_id: &str, relationship_id: &str) -> Result<bool> {
         self.delete_object(tenant_id, "relationship", relationship_id)
             .await
+    }
+
+    async fn upsert_agent_inventory(&self, inventory: dek_domain_schema::AgentCapabilityInventory) -> Result<dek_domain_schema::AgentCapabilityInventory> {
+        let json_data = serde_json::to_string(&inventory)?;
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            INSERT INTO agent_inventory (tenant, agent_id, device_id, inventory_json, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5)
+            ON CONFLICT(tenant, agent_id) DO UPDATE SET
+                device_id=excluded.device_id,
+                inventory_json=excluded.inventory_json,
+                updated_at=excluded.updated_at
+            "#
+        )
+        .bind(&inventory.tenant_id)
+        .bind(&inventory.agent_id)
+        .bind(&inventory.device_id)
+        .bind(&json_data)
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
+        Ok(inventory)
+    }
+
+    async fn get_agent_inventory(&self, tenant_id: &str, agent_id: &str) -> Result<Option<dek_domain_schema::AgentCapabilityInventory>> {
+        let row = sqlx::query("SELECT inventory_json FROM agent_inventory WHERE tenant = ?1 AND agent_id = ?2")
+            .bind(tenant_id)
+            .bind(agent_id)
+            .fetch_optional(&self.pool)
+            .await?;
+        if let Some(r) = row {
+            let json_str: String = r.try_get("inventory_json")?;
+            let inv: dek_domain_schema::AgentCapabilityInventory = serde_json::from_str(&json_str)?;
+            Ok(Some(inv))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn list_agent_inventories(&self, tenant_id: &str) -> Result<Vec<dek_domain_schema::AgentCapabilityInventory>> {
+        let rows = sqlx::query("SELECT inventory_json FROM agent_inventory WHERE tenant = ?1")
+            .bind(tenant_id)
+            .fetch_all(&self.pool)
+            .await?;
+        let mut out = Vec::new();
+        for r in rows {
+            let json_str: String = r.try_get("inventory_json")?;
+            if let Ok(inv) = serde_json::from_str(&json_str) {
+                out.push(inv);
+            }
+        }
+        Ok(out)
+    }
+
+    async fn delete_agent_inventory(&self, tenant_id: &str, agent_id: &str) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM agent_inventory WHERE tenant = ?1 AND agent_id = ?2")
+            .bind(tenant_id)
+            .bind(agent_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
     }
 }
 

@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use schemars::JsonSchema;
@@ -126,5 +126,42 @@ pub enum TelemetryEvent {
         timestamp: String,
         seq: u64,
         prev_digest: String,
+    },
+    #[serde(rename = "tool_invocation")]
+    ToolInvocation {
+        schema_version: String,
+        event_id: String,
+        tenant_id: String,
+        device_id: String,
+        agent_id: String,
+        tool_id: String,
+        tool_name: String,
+        mcp_server_id: Option<String>,
+        pep_type: String,
+        pdp_route_id: Option<String>,
+        decision: String,
+        reason: String,
+        redacted_arguments: serde_json::Value,
+        raw_arguments_captured: bool,
+        latency_ms: u64,
+        timestamp: String,
+    },
+    #[serde(rename = "resource_access")]
+    ResourceAccess {
+        schema_version: String,
+        event_id: String,
+        tenant_id: String,
+        device_id: String,
+        agent_id: String,
+        resource_id: String,
+        resource_kind: String,
+        operation: String,
+        path_redacted: Option<String>,
+        path_hash: Option<String>,
+        account_provider: Option<String>,
+        pep_type: String,
+        decision: String,
+        reason: String,
+        timestamp: String,
     },
 }

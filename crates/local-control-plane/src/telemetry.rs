@@ -42,6 +42,26 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/telemetry/decision-logs",
             get(list_decision_logs),
         )
+        .route(
+            "/v1/tenants/:tenant/logs/decisions",
+            get(list_decision_logs),
+        )
+        .route(
+            "/v1/tenants/:tenant/logs/tool-invocations",
+            get(list_tool_invocations),
+        )
+        .route(
+            "/v1/tenants/:tenant/logs/resource-access",
+            get(list_resource_access),
+        )
+        .route(
+            "/v1/tenants/:tenant/logs/policy-deployments",
+            get(list_policy_deployments),
+        )
+        .route(
+            "/v1/tenants/:tenant/logs/pep-health",
+            get(list_pep_health),
+        )
 }
 
 #[derive(serde::Deserialize)]
@@ -155,5 +175,65 @@ async fn list_decision_logs(
     (
         StatusCode::OK,
         Json(json!({ "count": items.len(), "decisions": items })),
+    )
+}
+
+async fn list_tool_invocations(
+    Path(tenant): Path<String>,
+    State(st): State<AppState>,
+) -> impl IntoResponse {
+    let logs = st
+        .telemetry_store
+        .list_telemetry(&tenant, "tool_invocation")
+        .await
+        .unwrap_or_default();
+    (
+        StatusCode::OK,
+        Json(json!({ "count": logs.len(), "tool_invocations": logs })),
+    )
+}
+
+async fn list_resource_access(
+    Path(tenant): Path<String>,
+    State(st): State<AppState>,
+) -> impl IntoResponse {
+    let logs = st
+        .telemetry_store
+        .list_telemetry(&tenant, "resource_access")
+        .await
+        .unwrap_or_default();
+    (
+        StatusCode::OK,
+        Json(json!({ "count": logs.len(), "resource_accesses": logs })),
+    )
+}
+
+async fn list_policy_deployments(
+    Path(tenant): Path<String>,
+    State(st): State<AppState>,
+) -> impl IntoResponse {
+    let logs = st
+        .telemetry_store
+        .list_telemetry(&tenant, "policy_deployment")
+        .await
+        .unwrap_or_default();
+    (
+        StatusCode::OK,
+        Json(json!({ "count": logs.len(), "policy_deployments": logs })),
+    )
+}
+
+async fn list_pep_health(
+    Path(tenant): Path<String>,
+    State(st): State<AppState>,
+) -> impl IntoResponse {
+    let logs = st
+        .telemetry_store
+        .list_telemetry(&tenant, "pep_binding_status")
+        .await
+        .unwrap_or_default();
+    (
+        StatusCode::OK,
+        Json(json!({ "count": logs.len(), "pep_health": logs })),
     )
 }

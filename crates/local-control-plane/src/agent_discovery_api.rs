@@ -37,11 +37,11 @@ pub fn router() -> Router<AppState> {
         )
         .route(
             "/v1/tenants/:tenant/discovery/control-bindings/:binding_id/apply",
-            post(apply_control_binding),
+            post(crate::control_binding::apply_control_binding),
         )
         .route(
             "/v1/tenants/:tenant/discovery/control-bindings/:binding_id/rollback",
-            post(rollback_control_binding),
+            post(crate::control_binding::rollback_control_binding),
         )
 }
 
@@ -242,24 +242,4 @@ async fn generate_control_plan(
     })))
 }
 
-async fn apply_control_binding(
-    Path((_tenant, binding_id)): Path<(String, String)>,
-    State(_st): State<AppState>,
-) -> ApiResult<Json<serde_json::Value>> {
-    // Stub for Phase 6 implementation
-    Ok(Json(serde_json::json!({
-        "binding_id": binding_id,
-        "status": "applied",
-    })))
-}
 
-async fn rollback_control_binding(
-    Path((_tenant, binding_id)): Path<(String, String)>,
-    State(_st): State<AppState>,
-) -> ApiResult<Json<serde_json::Value>> {
-    // Stub for Phase 6 implementation
-    Ok(Json(serde_json::json!({
-        "binding_id": binding_id,
-        "status": "rolled_back",
-    })))
-}

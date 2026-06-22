@@ -340,6 +340,40 @@ impl PdpRouterService {
             }
         } else {
             // Built in engines
+            if pdp_id == "local.cedar" {
+                let default_policy = r#"
+                    permit(
+                        principal,
+                        action,
+                        resource
+                    );
+                "#;
+                if let Ok(adapter) = dek_cedar::CedarAdapter::new(default_policy) {
+                    use dek_plugin_sdk::PolicyEvaluator;
+                    
+                    let req = dek_plugin_sdk::EvalRequest {
+                        request_id: format!("req_{}", uuid::Uuid::new_v4()),
+                        tenant_id: Some(tenant.to_string()),
+                        subject: None,
+                        action: None,
+                        resource: None,
+                        payload: payload.clone(),
+                        context: std::collections::BTreeMap::new(),
+                    };
+                    
+                    if let Ok(res) = adapter.evaluate(req).await {
+                        let dec = match res.decision {
+                            dek_plugin_sdk::DecisionEffect::Allow => "Allow",
+                            dek_plugin_sdk::DecisionEffect::Deny => "Deny",
+                            dek_plugin_sdk::DecisionEffect::Abstain => "Deny",
+                        };
+                        return Ok(serde_json::json!({
+                            "decision": dec,
+                            "reason": "Evaluated by local dek-cedar engine",
+                        }));
+                    }
+                }
+            }
             Ok(serde_json::json!({"decision": "Allow", "reason": "mock local engine"}))
         }
     }
