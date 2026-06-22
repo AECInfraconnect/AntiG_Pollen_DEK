@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-use dek_fingerprint_defs::model::{AgentSignatureV2, SignalWeights};
+use dek_fingerprint_defs::model::AgentSignatureV2;
 
 /// สัญญาณที่ดึงได้จาก process หนึ่ง (รวมจากหลาย scanner) ก่อนเอาไป match กับ signature DB.
 #[derive(Debug, Default, Clone)]
@@ -273,9 +273,9 @@ fn extract_claw_variant(hay: &str) -> Option<String> {
 
 // Helpers for string matching
 fn expand_path(p: &str) -> String {
-    if p.starts_with("~/") {
+    if let Some(stripped) = p.strip_prefix("~/") {
         if let Some(home) = dirs::home_dir() {
-            return format!("{}/{}", home.display(), &p[2..]);
+            return format!("{}/{}", home.display(), stripped);
         }
     }
     p.to_string()
