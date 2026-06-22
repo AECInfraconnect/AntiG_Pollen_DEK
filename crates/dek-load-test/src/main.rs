@@ -96,7 +96,7 @@ async fn main() -> Result<()> {
                         Ok(resp) if resp.status().is_success() => {
                             let latency = req_start.elapsed().as_micros() as u64;
                             success_count.fetch_add(1, Ordering::Relaxed);
-                            let _ = tx.send(latency);
+                            let _ = tx.send(latency).await;
                         }
                         Ok(resp) => {
                             tracing::warn!("Request failed with status: {}", resp.status());

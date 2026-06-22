@@ -29,9 +29,11 @@ impl Liveness {
 pub fn spawn(liveness: Liveness, cancel: CancellationToken) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         // sd_notify::watchdog_enabled() คืน Some(interval) ถ้า systemd เปิด watchdog
-        let interval = match sd_notify::watchdog_enabled(false, false) {
-            Ok(Some(usec)) => Duration::from_micros(usec / 2), // ping ที่ครึ่งช่วง (best practice)
-            _ => return, // ไม่ได้รันใต้ systemd watchdog → ไม่ทำอะไร
+        let mut usec = 0;
+        let interval = if sd_notify::watchdog_enabled(false, &mut usec) {
+            Duration::from_micros(usec / 2) // ping ที่ครึ่งช่วง (best practice)
+        } else {
+            return; // ไม่ได้รันใต้ systemd watchdog → ไม่ทำอะไร
         };
         let mut ticker = tokio::time::interval(interval);
         loop {
