@@ -126,6 +126,10 @@ export function AutoDiscovery() {
   }>({ show: false, candidate: null, name: "" });
 
   const openRegisterModal = (candidate: DiscoveredAgentCandidateV2) => {
+    if (candidate.status === "registered") {
+      alert("This agent is already registered!");
+      return;
+    }
     setRegisterModal({
       show: true,
       candidate,
@@ -136,9 +140,12 @@ export function AutoDiscovery() {
     });
   };
 
+  const [isRegistering, setIsRegistering] = useState(false);
+
   const handleConfirmRegister = async () => {
     const candidate = registerModal.candidate;
-    if (!candidate) return;
+    if (!candidate || isRegistering) return;
+    setIsRegistering(true);
     try {
       // 1. Register the agent
       await RegistryApi.registerDiscoveryCandidate(candidate.candidate_id, {
@@ -170,6 +177,8 @@ export function AutoDiscovery() {
     } catch (err) {
       console.error(err);
       alert("Failed to register: " + err);
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -251,70 +260,106 @@ export function AutoDiscovery() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {candidates.map((c, idx) => (
-                  <div
-                    key={idx}
-                    className="border rounded-lg p-4 hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-2">
-                        <ShieldAlert className="h-5 w-5 text-primary" />
-                        <h4 className="font-medium text-lg">
-                          {c.display_name}{" "}
-                          <span className="text-xs text-muted-foreground">
-                            ({c.inferred_agent_type})
-                          </span>
-                        </h4>
-                      </div>
-                      <div className="flex gap-2">
-                        {c.status === "registered" ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-green-500 font-medium px-2 py-1">
-                            <CheckCircle className="w-3 h-3" /> Registered
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => openRegisterModal(c)}
-                            className="text-xs border px-3 py-1.5 rounded hover:bg-primary hover:text-primary-foreground font-medium"
-                          >
-                            Register & Enforce
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-muted-foreground text-sm font-mono bg-muted/20 inline-block px-2 py-0.5 rounded border mb-1">
-                        ID: {c.candidate_id}
-                      </p>
-                      <p className="text-muted-foreground text-sm">
-                        <span className="font-medium">Risk Score:</span>{" "}
-                        {c.risk_score} |{" "}
-                        <span className="font-medium">Confidence:</span>{" "}
-                        {(c.confidence * 100).toFixed(0)}% <br />
-                        <span className="font-medium">First seen:</span>{" "}
-                        {new Date(c.first_seen).toLocaleString()}
-                      </p>
-                    </div>
+              <div className="space-y-8">
+                {(() => {
+                  const sortedCandidates = [...candidates].sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime());
+                  const latestScanTime = sortedCandidates.length > 0 ? new Date(sortedCandidates[0].last_seen).getTime() : 0;
+                  const latestCandidates = sortedCandidates.filter(c => new Date(c.last_seen).getTime() > latestScanTime - 60000);
+                  const previousCandidates = sortedCandidates.filter(c => new Date(c.last_seen).getTime() <= latestScanTime - 60000);
 
-                    {c.discovered_mcp_servers &&
-                      c.discovered_mcp_servers.length > 0 && (
-                        <div className="mt-3 p-3 bg-muted/40 rounded-md">
-                          <h5 className="text-xs font-semibold mb-1">
-                            Discovered MCP Servers:
-                          </h5>
-                          <ul className="text-xs space-y-1">
-                            {c.discovered_mcp_servers.map(
-                              (mcp: any, i: number) => (
-                                <li key={i}>
-                                  - {mcp.server_name} ({mcp.transport})
-                                </li>
-                              ),
+                  const renderCandidateList = (list: DiscoveredAgentCandidateV2[]) => (
+                    <div className="space-y-4">
+                      {list.map((c, idx) => (
+                        <div
+                          key={`${c.candidate_id}-${idx}`}
+                          className="border rounded-lg p-4 hover:bg-muted/30 transition-colors"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-2">
+                              <ShieldAlert className="h-5 w-5 text-primary" />
+                              <h4 className="font-medium text-lg">
+                                {c.display_name}{" "}
+                                <span className="text-xs text-muted-foreground">
+                                  ({c.inferred_agent_type})
+                                </span>
+                              </h4>
+                            </div>
+                            <div className="flex gap-2">
+                              {c.status === "registered" ? (
+                                <span className="inline-flex items-center gap-1 text-xs text-green-500 bg-green-500/10 border border-green-500/20 font-medium px-2.5 py-1 rounded-md">
+                                  <CheckCircle className="w-3.5 h-3.5" /> Registered
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => openRegisterModal(c)}
+                                  className="text-xs border px-3 py-1.5 rounded hover:bg-primary hover:text-primary-foreground font-medium transition-colors"
+                                >
+                                  Register & Enforce
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-muted-foreground text-sm font-mono bg-muted/20 inline-block px-2 py-0.5 rounded border mb-1">
+                              ID: {c.candidate_id}
+                            </p>
+                            <p className="text-muted-foreground text-sm">
+                              <span className="font-medium">Risk Score:</span>{" "}
+                              {c.risk_score} |{" "}
+                              <span className="font-medium">Confidence:</span>{" "}
+                              {(c.confidence * 100).toFixed(0)}% <br />
+                              <span className="font-medium">First seen:</span>{" "}
+                              {new Date(c.first_seen).toLocaleString()} <br />
+                              <span className="font-medium">Last seen:</span>{" "}
+                              {new Date(c.last_seen).toLocaleString()}
+                            </p>
+                          </div>
+
+                          {c.discovered_mcp_servers &&
+                            c.discovered_mcp_servers.length > 0 && (
+                              <div className="mt-3 p-3 bg-muted/40 rounded-md">
+                                <h5 className="text-xs font-semibold mb-1">
+                                  Discovered MCP Servers:
+                                </h5>
+                                <ul className="text-xs space-y-1">
+                                  {c.discovered_mcp_servers.map(
+                                    (mcp: any, i: number) => (
+                                      <li key={i}>
+                                        - {mcp.server_name} ({mcp.transport})
+                                      </li>
+                                    ),
+                                  )}
+                                </ul>
+                              </div>
                             )}
-                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  );
+
+                  return (
+                    <>
+                      {latestCandidates.length > 0 && (
+                        <div>
+                          <h4 className="font-medium text-sm text-primary mb-3 flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                            Latest Scan Results
+                          </h4>
+                          {renderCandidateList(latestCandidates)}
                         </div>
                       )}
-                  </div>
-                ))}
+                      
+                      {previousCandidates.length > 0 && (
+                        <div className="pt-4 border-t">
+                          <h4 className="font-medium text-sm text-muted-foreground mb-3">
+                            Previously Discovered
+                          </h4>
+                          {renderCandidateList(previousCandidates)}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -585,11 +630,11 @@ export function AutoDiscovery() {
               </button>
               <button
                 onClick={handleConfirmRegister}
-                disabled={!registerModal.name.trim()}
+                disabled={!registerModal.name.trim() || isRegistering}
                 className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
               >
                 <ShieldAlert className="w-4 h-4" />
-                Register & Enforce
+                {isRegistering ? "Registering..." : "Register & Enforce"}
               </button>
             </div>
           </div>
