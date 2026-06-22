@@ -63,7 +63,10 @@ async fn start_scan(
         "sources": req.get("sources").unwrap_or(&serde_json::json!([])),
         "candidates_found": 0
     });
-    let _ = st.registry_store.upsert_raw(&tenant, "discovery_scan", &scan_id, &initial_job).await;
+    let _ = st
+        .registry_store
+        .upsert_raw(&tenant, "discovery_scan", &scan_id, &initial_job)
+        .await;
 
     tokio::spawn(async move {
         match dek_agent_discovery::run_scan_v2(&tenant2, &scan_id2, &req).await {
