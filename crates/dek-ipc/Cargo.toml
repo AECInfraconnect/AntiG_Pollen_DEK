@@ -7,6 +7,7 @@ edition = "2021"
 
 
 [dependencies]
+dek-errors = { version = "0.1.0", path = "../dek-errors" }
 serde.workspace = true
 serde_json.workspace = true
 

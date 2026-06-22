@@ -28,7 +28,7 @@ const OIDC_ISSUER: &str = "https://token.actions.githubusercontent.com";
 const IDENTITY_REGEXP: &str = "^https://github.com/AECInfraconnect/AntiG_Pollen_DEK/.*";
 
 pub fn latest_release(channel: &str) -> Result<GitHubRelease> {
-    let resp: Vec<GitHubRelease> = ureq::get(REPO_API)
+    let resp: Vec<GitHubRelease> = crate::http_client().get(REPO_API)
         .set("User-Agent", "pollen-dek-updater")
         .call()
         .context("Failed to fetch releases from GitHub")?
@@ -113,7 +113,7 @@ pub fn download_update(
 }
 
 fn download_file(url: &str, dir: &Path, filename: &str) -> Result<PathBuf> {
-    let resp = ureq::get(url)
+    let resp = crate::http_client().get(url)
         .call()
         .context(format!("Failed to download {}", url))?;
     let mut reader = resp.into_reader();

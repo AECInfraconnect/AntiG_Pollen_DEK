@@ -103,7 +103,7 @@ pub async fn spawn_ipc_server_task(
                                             if !req_msg.version.starts_with("1.") {
                                                 let err_msg = IpcMessage {
                                                     version: "1.0".to_string(),
-                                                    payload: IpcResponse::Error(format!("Unsupported IPC version: {}", req_msg.version)),
+                                                    payload: IpcResponse::Error(dek_errors::ErrorEnvelope::bad_request(format!("Unsupported IPC version: {}", req_msg.version))),
                                                 };
                                                 if let Ok(err_str) = serde_json::to_string(&err_msg) {
                                                     let _ = framed.send(err_str).await;
@@ -165,7 +165,7 @@ pub async fn spawn_ipc_server_task(
                                                         },
                                                         Err(e) => {
                                                             error!("Failed to reload config: {}", e);
-                                                            IpcResponse::Error(format!("Reload failed: {}", e))
+                                                            IpcResponse::Error(dek_errors::ErrorEnvelope::internal_error(format!("Reload failed: {}", e)))
                                                         }
                                                     }
                                                 },
@@ -179,7 +179,7 @@ pub async fn spawn_ipc_server_task(
                                                         Ok(_) => IpcResponse::RotateStatus { status: "SUCCESS".to_string() },
                                                         Err(e) => {
                                                             error!("Rotate Identity Failed via IPC: {}", e);
-                                                            IpcResponse::Error(e.to_string())
+                                                            IpcResponse::Error(dek_errors::ErrorEnvelope::internal_error(e.to_string()))
                                                         }
                                                     }
                                                 },
@@ -203,7 +203,7 @@ pub async fn spawn_ipc_server_task(
                                             }), dek_telemetry::spooler::Priority::Normal);
                                             let err_msg = IpcMessage {
                                                 version: "1.0".to_string(),
-                                                payload: IpcResponse::Error("Failed to parse request".to_string()),
+                                                payload: IpcResponse::Error(dek_errors::ErrorEnvelope::bad_request("Failed to parse request")),
                                             };
                                             if let Ok(err_str) = serde_json::to_string(&err_msg) {
                                                 let _ = framed.send(err_str).await;
@@ -213,7 +213,7 @@ pub async fn spawn_ipc_server_task(
                                         warn!("IPC connection read timed out or failed.");
                                         let err_msg = IpcMessage {
                                             version: "1.0".to_string(),
-                                            payload: IpcResponse::Error("Request timed out or failed to read".to_string()),
+                                            payload: IpcResponse::Error(dek_errors::ErrorEnvelope::internal_error("Request timed out or failed to read")),
                                         };
                                         if let Ok(err_str) = serde_json::to_string(&err_msg) {
                                             let _ = framed.send(err_str).await;

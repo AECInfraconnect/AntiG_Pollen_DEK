@@ -73,6 +73,41 @@ impl std::fmt::Display for ErrorEnvelope {
 impl std::error::Error for ErrorEnvelope {}
 
 impl ErrorEnvelope {
+    pub fn internal_error(msg: impl Into<String>) -> Self {
+        Self {
+            error_id: uuid::Uuid::now_v7().to_string(),
+            domain: ErrorDomain::Platform,
+            code: "INTERNAL_ERROR".to_string(),
+            message: msg.into(),
+            safe_message: "An internal error occurred".to_string(),
+            retry_class: RetryClass::RetryWithBackoff,
+            safety_action: SafetyAction::DenyRequest,
+            tenant_id: None,
+            device_id: None,
+            bundle_version: None,
+            request_id: None,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            remediation: None,
+        }
+    }
+
+    pub fn bad_request(msg: impl Into<String>) -> Self {
+        Self {
+            error_id: uuid::Uuid::now_v7().to_string(),
+            domain: ErrorDomain::Platform,
+            code: "BAD_REQUEST".to_string(),
+            message: msg.into(),
+            safe_message: "Invalid request".to_string(),
+            retry_class: RetryClass::NoRetry,
+            safety_action: SafetyAction::DenyRequest,
+            tenant_id: None,
+            device_id: None,
+            bundle_version: None,
+            request_id: None,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            remediation: None,
+        }
+    }
     /// Maps the internal domain and safety action to a standard HTTP status code.
     pub fn to_http_status(&self) -> u16 {
         match self.domain {

@@ -18,6 +18,12 @@ mod github;
 use std::process::Command;
 use std::time::Duration;
 
+pub fn http_client() -> ureq::Agent {
+    ureq::AgentBuilder::new()
+        .timeout(Duration::from_secs(30))
+        .build()
+}
+
 #[derive(Parser)]
 #[command(name = "dek-updater", about = "Pollen DEK Auto-Updater")]
 struct Cli {
@@ -161,7 +167,7 @@ fn main() -> Result<()> {
             // 1. Fetch TUF targets.json
             let metadata_url =
                 format!("{}/metadata/targets.json", update_url.trim_end_matches('/'));
-            let resp = ureq::get(&metadata_url)
+            let resp = http_client().get(&metadata_url)
                 .call()
                 .context("Failed to fetch TUF metadata")?;
             let metadata: serde_json::Value = resp.into_json()?;
@@ -203,7 +209,7 @@ fn main() -> Result<()> {
             let downloaded_exe = temp_dir.path().join(target_name);
 
             println!("Downloading update payload...");
-            let resp = ureq::get(&artifact_url)
+            let resp = http_client().get(&artifact_url)
                 .call()
                 .context("Failed to download payload")?;
             let mut reader = resp.into_reader();
@@ -247,7 +253,7 @@ fn main() -> Result<()> {
             let mut is_healthy = false;
             for _ in 0..15 {
                 std::thread::sleep(Duration::from_secs(2));
-                match ureq::get(&health_url).call() {
+                match http_client().get(&health_url).call() {
                     Ok(res) if res.status() == 200 => {
                         is_healthy = true;
                         break;

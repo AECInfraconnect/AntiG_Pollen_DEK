@@ -30,21 +30,29 @@ pub struct ErrorBody {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
-        let (status, code) = match &self {
-            ApiError::NotFound(_) => (StatusCode::NOT_FOUND, "not_found"),
-            ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "bad_request"),
-            ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "unauthorized"),
-            ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "forbidden"),
-            ApiError::Conflict(_) => (StatusCode::CONFLICT, "conflict"),
-            ApiError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "internal"),
-        };
+        match self {
+            ApiError::Internal(e) => {
+                tracing::error!(error = %e, "Internal error mapped to envelope");
+                let envelope = dek_errors::ErrorEnvelope::internal_error(e.to_string());
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(envelope)).into_response()
+            }
+            other => {
+                let (status, code) = match &other {
+                    ApiError::NotFound(_) => (StatusCode::NOT_FOUND, "not_found"),
+                    ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "bad_request"),
+                    ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "unauthorized"),
+                    ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "forbidden"),
+                    ApiError::Conflict(_) => (StatusCode::CONFLICT, "conflict"),
+                    ApiError::Internal(_) => unreachable!(),
+                };
 
-        let body = ErrorBody {
-            error: self.to_string(),
-            code: code.to_string(),
-        };
-
-        (status, Json(body)).into_response()
+                let body = ErrorBody {
+                    error: other.to_string(),
+                    code: code.to_string(),
+                };
+                (status, Json(body)).into_response()
+            }
+        }
     }
 }
 

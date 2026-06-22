@@ -48,5 +48,5 @@ pub enum IpcResponse {
         version: u64,
         message: String,
     },
-    Error(String),
+    Error(dek_errors::ErrorEnvelope),
 }

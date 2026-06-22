@@ -7,10 +7,12 @@ edition = "2021"
 
 
 [dependencies]
+chrono.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tonic = "0.14"
 tracing.workspace = true
+uuid = { version = "1.23.3", features = ["v7"] }
 
 [lints]
 workspace = true
