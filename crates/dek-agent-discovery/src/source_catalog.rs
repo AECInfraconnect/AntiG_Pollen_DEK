@@ -7,6 +7,7 @@ pub struct AgentSignature {
     pub agent_type: String,
     pub process_names: Vec<String>,
     pub config_paths: Option<std::collections::HashMap<String, Vec<String>>>,
+    pub forensic_artifacts: Option<std::collections::HashMap<String, Vec<String>>>,
     pub config_parsers: Option<Vec<String>>,
     pub ports: Option<Vec<u16>>,
     pub control_strategies: Vec<String>,

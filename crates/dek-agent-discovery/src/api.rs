@@ -133,9 +133,14 @@ pub async fn run_scan_v2(
     tenant: &str,
     scan_id: &str,
     req: &serde_json::Value,
+    sni_source: Option<std::sync::Arc<dyn crate::web_ai_scan::SniFlowSource>>,
+    tx: Option<tokio::sync::mpsc::Sender<DiscoveredAgentCandidateV2>>,
 ) -> Result<(DiscoveryScanJob, Vec<DiscoveredAgentCandidateV2>)> {
-    let orchestrator = crate::orchestrator::DiscoveryOrchestrator::new(tenant);
-    orchestrator.run_scan(scan_id, req).await
+    let mut orchestrator = crate::orchestrator::DiscoveryOrchestrator::new(tenant);
+    if let Some(src) = sni_source {
+        orchestrator = orchestrator.with_sni_source(src);
+    }
+    orchestrator.run_scan(scan_id, req, tx).await
 }
 
 pub fn to_registry_agent_v2(

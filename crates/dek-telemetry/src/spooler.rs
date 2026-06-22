@@ -226,6 +226,39 @@ impl Spooler {
         Ok(batch)
     }
 
+    pub fn peek_recent(&self, limit: usize) -> Result<Vec<(i64, Value)>> {
+        let conn = self.conn.lock_safe();
+        let mut stmt = conn.prepare(
+            "SELECT id, payload, nonce FROM events ORDER BY id DESC LIMIT ?1",
+        )?;
+
+        let rows = stmt.query_map([limit as i64], |row| {
+            let id: i64 = row.get(0)?;
+            let payload_blob: Vec<u8> = row.get(1)?;
+            let nonce_blob: Vec<u8> = row.get(2)?;
+            Ok((id, payload_blob, nonce_blob))
+        })?;
+
+        let mut batch = Vec::new();
+        for r in rows.flatten() {
+            let (id, ct, nonce_bytes): (i64, Vec<u8>, Vec<u8>) = r;
+            let nonce = Nonce::from_slice(&nonce_bytes);
+            match self.cipher.decrypt(nonce, ct.as_ref()) {
+                Ok(pt) => {
+                    if let Ok(p_str) = String::from_utf8(pt) {
+                        if let Ok(v) = serde_json::from_str(&p_str) {
+                            batch.push((id, v));
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to decrypt spooled event id {} during peek: {}", id, e);
+                }
+            }
+        }
+        Ok(batch)
+    }
+
     pub fn delete_batch(&self, ids: &[i64]) -> Result<()> {
         if ids.is_empty() {
             return Ok(());

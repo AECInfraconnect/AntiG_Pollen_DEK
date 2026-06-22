@@ -16,7 +16,9 @@ pub mod mcp_scan;
 pub mod model;
 pub mod orchestrator;
 pub mod process_scan;
+pub mod python_framework_scan;
 pub mod redaction;
+pub mod sni_source;
 pub mod source_catalog;
 pub mod web_ai_scan;
 

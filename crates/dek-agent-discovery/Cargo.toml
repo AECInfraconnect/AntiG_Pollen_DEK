@@ -22,7 +22,8 @@ dek-control-plane-api = { path = "../dek-control-plane-api" }
 dek-domain-schema = { path = "../dek-domain-schema" }
 thiserror.workspace = true
 reqwest.workspace = true
-rusqlite = "0.32"
+rusqlite = { version = "0.32", features = ["bundled"] }
+futures = "0.3.32"
 
 [lints]
 workspace = true

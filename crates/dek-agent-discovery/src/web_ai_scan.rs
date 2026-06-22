@@ -61,6 +61,16 @@ pub const WEB_AI_CATALOG: &[WebAiSignature] = &[
         name: "HuggingChat",
         vendor: "HuggingFace",
     },
+    WebAiSignature {
+        domain: "grok.com",
+        name: "Grok",
+        vendor: "xAI",
+    },
+    WebAiSignature {
+        domain: "chat.mistral.ai",
+        name: "Mistral",
+        vendor: "Mistral AI",
+    },
 ];
 
 pub fn scan_web_ai(

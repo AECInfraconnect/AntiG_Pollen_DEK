@@ -1,5 +1,6 @@
 use crate::model::*;
 use anyhow::Result;
+use tokio::time::{timeout, Duration};
 
 pub struct DiscoveryOrchestrator {
     tenant_id: String,
@@ -26,6 +27,7 @@ impl DiscoveryOrchestrator {
         &self,
         scan_id: &str,
         req: &serde_json::Value,
+        tx: Option<tokio::sync::mpsc::Sender<DiscoveredAgentCandidateV2>>,
     ) -> Result<(DiscoveryScanJob, Vec<DiscoveredAgentCandidateV2>)> {
         let mut job = DiscoveryScanJob {
             scan_id: scan_id.to_string(),
@@ -38,22 +40,36 @@ impl DiscoveryOrchestrator {
             candidates_found: 0,
         };
 
-        let mut all_evidence = Vec::new();
         let sources_req = req.get("sources").and_then(|s| s.as_array());
-
         let wants_source =
             |s: &str| sources_req.is_none_or(|a| a.iter().any(|v| v.as_str() == Some(s)));
 
-        // 1. Process Scan
+        if wants_source("process") { job.sources.push("process".into()); }
+        if wants_source("mcp_config") { job.sources.push("mcp_config".into()); }
+        if wants_source("local_model") { job.sources.push("local_model".into()); }
+        if wants_source("ide_extension") { job.sources.push("ide_extension".into()); }
+        if wants_source("cli_agent") { job.sources.push("cli_agent".into()); }
+        if wants_source("container") { job.sources.push("container".into()); }
+        if wants_source("browser_extension") { job.sources.push("browser_extension".into()); }
+        if wants_source("web_ai") { job.sources.push("web_ai".into()); }
+        if wants_source("python_framework") { job.sources.push("python_framework".into()); }
+
+        let sni_src = self.sni_source.clone();
+
+        let (ev_tx, mut ev_rx) = tokio::sync::mpsc::channel(100);
+
+        let mut tasks = Vec::new();
+
         if wants_source("process") {
-            job.sources.push("process".into());
-            match crate::process_scan::scan_processes() {
-                Ok(processes) => {
+            let tx_cl = ev_tx.clone();
+            tasks.push(tokio::spawn(async move {
+                let mut ev = Vec::new();
+                if let Ok(processes) = tokio::task::spawn_blocking(|| crate::process_scan::scan_processes()).await.unwrap_or(Ok(vec![])) {
                     let config = crate::config::DiscoveryConfig::default();
                     for p in processes {
                         let conf = crate::fingerprint::fingerprint_process(&p.process_name);
                         if conf > config.min_fingerprint_confidence {
-                            all_evidence.push(DiscoveryEvidenceV2 {
+                            ev.push(DiscoveryEvidenceV2 {
                                 evidence_id: uuid::Uuid::new_v4().to_string(),
                                 source: EvidenceSource::ProcessScan,
                                 confidence: conf,
@@ -61,85 +77,149 @@ impl DiscoveryOrchestrator {
                                 privacy_class: PrivacyClass::InternalMetadata,
                                 redacted: true,
                                 data: serde_json::to_value(&p).unwrap_or_default(),
-                                merge_key: Some(format!(
-                                    "{:?}:{}",
-                                    p.exe_path_hash, p.process_name
-                                )),
+                                merge_key: Some(format!("{:?}:{}", p.exe_path_hash, p.process_name)),
                                 source_path_hash: p.exe_path_hash.clone(),
                                 source_path_redacted: Some(p.process_name.clone()),
                             });
                         }
                     }
                 }
-                Err(e) => {
-                    job.error = Some(e.to_string());
-                    job.status = ScanJobStatus::Failed;
-                }
-            }
+                let _ = tx_cl.send(ev).await;
+            }));
         }
 
-        // 2. MCP Scan
         if wants_source("mcp_config") {
-            job.sources.push("mcp_config".into());
-            if let Ok(mut mcp_evidence) = crate::mcp_scan::scan_mcp_configs() {
-                all_evidence.append(&mut mcp_evidence);
-            }
+            let tx_cl = ev_tx.clone();
+            tasks.push(tokio::spawn(async move {
+                let mut ev = Vec::new();
+                if let Ok(mut x) = tokio::task::spawn_blocking(|| crate::mcp_scan::scan_mcp_configs()).await.unwrap_or(Ok(vec![])) {
+                    ev.append(&mut x);
+                }
+                let _ = tx_cl.send(ev).await;
+            }));
         }
 
-        // 3. Local Model Probe
         if wants_source("local_model") {
-            job.sources.push("local_model".into());
-            if let Ok(mut lm_evidence) = crate::local_model_probe::probe_local_models().await {
-                all_evidence.append(&mut lm_evidence);
-            }
+            let tx_cl = ev_tx.clone();
+            tasks.push(tokio::spawn(async move {
+                let mut ev = Vec::new();
+                if let Ok(mut x) = crate::local_model_probe::probe_local_models().await {
+                    ev.append(&mut x);
+                }
+                let _ = tx_cl.send(ev).await;
+            }));
         }
 
-        // 4. IDE Extension Scan
         if wants_source("ide_extension") {
-            job.sources.push("ide_extension".into());
-            if let Ok(mut ide_evidence) = crate::ide_extension_scan::scan_ide_extensions() {
-                all_evidence.append(&mut ide_evidence);
-            }
+            let tx_cl = ev_tx.clone();
+            tasks.push(tokio::spawn(async move {
+                let mut ev = Vec::new();
+                if let Ok(mut x) = tokio::task::spawn_blocking(|| crate::ide_extension_scan::scan_ide_extensions()).await.unwrap_or(Ok(vec![])) {
+                    ev.append(&mut x);
+                }
+                let _ = tx_cl.send(ev).await;
+            }));
         }
 
-        // 5. CLI Agent Scan
         if wants_source("cli_agent") {
-            job.sources.push("cli_agent".into());
-            if let Ok(mut cli_evidence) = crate::cli_agent_scan::scan_cli_agents() {
-                all_evidence.append(&mut cli_evidence);
-            }
+            let tx_cl = ev_tx.clone();
+            tasks.push(tokio::spawn(async move {
+                let mut ev = Vec::new();
+                if let Ok(mut x) = tokio::task::spawn_blocking(|| crate::cli_agent_scan::scan_cli_agents()).await.unwrap_or(Ok(vec![])) {
+                    ev.append(&mut x);
+                }
+                let _ = tx_cl.send(ev).await;
+            }));
         }
 
-        // 6. Container Scan (Phase 6 Optional)
         if wants_source("container") {
-            job.sources.push("container".into());
-            if let Ok(mut container_evidence) = crate::container_scan::scan_containers() {
-                all_evidence.append(&mut container_evidence);
-            }
+            let tx_cl = ev_tx.clone();
+            tasks.push(tokio::spawn(async move {
+                let mut ev = Vec::new();
+                if let Ok(mut x) = tokio::task::spawn_blocking(|| crate::container_scan::scan_containers()).await.unwrap_or(Ok(vec![])) {
+                    ev.append(&mut x);
+                }
+                let _ = tx_cl.send(ev).await;
+            }));
         }
 
-        // 7. Browser Extension Scan (Phase 6 Optional)
         if wants_source("browser_extension") {
-            job.sources.push("browser_extension".into());
-            if let Ok(mut browser_evidence) = crate::browser_scan::scan_browsers() {
-                all_evidence.append(&mut browser_evidence);
-            }
+            let tx_cl = ev_tx.clone();
+            tasks.push(tokio::spawn(async move {
+                let mut ev = Vec::new();
+                if let Ok(mut x) = tokio::task::spawn_blocking(|| crate::browser_scan::scan_browsers()).await.unwrap_or(Ok(vec![])) {
+                    ev.append(&mut x);
+                }
+                let _ = tx_cl.send(ev).await;
+            }));
         }
 
-        // 8. Web AI App Scan (Browser Web AI Discovery)
         if wants_source("web_ai") {
-            job.sources.push("web_ai".into());
-            let config = crate::config::DiscoveryConfig::default();
-            if let Ok(mut web_ai_evidence) =
-                crate::web_ai_scan::scan_web_ai(self.sni_source.as_deref(), &config)
-            {
-                all_evidence.append(&mut web_ai_evidence);
-            }
+            let tx_cl = ev_tx.clone();
+            tasks.push(tokio::spawn(async move {
+                let mut ev = Vec::new();
+                let config = crate::config::DiscoveryConfig::default();
+                if let Ok(mut x) = tokio::task::spawn_blocking(move || crate::web_ai_scan::scan_web_ai(sni_src.as_deref(), &config)).await.unwrap_or(Ok(vec![])) {
+                    ev.append(&mut x);
+                }
+                let _ = tx_cl.send(ev).await;
+            }));
         }
 
-        let candidates = crate::aggregator::aggregate_evidence(&self.tenant_id, all_evidence);
+        if wants_source("python_framework") {
+            let tx_cl = ev_tx.clone();
+            tasks.push(tokio::spawn(async move {
+                let mut ev = Vec::new();
+                if let Ok(mut x) = tokio::task::spawn_blocking(|| Ok::<_, ()>(crate::python_framework_scan::scan_python_frameworks())).await {
+                    ev.append(&mut x.unwrap());
+                }
+                let _ = tx_cl.send(ev).await;
+            }));
+        }
 
-        if job.status != ScanJobStatus::Failed {
+        // drop original tx so the rx loop will eventually terminate when all tasks complete
+        drop(ev_tx);
+
+        let mut all_evidence = Vec::new();
+        let mut sent_candidates = std::collections::HashSet::new();
+        let mut final_candidates = Vec::new();
+        
+        let tenant_id = self.tenant_id.clone();
+        
+        let rx_loop = async move {
+            while let Some(mut evs) = ev_rx.recv().await {
+                all_evidence.append(&mut evs);
+                let candidates = crate::aggregator::aggregate_evidence(&tenant_id, all_evidence.clone());
+                
+                if let Some(sender) = &tx {
+                    for cand in &candidates {
+                        if !sent_candidates.contains(&cand.candidate_id) {
+                            let _ = sender.send(cand.clone()).await;
+                            sent_candidates.insert(cand.candidate_id.clone());
+                        }
+                    }
+                }
+                final_candidates = candidates;
+            }
+            (all_evidence, final_candidates)
+        };
+
+        // Combine task completion with deadline
+        let join_all = futures::future::join_all(tasks);
+        
+        let scan_result = match timeout(Duration::from_secs(15), join_all).await {
+            Ok(_) => true,
+            Err(_) => false
+        };
+
+        let (_all_evidence, candidates) = rx_loop.await;
+
+        if !scan_result {
+            job.error = Some("scan exceeded deadline; returning partial results".into());
+            job.status = ScanJobStatus::Partial;
+        }
+
+        if job.status != ScanJobStatus::Failed && job.status != ScanJobStatus::Partial {
             job.status = ScanJobStatus::Completed;
         }
         job.finished_at = Some(chrono::Utc::now().to_rfc3339());

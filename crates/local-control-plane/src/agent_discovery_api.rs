@@ -9,6 +9,42 @@ use crate::{
     state::AppState,
 };
 
+struct SpoolFlowSourceImpl {
+    spooler: Option<dek_telemetry::spooler::Spooler>,
+}
+
+impl SpoolFlowSourceImpl {
+    fn new() -> Self {
+        let db_path = dek_config::paths::get_data_dir().join("telemetry_spool.db");
+        Self {
+            spooler: dek_telemetry::spooler::Spooler::new(&db_path.to_string_lossy()).ok(),
+        }
+    }
+}
+
+impl dek_agent_discovery::web_ai_scan::SniFlowSource for SpoolFlowSourceImpl {
+    fn recent_flows(&self, _since: std::time::Duration) -> Vec<dek_agent_discovery::web_ai_scan::SniFlow> {
+        let mut flows = Vec::new();
+        if let Some(spool) = &self.spooler {
+            if let Ok(batch) = spool.peek_recent(500) {
+                for (_, val) in batch {
+                    if val.get("event").and_then(|v| v.as_str()) == Some("network.flow.v1") {
+                        if let Some(sni_host) = val.get("sni_host").and_then(|v| v.as_str()) {
+                            let browser_pid = val.get("pid").and_then(|v| v.as_u64()).map(|v| v as u32);
+                            flows.push(dek_agent_discovery::web_ai_scan::SniFlow {
+                                browser_pid,
+                                sni_host: sni_host.to_string(),
+                                ts: 0,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        flows
+    }
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route(
@@ -69,21 +105,28 @@ async fn start_scan(
         .await;
 
     tokio::spawn(async move {
-        match dek_agent_discovery::run_scan_v2(&tenant2, &scan_id2, &req).await {
-            Ok((job, candidates)) => {
+        let sni_source = std::sync::Arc::new(SpoolFlowSourceImpl::new());
+        let (tx, mut rx) = tokio::sync::mpsc::channel(100);
+        let st3 = st2.clone();
+        let tenant3 = tenant2.clone();
+        
+        // Spawn a receiver to handle incremental candidates
+        tokio::spawn(async move {
+            while let Some(candidate) = rx.recv().await {
+                let val = serde_json::to_value(&candidate).unwrap_or_default();
+                let _ = st3.registry_store.upsert_raw(&tenant3, "discovery_candidate", &candidate.candidate_id, &val).await;
+            }
+        });
+
+        match dek_agent_discovery::run_scan_v2(&tenant2, &scan_id2, &req, Some(sni_source), Some(tx)).await {
+            Ok((job, _candidates)) => {
                 let job_val = serde_json::to_value(&job).unwrap_or_default();
                 let _ = st2
                     .registry_store
                     .upsert_raw(&tenant2, "discovery_scan", &job.scan_id, &job_val)
                     .await;
 
-                for c in candidates {
-                    let val = serde_json::to_value(&c).unwrap_or_default();
-                    let _ = st2
-                        .registry_store
-                        .upsert_raw(&tenant2, "discovery_candidate", &c.candidate_id, &val)
-                        .await;
-                }
+                // Candidates are already saved incrementally by the receiver loop
             }
             Err(e) => {
                 tracing::warn!(error=%e, scan_id=%scan_id2, "agent discovery scan failed");
