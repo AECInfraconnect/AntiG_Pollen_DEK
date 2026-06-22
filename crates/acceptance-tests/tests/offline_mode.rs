@@ -125,6 +125,7 @@ async fn authorize(
 #[tokio::test]
 #[ignore = "offline mode e2e"]
 async fn test_offline_mode_resilience() -> Result<()> {
+    rustls::crypto::ring::default_provider().install_default().ok();
     if std::env::var("DEK_SKIP_HARNESS_BUILD").is_err() {
         assert!(
             Command::new("cargo")

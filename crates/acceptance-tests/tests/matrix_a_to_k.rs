@@ -210,6 +210,7 @@ async fn authorize(
 #[tokio::test]
 #[ignore = "full-binary integration; run explicitly in CI integration job"]
 async fn acceptance_matrix_a_to_k() -> Result<()> {
+    rustls::crypto::ring::default_provider().install_default().ok();
     let _mock = setup().await?;
 
     // ---- A: Enroll -> sync -> enforce ----

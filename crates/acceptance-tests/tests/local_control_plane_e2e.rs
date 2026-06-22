@@ -85,6 +85,7 @@ async fn setup_local_cp() -> Result<Proc> {
 #[tokio::test]
 #[ignore = "runs the local control plane e2e"]
 async fn local_control_plane_e2e() -> Result<()> {
+    rustls::crypto::ring::default_provider().install_default().ok();
     let _lcp = setup_local_cp().await?;
 
     let c = reqwest::Client::new();
