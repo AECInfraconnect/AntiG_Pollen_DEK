@@ -83,7 +83,7 @@ impl DiscoveryOrchestrator {
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
                 if let Ok(processes) =
-                    tokio::task::spawn_blocking(|| crate::process_scan::scan_processes())
+                    tokio::task::spawn_blocking(crate::process_scan::scan_processes)
                         .await
                         .unwrap_or(Ok(vec![]))
                 {
@@ -118,7 +118,7 @@ impl DiscoveryOrchestrator {
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
                 if let Ok(mut x) =
-                    tokio::task::spawn_blocking(|| crate::mcp_scan::scan_mcp_configs())
+                    tokio::task::spawn_blocking(crate::mcp_scan::scan_mcp_configs)
                         .await
                         .unwrap_or(Ok(vec![]))
                 {
@@ -144,7 +144,7 @@ impl DiscoveryOrchestrator {
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
                 if let Ok(mut x) =
-                    tokio::task::spawn_blocking(|| crate::ide_extension_scan::scan_ide_extensions())
+                    tokio::task::spawn_blocking(crate::ide_extension_scan::scan_ide_extensions)
                         .await
                         .unwrap_or(Ok(vec![]))
                 {
@@ -159,7 +159,7 @@ impl DiscoveryOrchestrator {
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
                 if let Ok(mut x) =
-                    tokio::task::spawn_blocking(|| crate::cli_agent_scan::scan_cli_agents())
+                    tokio::task::spawn_blocking(crate::cli_agent_scan::scan_cli_agents)
                         .await
                         .unwrap_or(Ok(vec![]))
                 {
@@ -174,7 +174,7 @@ impl DiscoveryOrchestrator {
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
                 if let Ok(mut x) =
-                    tokio::task::spawn_blocking(|| crate::container_scan::scan_containers())
+                    tokio::task::spawn_blocking(crate::container_scan::scan_containers)
                         .await
                         .unwrap_or(Ok(vec![]))
                 {
@@ -189,7 +189,7 @@ impl DiscoveryOrchestrator {
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
                 if let Ok(mut x) =
-                    tokio::task::spawn_blocking(|| crate::browser_scan::scan_browsers())
+                    tokio::task::spawn_blocking(crate::browser_scan::scan_browsers)
                         .await
                         .unwrap_or(Ok(vec![]))
                 {
@@ -220,12 +220,12 @@ impl DiscoveryOrchestrator {
             let tx_cl = ev_tx.clone();
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
-                if let Ok(mut x) = tokio::task::spawn_blocking(|| {
-                    Ok::<_, ()>(crate::python_framework_scan::scan_python_frameworks())
-                })
+                if let Ok(mut x) = tokio::task::spawn_blocking(
+                    crate::python_framework_scan::scan_python_frameworks
+                )
                 .await
                 {
-                    ev.append(&mut x.unwrap());
+                    ev.append(&mut x);
                 }
                 let _ = tx_cl.send(ev).await;
             }));
@@ -262,10 +262,7 @@ impl DiscoveryOrchestrator {
         // Combine task completion with deadline
         let join_all = futures::future::join_all(tasks);
 
-        let scan_result = match timeout(Duration::from_secs(15), join_all).await {
-            Ok(_) => true,
-            Err(_) => false,
-        };
+        let scan_result = timeout(Duration::from_secs(15), join_all).await.is_ok();
 
         let (_all_evidence, candidates) = rx_loop.await;
 
