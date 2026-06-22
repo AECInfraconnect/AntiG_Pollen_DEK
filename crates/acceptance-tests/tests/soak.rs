@@ -142,7 +142,9 @@ async fn authorize(pep: &reqwest::Client, req: &serde_json::Value) -> Result<(u1
 #[tokio::test]
 #[ignore = "long running soak test"]
 async fn soak_harness() -> Result<()> {
-    rustls::crypto::ring::default_provider().install_default().ok();
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .ok();
 
     // Determine soak duration
     let soak_secs: u64 = std::env::var("SOAK_SECS")

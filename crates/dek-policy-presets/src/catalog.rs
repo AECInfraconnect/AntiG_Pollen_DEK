@@ -453,7 +453,7 @@ pub fn personal_drive_folder_scope() -> PolicyPresetV2 {
 pub fn preset_for_capabilities(tags: &[String], _risk: f64) -> &'static str {
     let has = |t: &str| tags.iter().any(|x| x == t);
     if has("cred.provision") || has("code.exec") {
-        "claw-family-critical-deny-by-default"   // observe + block จนกว่าจะอนุมัติ
+        "claw-family-critical-deny-by-default" // observe + block จนกว่าจะอนุมัติ
     } else if has("channel.messaging") || has("browser.control") {
         "shadow-ai-high-egress-allowlist"
     } else if has("mcp.client") || has("mcp.server") {

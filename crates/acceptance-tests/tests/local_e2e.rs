@@ -139,7 +139,9 @@ async fn authorize(
 #[tokio::test]
 #[ignore = "full local dual-mode e2e: author -> publish -> enforce -> decision-log"]
 async fn local_e2e_author_publish_enforce_log() -> Result<()> {
-    rustls::crypto::ring::default_provider().install_default().ok();
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .ok();
     // ---- build once ----
     if std::env::var("DEK_SKIP_HARNESS_BUILD").is_err() {
         assert!(

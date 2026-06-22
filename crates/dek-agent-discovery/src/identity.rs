@@ -9,13 +9,13 @@ pub struct ResolutionContext {
     pub cmd_redacted: String,          // argv join + redact แล้ว (§6)
     pub exe_path_norm: Option<String>, // normalize ${HOME}
     pub cwd_norm: Option<String>,
-    pub binary_hash: Option<String>,   // ถ้าคำนวณได้
+    pub binary_hash: Option<String>, // ถ้าคำนวณได้
     pub listening_ports: Vec<u16>,
-    pub present_paths: Vec<String>,    // path ที่ตรวจแล้วว่า exists (install/config markers)
-    pub cli_on_path: Vec<String>,      // binary ที่เจอบน PATH
+    pub present_paths: Vec<String>, // path ที่ตรวจแล้วว่า exists (install/config markers)
+    pub cli_on_path: Vec<String>,   // binary ที่เจอบน PATH
     pub packages: Vec<(String, String)>, // (ecosystem, name) ที่ติดตั้ง
-    pub egress_hosts: Vec<String>,     // จาก web_ai_scan / sni_source
-    pub env_present: Vec<String>,      // ชื่อ ENV ที่มี (ไม่เก็บค่า)
+    pub egress_hosts: Vec<String>,  // จาก web_ai_scan / sni_source
+    pub env_present: Vec<String>,   // ชื่อ ENV ที่มี (ไม่เก็บค่า)
 }
 
 /// ผลการ match หนึ่ง signature ต่อหนึ่ง process — มี breakdown เพื่อ explainability + HITL.
@@ -33,15 +33,15 @@ pub struct AgentMatch {
 
 #[derive(Debug, Clone)]
 pub struct MatchedSignal {
-    pub kind: String,    // "install_marker" | "cmd_pattern" | ...
-    pub detail: String,  // เช่น "~/.openclaw/openclaw.json exists" (redacted)
+    pub kind: String,   // "install_marker" | "cmd_pattern" | ...
+    pub detail: String, // เช่น "~/.openclaw/openclaw.json exists" (redacted)
     pub weight: f64,
 }
 
 pub struct ResolverDecision {
     pub best: Option<AgentMatch>,
     pub runner_up: Option<AgentMatch>,
-    pub needs_human: bool,   // true เมื่อ confidence ต่ำ หรือ best≈runner_up (กำกวม)
+    pub needs_human: bool, // true เมื่อ confidence ต่ำ หรือ best≈runner_up (กำกวม)
     pub reason: String,
 }
 
@@ -51,15 +51,30 @@ pub fn score_signature(ctx: &ResolutionContext, sig: &AgentSignatureV2) -> Optio
     let mut score = 0.0_f64;
 
     // --- สัญญาณอ่อน: ชื่อ process ---
-    if sig.process_names.iter().any(|n| n.eq_ignore_ascii_case(&ctx.process_name)) {
-        push(&mut signals, &mut score, "process_name", &ctx.process_name, w.process_name);
+    if sig
+        .process_names
+        .iter()
+        .any(|n| n.eq_ignore_ascii_case(&ctx.process_name))
+    {
+        push(
+            &mut signals,
+            &mut score,
+            "process_name",
+            &ctx.process_name,
+            w.process_name,
+        );
     }
     // --- สัญญาณแข็ง: install marker (exists) ---
     for m in &sig.install_markers {
         let expanded = expand_path(&m.path);
         if ctx.present_paths.iter().any(|p| p == &expanded) {
-            push(&mut signals, &mut score, "install_marker",
-                 &crate::redaction::redact_path_for_ui(&m.path), m.weight.unwrap_or(w.install_marker));
+            push(
+                &mut signals,
+                &mut score,
+                "install_marker",
+                &crate::redaction::redact_path_for_ui(&m.path),
+                m.weight.unwrap_or(w.install_marker),
+            );
         }
     }
     // --- cmd pattern (argv ที่ redact แล้ว) ---
@@ -84,14 +99,24 @@ pub fn score_signature(ctx: &ResolutionContext, sig: &AgentSignatureV2) -> Optio
     }
     // --- package marker ---
     for pkg in &sig.package_markers {
-        if ctx.packages.iter().any(|(eco, name)| eco == &pkg.ecosystem && name == &pkg.name) {
+        if ctx
+            .packages
+            .iter()
+            .any(|(eco, name)| eco == &pkg.ecosystem && name == &pkg.name)
+        {
             push(&mut signals, &mut score, "package", &pkg.name, w.package);
         }
     }
     // --- config path / port / egress / binary hash (เหมือนกัน) ---
     if let Some(h) = &ctx.binary_hash {
         if sig.binary_hashes.iter().any(|bh| bh == h) {
-            push(&mut signals, &mut score, "binary_hash", "exact", w.binary_hash);
+            push(
+                &mut signals,
+                &mut score,
+                "binary_hash",
+                "exact",
+                w.binary_hash,
+            );
         }
     }
     for host in &sig.egress_hosts {
@@ -105,7 +130,9 @@ pub fn score_signature(ctx: &ResolutionContext, sig: &AgentSignatureV2) -> Optio
         }
     }
 
-    if signals.is_empty() { return None; }
+    if signals.is_empty() {
+        return None;
+    }
 
     Some(AgentMatch {
         signature_id: sig.id.clone(),
@@ -121,19 +148,29 @@ pub fn score_signature(ctx: &ResolutionContext, sig: &AgentSignatureV2) -> Optio
 
 fn push(v: &mut Vec<MatchedSignal>, score: &mut f64, kind: &str, detail: &str, w: f64) {
     *score += w;
-    v.push(MatchedSignal { kind: kind.into(), detail: detail.into(), weight: w });
+    v.push(MatchedSignal {
+        kind: kind.into(),
+        detail: detail.into(),
+        weight: w,
+    });
 }
 
 pub fn resolve(ctx: &ResolutionContext, sigs: &[AgentSignatureV2]) -> ResolverDecision {
-    let mut matches: Vec<AgentMatch> =
-        sigs.iter().filter_map(|s| score_signature(ctx, s)).collect();
-    matches.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
+    let mut matches: Vec<AgentMatch> = sigs
+        .iter()
+        .filter_map(|s| score_signature(ctx, s))
+        .collect();
+    matches.sort_by(|a, b| {
+        b.confidence
+            .partial_cmp(&a.confidence)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let best = matches.first().cloned();
     let runner_up = matches.get(1).cloned();
 
-    const CONFIRM_THRESHOLD: f64 = 0.75;   // ต่ำกว่านี้ → ให้คนยืนยัน
-    const AMBIGUITY_GAP: f64 = 0.15;       // best กับที่สองใกล้กันเกินไป → กำกวม
+    const CONFIRM_THRESHOLD: f64 = 0.75; // ต่ำกว่านี้ → ให้คนยืนยัน
+    const AMBIGUITY_GAP: f64 = 0.15; // best กับที่สองใกล้กันเกินไป → กำกวม
 
     let needs_human = match (&best, &runner_up) {
         (Some(b), _) if b.confidence < CONFIRM_THRESHOLD => true,
@@ -142,16 +179,31 @@ pub fn resolve(ctx: &ResolutionContext, sigs: &[AgentSignatureV2]) -> ResolverDe
         _ => false,
     };
     let reason = describe(&best, &runner_up, needs_human);
-    ResolverDecision { best, runner_up, needs_human, reason }
+    ResolverDecision {
+        best,
+        runner_up,
+        needs_human,
+        reason,
+    }
 }
 
-fn describe(best: &Option<AgentMatch>, runner_up: &Option<AgentMatch>, needs_human: bool) -> String {
+fn describe(
+    best: &Option<AgentMatch>,
+    runner_up: &Option<AgentMatch>,
+    needs_human: bool,
+) -> String {
     if let Some(b) = best {
         if needs_human {
             if let Some(r) = runner_up {
-                format!("Ambiguous match between {} ({:.2}) and {} ({:.2})", b.display_name, b.confidence, r.display_name, r.confidence)
+                format!(
+                    "Ambiguous match between {} ({:.2}) and {} ({:.2})",
+                    b.display_name, b.confidence, r.display_name, r.confidence
+                )
             } else {
-                format!("Low confidence match for {} ({:.2})", b.display_name, b.confidence)
+                format!(
+                    "Low confidence match for {} ({:.2})",
+                    b.display_name, b.confidence
+                )
             }
         } else {
             format!("Strong match for {} ({:.2})", b.display_name, b.confidence)
@@ -163,17 +215,25 @@ fn describe(best: &Option<AgentMatch>, runner_up: &Option<AgentMatch>, needs_hum
 
 /// fail-safe: ถ้าไม่ match signature เป๊ะ แต่มีร่องรอยตระกูล Claw → flag + ส่งเข้า HITL.
 pub fn claw_family_heuristic(ctx: &ResolutionContext) -> Option<AgentMatch> {
-    let hay = format!("{} {} {}",
+    let hay = format!(
+        "{} {} {}",
         ctx.cmd_redacted,
         ctx.exe_path_norm.clone().unwrap_or_default(),
         ctx.present_paths.join(" ")
-    ).to_ascii_lowercase();
+    )
+    .to_ascii_lowercase();
 
     // ตระกูล: *claw* / *paw* (openclaw, hiclaw, thclaw, qwenpaw, clawhub, ...)
     let hit = ["claw", "paw"].iter().any(|kw| {
-        hay.contains(kw) || ctx.cli_on_path.iter().any(|c| c.to_ascii_lowercase().contains(*kw))
+        hay.contains(kw)
+            || ctx
+                .cli_on_path
+                .iter()
+                .any(|c| c.to_ascii_lowercase().contains(*kw))
     });
-    if !hit { return None; }
+    if !hit {
+        return None;
+    }
 
     // ดึงชื่อ variant ออกมาเป็น guess (เช่น "thclaw")
     let guess = extract_claw_variant(&hay).unwrap_or_else(|| "unknown-claw".into());
@@ -189,7 +249,11 @@ pub fn claw_family_heuristic(ctx: &ResolutionContext) -> Option<AgentMatch> {
             detail: "matched *claw*/*paw* pattern".into(),
             weight: 0.55,
         }],
-        capability_tags: vec!["net.egress.llm".into(), "channel.messaging".into(), "fs.write".into()],
+        capability_tags: vec![
+            "net.egress.llm".into(),
+            "channel.messaging".into(),
+            "fs.write".into(),
+        ],
     })
 }
 

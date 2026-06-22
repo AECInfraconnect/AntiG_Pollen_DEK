@@ -110,11 +110,13 @@ async fn confirm_candidate(
         ));
     }
 
-    let _learned_signature = dek_agent_discovery::human_loop::apply_confirmation(&mut candidate, &req);
+    let _learned_signature =
+        dek_agent_discovery::human_loop::apply_confirmation(&mut candidate, &req);
 
     // Map capabilities to preset
     let risk = candidate.confidence;
-    let preset_id = dek_policy_presets::catalog::preset_for_capabilities(&req.confirmed_capability_tags, risk);
+    let preset_id =
+        dek_policy_presets::catalog::preset_for_capabilities(&req.confirmed_capability_tags, risk);
 
     let updated_candidate_value =
         serde_json::to_value(&candidate).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;

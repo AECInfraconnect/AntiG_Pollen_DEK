@@ -127,6 +127,17 @@ mod tests {
             detection_logic: DetectionLogic::AnyOf,
             control_strategies: vec!["mcp_stdio_wrapper".into()],
             risk_weight: 0.5,
+            cmd_patterns: vec![],
+            exe_path_patterns: vec![],
+            install_markers: vec![],
+            cli_binaries: vec![],
+            package_markers: vec![],
+            env_markers: vec![],
+            egress_hosts: vec![],
+            vendor: None,
+            product: None,
+            capability_tags: vec![],
+            signal_weights: None,
         }
     }
 

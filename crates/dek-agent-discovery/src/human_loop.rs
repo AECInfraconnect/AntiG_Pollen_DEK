@@ -7,13 +7,13 @@ use dek_fingerprint_defs::model::{AgentSignatureV2, DetectionLogic, SignatureMet
 pub struct IdentityConfirmation {
     pub candidate_id: String,
     pub confirmed_signature_id: Option<String>, // ยืนยัน guess เดิม
-    pub custom_display_name: Option<String>,     // หรือ label เอง
+    pub custom_display_name: Option<String>,    // หรือ label เอง
     pub custom_vendor: Option<String>,
     pub custom_product: Option<String>,
     pub confirmed_agent_type: InferredAgentType,
     pub confirmed_capability_tags: Vec<String>,
-    pub make_local_signature: bool,              // เรียนรู้ไว้ใช้ครั้งหน้า
-    pub confirmed_by: String,                    // audit
+    pub make_local_signature: bool, // เรียนรู้ไว้ใช้ครั้งหน้า
+    pub confirmed_by: String,       // audit
 }
 
 /// แปลงคำยืนยันเป็น evidence (เข้า audit log) + learned signature (ออปชัน).
@@ -40,13 +40,16 @@ pub fn apply_confirmation(
     });
 
     // 2) อัปเดตตัวตน + เลื่อนสถานะ
-    if let Some(name) = &conf.custom_display_name { cand.display_name = name.clone(); }
+    if let Some(name) = &conf.custom_display_name {
+        cand.display_name = name.clone();
+    }
     cand.vendor = conf.custom_vendor.clone().or(cand.vendor.take());
     cand.product = conf.custom_product.clone().or(cand.product.take());
     cand.inferred_agent_type = conf.confirmed_agent_type.clone();
     cand.confidence = 1.0;
     cand.status = DiscoveryStatus::Registered;
-    cand.labels.insert("identity.confirmed".into(), "true".into());
+    cand.labels
+        .insert("identity.confirmed".into(), "true".into());
 
     // 3) ออปชัน: สังเคราะห์ learned signature จาก evidence ที่ "เสถียร"
     if conf.make_local_signature {
@@ -61,7 +64,7 @@ fn synthesize_local_signature(
 ) -> AgentSignatureV2 {
     let mut exe_patterns = Vec::new();
     let mut binary_hashes = Vec::new();
-    
+
     // Extract stable evidence from cand.evidence
     for ev in &cand.evidence {
         if ev.source == EvidenceSource::ProcessScan {
@@ -77,11 +80,17 @@ fn synthesize_local_signature(
             }
         }
     }
-    
+
     let ts = chrono::Utc::now().format("%Y%m%d%H%M%S").to_string();
     AgentSignatureV2 {
-        id: format!("local-learned-{}", uuid::Uuid::new_v4().to_string().replace("-", "")),
-        display_name: conf.custom_display_name.clone().unwrap_or_else(|| cand.display_name.clone()),
+        id: format!(
+            "local-learned-{}",
+            uuid::Uuid::new_v4().to_string().replace("-", "")
+        ),
+        display_name: conf
+            .custom_display_name
+            .clone()
+            .unwrap_or_else(|| cand.display_name.clone()),
         agent_type: "automation_agent".to_string(), // map properly if needed
         revision: 1,
         meta: SignatureMeta {
@@ -100,7 +109,7 @@ fn synthesize_local_signature(
         detection_logic: DetectionLogic::AnyOf,
         control_strategies: vec![],
         risk_weight: 0.5,
-        
+
         cmd_patterns: vec![],
         exe_path_patterns: exe_patterns,
         install_markers: vec![],

@@ -38,7 +38,9 @@ pub fn aggregate_evidence(
 
             match ev.source {
                 EvidenceSource::ProcessScan => {
-                    if let Ok(p) = serde_json::from_value::<crate::process_scan::ProcessEvidence>(ev.data.clone()) {
+                    if let Ok(p) = serde_json::from_value::<crate::process_scan::ProcessEvidence>(
+                        ev.data.clone(),
+                    ) {
                         ctx.process_name = p.process_name.clone();
                         ctx.cmd_redacted = p.cmd_template.join(" ");
                         ctx.exe_path_norm = p.exe_path_redacted.clone();
@@ -132,7 +134,7 @@ pub fn aggregate_evidence(
 
         let signatures = dek_fingerprint_defs::embedded_baseline().signatures;
         let mut decision = crate::identity::resolve(&ctx, &signatures);
-        
+
         // If unknown, run claw family heuristic
         if decision.best.is_none() {
             if let Some(claw_match) = crate::identity::claw_family_heuristic(&ctx) {
@@ -202,7 +204,8 @@ pub fn aggregate_evidence(
             }
         }
 
-        let preset_id = dek_policy_presets::catalog::preset_for_capabilities(&capability_tags, max_confidence);
+        let preset_id =
+            dek_policy_presets::catalog::preset_for_capabilities(&capability_tags, max_confidence);
         let mut labels = BTreeMap::new();
         for tag in &capability_tags {
             labels.insert(format!("capability:{}", tag), "true".into());

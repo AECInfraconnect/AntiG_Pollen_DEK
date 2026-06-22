@@ -9,7 +9,9 @@ pub mod config_paths;
 pub mod container_scan;
 pub mod error;
 pub mod fingerprint;
+pub mod human_loop;
 pub mod ide_extension_scan;
+pub mod identity;
 pub mod local_model_probe;
 pub mod mcp_config;
 pub mod mcp_scan;
@@ -21,7 +23,5 @@ pub mod redaction;
 pub mod sni_source;
 pub mod source_catalog;
 pub mod web_ai_scan;
-pub mod identity;
-pub mod human_loop;
 
 pub use api::{run_scan, run_scan_v2, to_registry_agent, to_registry_agent_v2};
