@@ -167,7 +167,8 @@ fn main() -> Result<()> {
             // 1. Fetch TUF targets.json
             let metadata_url =
                 format!("{}/metadata/targets.json", update_url.trim_end_matches('/'));
-            let resp = http_client().get(&metadata_url)
+            let resp = http_client()
+                .get(&metadata_url)
                 .call()
                 .context("Failed to fetch TUF metadata")?;
             let metadata: serde_json::Value = resp.into_json()?;
@@ -209,7 +210,8 @@ fn main() -> Result<()> {
             let downloaded_exe = temp_dir.path().join(target_name);
 
             println!("Downloading update payload...");
-            let resp = http_client().get(&artifact_url)
+            let resp = http_client()
+                .get(&artifact_url)
                 .call()
                 .context("Failed to download payload")?;
             let mut reader = resp.into_reader();

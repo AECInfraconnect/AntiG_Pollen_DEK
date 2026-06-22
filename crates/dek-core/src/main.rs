@@ -21,8 +21,8 @@ mod svid_renewal;
 mod svid_renewal_failclosed;
 
 pub mod crypto_init;
-pub mod watchdog;
 pub mod panic_guard;
+pub mod watchdog;
 
 fn main() -> anyhow::Result<()> {
     panic_guard::install_panic_hook();
