@@ -284,9 +284,9 @@ mod linux {
                                         std::ptr::read_unaligned(bytes.as_ptr() as *const _)
                                     };
                                     if let Some(s) = &spool_clone {
-                                        let envelope = dek_domain_schema::TelemetryEventEnvelope {
-                                            event_type: "decision_log".into(),
-                                            data: serde_json::json!({
+                                        let envelope = serde_json::json!({
+                                            "event_type": "decision_log",
+                                            "data": {
                                                 "decision": if ev.action_taken == 0 { "block" } else { "allow" },
                                                 "pid": ev.pid,
                                                 "cgroup_id": ev.cgroup_id,
@@ -294,9 +294,8 @@ mod linux {
                                                 "dest_port": ev.dest_port,
                                                 "enforcement_plane": "ebpf_cgroup_linux",
                                                 "ts": chrono::Utc::now().to_rfc3339(),
-                                            }),
-                                            ..Default::default()
-                                        };
+                                            }
+                                        });
                                         if let Ok(buf) = serde_json::to_vec(&envelope) {
                                             let _ = s.enqueue(buf).await;
                                         }
@@ -332,13 +331,13 @@ mod linux {
 
         let mut answers = Vec::new();
         for rec in msg.answers.iter() {
-            let ttl = rec.ttl().max(MIN_TTL_FLOOR_SECS);
-            match rec.data() {
-                Some(RData::A(a)) => answers.push(ResolvedRecord {
+            let ttl = rec.ttl.max(MIN_TTL_FLOOR_SECS);
+            match &rec.data {
+                RData::A(a) => answers.push(ResolvedRecord {
                     ip: IpAddr::V4(a.0),
                     ttl_secs: ttl,
                 }),
-                Some(RData::AAAA(a)) => answers.push(ResolvedRecord {
+                RData::AAAA(a) => answers.push(ResolvedRecord {
                     ip: IpAddr::V6(a.0),
                     ttl_secs: ttl,
                 }),

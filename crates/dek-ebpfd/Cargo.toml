@@ -16,6 +16,7 @@ dek-domain-schema = { path = "../dek-domain-schema" }
 blake3 = "1.8.5"
 byteorder = "1.5.0"
 dek-secure-spool = { version = "0.1.0", path = "../dek-secure-spool" }
+chrono = { workspace = true, features = ["serde"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 aya = { version = "0.13", features = ["async_tokio"] }

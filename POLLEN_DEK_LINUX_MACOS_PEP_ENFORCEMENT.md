@@ -16,6 +16,7 @@
 | **macOS** | `dek-macos-nefilter` | 🔴 **stub ทั้งหมด** — `apply_rules()` แค่ log, ไม่มี Network Extension จริง |
 
 **Linux — หลักฐานว่าทำงานจริง** (`dek-ebpf-prog/src/main.rs`):
+
 ```rust
 #[cgroup_sock_addr(connect4)]
 pub fn dek_connect4(ctx: SockAddrContext) -> i32 {
@@ -26,9 +27,11 @@ pub fn dek_connect4(ctx: SockAddrContext) -> i32 {
     // return 0 = BLOCK connection, 1 = ALLOW
 }
 ```
+
 นี่คือ PEP ที่ enforce จริง — บล็อก outbound connection **ก่อนถูกสร้าง** ที่ cgroup/connect4 hook โดย agent ไม่ต้อง cooperate (transparent) — เป็นโมเดลที่ Windows WFP ควรเลียนแบบ (ตามเอกสารก่อนหน้า)
 
 **macOS — หลักฐานว่าเป็น stub** (`dek-macos-nefilter/src/lib.rs`):
+
 ```rust
 // Stub implementation for cross-compilation testing.
 fn apply_rules(&self, rules: &CompiledNetworkRules) -> Result<()> {
@@ -150,6 +153,7 @@ pump_egress_events → dek-secure-spool → Cloud (telemetry จริง)
 จาก research NEFilterDataProvider ให้ TCP/UDP flow + IP traffic อื่น (ICMP) และ filter provider **modify traffic ไม่ได้ แค่ให้ verdict allow/drop flow** และ macOS 26 มี URL filter API ใหม่ที่ตัดสินด้วย **ทั้ง URL** ไม่ใช่แค่ hostname โดยไม่ละเมิด privacy
 
 **โครงสร้าง 2 ส่วน (ตาม Apple):**
+
 - **Container app** (Rust/Swift) — ใช้ `NEFilterManager` config + push rule ผ่าน IPC ไป provider
 - **System Extension** (`NEFilterDataProvider`) — รับ flow → ตัดสิน allow/drop → emit telemetry
 
@@ -331,6 +335,7 @@ class FilterDataProvider: NEFilterDataProvider {
 ## 4. แผน Implement
 
 ### Phase L — Linux ให้ครบวงจร (มีฐานแล้ว) 🟢
+
 ```
 L1  pump_egress_events: RingBuf EVENTS → spool (telemetry จริง)  [§1.2]
 L2  DNS→IP correlation: domain policy → VERDICT_MAP  [§1.3]
@@ -339,6 +344,7 @@ L4  ยืนยัน block claude.ai ทำงาน end-to-end
 ```
 
 ### Phase M — macOS เตรียม code (พัฒนาเต็มภายหลัง) 🔴
+
 ```
 M1  NeFilterClient IPC จริง (UDS framed message) + Optional spool  [§2.2]
 M2  NeRuleMessage format (container ↔ extension)
@@ -348,7 +354,9 @@ M5  (phase หลัง) NEURLFilterManager สำหรับ URL-level
 ```
 
 ### Acceptance
+
 **Linux:**
+
 1. policy "block claude.ai" → agent ต่อไม่ติดจริง (DNS→IP→connect4 block)
 2. ทุก block/allow → telemetry เข้า spool → dashboard เห็น
 3. enforce ทำงานต่อ cgroup เฉพาะ (คุม agent รายตัว)

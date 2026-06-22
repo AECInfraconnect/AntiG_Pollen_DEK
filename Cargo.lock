@@ -2076,6 +2076,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "cargo_metadata",
+ "chrono",
  "dek-domain-schema",
  "dek-ebpf-common",
  "dek-secure-spool",
