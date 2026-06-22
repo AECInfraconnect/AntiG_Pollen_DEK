@@ -2663,8 +2663,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "chrono",
  "dek-domain-schema",
  "dek-enforcement-api",
+ "dek-telemetry",
  "serde",
  "serde_json",
  "tracing",

@@ -11,11 +11,13 @@ description = "Windows Filtering Platform (WFP) adapter for Pollen DEK network g
 [dependencies]
 dek-domain-schema = { path = "../dek-domain-schema" }
 dek-enforcement-api = { path = "../dek-enforcement-api" }
+dek-telemetry = { path = "../dek-telemetry" }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 async-trait = "0.1"
 serde.workspace = true
 serde_json.workspace = true
+chrono = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58.0", features = [

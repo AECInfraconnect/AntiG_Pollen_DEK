@@ -285,13 +285,13 @@ impl Supervisor {
             Some(sync_tx),
         );
 
-        // Network egress guardrail plane (Phase A) — trait-based, all 3 OS, fail-closed.
         let _net_handle = crate::network_loop::spawn(
             sync_rx,
             tenant_id.clone(),
             self.bootstrap.device_id.clone(),
             self.cancel.clone(),
             reload_coordinator.clone(),
+            Some(self.telemetry_sink.clone()),
         );
 
         // 3) Probation finalize (only if an update is on trial). After services up.

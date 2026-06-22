@@ -99,6 +99,13 @@ pub trait PolicyStore: Send + Sync {
     async fn get_policy_raw(&self, tenant: &str, id: &str) -> Result<Option<serde_json::Value>>;
     async fn put_blob(&self, tenant: &str, path: &str, bytes: &[u8]) -> Result<()>;
     async fn get_blob(&self, tenant: &str, path: &str) -> Result<Option<Vec<u8>>>;
+
+    async fn upsert_preset_deployment(&self, tenant_id: &str, deployment_id: &str, data: &serde_json::Value) -> Result<()>;
+    async fn get_preset_deployment(&self, tenant_id: &str, deployment_id: &str) -> Result<Option<serde_json::Value>>;
+    async fn list_preset_deployments(&self, tenant_id: &str) -> Result<Vec<serde_json::Value>>;
+    
+    async fn upsert_pep_binding(&self, tenant_id: &str, binding_id: &str, deployment_id: &str, pep_type: &str, data: &serde_json::Value) -> Result<()>;
+    async fn list_pep_bindings(&self, tenant_id: &str, deployment_id: &str) -> Result<Vec<serde_json::Value>>;
 }
 
 #[async_trait::async_trait]
@@ -614,6 +621,145 @@ impl PolicyStore for SqliteStore {
         } else {
             Ok(None)
         }
+    }
+    async fn upsert_preset_deployment(&self, tenant_id: &str, deployment_id: &str, data: &serde_json::Value) -> Result<()> {
+        let preset_id = data.get("preset_id").and_then(|v| v.as_str()).unwrap_or("");
+        let preset_version = data.get("preset_version").and_then(|v| v.as_str()).unwrap_or("");
+        let control_mode = data.get("control_mode").and_then(|v| v.as_str()).unwrap_or("Observe");
+        let status = data.get("status").and_then(|v| v.as_str()).unwrap_or("active");
+        let target_scopes_json = data.get("targets").map(|v| v.to_string()).unwrap_or_else(|| "{}".to_string());
+        let parameters_json = data.get("params").map(|v| v.to_string()).unwrap_or_else(|| "{}".to_string());
+        let now = chrono::Utc::now().to_rfc3339();
+
+        sqlx::query(
+            r#"
+            INSERT INTO policy_preset_deployments (
+                tenant_id, deployment_id, preset_id, preset_version, control_mode, status, target_scopes_json, parameters_json, created_at, updated_at
+            )
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)
+            ON CONFLICT(tenant_id, deployment_id) DO UPDATE SET
+                status=excluded.status,
+                control_mode=excluded.control_mode,
+                target_scopes_json=excluded.target_scopes_json,
+                parameters_json=excluded.parameters_json,
+                updated_at=excluded.updated_at
+            "#
+        )
+        .bind(tenant_id)
+        .bind(deployment_id)
+        .bind(preset_id)
+        .bind(preset_version)
+        .bind(control_mode)
+        .bind(status)
+        .bind(target_scopes_json)
+        .bind(parameters_json)
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn get_preset_deployment(&self, tenant_id: &str, deployment_id: &str) -> Result<Option<serde_json::Value>> {
+        let row = sqlx::query("SELECT * FROM policy_preset_deployments WHERE tenant_id = ?1 AND deployment_id = ?2")
+            .bind(tenant_id)
+            .bind(deployment_id)
+            .fetch_optional(&self.pool)
+            .await?;
+        if let Some(r) = row {
+            let mut val = serde_json::json!({
+                "deployment_id": r.try_get::<String, _>("deployment_id")?,
+                "preset_id": r.try_get::<String, _>("preset_id")?,
+                "preset_version": r.try_get::<String, _>("preset_version").unwrap_or_default(),
+                "control_mode": r.try_get::<String, _>("control_mode")?,
+                "status": r.try_get::<String, _>("status")?,
+                "created_at": r.try_get::<String, _>("created_at")?,
+                "updated_at": r.try_get::<String, _>("updated_at")?,
+            });
+            let tj: String = r.try_get("target_scopes_json")?;
+            let pj: String = r.try_get("parameters_json")?;
+            val["targets"] = serde_json::from_str(&tj).unwrap_or(serde_json::json!({}));
+            val["params"] = serde_json::from_str(&pj).unwrap_or(serde_json::json!({}));
+            Ok(Some(val))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn list_preset_deployments(&self, tenant_id: &str) -> Result<Vec<serde_json::Value>> {
+        let rows = sqlx::query("SELECT * FROM policy_preset_deployments WHERE tenant_id = ?1")
+            .bind(tenant_id)
+            .fetch_all(&self.pool)
+            .await?;
+        let mut out = Vec::new();
+        for r in rows {
+            let mut val = serde_json::json!({
+                "deployment_id": r.try_get::<String, _>("deployment_id")?,
+                "preset_id": r.try_get::<String, _>("preset_id")?,
+                "preset_version": r.try_get::<String, _>("preset_version").unwrap_or_default(),
+                "control_mode": r.try_get::<String, _>("control_mode")?,
+                "status": r.try_get::<String, _>("status")?,
+                "created_at": r.try_get::<String, _>("created_at")?,
+                "updated_at": r.try_get::<String, _>("updated_at")?,
+            });
+            let tj: String = r.try_get("target_scopes_json")?;
+            let pj: String = r.try_get("parameters_json")?;
+            val["targets"] = serde_json::from_str(&tj).unwrap_or(serde_json::json!({}));
+            val["params"] = serde_json::from_str(&pj).unwrap_or(serde_json::json!({}));
+            out.push(val);
+        }
+        Ok(out)
+    }
+
+    async fn upsert_pep_binding(&self, tenant_id: &str, binding_id: &str, deployment_id: &str, pep_type: &str, data: &serde_json::Value) -> Result<()> {
+        let config_json = serde_json::to_string(data)?;
+        let status = data.get("status").and_then(|v| v.as_str()).unwrap_or("active");
+        let now = chrono::Utc::now().to_rfc3339();
+
+        sqlx::query(
+            r#"
+            INSERT INTO pep_bindings (
+                tenant_id, binding_id, deployment_id, pep_type, config_json, status, created_at, updated_at
+            )
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
+            ON CONFLICT(tenant_id, binding_id) DO UPDATE SET
+                config_json=excluded.config_json,
+                status=excluded.status,
+                updated_at=excluded.updated_at
+            "#
+        )
+        .bind(tenant_id)
+        .bind(binding_id)
+        .bind(deployment_id)
+        .bind(pep_type)
+        .bind(config_json)
+        .bind(status)
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn list_pep_bindings(&self, tenant_id: &str, deployment_id: &str) -> Result<Vec<serde_json::Value>> {
+        let rows = sqlx::query("SELECT * FROM pep_bindings WHERE tenant_id = ?1 AND deployment_id = ?2")
+            .bind(tenant_id)
+            .bind(deployment_id)
+            .fetch_all(&self.pool)
+            .await?;
+        let mut out = Vec::new();
+        for r in rows {
+            let mut val = serde_json::json!({
+                "binding_id": r.try_get::<String, _>("binding_id")?,
+                "deployment_id": r.try_get::<String, _>("deployment_id")?,
+                "pep_type": r.try_get::<String, _>("pep_type")?,
+                "status": r.try_get::<String, _>("status")?,
+                "created_at": r.try_get::<String, _>("created_at")?,
+                "updated_at": r.try_get::<String, _>("updated_at")?,
+            });
+            let cj: String = r.try_get("config_json")?;
+            val["config"] = serde_json::from_str(&cj).unwrap_or(serde_json::json!({}));
+            out.push(val);
+        }
+        Ok(out)
     }
 }
 
@@ -1240,3 +1386,4 @@ impl ObservabilityStore for SqliteStore {
         Ok(out)
     }
 }
+

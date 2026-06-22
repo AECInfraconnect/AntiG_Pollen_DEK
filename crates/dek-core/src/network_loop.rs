@@ -76,8 +76,8 @@ pub mod wfp_backend {
         mgr: WfpFilterManager,
     }
     impl WfpEnforcer {
-        pub fn new() -> anyhow::Result<Self> {
-            let mut mgr = WfpFilterManager::new();
+        pub fn new(telemetry_sink: Option<std::sync::Arc<dek_telemetry::CloudTelemetrySink>>) -> anyhow::Result<Self> {
+            let mut mgr = WfpFilterManager::new(telemetry_sink);
             mgr.start()?;
             Ok(Self { mgr })
         }
@@ -208,10 +208,10 @@ pub mod ebpf_backend {
 
 /// Build the platform enforcer. Returns None on unsupported platforms (the
 /// driver then no-ops, but MCP-plane enforcement is unaffected).
-pub fn platform_enforcer(_tenant_id: &str, _device_id: &str) -> Option<Box<dyn NetworkEnforcer>> {
+pub fn platform_enforcer(_tenant_id: &str, _device_id: &str, _telemetry_sink: Option<std::sync::Arc<dek_telemetry::CloudTelemetrySink>>) -> Option<Box<dyn NetworkEnforcer>> {
     #[cfg(windows)]
     {
-        return wfp_backend::WfpEnforcer::new()
+        return wfp_backend::WfpEnforcer::new(_telemetry_sink)
             .map(|e| Box::new(e) as Box<dyn NetworkEnforcer>)
             .ok();
     }
@@ -240,9 +240,10 @@ pub fn spawn(
     device_id: String,
     cancel: CancellationToken,
     reload_coord: std::sync::Arc<crate::reload_coordinator::ReloadCoordinator>,
+    telemetry_sink: Option<std::sync::Arc<dek_telemetry::CloudTelemetrySink>>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
-        let mut enforcer = match platform_enforcer(&tenant_id, &device_id) {
+        let mut enforcer = match platform_enforcer(&tenant_id, &device_id, telemetry_sink) {
             Some(e) => e,
             None => {
                 info!("[net] no network enforcer for this platform; network plane disabled");

@@ -44,6 +44,7 @@ pub fn create_app(state: AppState, static_dir: &str) -> Router {
         .merge(registry::router())
         .merge(agent_discovery_api::router())
         .merge(policy_presets_api::router())
+        .merge(crate::preset_deploy_api::router())
         .merge(pep_capabilities_api::router())
         .merge(policy_suggestions_api::router())
         .merge(observation_api::router())
