@@ -55,7 +55,8 @@ export function PresetWizard({
   const [preview, setPreview] = useState<any | null>(null);
   const [simResult, setSimResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-
+  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   useEffect(() => {
     const defaultParams: Record<string, any> = {};
     if (preset.parameters) {
@@ -86,9 +87,11 @@ export function PresetWizard({
       const req = {
         preset_id: preset.id,
         control_mode: controlMode,
-        selected_peps: selectedPeps,
-        agent_id: "agent_all",
-        targets: {},
+        selected_pep_types: selectedPeps,
+        targets: { 
+          agent_ids: selectedAgents,
+          provider_ids: selectedProviders,
+        },
         params,
         pdp_route: "local_cedar",
       };
@@ -108,9 +111,11 @@ export function PresetWizard({
       const req = {
         preset_id: preset.id,
         control_mode: controlMode,
-        selected_peps: selectedPeps,
-        agent_id: "agent_all",
-        targets: {},
+        selected_pep_types: selectedPeps,
+        targets: { 
+          agent_ids: selectedAgents,
+          provider_ids: selectedProviders,
+        },
         params,
       };
       const res = await DeploymentApi.simulate(req);
@@ -129,9 +134,11 @@ export function PresetWizard({
       const req = preview || {
         preset_id: preset.id,
         control_mode: controlMode,
-        selected_peps: selectedPeps,
-        agent_id: "agent_all",
-        targets: {},
+        selected_pep_types: selectedPeps,
+        targets: { 
+          agent_ids: selectedAgents,
+          provider_ids: selectedProviders,
+        },
         params,
       };
       await DeploymentApi.deploy(req);
@@ -146,7 +153,14 @@ export function PresetWizard({
   const renderStepContent = () => {
     switch (step) {
       case "agents":
-        return <AgentSelector />;
+        return (
+          <AgentSelector
+            selectedAgents={selectedAgents}
+            onSelectionChange={setSelectedAgents}
+            selectedProviders={selectedProviders}
+            onProviderSelectionChange={setSelectedProviders}
+          />
+        );
       case "goal":
         return <PolicyGoalSelector preset={preset} />;
       case "parameters":

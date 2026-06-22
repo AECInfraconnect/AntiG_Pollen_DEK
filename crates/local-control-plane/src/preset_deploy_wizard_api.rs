@@ -101,7 +101,29 @@ async fn simulate_deployment(
         .await
         .map_err(ApiError::Internal)?;
 
-    let matched_agents = agents;
+    let matched_agents: Vec<_> = if req.targets.agent_ids.is_empty() {
+        agents
+    } else {
+        agents
+            .into_iter()
+            .filter(|a| req.targets.agent_ids.contains(&a.agent_id))
+            .collect()
+    };
+
+    let providers = st
+        .registry_store
+        .list_blackbox_ai(&tenant)
+        .await
+        .map_err(ApiError::Internal)?;
+
+    let matched_providers: Vec<_> = if req.targets.provider_ids.is_empty() {
+        providers
+    } else {
+        providers
+            .into_iter()
+            .filter(|p| req.targets.provider_ids.contains(&p.provider_id))
+            .collect()
+    };
 
     // 3. Generate Control Bindings based on PEP capabilities
     let mut control_bindings = Vec::new();
@@ -110,6 +132,20 @@ async fn simulate_deployment(
             binding_id: Uuid::new_v4().to_string(),
             agent_id: agent.agent_id.clone(),
             pep_type: "std_wrapper".to_string(),
+            action: "wrap".to_string(),
+            status: BindingStatus::Pending,
+            config_backup_id: None,
+            binding_json: serde_json::json!({
+                "preset_id": req.preset_id,
+            }),
+        });
+    }
+
+    for provider in matched_providers {
+        control_bindings.push(ControlBinding {
+            binding_id: Uuid::new_v4().to_string(),
+            agent_id: provider.provider_id.clone(),
+            pep_type: "ext_authz".to_string(),
             action: "wrap".to_string(),
             status: BindingStatus::Pending,
             config_backup_id: None,
