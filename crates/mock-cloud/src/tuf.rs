@@ -214,7 +214,13 @@ async fn get_tuf_artifact(
     } else if hash == manifest_hash {
         (StatusCode::OK, Json(manifest_json))
     } else if hash == "dummy_hash_for_policies" {
-        let cedar_src = _state.rollout.lock().unwrap().latest_bundle.cedar_src.clone();
+        let cedar_src = _state
+            .rollout
+            .lock()
+            .unwrap()
+            .latest_bundle
+            .cedar_src
+            .clone();
         let payload = json!({
             "policies": [
                 {
