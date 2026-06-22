@@ -72,6 +72,10 @@ pub fn router() -> Router<AppState> {
             post(register_candidate),
         )
         .route(
+            "/v1/tenants/:tenant/discovery/candidates/:candidate_id/confirm",
+            post(confirm_candidate),
+        )
+        .route(
             "/v1/tenants/:tenant/discovery/candidates/:candidate_id/control-plan",
             post(generate_control_plan),
         )
@@ -83,6 +87,54 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/discovery/control-bindings/:binding_id/rollback",
             post(crate::control_binding::rollback_control_binding),
         )
+}
+
+async fn confirm_candidate(
+    Path((tenant, candidate_id)): Path<(String, String)>,
+    State(st): State<AppState>,
+    Json(req): Json<dek_agent_discovery::human_loop::IdentityConfirmation>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let raw = st
+        .registry_store
+        .get_raw(&tenant, "discovery_candidate", &candidate_id)
+        .await
+        .map_err(ApiError::Internal)?
+        .ok_or_else(|| ApiError::NotFound(candidate_id.clone()))?;
+
+    let mut candidate: dek_agent_discovery::model::DiscoveredAgentCandidateV2 =
+        serde_json::from_value(raw).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+
+    if candidate.status == dek_agent_discovery::model::DiscoveryStatus::Registered {
+        return Err(ApiError::BadRequest(
+            "Agent is already registered".to_string(),
+        ));
+    }
+
+    let _learned_signature = dek_agent_discovery::human_loop::apply_confirmation(&mut candidate, &req);
+
+    // Map capabilities to preset
+    let risk = candidate.confidence;
+    let preset_id = dek_policy_presets::catalog::preset_for_capabilities(&req.confirmed_capability_tags, risk);
+
+    let updated_candidate_value =
+        serde_json::to_value(&candidate).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+
+    st.registry_store
+        .upsert_raw(
+            &tenant,
+            "discovery_candidate",
+            &candidate_id,
+            &updated_candidate_value,
+        )
+        .await
+        .map_err(ApiError::Internal)?;
+
+    Ok(Json(serde_json::json!({
+        "schema_version": "confirm-agent-candidate-response.v1",
+        "candidate_id": candidate_id,
+        "status": "confirmed",
+        "applied_preset": preset_id,
+    })))
 }
 
 async fn start_scan(

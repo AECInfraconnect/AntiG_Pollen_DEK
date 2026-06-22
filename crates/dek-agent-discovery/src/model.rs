@@ -62,7 +62,7 @@ pub struct DiscoveryEvidence {
     pub data: serde_json::Value,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum EvidenceSource {
     ProcessScan,
@@ -83,7 +83,7 @@ pub enum EvidenceSource {
     NetworkSni,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum PrivacyClass {
     PublicMetadata,

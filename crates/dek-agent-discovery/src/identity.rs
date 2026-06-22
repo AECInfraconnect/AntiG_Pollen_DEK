@@ -1,0 +1,234 @@
+// SPDX-License-Identifier: Apache-2.0
+
+use dek_fingerprint_defs::model::{AgentSignatureV2, SignalWeights};
+
+/// สัญญาณที่ดึงได้จาก process หนึ่ง (รวมจากหลาย scanner) ก่อนเอาไป match กับ signature DB.
+#[derive(Debug, Default, Clone)]
+pub struct ResolutionContext {
+    pub process_name: String,
+    pub cmd_redacted: String,          // argv join + redact แล้ว (§6)
+    pub exe_path_norm: Option<String>, // normalize ${HOME}
+    pub cwd_norm: Option<String>,
+    pub binary_hash: Option<String>,   // ถ้าคำนวณได้
+    pub listening_ports: Vec<u16>,
+    pub present_paths: Vec<String>,    // path ที่ตรวจแล้วว่า exists (install/config markers)
+    pub cli_on_path: Vec<String>,      // binary ที่เจอบน PATH
+    pub packages: Vec<(String, String)>, // (ecosystem, name) ที่ติดตั้ง
+    pub egress_hosts: Vec<String>,     // จาก web_ai_scan / sni_source
+    pub env_present: Vec<String>,      // ชื่อ ENV ที่มี (ไม่เก็บค่า)
+}
+
+/// ผลการ match หนึ่ง signature ต่อหนึ่ง process — มี breakdown เพื่อ explainability + HITL.
+#[derive(Debug, Clone)]
+pub struct AgentMatch {
+    pub signature_id: String,
+    pub display_name: String,
+    pub vendor: Option<String>,
+    pub product: Option<String>,
+    pub agent_type: String,
+    pub confidence: f64,
+    pub matched_signals: Vec<MatchedSignal>, // อธิบายว่า "รู้ได้เพราะอะไร"
+    pub capability_tags: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchedSignal {
+    pub kind: String,    // "install_marker" | "cmd_pattern" | ...
+    pub detail: String,  // เช่น "~/.openclaw/openclaw.json exists" (redacted)
+    pub weight: f64,
+}
+
+pub struct ResolverDecision {
+    pub best: Option<AgentMatch>,
+    pub runner_up: Option<AgentMatch>,
+    pub needs_human: bool,   // true เมื่อ confidence ต่ำ หรือ best≈runner_up (กำกวม)
+    pub reason: String,
+}
+
+pub fn score_signature(ctx: &ResolutionContext, sig: &AgentSignatureV2) -> Option<AgentMatch> {
+    let w = sig.signal_weights.clone().unwrap_or_default();
+    let mut signals: Vec<MatchedSignal> = Vec::new();
+    let mut score = 0.0_f64;
+
+    // --- สัญญาณอ่อน: ชื่อ process ---
+    if sig.process_names.iter().any(|n| n.eq_ignore_ascii_case(&ctx.process_name)) {
+        push(&mut signals, &mut score, "process_name", &ctx.process_name, w.process_name);
+    }
+    // --- สัญญาณแข็ง: install marker (exists) ---
+    for m in &sig.install_markers {
+        let expanded = expand_path(&m.path);
+        if ctx.present_paths.iter().any(|p| p == &expanded) {
+            push(&mut signals, &mut score, "install_marker",
+                 &crate::redaction::redact_path_for_ui(&m.path), m.weight.unwrap_or(w.install_marker));
+        }
+    }
+    // --- cmd pattern (argv ที่ redact แล้ว) ---
+    for pat in &sig.cmd_patterns {
+        if regex_match(pat, &ctx.cmd_redacted) {
+            push(&mut signals, &mut score, "cmd_pattern", pat, w.cmd_pattern);
+        }
+    }
+    // --- exe path glob ---
+    if let Some(exe) = &ctx.exe_path_norm {
+        for pat in &sig.exe_path_patterns {
+            if glob_match(pat, exe) {
+                push(&mut signals, &mut score, "exe_path", pat, w.exe_path);
+            }
+        }
+    }
+    // --- CLI binary บน PATH ---
+    for cli in &sig.cli_binaries {
+        if ctx.cli_on_path.iter().any(|c| c == cli) {
+            push(&mut signals, &mut score, "cli_binary", cli, w.cli_binary);
+        }
+    }
+    // --- package marker ---
+    for pkg in &sig.package_markers {
+        if ctx.packages.iter().any(|(eco, name)| eco == &pkg.ecosystem && name == &pkg.name) {
+            push(&mut signals, &mut score, "package", &pkg.name, w.package);
+        }
+    }
+    // --- config path / port / egress / binary hash (เหมือนกัน) ---
+    if let Some(h) = &ctx.binary_hash {
+        if sig.binary_hashes.iter().any(|bh| bh == h) {
+            push(&mut signals, &mut score, "binary_hash", "exact", w.binary_hash);
+        }
+    }
+    for host in &sig.egress_hosts {
+        if ctx.egress_hosts.iter().any(|h| h == host) {
+            push(&mut signals, &mut score, "egress", host, w.egress);
+        }
+    }
+    for p in &sig.ports {
+        if ctx.listening_ports.contains(p) {
+            push(&mut signals, &mut score, "port", &p.to_string(), w.port);
+        }
+    }
+
+    if signals.is_empty() { return None; }
+
+    Some(AgentMatch {
+        signature_id: sig.id.clone(),
+        display_name: sig.display_name.clone(),
+        vendor: sig.vendor.clone(),
+        product: sig.product.clone(),
+        agent_type: sig.agent_type.clone(),
+        confidence: score.min(1.0),
+        matched_signals: signals,
+        capability_tags: sig.capability_tags.clone(),
+    })
+}
+
+fn push(v: &mut Vec<MatchedSignal>, score: &mut f64, kind: &str, detail: &str, w: f64) {
+    *score += w;
+    v.push(MatchedSignal { kind: kind.into(), detail: detail.into(), weight: w });
+}
+
+pub fn resolve(ctx: &ResolutionContext, sigs: &[AgentSignatureV2]) -> ResolverDecision {
+    let mut matches: Vec<AgentMatch> =
+        sigs.iter().filter_map(|s| score_signature(ctx, s)).collect();
+    matches.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
+
+    let best = matches.first().cloned();
+    let runner_up = matches.get(1).cloned();
+
+    const CONFIRM_THRESHOLD: f64 = 0.75;   // ต่ำกว่านี้ → ให้คนยืนยัน
+    const AMBIGUITY_GAP: f64 = 0.15;       // best กับที่สองใกล้กันเกินไป → กำกวม
+
+    let needs_human = match (&best, &runner_up) {
+        (Some(b), _) if b.confidence < CONFIRM_THRESHOLD => true,
+        (Some(b), Some(r)) if (b.confidence - r.confidence) < AMBIGUITY_GAP => true,
+        (None, _) => true, // ไม่ match อะไรเลย = Unknown → ให้คนช่วย
+        _ => false,
+    };
+    let reason = describe(&best, &runner_up, needs_human);
+    ResolverDecision { best, runner_up, needs_human, reason }
+}
+
+fn describe(best: &Option<AgentMatch>, runner_up: &Option<AgentMatch>, needs_human: bool) -> String {
+    if let Some(b) = best {
+        if needs_human {
+            if let Some(r) = runner_up {
+                format!("Ambiguous match between {} ({:.2}) and {} ({:.2})", b.display_name, b.confidence, r.display_name, r.confidence)
+            } else {
+                format!("Low confidence match for {} ({:.2})", b.display_name, b.confidence)
+            }
+        } else {
+            format!("Strong match for {} ({:.2})", b.display_name, b.confidence)
+        }
+    } else {
+        "No matching signature found".into()
+    }
+}
+
+/// fail-safe: ถ้าไม่ match signature เป๊ะ แต่มีร่องรอยตระกูล Claw → flag + ส่งเข้า HITL.
+pub fn claw_family_heuristic(ctx: &ResolutionContext) -> Option<AgentMatch> {
+    let hay = format!("{} {} {}",
+        ctx.cmd_redacted,
+        ctx.exe_path_norm.clone().unwrap_or_default(),
+        ctx.present_paths.join(" ")
+    ).to_ascii_lowercase();
+
+    // ตระกูล: *claw* / *paw* (openclaw, hiclaw, thclaw, qwenpaw, clawhub, ...)
+    let hit = ["claw", "paw"].iter().any(|kw| {
+        hay.contains(kw) || ctx.cli_on_path.iter().any(|c| c.to_ascii_lowercase().contains(*kw))
+    });
+    if !hit { return None; }
+
+    // ดึงชื่อ variant ออกมาเป็น guess (เช่น "thclaw")
+    let guess = extract_claw_variant(&hay).unwrap_or_else(|| "unknown-claw".into());
+    Some(AgentMatch {
+        signature_id: format!("claw_family_generic:{guess}"),
+        display_name: format!("{guess} (Claw-family, unconfirmed)"),
+        vendor: Some("claw-family".into()),
+        product: Some(guess),
+        agent_type: "automation_agent".into(),
+        confidence: 0.55, // ต่ำ → บังคับเข้า HITL (needs_human)
+        matched_signals: vec![MatchedSignal {
+            kind: "claw_family_heuristic".into(),
+            detail: "matched *claw*/*paw* pattern".into(),
+            weight: 0.55,
+        }],
+        capability_tags: vec!["net.egress.llm".into(), "channel.messaging".into(), "fs.write".into()],
+    })
+}
+
+fn extract_claw_variant(hay: &str) -> Option<String> {
+    // หา token ที่มีคำว่า claw หรือ paw
+    for token in hay.split_whitespace() {
+        if token.contains("claw") || token.contains("paw") {
+            // ทำความสะอาดพวก / หรือ \
+            let clean = token.replace(|c: char| !c.is_alphanumeric() && c != '-', "");
+            if !clean.is_empty() {
+                return Some(clean);
+            }
+        }
+    }
+    None
+}
+
+// Helpers for string matching
+fn expand_path(p: &str) -> String {
+    if p.starts_with("~/") {
+        if let Some(home) = dirs::home_dir() {
+            return format!("{}/{}", home.display(), &p[2..]);
+        }
+    }
+    p.to_string()
+}
+
+fn regex_match(pat: &str, haystack: &str) -> bool {
+    if let Ok(re) = regex::Regex::new(pat) {
+        re.is_match(haystack)
+    } else {
+        false
+    }
+}
+
+fn glob_match(pat: &str, haystack: &str) -> bool {
+    if let Ok(pattern) = glob::Pattern::new(pat) {
+        pattern.matches(haystack)
+    } else {
+        false
+    }
+}

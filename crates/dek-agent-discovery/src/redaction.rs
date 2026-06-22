@@ -13,6 +13,13 @@ pub fn redact_arg(arg: &str) -> String {
         || lower.contains("secret")
         || lower.starts_with("sk-")
         || lower.contains("authorization")
+        || lower.contains("password")
+        || lower.contains("passwd")
+        || lower.contains("credential")
+        || lower.contains("bearer")
+        || lower.contains("apikey")
+        || lower.contains("api_key")
+        || lower.contains("private")
     {
         "<redacted>".to_string()
     } else if arg.len() > 180 {

@@ -202,6 +202,107 @@
       "detection_logic": "process_or_config_with_port",
       "control_strategies": ["network_egress_pep", "observe_only"],
       "risk_weight": 0.5
+    },
+    {
+      "id": "openclaw",
+      "display_name": "OpenClaw Gateway",
+      "agent_type": "automation_agent",
+      "revision": 1,
+      "vendor": "OpenClaw",
+      "product": "OpenClaw Personal AI Gateway",
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Self-hosted Node.js AI assistant gateway; multi-channel, browser/file tools, auto credential provisioning (high Shadow-AI risk)",
+        "references": ["https://github.com/openclaw/openclaw", "https://docs.openclaw.ai/"],
+        "added_in": "20260622000",
+        "tags": ["claw-family", "shadow-ai", "node", "gateway", "mcp-client"]
+      },
+      "process_names": ["node", "node.exe"],
+      "binary_hashes": [],
+      "config_paths": {
+        "all": ["~/.openclaw/openclaw.json"]
+      },
+      "config_parsers": ["openclaw_json"],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "any_of",
+      "cmd_patterns": ["(?i)\\bopenclaw\\b", "node_modules[\\\\/]openclaw[\\\\/]"],
+      "exe_path_patterns": ["**/node_modules/openclaw/**", "**/.openclaw/**"],
+      "install_markers": [
+        { "path": "~/.openclaw/openclaw.json", "os": null, "weight": 0.6 },
+        { "path": "~/.openclaw/agents", "os": null, "weight": 0.4 }
+      ],
+      "cli_binaries": ["openclaw"],
+      "package_markers": [{ "ecosystem": "npm", "name": "openclaw", "global": true }],
+      "env_markers": ["OPENCLAW_HOME", "OPENCLAW_PROFILE"],
+      "egress_hosts": ["api.anthropic.com", "api.openai.com", "api.z.ai"],
+      "capability_tags": ["mcp.client", "net.egress.llm", "channel.messaging", "browser.control", "fs.write", "cred.provision"],
+      "control_strategies": ["mcp_stdio_wrapper", "network_egress_pep", "observe_only"],
+      "risk_weight": 0.9
+    },
+    {
+      "id": "hiclaw",
+      "display_name": "HiClaw Controller",
+      "agent_type": "automation_agent",
+      "revision": 1,
+      "vendor": "agentscope-ai",
+      "product": "HiClaw Multi-Agent Control Plane",
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Kubernetes-native multi-agent orchestrator; manages OpenClaw/QwenPaw/Hermes workers via Matrix",
+        "references": ["https://github.com/agentscope-ai/hiclaw"],
+        "added_in": "20260622000",
+        "tags": ["claw-family", "shadow-ai", "orchestrator", "kubernetes"]
+      },
+      "process_names": ["node", "node.exe", "python", "python.exe"],
+      "binary_hashes": [],
+      "config_paths": { "all": ["~/.hiclaw"] },
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "any_of",
+      "cmd_patterns": ["(?i)\\bhiclaw\\b", "(?i)hiclaw-(controller|manager|worker)"],
+      "exe_path_patterns": ["**/hiclaw/**"],
+      "install_markers": [{ "path": "~/.hiclaw", "os": null, "weight": 0.55 }],
+      "cli_binaries": ["hiclaw"],
+      "package_markers": [],
+      "env_markers": ["HICLAW_HOME"],
+      "egress_hosts": [],
+      "capability_tags": ["code.exec", "net.egress.llm", "channel.messaging", "fs.write"],
+      "control_strategies": ["network_egress_pep", "observe_only"],
+      "risk_weight": 0.95
+    },
+    {
+      "id": "claw_orchestrator",
+      "display_name": "Claw Orchestrator (clawo-mcp)",
+      "agent_type": "mcp_server",
+      "revision": 1,
+      "vendor": "Enderfga",
+      "product": "claw-orchestrator unified coding runtime",
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Wraps Claude Code/Codex/Gemini/Cursor as one MCP runtime (65 tools); registers in ~/.openclaw/openclaw.json",
+        "references": ["https://github.com/Enderfga/claw-orchestrator"],
+        "added_in": "20260622000",
+        "tags": ["claw-family", "shadow-ai", "mcp-server", "code"]
+      },
+      "process_names": ["node", "node.exe"],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "any_of",
+      "cmd_patterns": ["(?i)clawo-mcp", "@enderfga[\\\\/]claw-orchestrator"],
+      "exe_path_patterns": ["**/claw-orchestrator/**", "**/clawo-mcp*"],
+      "install_markers": [],
+      "cli_binaries": ["clawo-mcp"],
+      "package_markers": [{ "ecosystem": "npm", "name": "@enderfga/claw-orchestrator", "global": true }],
+      "env_markers": ["CLAWO_MCP_TOOLS"],
+      "egress_hosts": [],
+      "capability_tags": ["mcp.server", "code.exec", "fs.write"],
+      "control_strategies": ["mcp_stdio_wrapper", "observe_only"],
+      "risk_weight": 0.9
     }
   ]
 }

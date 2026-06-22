@@ -29,12 +29,7 @@ pub fn aggregate_evidence(
         let mut endpoints = Vec::new();
         let mut redacted_env_keys = Vec::new();
 
-        let mut signals = crate::fingerprint::FingerprintSignals {
-            matched_process_name: None,
-            matched_config_path: None,
-            matched_port: None,
-            has_mcp_servers: false,
-        };
+        let mut ctx = crate::identity::ResolutionContext::default();
 
         for ev in &group {
             if ev.confidence > max_confidence {
@@ -43,18 +38,19 @@ pub fn aggregate_evidence(
 
             match ev.source {
                 EvidenceSource::ProcessScan => {
+                    if let Ok(p) = serde_json::from_value::<crate::process_scan::ProcessEvidence>(ev.data.clone()) {
+                        ctx.process_name = p.process_name.clone();
+                        ctx.cmd_redacted = p.cmd_template.join(" ");
+                        ctx.exe_path_norm = p.exe_path_redacted.clone();
+                        ctx.binary_hash = p.exe_path_hash.clone();
+                        process_hash = p.exe_path_hash.clone();
+                    }
                     name = ev.source_path_redacted.clone().unwrap_or(name);
-                    agent_type = crate::fingerprint::infer_agent_type_from_name(&name);
-                    process_hash = ev.source_path_hash.clone();
-                    signals.matched_process_name = Some(name.clone());
                 }
                 EvidenceSource::McpConfig => {
-                    if agent_type == InferredAgentType::UnknownAiProcess {
-                        agent_type = InferredAgentType::DesktopAgent;
-                        name = "MCP Capable Agent".to_string();
+                    if let Some(path) = &ev.source_path_redacted {
+                        ctx.present_paths.push(path.clone());
                     }
-                    signals.matched_config_path = ev.source_path_redacted.clone();
-
                     if let Some(transport) = ev.data.get("transport").and_then(|v| v.as_str()) {
                         let server_name = ev
                             .data
@@ -76,13 +72,12 @@ pub fn aggregate_evidence(
                             command,
                         });
 
-                        signals.has_mcp_servers = true;
-
                         if let Some(env_keys) =
                             ev.data.get("env_key_names").and_then(|v| v.as_array())
                         {
                             for key in env_keys {
                                 if let Some(k) = key.as_str() {
+                                    ctx.env_present.push(k.to_string());
                                     if !redacted_env_keys.contains(&k.to_string()) {
                                         redacted_env_keys.push(k.to_string());
                                     }
@@ -90,7 +85,6 @@ pub fn aggregate_evidence(
                             }
                         }
                     } else if let Some(data) = ev.data.get("servers") {
-                        // Fallback for older mock tests
                         if let Some(obj) = data.as_object() {
                             for (k, v) in obj {
                                 mcp_servers.push(DiscoveredMcpServerRef {
@@ -101,25 +95,20 @@ pub fn aggregate_evidence(
                                         .and_then(|c| c.as_str())
                                         .map(|s| s.to_string()),
                                 });
-                                signals.has_mcp_servers = true;
                             }
                         }
                     }
                 }
                 EvidenceSource::LocalModelServer => {
-                    agent_type = InferredAgentType::LocalModelServer;
-                    name = "Local Model Server".into();
                     if let Some(key_url) = &ev.merge_key {
                         endpoints.push(DiscoveredEndpointRef {
                             url: key_url.clone(),
                             protocol: "http".into(),
                         });
                     }
-                    signals.matched_port = Some(80); // Just a dummy port to indicate port matched
+                    ctx.listening_ports.push(80);
                 }
                 EvidenceSource::PortProbe => {
-                    agent_type = InferredAgentType::LocalModelServer;
-                    name = "Local Server".into();
                     if let Some(key_url) = &ev.merge_key {
                         endpoints.push(DiscoveredEndpointRef {
                             url: key_url.clone(),
@@ -131,21 +120,53 @@ pub fn aggregate_evidence(
                             transport: "sse".into(),
                             command: None,
                         });
-                        signals.has_mcp_servers = true;
                     }
-                    signals.matched_port = Some(80);
+                    ctx.listening_ports.push(80);
                 }
                 EvidenceSource::IdeExtension => {
-                    agent_type = InferredAgentType::IdeExtension;
-                    name = "IDE Extension".into();
-                    signals.matched_process_name = Some(name.clone());
+                    // Not fully utilizing this signal yet in identity.rs
                 }
                 _ => {}
             }
         }
 
-        let computed_confidence = crate::fingerprint::compute_confidence(&signals);
-        max_confidence = f64::max(max_confidence, computed_confidence);
+        let signatures = dek_fingerprint_defs::embedded_baseline().signatures;
+        let mut decision = crate::identity::resolve(&ctx, &signatures);
+        
+        // If unknown, run claw family heuristic
+        if decision.best.is_none() {
+            if let Some(claw_match) = crate::identity::claw_family_heuristic(&ctx) {
+                decision.best = Some(claw_match);
+                decision.needs_human = true;
+            }
+        }
+
+        let mut vendor = None;
+        let mut product = None;
+        let mut capability_tags = Vec::new();
+        let mut status = DiscoveryStatus::Discovered;
+
+        if let Some(best) = decision.best {
+            name = best.display_name.clone();
+            vendor = best.vendor.clone();
+            product = best.product.clone();
+            // Map agent_type string to enum
+            agent_type = match best.agent_type.as_str() {
+                "desktop_agent" => InferredAgentType::DesktopAgent,
+                "ide_agent" => InferredAgentType::IdeAgent,
+                "cli_agent" => InferredAgentType::CliAgent,
+                "browser_agent" => InferredAgentType::BrowserAgent,
+                "mcp_server" => InferredAgentType::McpServer,
+                "mcp_client" => InferredAgentType::McpClient,
+                _ => InferredAgentType::AutomationAgent,
+            };
+            max_confidence = f64::max(max_confidence, best.confidence);
+            capability_tags = best.capability_tags.clone();
+        }
+
+        if decision.needs_human {
+            status = DiscoveryStatus::PendingApproval;
+        }
 
         let mut control_bindings = Vec::new();
         let cand_id = format!("cand_{}", uuid::Uuid::new_v4());
@@ -181,15 +202,22 @@ pub fn aggregate_evidence(
             }
         }
 
+        let preset_id = dek_policy_presets::catalog::preset_for_capabilities(&capability_tags, max_confidence);
+        let mut labels = BTreeMap::new();
+        for tag in &capability_tags {
+            labels.insert(format!("capability:{}", tag), "true".into());
+        }
+        labels.insert("suggested_preset".into(), preset_id.to_string());
+
         candidates.push(DiscoveredAgentCandidateV2 {
             schema_version: "pollen.agent_discovery_candidate.v2".into(),
             candidate_id: cand_id,
             tenant_id: tenant_id.to_string(),
             device_id: "device-local".into(),
-            status: DiscoveryStatus::Discovered,
+            status,
             display_name: name.clone(),
-            vendor: None,
-            product: None,
+            vendor,
+            product,
             inferred_agent_type: agent_type.clone(),
             confidence: max_confidence,
             risk_score,
@@ -231,7 +259,7 @@ pub fn aggregate_evidence(
                 redact_env_keys: redacted_env_keys,
                 risk_signals: vec!["mcp_active".into()],
             },
-            labels: BTreeMap::new(),
+            labels,
         });
     }
 
