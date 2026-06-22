@@ -117,10 +117,9 @@ impl DiscoveryOrchestrator {
             let tx_cl = ev_tx.clone();
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
-                if let Ok(mut x) =
-                    tokio::task::spawn_blocking(crate::mcp_scan::scan_mcp_configs)
-                        .await
-                        .unwrap_or(Ok(vec![]))
+                if let Ok(mut x) = tokio::task::spawn_blocking(crate::mcp_scan::scan_mcp_configs)
+                    .await
+                    .unwrap_or(Ok(vec![]))
                 {
                     ev.append(&mut x);
                 }
@@ -188,10 +187,9 @@ impl DiscoveryOrchestrator {
             let tx_cl = ev_tx.clone();
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
-                if let Ok(mut x) =
-                    tokio::task::spawn_blocking(crate::browser_scan::scan_browsers)
-                        .await
-                        .unwrap_or(Ok(vec![]))
+                if let Ok(mut x) = tokio::task::spawn_blocking(crate::browser_scan::scan_browsers)
+                    .await
+                    .unwrap_or(Ok(vec![]))
                 {
                     ev.append(&mut x);
                 }
@@ -221,7 +219,7 @@ impl DiscoveryOrchestrator {
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
                 if let Ok(mut x) = tokio::task::spawn_blocking(
-                    crate::python_framework_scan::scan_python_frameworks
+                    crate::python_framework_scan::scan_python_frameworks,
                 )
                 .await
                 {
