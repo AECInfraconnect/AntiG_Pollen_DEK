@@ -261,7 +261,7 @@ async fn main() -> Result<()> {
 
         let mut watcher = match notify::recommended_watcher(move |res| {
             if let Ok(event) = res {
-                let _ = tx.send(event);
+                let _ = tx.try_send(event);
             }
         }) {
             Ok(w) => w,
