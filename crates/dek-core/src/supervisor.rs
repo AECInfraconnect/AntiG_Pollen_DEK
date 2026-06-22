@@ -50,6 +50,7 @@ pub struct Supervisor {
     start_time: Instant,
     pending_update: Option<crate::probation::ProbationMarker>,
     _ebpf: Option<crate::ebpf::EbpfHandle>,
+    active_network_rules: std::sync::Arc<tokio::sync::RwLock<Vec<dek_domain_schema::network_guardrail::CompiledNetworkRules>>>,
 }
 
 impl Supervisor {
@@ -149,6 +150,9 @@ impl Supervisor {
                 .context("build metrics mTLS client")?,
         ));
 
+        let active_network_rules = Arc::new(RwLock::new(Vec::<dek_domain_schema::network_guardrail::CompiledNetworkRules>::new()));
+        let active_rules_for_dns = active_network_rules.clone();
+
         let (dns_tx, mut dns_rx) = tokio::sync::mpsc::channel::<crate::ebpf::DnsObservation>(1024);
         let sink = telemetry_sink.clone();
         tokio::spawn(async move {
@@ -163,10 +167,51 @@ impl Supervisor {
                     }),
                     dek_telemetry::Priority::Low,
                 );
+
+                #[cfg(target_os = "linux")]
+                {
+                    use dek_domain_schema::network_guardrail::NetworkGuardrailEffect;
+                    let rules = active_rules_for_dns.read().await;
+                    for r in rules.iter() {
+                        let allow = if r.effect == NetworkGuardrailEffect::Allow { 1 } else { 0 };
+                        for dest in &r.conditions.destinations {
+                            if dest.r#type == "domain" {
+                                if let Some(domain) = dest.value.as_str() {
+                                    let mut matches = false;
+                                    let mut q = obs.qname.as_str();
+                                    if q.ends_with('.') {
+                                        q = &q[..q.len() - 1];
+                                    }
+                                    if domain.starts_with("*.") {
+                                        let suffix = &domain[1..];
+                                        if q.ends_with(suffix) || q == &domain[2..] {
+                                            matches = true;
+                                        }
+                                    } else if q == domain {
+                                        matches = true;
+                                    }
+
+                                    if matches {
+                                        let verdict = dek_ebpf_common::PolicyVerdict {
+                                            allow,
+                                            log_event: 1,
+                                        };
+                                        let ips: Vec<std::net::IpAddr> = obs.answers.iter().map(|ans| ans.ip).collect();
+                                        if !ips.is_empty() {
+                                            let _ = dek_ebpfd::dns_cache::on_dns_response(&obs.qname, &ips, verdict);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         });
 
-        let _ebpf = crate::ebpf::load_and_attach(Some(dns_tx)).await;
+        let spool = Arc::new(dek_secure_spool::Spool {});
+
+        let _ebpf = crate::ebpf::load_and_attach(Some(dns_tx), Some(spool.clone())).await;
 
         Ok(Self {
             cloud_url,
@@ -182,6 +227,7 @@ impl Supervisor {
             start_time: Instant::now(),
             pending_update,
             _ebpf,
+            active_network_rules,
         })
     }
 
@@ -278,6 +324,8 @@ impl Supervisor {
             }
         });
 
+        let active_network_rules = self.active_network_rules.clone();
+
         let (sync_tx, sync_rx) = tokio::sync::mpsc::channel::<dek_policy_syncer::SyncOutcome>(100);
         let bundle_handle = syncer.clone().spawn(
             std::time::Duration::from_secs(self.bundle_interval),
@@ -291,7 +339,8 @@ impl Supervisor {
             self.bootstrap.device_id.clone(),
             self.cancel.clone(),
             reload_coordinator.clone(),
-            Some(self.telemetry_sink.clone()),
+            Some(Arc::new(dek_secure_spool::Spool {})),
+            active_network_rules,
         );
 
         // 3) Probation finalize (only if an update is on trial). After services up.

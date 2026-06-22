@@ -105,6 +105,7 @@ mod linux {
     pub async fn start_ebpfd_supervisor(
         cgroup_path: &str,
         obs_tx: Option<Sender<DnsObservation>>,
+        spool: Option<std::sync::Arc<dek_secure_spool::Spool>>,
     ) -> Result<EbpfHandle> {
         info!("Starting eBPFD Supervisor (network Control Point)...");
 
@@ -148,6 +149,7 @@ mod linux {
         // Pin policy maps so they persist / can be updated out-of-band.
         for name in [
             "VERDICT_MAP",
+            "VERDICT_MAP_V6",
             "PORTS_MAP",
             "CGROUP_POLICY_MAP",
             "EVENTS",
@@ -163,7 +165,7 @@ mod linux {
             }
         }
 
-        // ---- connect4 guardrail (kept; permissive until enforcement) ----
+        // ---- connect4 & connect6 guardrail (kept; permissive until enforcement) ----
         if let Some(prog) = bpf.program_mut("dek_connect4") {
             let p: &mut CgroupSockAddr = prog.try_into().context("connect4 program")?;
             p.load().context("load connect4")?;
@@ -171,6 +173,15 @@ mod linux {
             p.attach(cg, CgroupAttachMode::Single)
                 .context("attach connect4")?;
             info!("Attached cgroup/connect4 to {}", cgroup_path);
+        }
+
+        if let Some(prog) = bpf.program_mut("dek_connect6") {
+            let p: &mut CgroupSockAddr = prog.try_into().context("connect6 program")?;
+            p.load().context("load connect6")?;
+            let cg = fs::File::open(cgroup_path).context("open cgroup (connect6)")?;
+            p.attach(cg, CgroupAttachMode::Single)
+                .context("attach connect6")?;
+            info!("Attached cgroup/connect6 to {}", cgroup_path);
         }
 
         // ---- DNS capture on egress (queries) + ingress (responses) ----
@@ -250,6 +261,56 @@ mod linux {
             warn!("DNS_EVENTS map not found");
         }
 
+        // ---- pump egress events to telemetry spool ----
+        if let Some(events_map) = bpf.take_map("EVENTS") {
+            match aya::maps::RingBuf::try_from(events_map) {
+                Ok(ring) => {
+                    if let Ok(mut async_fd) = tokio::io::unix::AsyncFd::new(ring) {
+                        let spool_clone = spool.clone();
+                        tasks.push(task::spawn(async move {
+                            info!("eBPFD EgressEvents pump started");
+                            loop {
+                                let mut guard = match async_fd.readable_mut().await {
+                                    Ok(g) => g,
+                                    Err(_) => break,
+                                };
+                                let ring = guard.get_inner_mut();
+                                while let Some(item) = ring.next() {
+                                    let bytes: &[u8] = &item;
+                                    if bytes.len() < std::mem::size_of::<dek_ebpf_common::EgressEvent>() {
+                                        continue;
+                                    }
+                                    let ev: dek_ebpf_common::EgressEvent = unsafe {
+                                        std::ptr::read_unaligned(bytes.as_ptr() as *const _)
+                                    };
+                                    if let Some(s) = &spool_clone {
+                                        let envelope = dek_domain_schema::TelemetryEventEnvelope {
+                                            event_type: "decision_log".into(),
+                                            data: serde_json::json!({
+                                                "decision": if ev.action_taken == 0 { "block" } else { "allow" },
+                                                "pid": ev.pid,
+                                                "cgroup_id": ev.cgroup_id,
+                                                "dest_ip": std::net::Ipv4Addr::from(ev.dest_ip).to_string(),
+                                                "dest_port": ev.dest_port,
+                                                "enforcement_plane": "ebpf_cgroup_linux",
+                                                "ts": chrono::Utc::now().to_rfc3339(),
+                                            }),
+                                            ..Default::default()
+                                        };
+                                        if let Ok(buf) = serde_json::to_vec(&envelope) {
+                                            let _ = s.enqueue(buf).await;
+                                        }
+                                    }
+                                }
+                                guard.clear_ready();
+                            }
+                        }));
+                    }
+                }
+                Err(e) => warn!("EVENTS -> RingBuf failed: {e}"),
+            }
+        }
+
         // ---- DNS Cache Janitor Task ----
         tasks.push(task::spawn(async move {
             info!("eBPFD DNS Cache Janitor started");
@@ -315,6 +376,7 @@ pub struct EbpfHandle;
 pub async fn start_ebpfd_supervisor(
     _cgroup_path: &str,
     _obs_tx: Option<tokio::sync::mpsc::Sender<DnsObservation>>,
+    _spool: Option<std::sync::Arc<dek_secure_spool::Spool>>,
 ) -> anyhow::Result<EbpfHandle> {
     tracing::warn!("eBPFD supervisor is Linux-only; app-layer enforcement remains active.");
     Ok(EbpfHandle)

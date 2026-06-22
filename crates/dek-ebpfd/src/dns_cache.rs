@@ -115,3 +115,48 @@ pub fn estimate_map_entries_v4(bpf: &mut Ebpf, sample_limit: usize) -> Result<us
     }
     Ok(count)
 }
+
+#[cfg(target_os = "linux")]
+pub fn on_dns_response(
+    domain: &str,
+    resolved_ips: &[std::net::IpAddr],
+    verdict: dek_ebpf_common::PolicyVerdict,
+) -> Result<()> {
+    use aya::maps::lpm_trie::Key;
+    use aya::maps::LpmTrie;
+    let pin_path_v4 = format!("{}/VERDICT_MAP", crate::linux::BPFFS_PATH);
+    let map_data_v4 = MapData::from_pin(&pin_path_v4).context("load pinned VERDICT_MAP")?;
+    let mut verdict_map_v4: LpmTrie<_, u32, dek_ebpf_common::PolicyVerdict> =
+        LpmTrie::try_from(aya::maps::Map::LpmTrie(map_data_v4))?;
+
+    let pin_path_v6 = format!("{}/VERDICT_MAP_V6", crate::linux::BPFFS_PATH);
+    let map_data_v6 = MapData::from_pin(&pin_path_v6).context("load pinned VERDICT_MAP_V6")?;
+    let mut verdict_map_v6: LpmTrie<_, [u32; 4], dek_ebpf_common::PolicyVerdict> =
+        LpmTrie::try_from(aya::maps::Map::LpmTrie(map_data_v6))?;
+
+    for ip in resolved_ips {
+        match ip {
+            std::net::IpAddr::V4(ipv4) => {
+                let ip_u32 = u32::from_be_bytes(ipv4.octets());
+                let key = Key::new(32, ip_u32);
+                verdict_map_v4.insert(&key, verdict, 0)?;
+            }
+            std::net::IpAddr::V6(ipv6) => {
+                let octets = ipv6.octets();
+                let mut ip_u32_arr = [0u32; 4];
+                for i in 0..4 {
+                    ip_u32_arr[i] = u32::from_be_bytes([
+                        octets[i * 4],
+                        octets[i * 4 + 1],
+                        octets[i * 4 + 2],
+                        octets[i * 4 + 3],
+                    ]);
+                }
+                let key = Key::new(128, ip_u32_arr);
+                verdict_map_v6.insert(&key, verdict, 0)?;
+            }
+        }
+    }
+    tracing::info!(domain, count = resolved_ips.len(), action = if verdict.allow == 1 { "allow" } else { "block" }, "domain policy → IP verdicts pushed");
+    Ok(())
+}

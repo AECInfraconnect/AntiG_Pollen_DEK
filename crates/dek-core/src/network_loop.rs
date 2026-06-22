@@ -76,8 +76,8 @@ pub mod wfp_backend {
         mgr: WfpFilterManager,
     }
     impl WfpEnforcer {
-        pub fn new(telemetry_sink: Option<std::sync::Arc<dek_telemetry::CloudTelemetrySink>>) -> anyhow::Result<Self> {
-            let mut mgr = WfpFilterManager::new(telemetry_sink);
+        pub fn new(spool: Option<std::sync::Arc<dek_secure_spool::Spool>>) -> anyhow::Result<Self> {
+            let mut mgr = WfpFilterManager::new(spool);
             mgr.start()?;
             Ok(Self { mgr })
         }
@@ -113,8 +113,8 @@ pub mod nefilter_backend {
         client: NeFilterClient,
     }
     impl NeFilterEnforcer {
-        pub fn new() -> anyhow::Result<Self> {
-            let mut client = NeFilterClient::new();
+        pub fn new(spool: Option<std::sync::Arc<dek_secure_spool::Spool>>) -> anyhow::Result<Self> {
+            let mut client = NeFilterClient::new(spool);
             client.start()?;
             Ok(Self { client })
         }
@@ -208,16 +208,16 @@ pub mod ebpf_backend {
 
 /// Build the platform enforcer. Returns None on unsupported platforms (the
 /// driver then no-ops, but MCP-plane enforcement is unaffected).
-pub fn platform_enforcer(_tenant_id: &str, _device_id: &str, _telemetry_sink: Option<std::sync::Arc<dek_telemetry::CloudTelemetrySink>>) -> Option<Box<dyn NetworkEnforcer>> {
+pub fn platform_enforcer(_tenant_id: &str, _device_id: &str, _spool: Option<std::sync::Arc<dek_secure_spool::Spool>>) -> Option<Box<dyn NetworkEnforcer>> {
     #[cfg(windows)]
     {
-        return wfp_backend::WfpEnforcer::new(_telemetry_sink)
+        return wfp_backend::WfpEnforcer::new(_spool)
             .map(|e| Box::new(e) as Box<dyn NetworkEnforcer>)
             .ok();
     }
     #[cfg(target_os = "macos")]
     {
-        return nefilter_backend::NeFilterEnforcer::new()
+        return nefilter_backend::NeFilterEnforcer::new(_spool)
             .map(|e| Box::new(e) as Box<dyn NetworkEnforcer>)
             .ok();
     }
@@ -240,10 +240,11 @@ pub fn spawn(
     device_id: String,
     cancel: CancellationToken,
     reload_coord: std::sync::Arc<crate::reload_coordinator::ReloadCoordinator>,
-    telemetry_sink: Option<std::sync::Arc<dek_telemetry::CloudTelemetrySink>>,
+    spool: Option<std::sync::Arc<dek_secure_spool::Spool>>,
+    active_network_rules: std::sync::Arc<tokio::sync::RwLock<Vec<CompiledNetworkRules>>>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
-        let mut enforcer = match platform_enforcer(&tenant_id, &device_id, telemetry_sink) {
+        let mut enforcer = match platform_enforcer(&tenant_id, &device_id, spool) {
             Some(e) => e,
             None => {
                 info!("[net] no network enforcer for this platform; network plane disabled");
@@ -291,7 +292,12 @@ pub fn spawn(
                                     Ok(()) => {
                                         metrics::counter!("dek_network_rule_enforced_total",
                                             "backend" => backend, "result" => "applied").increment(1);
-                                        lkg = Some(kernel_rules_vec);
+                                        lkg = Some(kernel_rules_vec.clone());
+                                        let active = active_network_rules.clone();
+                                        let rules_clone = kernel_rules_vec.clone();
+                                        tokio::spawn(async move {
+                                            *active.write().await = rules_clone;
+                                        });
                                     }
                                     Err(e) => {
                                         error!("[net] apply failed: {e}; reverting to LKG / fail-closed");

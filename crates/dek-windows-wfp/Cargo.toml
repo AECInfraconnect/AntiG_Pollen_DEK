@@ -18,6 +18,8 @@ async-trait = "0.1"
 serde.workspace = true
 serde_json.workspace = true
 chrono = { workspace = true }
+dek-secure-spool = { version = "0.1.0", path = "../dek-secure-spool" }
+tokio = { workspace = true, features = ["rt"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58.0", features = [

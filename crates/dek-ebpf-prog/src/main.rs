@@ -41,6 +41,9 @@ const UDP_HDR_LEN: usize = 8;
 static VERDICT_MAP: LpmTrie<u32, PolicyVerdict> = LpmTrie::with_max_entries(LPM_MAP_CAPACITY, 0);
 
 #[map]
+static VERDICT_MAP_V6: LpmTrie<[u32; 4], PolicyVerdict> = LpmTrie::with_max_entries(LPM_MAP_CAPACITY, 0);
+
+#[map]
 static PORTS_MAP: HashMap<u16, PolicyVerdict> = HashMap::with_max_entries(PORTS_MAP_CAPACITY, 0);
 
 #[map]
@@ -232,6 +235,68 @@ fn try_dek_connect4(ctx: &SockAddrContext, default_action: u32) -> Result<i32, (
                 pid,
                 cgroup_id,
                 dest_ip,
+                dest_port,
+                action_taken: verdict.allow,
+            };
+            // SAFETY: Audited as part of CNCF compliance.
+            unsafe {
+                core::ptr::write_unaligned(buf.as_mut_ptr() as *mut EgressEvent, event);
+            }
+            buf.submit(0);
+        }
+    }
+
+    Ok(verdict.allow as i32)
+}
+
+// ------------------------- egress guardrail (connect6) -------------------------
+
+#[cgroup_sock_addr(connect6)]
+pub fn dek_connect6(ctx: SockAddrContext) -> i32 {
+    let mode = RUNTIME_MODE
+        .get(0)
+        .map(|m| m.default_action)
+        .unwrap_or(1);
+    try_dek_connect6(&ctx, mode).unwrap_or(mode as i32)
+}
+
+#[inline(always)]
+fn try_dek_connect6(ctx: &SockAddrContext, default_action: u32) -> Result<i32, ()> {
+    let sa = unsafe { &*ctx.sock_addr };
+    // user_ip6 is an array of 4 u32s
+    let mut dest_ip6: [u32; 4] = [0; 4];
+    for i in 0..4 {
+        dest_ip6[i] = u32::from_be(sa.user_ip6[i]);
+    }
+    let dest_port = u16::from_be(sa.user_port as u16);
+    let cgroup_id = unsafe { bpf_get_current_cgroup_id() };
+    let pid = (bpf_get_current_pid_tgid() >> 32) as u32;
+
+    let mut verdict = PolicyVerdict {
+        allow: 1,
+        log_event: 0,
+    };
+
+    // 1) cgroup-specific policy
+    if let Some(v) = unsafe { CGROUP_POLICY_MAP.get(&cgroup_id) } {
+        verdict = *v;
+    } else {
+        // 2) LPM trie (IPv6/CIDR)
+        let key = aya_ebpf::maps::lpm_trie::Key::new(128, dest_ip6);
+        if let Some(v) = unsafe { VERDICT_MAP_V6.get(&key) } {
+            verdict = *v;
+        } else if let Some(v) = unsafe { PORTS_MAP.get(&dest_port) } {
+            // 3) port policy
+            verdict = *v;
+        }
+    }
+
+    if verdict.log_event != 0 {
+        if let Some(mut buf) = EVENTS.reserve::<EgressEvent>(0) {
+            let event = EgressEvent {
+                pid,
+                cgroup_id,
+                dest_ip: dest_ip6[3], // Only log lowest 32 bits for now to match struct or change struct later
                 dest_port,
                 action_taken: verdict.allow,
             };

@@ -57,13 +57,14 @@ pub fn probe_ebpf_support() -> bool {
 #[cfg(target_os = "linux")]
 pub async fn load_and_attach(
     obs_tx: Option<tokio::sync::mpsc::Sender<DnsObservation>>,
+    spool: Option<std::sync::Arc<dek_secure_spool::Spool>>,
 ) -> Option<EbpfHandle> {
     if !probe_ebpf_support() {
         warn!("eBPF unsupported; degrading to app-layer only.");
         return None;
     }
     let cgroup = "/sys/fs/cgroup/pollen-dek-supervised";
-    match dek_ebpfd::start_ebpfd_supervisor(cgroup, obs_tx).await {
+    match dek_ebpfd::start_ebpfd_supervisor(cgroup, obs_tx, spool).await {
         Ok(handle) => {
             info!("eBPF Control Point active.");
             Some(handle)
@@ -78,6 +79,7 @@ pub async fn load_and_attach(
 #[cfg(not(target_os = "linux"))]
 pub async fn load_and_attach(
     _obs_tx: Option<tokio::sync::mpsc::Sender<DnsObservation>>,
+    _spool: Option<std::sync::Arc<dek_secure_spool::Spool>>,
 ) -> Option<EbpfHandle> {
     info!("Layer 2 eBPF WS-D guardrails are skipped on non-Linux platforms.");
     warn!("Platform relies solely on App-layer MCP and opt-in proxy redirect.");

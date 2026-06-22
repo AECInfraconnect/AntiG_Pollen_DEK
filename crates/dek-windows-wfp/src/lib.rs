@@ -35,7 +35,7 @@ pub struct WfpFilterManager {
     #[cfg(windows)]
     engine_handle: Option<HANDLE>,
     active_filter_ids: Arc<Mutex<Vec<u64>>>,
-    telemetry: Option<Arc<dek_telemetry::CloudTelemetrySink>>,
+    spool: Option<Arc<dek_secure_spool::Spool>>,
 }
 
 // SAFETY: Audited as part of CNCF compliance.
@@ -44,13 +44,13 @@ unsafe impl Send for WfpFilterManager {}
 unsafe impl Sync for WfpFilterManager {}
 
 impl WfpFilterManager {
-    pub fn new(telemetry: Option<Arc<dek_telemetry::CloudTelemetrySink>>) -> Self {
+    pub fn new(spool: Option<Arc<dek_secure_spool::Spool>>) -> Self {
         Self {
             is_active: false,
             #[cfg(windows)]
             engine_handle: None,
             active_filter_ids: Arc::new(Mutex::new(Vec::new())),
-            telemetry,
+            spool,
         }
     }
 
@@ -296,15 +296,19 @@ impl NetworkEnforcer for WfpFilterManager {
                 "WFP filters applied (REAL)"
             );
             
-            if let Some(telemetry) = &self.telemetry {
+            if let Some(spool) = &self.spool {
                 let event = serde_json::json!({
                     "decision": "block",
                     "policy_id": rules.policy_id,
                     "enforcement_plane": "wfp_windows",
                     "ts": chrono::Utc::now().to_rfc3339(),
                 });
-                
-                telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);
+                if let Ok(buf) = serde_json::to_vec(&event) {
+                    let s = spool.clone();
+                    tokio::spawn(async move {
+                        let _ = s.enqueue(buf).await;
+                    });
+                }
             }
         }
 

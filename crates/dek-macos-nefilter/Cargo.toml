@@ -16,6 +16,7 @@ tracing = { workspace = true }
 async-trait = "0.1"
 serde.workspace = true
 serde_json.workspace = true
+dek-secure-spool = { version = "0.1.0", path = "../dek-secure-spool" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Dependencies for macOS specific IPC (mach ports / XPC or unix domain sockets) would go here

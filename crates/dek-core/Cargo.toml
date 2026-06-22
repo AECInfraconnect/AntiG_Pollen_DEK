@@ -55,6 +55,7 @@ x509-parser = "0.16"
 dek-enforcement-api = { path = "../dek-enforcement-api" }
 chrono.workspace = true
 rcgen = "0.13"
+dek-secure-spool = { version = "0.1.0", path = "../dek-secure-spool" }
 
 [dev-dependencies]
 wiremock = "0.6"
