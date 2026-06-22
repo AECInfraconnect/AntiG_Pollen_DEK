@@ -24,11 +24,11 @@ impl DiscoveryOrchestrator {
 
     pub async fn run_scan(
         &self,
+        scan_id: &str,
         req: &serde_json::Value,
     ) -> Result<(DiscoveryScanJob, Vec<DiscoveredAgentCandidateV2>)> {
-        let scan_id = format!("scan_{}", uuid::Uuid::new_v4());
         let mut job = DiscoveryScanJob {
-            scan_id: scan_id.clone(),
+            scan_id: scan_id.to_string(),
             tenant_id: self.tenant_id.clone(),
             status: ScanJobStatus::Running,
             started_at: Some(chrono::Utc::now().to_rfc3339()),

@@ -55,8 +55,18 @@ async fn start_scan(
     let tenant2 = tenant.clone();
     let scan_id2 = scan_id.clone();
 
+    let initial_job = serde_json::json!({
+        "scan_id": scan_id,
+        "tenant_id": tenant,
+        "status": "queued",
+        "started_at": chrono::Utc::now().to_rfc3339(),
+        "sources": req.get("sources").unwrap_or(&serde_json::json!([])),
+        "candidates_found": 0
+    });
+    let _ = st.registry_store.upsert_raw(&tenant, "discovery_scan", &scan_id, &initial_job).await;
+
     tokio::spawn(async move {
-        match dek_agent_discovery::run_scan_v2(&tenant2, &req).await {
+        match dek_agent_discovery::run_scan_v2(&tenant2, &scan_id2, &req).await {
             Ok((job, candidates)) => {
                 let job_val = serde_json::to_value(&job).unwrap_or_default();
                 let _ = st2

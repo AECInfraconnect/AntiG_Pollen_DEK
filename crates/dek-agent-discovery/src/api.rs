@@ -131,10 +131,11 @@ pub fn to_registry_agent(
 
 pub async fn run_scan_v2(
     tenant: &str,
+    scan_id: &str,
     req: &serde_json::Value,
 ) -> Result<(DiscoveryScanJob, Vec<DiscoveredAgentCandidateV2>)> {
     let orchestrator = crate::orchestrator::DiscoveryOrchestrator::new(tenant);
-    orchestrator.run_scan(req).await
+    orchestrator.run_scan(scan_id, req).await
 }
 
 pub fn to_registry_agent_v2(
