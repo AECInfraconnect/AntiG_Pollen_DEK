@@ -7,11 +7,13 @@ export function AgentSelector({
   onSelectionChange,
   selectedProviders,
   onProviderSelectionChange,
+  onDataLoaded,
 }: {
   selectedAgents: string[];
   onSelectionChange: (agents: string[]) => void;
   selectedProviders?: string[];
   onProviderSelectionChange?: (providers: string[]) => void;
+  onDataLoaded?: (hasAgents: boolean) => void;
 }) {
   const [agents, setAgents] = useState<AiAgent[]>([]);
   const [providers, setProviders] = useState<BlackboxAiProvider[]>([]);
@@ -25,8 +27,11 @@ export function AgentSelector({
       setAgents(agentsData);
       setProviders(providersData);
       setLoading(false);
+      if (onDataLoaded) {
+        onDataLoaded(agentsData.length > 0 || providersData.length > 0);
+      }
     });
-  }, []);
+  }, [onDataLoaded]);
 
   const handleToggleAgent = (agentId: string) => {
     if (selectedAgents.includes(agentId)) {

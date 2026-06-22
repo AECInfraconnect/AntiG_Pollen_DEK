@@ -57,6 +57,7 @@ export function PresetWizard({
   const [loading, setLoading] = useState(false);
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  const [hasAgents, setHasAgents] = useState(true);
   useEffect(() => {
     const defaultParams: Record<string, any> = {};
     if (preset.parameters) {
@@ -159,6 +160,7 @@ export function PresetWizard({
             onSelectionChange={setSelectedAgents}
             selectedProviders={selectedProviders}
             onProviderSelectionChange={setSelectedProviders}
+            onDataLoaded={setHasAgents}
           />
         );
       case "goal":
@@ -246,7 +248,17 @@ export function PresetWizard({
   };
 
   const handleNext = () => {
-    if (step === "pdp") {
+    if (step === "agents") {
+      if (!hasAgents) {
+        alert("กรุณา Register Agent ก่อน");
+        return;
+      }
+      if (selectedAgents.length === 0 && selectedProviders.length === 0) {
+        alert("กรุณาเลือก Agent ก่อน");
+        return;
+      }
+      nextStep();
+    } else if (step === "pdp") {
       generatePreview();
     } else if (step === "preview") {
       runSimulation();
