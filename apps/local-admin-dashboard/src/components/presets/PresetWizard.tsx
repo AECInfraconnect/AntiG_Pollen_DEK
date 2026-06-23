@@ -134,7 +134,7 @@ export function PresetWizard({
   const executeDeploy = async () => {
     setLoading(true);
     try {
-      const req = preview || {
+      const req = {
         preset_id: preset.id,
         control_mode: controlMode,
         selected_pep_types: selectedPeps,
