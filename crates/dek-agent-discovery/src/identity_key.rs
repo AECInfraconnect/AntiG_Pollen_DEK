@@ -20,11 +20,17 @@ pub fn identity_key(
         format!("name:{}", display_name.to_lowercase())
     };
     let h = Sha256::digest(basis.as_bytes());
-    format!("{:x}", h)[..24].to_string()   // 24 hex = พอแยก ไม่ยาว
+    format!("{:x}", h)[..24].to_string() // 24 hex = พอแยก ไม่ยาว
 }
 
 /// candidate_id ที่ deterministic → re-scan แล้ว upsert ตัวเดิม (ไม่ซ้ำ)
 pub fn deterministic_candidate_id(tenant: &str, identity_key: &str) -> String {
-    format!("cand_{}", &Sha256::digest(format!("{tenant}:{identity_key}").as_bytes())
-        .iter().take(8).map(|b| format!("{b:02x}")).collect::<String>())
+    format!(
+        "cand_{}",
+        &Sha256::digest(format!("{tenant}:{identity_key}").as_bytes())
+            .iter()
+            .take(8)
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>()
+    )
 }

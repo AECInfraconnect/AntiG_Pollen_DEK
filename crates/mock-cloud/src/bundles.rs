@@ -56,7 +56,7 @@ pub fn router() -> Router<AppState> {
         )
 }
 
-fn generate_bundle(tenant_id: &str, generation: u64, is_canary: bool) -> BundleManifest {
+fn generate_bundle(tenant_id: &str, generation: u64, is_canary: bool, state: &AppState) -> BundleManifest {
     let now = Utc::now();
     let expires = now + Duration::days(1);
     let mode = if is_canary {
@@ -64,6 +64,11 @@ fn generate_bundle(tenant_id: &str, generation: u64, is_canary: bool) -> BundleM
     } else {
         ActivationMode::Full
     };
+
+    let cedar_src = state.rollout.lock().unwrap().latest_bundle.cedar_src.clone();
+    let policies_hash = crate::payloads::hash_payload(&crate::payloads::mock_policies_payload(&cedar_src));
+    let registry_hash = crate::payloads::hash_payload(&crate::payloads::mock_registry_payload());
+    let network_guardrails_hash = crate::payloads::hash_payload(&crate::payloads::mock_network_guardrails_payload());
 
     BundleManifest {
         schema_version: "1.0.0".to_string(),
@@ -78,7 +83,7 @@ fn generate_bundle(tenant_id: &str, generation: u64, is_canary: bool) -> BundleM
             BundleArtifact {
                 name: "policies.json".to_string(),
                 artifact_type: "json".to_string(),
-                sha256: "dummy_hash_for_policies".to_string(),
+                sha256: policies_hash,
                 url: Some(format!(
                     "https://mock-cloud/v1/tenants/{}/bundles/artifacts/policies.json",
                     tenant_id
@@ -87,7 +92,7 @@ fn generate_bundle(tenant_id: &str, generation: u64, is_canary: bool) -> BundleM
             BundleArtifact {
                 name: "registry.json".to_string(),
                 artifact_type: "json".to_string(),
-                sha256: "dummy_hash_for_registry".to_string(),
+                sha256: registry_hash,
                 url: Some(format!(
                     "https://mock-cloud/v1/tenants/{}/bundles/artifacts/registry.json",
                     tenant_id
@@ -96,7 +101,7 @@ fn generate_bundle(tenant_id: &str, generation: u64, is_canary: bool) -> BundleM
             BundleArtifact {
                 name: "network_guardrails.json".to_string(),
                 artifact_type: "json".to_string(),
-                sha256: "dummy_hash_for_network_guardrails".to_string(),
+                sha256: network_guardrails_hash,
                 url: Some(format!(
                     "https://mock-cloud/v1/tenants/{}/bundles/artifacts/network_guardrails.json",
                     tenant_id
@@ -150,7 +155,7 @@ async fn get_latest_bundle(
         );
     }
 
-    let manifest = generate_bundle(&tenant_id, revision, false);
+    let manifest = generate_bundle(&tenant_id, revision, false, &state);
     (
         StatusCode::OK,
         Json(json!({
@@ -169,7 +174,7 @@ async fn get_manifest(
 ) -> impl IntoResponse {
     let _ = body; // ignoring the device's current manifest
     let revision = state.revision.load(std::sync::atomic::Ordering::Relaxed) as u64;
-    let manifest = generate_bundle(&tenant_id, revision, false);
+    let manifest = generate_bundle(&tenant_id, revision, false, &state);
     (StatusCode::OK, Json(sign_bundle(&manifest)))
 }
 
@@ -220,7 +225,7 @@ async fn publish_bundle(
         .fetch_add(1, std::sync::atomic::Ordering::Relaxed) as u64
         + 1;
     let is_canary = req.canary.unwrap_or(false);
-    let manifest = generate_bundle(&tenant_id, new_revision, is_canary);
+    let manifest = generate_bundle(&tenant_id, new_revision, is_canary, &state);
     (StatusCode::OK, Json(sign_bundle(&manifest)))
 }
 
@@ -239,7 +244,7 @@ async fn rollback_bundle(
             .revision
             .store(current, std::sync::atomic::Ordering::Relaxed);
     }
-    let manifest = generate_bundle(&tenant_id, current as u64, false);
+    let manifest = generate_bundle(&tenant_id, current as u64, false, &state);
     (StatusCode::OK, Json(sign_bundle(&manifest)))
 }
 
@@ -248,7 +253,7 @@ async fn get_invalid_signature_bundle(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let revision = state.revision.load(std::sync::atomic::Ordering::Relaxed) as u64;
-    let manifest = generate_bundle(&tenant_id, revision, false);
+    let manifest = generate_bundle(&tenant_id, revision, false, &state);
     let mut signed = sign_bundle(&manifest);
     // Corrupt signature
     if let Some(obj) = signed.as_object_mut() {
@@ -265,7 +270,7 @@ async fn get_invalid_rollback_bundle(
     State(_state): State<AppState>,
 ) -> impl IntoResponse {
     // Serve generation 0 which is guaranteed to trigger anti-rollback if device is at > 0
-    let manifest = generate_bundle(&tenant_id, 0, false);
+    let manifest = generate_bundle(&tenant_id, 0, false, &_state);
     (StatusCode::OK, Json(sign_bundle(&manifest)))
 }
 

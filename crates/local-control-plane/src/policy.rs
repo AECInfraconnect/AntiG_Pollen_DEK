@@ -653,16 +653,31 @@ async fn simulate_policy(
                 .unwrap_or("sim_req")
                 .to_string();
             let ev = json!({
+                "schema_version": "1.0",
                 "event_type": "decision",
                 "event_id": format!("sim_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)),
                 "timestamp": chrono::Utc::now().to_rfc3339(),
-                "payload": {
-                    "decision": if decision.allow { "allow" } else { "deny" },
-                    "reason": decision.reason.clone(),
-                    "request_id": req_id,
-                    "matched_policy_ids": [policy_id.clone()],
-                    "latency_ms": eval_time_ms as i32
-                }
+                "tenant_id": "local",
+                "device_id": "sim-device",
+                "trace_id": "",
+                "span_id": "",
+                "spiffe_id": "",
+                "pep_type": "sim",
+                "agent_id": "sim",
+                "principal_id": "",
+                "mcp_server_id": "",
+                "tool_id": "",
+                "tool_name": "",
+                "action": "",
+                "resource_id": "",
+                "resource_uri": "",
+                "decision": if decision.allow { "allow" } else { "deny" },
+                "reason": decision.reason.clone(),
+                "policy_ids": [policy_id.clone()],
+                "bundle_id": "sim",
+                "bundle_version": "v1",
+                "latency_ms": eval_time_ms as i64,
+                "cached": false
             });
             let _ = state
                 .telemetry_store
@@ -695,16 +710,31 @@ async fn simulate_policy(
                 .unwrap_or("sim_req")
                 .to_string();
             let ev = json!({
+                "schema_version": "1.0",
                 "event_type": "decision",
                 "event_id": format!("sim_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)),
                 "timestamp": chrono::Utc::now().to_rfc3339(),
-                "payload": {
-                    "decision": "deny",
-                    "reason": format!("Error: {}", e),
-                    "request_id": req_id,
-                    "matched_policy_ids": [policy_id.clone()],
-                    "latency_ms": eval_time_ms as i32
-                }
+                "tenant_id": "local",
+                "device_id": "sim-device",
+                "trace_id": "",
+                "span_id": "",
+                "spiffe_id": "",
+                "pep_type": "sim",
+                "agent_id": "sim",
+                "principal_id": "",
+                "mcp_server_id": "",
+                "tool_id": "",
+                "tool_name": "",
+                "action": "",
+                "resource_id": "",
+                "resource_uri": "",
+                "decision": "deny",
+                "reason": format!("Error: {}", e),
+                "policy_ids": [policy_id.clone()],
+                "bundle_id": "sim",
+                "bundle_version": "v1",
+                "latency_ms": eval_time_ms as i64,
+                "cached": false
             });
             let _ = state
                 .telemetry_store

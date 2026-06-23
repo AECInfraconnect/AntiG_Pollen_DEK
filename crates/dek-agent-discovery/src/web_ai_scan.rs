@@ -260,8 +260,12 @@ fn scan_bookmarks(
                                 "capability_tags": sig.capability_tags.clone(),
                             }),
                             merge_key: Some(sig.domain.to_string()),
-                            source_path_hash: Some(crate::redaction::sha256_string(&path.to_string_lossy())),
-                            source_path_redacted: Some(crate::redaction::redact_path_for_ui(&path.to_string_lossy())),
+                            source_path_hash: Some(crate::redaction::sha256_string(
+                                &path.to_string_lossy(),
+                            )),
+                            source_path_redacted: Some(crate::redaction::redact_path_for_ui(
+                                &path.to_string_lossy(),
+                            )),
                         });
                     }
                 }
@@ -277,18 +281,46 @@ fn get_browser_bookmark_paths() -> Vec<PathBuf> {
 
     #[cfg(target_os = "windows")]
     if let Ok(localappdata) = std::env::var("LOCALAPPDATA") {
-        paths.push(PathBuf::from(&localappdata).join("Google").join("Chrome").join("User Data").join("Default").join("Bookmarks"));
-        paths.push(PathBuf::from(&localappdata).join("Microsoft").join("Edge").join("User Data").join("Default").join("Bookmarks"));
+        paths.push(
+            PathBuf::from(&localappdata)
+                .join("Google")
+                .join("Chrome")
+                .join("User Data")
+                .join("Default")
+                .join("Bookmarks"),
+        );
+        paths.push(
+            PathBuf::from(&localappdata)
+                .join("Microsoft")
+                .join("Edge")
+                .join("User Data")
+                .join("Default")
+                .join("Bookmarks"),
+        );
     }
 
     #[cfg(target_os = "macos")]
     if let Ok(home) = std::env::var("HOME") {
-        paths.push(PathBuf::from(&home).join("Library").join("Application Support").join("Google").join("Chrome").join("Default").join("Bookmarks"));
+        paths.push(
+            PathBuf::from(&home)
+                .join("Library")
+                .join("Application Support")
+                .join("Google")
+                .join("Chrome")
+                .join("Default")
+                .join("Bookmarks"),
+        );
     }
 
     #[cfg(target_os = "linux")]
     if let Ok(home) = std::env::var("HOME") {
-        paths.push(PathBuf::from(&home).join(".config").join("google-chrome").join("Default").join("Bookmarks"));
+        paths.push(
+            PathBuf::from(&home)
+                .join(".config")
+                .join("google-chrome")
+                .join("Default")
+                .join("Bookmarks"),
+        );
     }
 
     paths

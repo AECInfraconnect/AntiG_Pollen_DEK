@@ -24,6 +24,7 @@ pub mod threats;
 pub mod tuf;
 pub mod ui;
 pub mod update_server;
+pub mod payloads;
 
 #[cfg(test)]
 mod contract_test;

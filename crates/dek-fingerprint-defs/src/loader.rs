@@ -20,13 +20,19 @@ impl DefinitionStore {
             if let Ok(signed) = serde_json::from_slice::<SignedDefinition>(&raw) {
                 let is_valid = if let Some(pk) = pubkey {
                     if let Ok(payload_bytes) = serde_json::to_vec(&signed.payload) {
-                        use base64::{Engine as _, engine::general_purpose::STANDARD};
+                        use base64::{engine::general_purpose::STANDARD, Engine as _};
                         if let Ok(sig_bytes) = STANDARD.decode(&signed.signature) {
                             if let Ok(sig) = Signature::from_slice(&sig_bytes) {
                                 pk.verify(&payload_bytes, &sig).is_ok()
-                            } else { false }
-                        } else { false }
-                    } else { false }
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
                 } else {
                     true // If no pubkey provided, assume valid (for local/testing)
                 };

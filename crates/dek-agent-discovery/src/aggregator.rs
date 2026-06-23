@@ -36,8 +36,13 @@ fn coalesce_by_identity(
                 existing.confidence = existing.confidence.max(c.confidence);
                 existing.risk_score = existing.risk_score.max(c.risk_score);
                 existing.instance_count = existing.instance_count.saturating_add(1);
-                
-                for _cap in c.suggested_registration.declared_tools.iter().chain(c.labels.keys()) {
+
+                for _cap in c
+                    .suggested_registration
+                    .declared_tools
+                    .iter()
+                    .chain(c.labels.keys())
+                {
                     // Not strictly capabilities but labels could be merged.
                     // We'll merge labels.
                     for (k, v) in c.labels.iter() {
@@ -46,14 +51,14 @@ fn coalesce_by_identity(
                         }
                     }
                 }
-                
+
                 if is_better_name(&c.display_name, &existing.display_name) {
                     existing.display_name = c.display_name;
                     existing.vendor = c.vendor.or(existing.vendor.take());
                     existing.product = c.product.or(existing.product.take());
                     existing.inferred_agent_type = c.inferred_agent_type;
                 }
-                
+
                 existing.first_seen = std::cmp::min(existing.first_seen.clone(), c.first_seen);
                 existing.last_seen = std::cmp::max(existing.last_seen.clone(), c.last_seen);
             }
@@ -67,7 +72,9 @@ fn coalesce_by_identity(
 }
 
 fn is_better_name(new: &str, old: &str) -> bool {
-    let bad = |s: &str| s == "Unknown Agent" || s.contains("unconfirmed") || basename_no_ext(s) == s && s.len() > 15;
+    let bad = |s: &str| {
+        s == "Unknown Agent" || s.contains("unconfirmed") || basename_no_ext(s) == s && s.len() > 15
+    };
     bad(old) && !bad(new)
 }
 

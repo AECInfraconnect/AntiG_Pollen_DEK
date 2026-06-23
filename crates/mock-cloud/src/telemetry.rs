@@ -43,15 +43,23 @@ pub fn router() -> Router<AppState> {
 
 #[derive(serde::Deserialize)]
 pub struct TelemetryPayload {
-    pub events: Vec<TelemetryEvent>,
+    pub events: Vec<serde_json::Value>,
 }
 
 /// Shared ingest: redaction-check + store into the unified buffer. Returns the
 /// count accepted, or an error if unredacted secrets are detected.
-fn ingest(state: &AppState, events: Vec<TelemetryEvent>, kind: &str) -> Result<usize, String> {
+fn ingest(state: &AppState, events: Vec<serde_json::Value>, kind: &str) -> Result<usize, String> {
     let mut logs = state.telemetry_events.lock().unwrap();
     let mut n = 0;
-    for event in events {
+    for event_val in events {
+        let event: TelemetryEvent = match serde_json::from_value(event_val.clone()) {
+            Ok(e) => e,
+            Err(e) => {
+                println!("Failed to deserialize TelemetryEvent: {} for payload: {}", e, serde_json::to_string(&event_val).unwrap());
+                continue;
+            }
+        };
+
         // Redaction validation: assert no raw credentials leak into telemetry.
         if let TelemetryEvent::Decision { reason, .. } = &event {
             let r = reason.to_lowercase();

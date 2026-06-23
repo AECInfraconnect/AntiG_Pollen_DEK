@@ -232,8 +232,14 @@ async fn clear_decision_logs(
     Path(tenant): Path<String>,
     State(st): State<AppState>,
 ) -> impl IntoResponse {
-    let _ = st.telemetry_store.clear_telemetry(&tenant, "decision_log").await;
-    let _ = st.telemetry_store.clear_telemetry(&tenant, "decision").await;
+    let _ = st
+        .telemetry_store
+        .clear_telemetry(&tenant, "decision_log")
+        .await;
+    let _ = st
+        .telemetry_store
+        .clear_telemetry(&tenant, "decision")
+        .await;
     (StatusCode::OK, Json(json!({"status": "success"})))
 }
 

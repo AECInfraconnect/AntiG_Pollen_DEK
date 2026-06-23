@@ -65,11 +65,16 @@ pub fn extract_identity_hint(ev: &DiscoveryEvidenceV2) -> Option<IdentityHint> {
                 "browser_agent" => InferredAgentType::BrowserAgent,
                 _ => InferredAgentType::AutomationAgent,
             });
-            let capability_tags = d.get("capability_tags")
+            let capability_tags = d
+                .get("capability_tags")
                 .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default();
-                
+
             Some(IdentityHint {
                 name: s("name"),
                 vendor: s("vendor"),
@@ -78,7 +83,7 @@ pub fn extract_identity_hint(ev: &DiscoveryEvidenceV2) -> Option<IdentityHint> {
                 capability_tags,
                 confidence: ev.confidence,
             })
-        },
+        }
         EvidenceSource::BrowserExtension => Some(IdentityHint {
             name: s("name"),
             vendor: s("vendor"),

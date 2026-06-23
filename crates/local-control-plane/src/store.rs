@@ -28,12 +28,8 @@ pub trait RegistryStore: Send + Sync {
         object_id: &str,
     ) -> Result<Option<serde_json::Value>>;
     async fn list_raw(&self, tenant_id: &str, object_type: &str) -> Result<Vec<serde_json::Value>>;
-    async fn delete_raw(
-        &self,
-        tenant_id: &str,
-        object_type: &str,
-        object_id: &str,
-    ) -> Result<bool>;
+    async fn delete_raw(&self, tenant_id: &str, object_type: &str, object_id: &str)
+        -> Result<bool>;
     async fn clear_raw(&self, tenant_id: &str, object_type: &str) -> Result<u64>;
 
     async fn upsert_blackbox_ai(&self, provider: BlackboxAiProvider) -> Result<BlackboxAiProvider>;
@@ -426,7 +422,8 @@ impl RegistryStore for SqliteStore {
                 "DELETE FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2",
                 params![tenant_id, object_type],
             )?)
-        }).await??;
+        })
+        .await??;
         Ok(count as u64)
     }
 
@@ -932,7 +929,8 @@ impl PolicyStore for SqliteStore {
             } else {
                 Ok(None)
             }
-        }).await??;
+        })
+        .await??;
 
         Ok(bytes)
     }
@@ -1132,7 +1130,8 @@ impl PolicyStore for SqliteStore {
                 out.push(val);
             }
             Ok(out)
-        }).await??;
+        })
+        .await??;
 
         Ok(out)
     }
@@ -1198,7 +1197,8 @@ impl TelemetryStore for SqliteStore {
                 "DELETE FROM telemetry_events WHERE tenant_id = ?1 AND event_type = ?2",
                 params![tenant, kind],
             )?)
-        }).await??;
+        })
+        .await??;
         Ok(count as u64)
     }
 }
@@ -1708,7 +1708,8 @@ impl ObservabilityStore for SqliteStore {
                 "DELETE FROM observation_events WHERE tenant_id = ?1",
                 params![tenant_id],
             )?)
-        }).await??;
+        })
+        .await??;
         Ok(count as u64)
     }
 

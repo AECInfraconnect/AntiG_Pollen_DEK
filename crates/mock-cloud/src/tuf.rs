@@ -75,6 +75,12 @@ async fn get_tuf_metadata(
             "root",
         ),
         "targets.json" => {
+            let cedar_src = state.rollout.lock().unwrap().latest_bundle.cedar_src.clone();
+            let policies_payload = crate::payloads::mock_policies_payload(&cedar_src);
+            let policies_hash = crate::payloads::hash_payload(&policies_payload);
+            let registry_payload = crate::payloads::mock_registry_payload();
+            let registry_hash = crate::payloads::hash_payload(&registry_payload);
+
             let routes_json = json!([
                 { "id": "route_tools_call", "priority": 100, "match_rule": { "method": "tools/call", "tool_category": null }, "pdp_required": ["cedar"] }
             ]);
@@ -87,11 +93,20 @@ async fn get_tuf_metadata(
                 "created_at": "2024-01-01T00:00:00Z",
                 "expires_at": "2030-01-01T00:00:00Z",
                 "activation_mode": "full",
+                "policy_config": {
+                    "routes": routes_json
+                },
                 "artifacts": [
                     {
                         "name": "policies.json",
                         "artifact_type": "cedar",
-                        "sha256": "dummy_hash_for_policies",
+                        "sha256": policies_hash,
+                        "url": null
+                    },
+                    {
+                        "name": "registry.json",
+                        "artifact_type": "json",
+                        "sha256": registry_hash,
                         "url": null
                     }
                 ]
@@ -189,12 +204,25 @@ async fn get_tuf_metadata(
 }
 
 async fn get_tuf_artifact(
-    Path((_tenant_id, _device_id, hash)): Path<(String, String, String)>,
+    Path((_tenant_id, device_id, hash)): Path<(String, String, String)>,
     State(_state): State<AppState>,
 ) -> impl IntoResponse {
+    if is_device_revoked(&_state, &device_id) {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "device revoked"})),
+        );
+    }
+
     let routes_json = json!([
         { "id": "route_tools_call", "priority": 100, "match_rule": { "method": "tools/call", "tool_category": null }, "pdp_required": ["cedar"] }
     ]);
+    let cedar_src = _state.rollout.lock().unwrap().latest_bundle.cedar_src.clone();
+    let policies_payload = crate::payloads::mock_policies_payload(&cedar_src);
+    let policies_hash = crate::payloads::hash_payload(&policies_payload);
+    let registry_payload = crate::payloads::mock_registry_payload();
+    let registry_hash = crate::payloads::hash_payload(&registry_payload);
+
     let manifest_json = json!({
         "manifest_version": "1.0",
         "bundle_id": "bnd-123",
@@ -204,11 +232,20 @@ async fn get_tuf_artifact(
         "created_at": "2024-01-01T00:00:00Z",
         "expires_at": "2030-01-01T00:00:00Z",
         "activation_mode": "full",
+        "policy_config": {
+            "routes": routes_json
+        },
         "artifacts": [
             {
                 "name": "policies.json",
                 "artifact_type": "cedar",
-                "sha256": "dummy_hash_for_policies",
+                "sha256": policies_hash,
+                "url": null
+            },
+            {
+                "name": "registry.json",
+                "artifact_type": "json",
+                "sha256": registry_hash,
                 "url": null
             }
         ]
@@ -227,38 +264,10 @@ async fn get_tuf_artifact(
         (StatusCode::OK, Json(routes_json))
     } else if hash == manifest_hash {
         (StatusCode::OK, Json(manifest_json))
-    } else if hash == "dummy_hash_for_policies" {
-        let cedar_src = _state
-            .rollout
-            .lock()
-            .unwrap()
-            .latest_bundle
-            .cedar_src
-            .clone();
-        let payload = json!({
-            "policies": [
-                {
-                    "id": "pol_1",
-                    "type": "cedar",
-                    "content": cedar_src
-                }
-            ],
-            "routes": [
-                {
-                    "id": "route_tools_call",
-                    "priority": 100,
-                    "match_rule": {
-                        "method": "tools/call",
-                        "tool_category": null,
-                        "resource_type": "mcp_tool"
-                    },
-                    "pdp_required": ["cedar"]
-                }
-            ]
-        });
-        (StatusCode::OK, Json(payload))
-    } else if hash == "dummy_hash_for_registry" {
-        (StatusCode::OK, Json(json!({ "registry": {} })))
+    } else if hash == policies_hash {
+        (StatusCode::OK, Json(policies_payload))
+    } else if hash == registry_hash {
+        (StatusCode::OK, Json(registry_payload))
     } else {
         (
             StatusCode::NOT_FOUND,
