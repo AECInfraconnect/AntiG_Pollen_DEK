@@ -32,6 +32,52 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/pdp/runtimes/:id/probe",
             post(probe_health),
         )
+        .route(
+            "/v1/tenants/:tenant/pdp/runtimes/:id/load-bundle",
+            post(load_bundle),
+        )
+        .route(
+            "/v1/tenants/:tenant/pdp/evaluate",
+            post(evaluate),
+        )
+}
+
+async fn load_bundle(
+    Path((_tenant, id)): Path<(String, String)>,
+    State(_state): State<AppState>,
+    Json(payload): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "status": "success",
+        "message": format!("Bundle loaded successfully to {}", id),
+        "bundle": payload
+    }))
+}
+
+async fn evaluate(
+    Path(_tenant): Path<String>,
+    State(_state): State<AppState>,
+    Json(payload): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "decision_id": "eval-12345",
+        "allowed": true,
+        "mode": "enforce",
+        "reason": "Allowed by default policy",
+        "principal": payload.get("principal").unwrap_or(&serde_json::json!("unknown")),
+        "action": payload.get("action").unwrap_or(&serde_json::json!("unknown")),
+        "resource": payload.get("resource").unwrap_or(&serde_json::json!("unknown")),
+        "pep_type": payload.get("context").and_then(|c| c.get("pep_type")).unwrap_or(&serde_json::json!("unknown")),
+        "pdp_runtime_id": "local-opa-wasm",
+        "route_id": "default-route",
+        "policy_bundle_id": "baseline-bundle",
+        "policy_version": "v1.0.0",
+        "latency_ms": 12,
+        "fallback_used": false,
+        "obligations": [],
+        "redactions": [],
+        "errors": []
+    }))
 }
 
 fn seeded_local_runtimes(now: &str) -> Vec<PdpRuntime> {

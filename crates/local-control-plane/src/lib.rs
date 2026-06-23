@@ -28,12 +28,11 @@ pub mod preset_deploy_wizard_api;
 pub mod pdp_cloud_api;
 pub mod pdp_credentials;
 pub mod pdp_models;
-pub mod pdp_router;
 pub mod pdp_routing_api;
+pub mod pdp_router;
 pub mod pdp_runtime_api;
 
 pub mod cloud_sync;
 
-pub mod pdp_api;
 pub mod plugin_api;
 pub mod policy_deploy_api;
