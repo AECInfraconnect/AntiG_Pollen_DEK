@@ -356,6 +356,7 @@ impl PolicyRouter {
             if v.is_object() {
                 v.get("kind")
                     .or_else(|| v.get("resource_type"))
+                    .or_else(|| v.get("type"))
                     .and_then(|k| k.as_str())
             } else {
                 v.as_str()
