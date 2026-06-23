@@ -1,12 +1,12 @@
-# Pollen DEK — Local Mode Quickstart
+# Pollek DEK — Local Mode Quickstart
 
-Run the **entire Pollen stack on one machine** — no Pollen Cloud required. The
+Run the **entire Pollek stack on one machine** — no Pollek Cloud required. The
 **Local Control Plane** is a single-user, `tenant_id=local` stand-in for Cloud:
 you author policies, publish signed bundles, and the DEK enforces them and streams
 decision logs back — all on `localhost`.
 
 > Same schema, API contract, bundle format, and telemetry envelope as Cloud.
-> Switching to Pollen Cloud later changes only the endpoint + trust store
+> Switching to Pollek Cloud later changes only the endpoint + trust store
 > (`dek-cli profile set cloud ...`) — the DEK's enforcement code is unchanged.
 
 ## Prerequisites
@@ -36,8 +36,8 @@ For Linux/macOS or bash/Zsh:
 
 ```bash
 # data dir holds the local bundle-signing key (created 0600 on first run)
-DEK_LCP_DATA=./pollen-local-data \
-DEK_LCP_DB="sqlite://./pollen-local.db?mode=rwc" \
+DEK_LCP_DATA=./Pollek-local-data \
+DEK_LCP_DB="sqlite://./Pollek-local.db?mode=rwc" \
 DEK_LCP_AUTH_DISABLE=1 \
   ./target/debug/local-control-plane
 ```
@@ -46,8 +46,8 @@ For Windows PowerShell:
 
 ```powershell
 # data dir holds the local bundle-signing key (created 0600 on first run)
-$env:DEK_LCP_DATA="./pollen-local-data"
-$env:DEK_LCP_DB="sqlite://./pollen-local.db?mode=rwc"
+$env:DEK_LCP_DATA="./Pollek-local-data"
+$env:DEK_LCP_DB="sqlite://./Pollek-local.db?mode=rwc"
 $env:DEK_LCP_AUTH_DISABLE="1"
 .\target\debug\local-control-plane.exe
 ```
@@ -153,12 +153,12 @@ View them in the dashboard under **Audit & Decision Logs**. You can also explore
 ## What just happened
 
 1. The Local Control Plane **signed** the bundle with its own key.
-2. The DEK **verified** it exactly as it verifies Pollen Cloud bundles — fail-closed if the signature doesn't match.
+2. The DEK **verified** it exactly as it verifies Pollek Cloud bundles — fail-closed if the signature doesn't match.
 3. Decisions came back over the **same telemetry envelope** Cloud uses.
 
 So the DEK never knows whether it's talking to Local or Cloud.
 
-## Switching to Pollen Cloud (later)
+## Switching to Pollek Cloud (later)
 
 For Linux/macOS or bash/Zsh:
 
@@ -185,7 +185,7 @@ For Windows PowerShell:
 ## Troubleshooting
 
 - **Dashboard shows HTTP 404:** The local control plane can't find the web UI files. Stop it (`Ctrl+C`), set `$env:DEK_DASHBOARD_DIR=".\apps\local-admin-dashboard\dist"` (Windows) or `export DEK_DASHBOARD_DIR="./apps/local-admin-dashboard/dist"` (Linux/mac), and restart `local-control-plane`.
-- **`bootstrap already exists` error:** If you accidentally ran `dek-cli enroll` or have leftover configs from previous runs, stop `dek-core`, delete the config folder (`C:\ProgramData\PollenDEK` on Windows or `~/.pollen-dek` / `/etc/pollen-dek` on Linux), and repeat Step 3.
+- **`bootstrap already exists` error:** If you accidentally ran `dek-cli enroll` or have leftover configs from previous runs, stop `dek-core`, delete the config folder (`C:\ProgramData\PollenDEK` on Windows or `~/.Pollek-dek` / `/etc/Pollek-dek` on Linux), and repeat Step 3.
 - **`dek-cli doctor`** reports cert/connectivity/permission problems and how to fix them.
 - **No decisions logged?** Confirm `dek-core` is running and `dek-cli status` shows a recently synced bundle.
 - **Bundle rejected?** The pinned trust key probably doesn't match the Local CP's key — re-run step 3 with the current `public_b64`.

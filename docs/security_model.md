@@ -1,10 +1,10 @@
-# Pollen DEK Security Model
+# Pollek DEK Security Model
 
-This document outlines the security architecture and threat models addressed by Pollen DEK `v1.0.0-beta`.
+This document outlines the security architecture and threat models addressed by Pollek DEK `v1.0.0-beta`.
 
 ## 1. Supply Chain Security
 
-Pollen DEK ensures cryptographic trust from compilation to execution:
+Pollek DEK ensures cryptographic trust from compilation to execution:
 
 - **Reproducible Builds**: Built using GitHub Actions with `cargo auditable` provenance.
 - **SBOM**: Full CycloneDX Software Bill of Materials provided with every release.
@@ -12,7 +12,7 @@ Pollen DEK ensures cryptographic trust from compilation to execution:
 
 ## 2. Secure Cloud Communication
 
-Communication between DEK and Pollen Cloud (or Mock-Cloud) is heavily secured:
+Communication between DEK and Pollek Cloud (or Mock-Cloud) is heavily secured:
 
 - **Enrollment Phase**: Performed over TLS 1.2+ using a short-lived device code.
 - **Active Phase (mTLS)**: Once enrolled, all subsequent telemetry, config pulls, and bundle synchronizations occur over strictly authenticated mTLS.

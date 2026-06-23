@@ -1,6 +1,6 @@
-# Pollen DEK Documentation
+# Pollek DEK Documentation
 
-Welcome to the Pollen DEK documentation.
+Welcome to the Pollek DEK documentation.
 
 ## Getting Started
 

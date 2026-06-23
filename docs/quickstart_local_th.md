@@ -1,6 +1,6 @@
-# Pollen DEK — คู่มือเริ่มต้นแบบ Local Mode
+# Pollek DEK — คู่มือเริ่มต้นแบบ Local Mode
 
-รัน **ทั้ง stack ของ Pollen บนเครื่องเดียว** — ไม่ต้องมี Pollen Cloud
+รัน **ทั้ง stack ของ Pollek บนเครื่องเดียว** — ไม่ต้องมี Pollek Cloud
 **Local Control Plane** ทำหน้าที่เป็น control plane แบบ single-user (`tenant_id=local`)
 แทน Cloud: author policy, publish signed bundle แล้ว DEK เอาไป enforce พร้อมส่ง
 decision log กลับมา ทั้งหมดบน localhost
@@ -34,8 +34,8 @@ cd apps/local-admin-dashboard; npm install; npm run build; cd ../..
 สำหรับ Linux/macOS หรือ bash/Zsh:
 
 ```bash
-DEK_LCP_DATA=./pollen-local-data \
-DEK_LCP_DB="sqlite://./pollen-local.db?mode=rwc" \
+DEK_LCP_DATA=./Pollek-local-data \
+DEK_LCP_DB="sqlite://./Pollek-local.db?mode=rwc" \
 DEK_LCP_AUTH_DISABLE=1 \
   ./target/debug/local-control-plane
 ```
@@ -43,8 +43,8 @@ DEK_LCP_AUTH_DISABLE=1 \
 สำหรับ Windows PowerShell:
 
 ```powershell
-$env:DEK_LCP_DATA="./pollen-local-data"
-$env:DEK_LCP_DB="sqlite://./pollen-local.db?mode=rwc"
+$env:DEK_LCP_DATA="./Pollek-local-data"
+$env:DEK_LCP_DB="sqlite://./Pollek-local.db?mode=rwc"
 $env:DEK_LCP_AUTH_DISABLE="1"
 .\target\debug\local-control-plane.exe
 ```
@@ -147,7 +147,7 @@ curl -s http://127.0.0.1:3000/v1/tenants/local/telemetry/decision-logs
 
 DEK จึงไม่รู้ว่ากำลังคุยกับ Local หรือ Cloud
 
-## เปลี่ยนไป Pollen Cloud (ภายหลัง)
+## เปลี่ยนไป Pollek Cloud (ภายหลัง)
 
 สำหรับ Linux/macOS หรือ bash/Zsh:
 

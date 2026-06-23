@@ -1,6 +1,6 @@
-# Pollen DEK Release Process
+# Pollek DEK Release Process
 
-This document defines the strict, required process for releasing a new version of Pollen DEK, ensuring that re-tagging failures, dirty histories, and incomplete CI artifacts do not block releases.
+This document defines the strict, required process for releasing a new version of Pollek DEK, ensuring that re-tagging failures, dirty histories, and incomplete CI artifacts do not block releases.
 
 ## 1. Pre-flight Checklist
 

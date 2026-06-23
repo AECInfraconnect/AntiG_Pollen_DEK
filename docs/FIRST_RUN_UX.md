@@ -1,6 +1,6 @@
-# Pollen DEK - First Run UX & Quickstart
+# Pollek DEK - First Run UX & Quickstart
 
-This guide provides a rapid end-to-end walkthrough (under 10 minutes) for deploying the Pollen DEK and enforcing your first policy.
+This guide provides a rapid end-to-end walkthrough (under 10 minutes) for deploying the Pollek DEK and enforcing your first policy.
 
 ## 1. Prerequisites
 
@@ -9,10 +9,10 @@ Place them in your PATH or a working directory.
 
 ## 2. Enrollment
 
-Link your device to the Pollen Control Plane:
+Link your device to the Pollek Control Plane:
 
 ```bash
-dek-cli enroll --cloud-url https://pollen-cloud.example.com
+dek-cli enroll --cloud-url https://Pollek-cloud.example.com
 ```
 
 *This exchanges a bootstrap token for mutual TLS (mTLS) identities. Certificates are stored securely.*
@@ -52,9 +52,9 @@ dek-cli debug rotate-identity
 
 ---
 
-# การเริ่มต้นใช้งาน Pollen DEK ฉบับเร่งด่วน
+# การเริ่มต้นใช้งาน Pollek DEK ฉบับเร่งด่วน
 
-คู่มือนี้เป็นขั้นตอนเริ่มต้นใช้งาน Pollen DEK อย่างรวดเร็ว (ภายใน 10 นาที) เพื่อใช้สำหรับตรวจสอบและบังคับใช้นโยบาย (Policy)
+คู่มือนี้เป็นขั้นตอนเริ่มต้นใช้งาน Pollek DEK อย่างรวดเร็ว (ภายใน 10 นาที) เพื่อใช้สำหรับตรวจสอบและบังคับใช้นโยบาย (Policy)
 
 ## 1. การเตรียมความพร้อม
 
@@ -63,10 +63,10 @@ dek-cli debug rotate-identity
 
 ## 2. การลงทะเบียนอุปกรณ์ (Enrollment)
 
-เชื่อมต่ออุปกรณ์ของคุณกับ Pollen Control Plane:
+เชื่อมต่ออุปกรณ์ของคุณกับ Pollek Control Plane:
 
 ```bash
-dek-cli enroll --cloud-url https://pollen-cloud.example.com
+dek-cli enroll --cloud-url https://Pollek-cloud.example.com
 ```
 
 *ขั้นตอนนี้จะนำ bootstrap token ไปแลกเป็นใบรับรอง mutual TLS (mTLS) โดยระบบจะเก็บใบรับรองไว้อย่างปลอดภัย*

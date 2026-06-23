@@ -1,6 +1,6 @@
 # Release Process
 
-Pollen Contracts use GitHub actions for release management.
+Pollek Contracts use GitHub actions for release management.
 
 Upon a tag matching `contracts-v*`:
 

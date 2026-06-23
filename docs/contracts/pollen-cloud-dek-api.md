@@ -1,6 +1,6 @@
-# Pollen Cloud ↔ DEK API Contracts
+# Pollek Cloud ↔ DEK API Contracts
 
-This document is the Single Source of Truth for the APIs and data models used between the Pollen Cloud (and Mock-Cloud) and the Data Execution Kernel (DEK).
+This document is the Single Source of Truth for the APIs and data models used between the Pollek Cloud (and Mock-Cloud) and the Data Execution Kernel (DEK).
 
 ## JSON Schemas
 
@@ -83,5 +83,5 @@ Used by DEK to send telemetry to the cloud.
 
 - `Authorization: Bearer <token>`
 - `Content-Type: application/json`
-- `X-Pollen-Device-Id: <device_id>`
-- `X-Pollen-Tenant-Id: <tenant_id>`
+- `X-Pollek-Device-Id: <device_id>`
+- `X-Pollek-Tenant-Id: <tenant_id>`

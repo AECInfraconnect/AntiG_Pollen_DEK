@@ -1,4 +1,4 @@
-# Contributing to Pollen DEK
+# Contributing to Pollek DEK
 
 We welcome contributions from the community!
 

@@ -1,6 +1,6 @@
 # Maintainers
 
-The following people are current maintainers of the Pollen DEK project:
+The following people are current maintainers of the Pollek DEK project:
 
 | Name | GitHub | Email |
 | ---- | ------ | ----- |

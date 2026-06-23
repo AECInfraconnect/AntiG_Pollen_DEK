@@ -1,6 +1,6 @@
 # Audit Chain Verification
 
-Pollen DEK uses a tamper-evident hash chain to protect the integrity of its audit logs (satisfying NIST AU-9). Each audit event references the cryptographic hash of the previous event.
+Pollek DEK uses a tamper-evident hash chain to protect the integrity of its audit logs (satisfying NIST AU-9). Each audit event references the cryptographic hash of the previous event.
 
 ## Verification Tool
 

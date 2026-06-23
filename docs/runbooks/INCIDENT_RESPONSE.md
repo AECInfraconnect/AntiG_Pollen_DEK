@@ -1,4 +1,4 @@
-# Pollen DEK Incident Response Runbook
+# Pollek DEK Incident Response Runbook
 
 ## Identifying an Incident
 
@@ -13,7 +13,7 @@
 Access the host and tail the logs:
 
 - **Windows**: `Get-EventLog -LogName Application -Source PollenDEK` or check `C:\ProgramData\PollenDEK\logs\`
-- **Linux**: `journalctl -u pollen-dek-core -f`
+- **Linux**: `journalctl -u Pollek-dek-core -f`
 
 ### 2. Verify mTLS Connection
 
@@ -22,9 +22,9 @@ Run `dek-cli status` to verify certificate expiration and Spire agent health.
 
 ### 3. Check Active Bundle
 
-Inspect the `active_bundle.json` at `/etc/pollen-dek/` (Linux) or `C:\ProgramData\PollenDEK\` (Windows).
+Inspect the `active_bundle.json` at `/etc/Pollek-dek/` (Linux) or `C:\ProgramData\PollenDEK\` (Windows).
 Validate the bundle schema using:
-`dek-cli validate-bundle --path /etc/pollen-dek/active_bundle.json`
+`dek-cli validate-bundle --path /etc/Pollek-dek/active_bundle.json`
 
 ## Escalation
 

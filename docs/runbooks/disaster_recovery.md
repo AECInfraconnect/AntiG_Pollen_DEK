@@ -1,18 +1,18 @@
-# Pollen DEK Disaster Recovery Runbook
+# Pollek DEK Disaster Recovery Runbook
 
 ## Overview
 
-This runbook provides the procedure for recovering a Pollen DEK node in the event of severe failure, cryptographic compromise, or persistent crash loop.
+This runbook provides the procedure for recovering a Pollek DEK node in the event of severe failure, cryptographic compromise, or persistent crash loop.
 
 ## Scenario 1: Cryptographic Compromise (Spire or Core Keys Leaked)
 
-1. In the Pollen Cloud Management console, locate the affected Device ID.
+1. In the Pollek Cloud Management console, locate the affected Device ID.
 2. Click **Revoke Device Identity**. This will blacklist the device's mTLS certificate and SVID.
-3. On the compromised endpoint, stop the Pollen DEK Core service:
-   - **Linux**: `systemctl stop pollen-dek-core`
+3. On the compromised endpoint, stop the Pollek DEK Core service:
+   - **Linux**: `systemctl stop Pollek-dek-core`
    - **Windows**: `Stop-Service PollenDEKCore`
 4. Wipe the local Keystore and Data Directory:
-   - Delete all contents of `/etc/pollen-dek/` or `C:\ProgramData\PollenDEK\`.
+   - Delete all contents of `/etc/Pollek-dek/` or `C:\ProgramData\PollenDEK\`.
 5. Generate a new enrollment token from the Cloud Management Console.
 6. Run `dek-enroll` with the new token to establish a fresh cryptographic identity.
 

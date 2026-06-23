@@ -1,6 +1,6 @@
-# Pollen Cloud Consumer Guide for Contract Hub
+# Pollek Cloud Consumer Guide for Contract Hub
 
-Pollen Cloud must consume the generated API schemas and validation files from this Hub.
+Pollek Cloud must consume the generated API schemas and validation files from this Hub.
 It must not implement its own conflicting schemas.
 
 1. Fetch Contract Hub artifacts during build.

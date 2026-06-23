@@ -111,7 +111,7 @@ export function PdpRuntimeRouting() {
           className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === "cloud" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           onClick={() => setActiveTab("cloud")}
         >
-          Pollen Cloud PDP
+          Pollek Cloud PDP
         </button>
         <button
           className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === "routing" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}

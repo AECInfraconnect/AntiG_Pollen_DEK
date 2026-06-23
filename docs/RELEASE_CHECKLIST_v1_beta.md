@@ -1,4 +1,4 @@
-# Pollen DEK v1.0.0-beta Release Checklist
+# Pollek DEK v1.0.0-beta Release Checklist
 
 ## A. Version and Tagging
 

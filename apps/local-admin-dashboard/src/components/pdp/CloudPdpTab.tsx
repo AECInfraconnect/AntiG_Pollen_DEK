@@ -77,10 +77,10 @@ export function CloudPdpTab() {
           </svg>
         </div>
         <h4 className="text-lg font-medium text-foreground mb-2">
-          Connect to Pollen Cloud PDP
+          Connect to Pollek Cloud PDP
         </h4>
         <p className="max-w-md mx-auto text-sm">
-          Connect this DEK to a fully managed Pollen Cloud PDP. Configuration
+          Connect this DEK to a fully managed Pollek Cloud PDP. Configuration
           and routing will be synced automatically.
         </p>
         <button
@@ -97,9 +97,9 @@ export function CloudPdpTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between border-b pb-4">
         <div>
-          <h3 className="font-medium">Pollen Cloud Connected</h3>
+          <h3 className="font-medium">Pollek Cloud Connected</h3>
           <p className="text-sm text-muted-foreground">
-            This DEK is enrolled with Pollen Cloud.
+            This DEK is enrolled with Pollek Cloud.
           </p>
         </div>
         <div className="flex gap-2">

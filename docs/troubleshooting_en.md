@@ -1,4 +1,4 @@
-# Pollen DEK Troubleshooting Guide
+# Pollek DEK Troubleshooting Guide
 
 ## Common Issues
 
@@ -9,13 +9,13 @@
 
 ### 2. Enrollment Fails
 
-**Symptom**: `pollen-dekctl enroll` hangs or returns a connection error.
+**Symptom**: `Pollek-dekctl enroll` hangs or returns a connection error.
 **Fix**: Verify that Mock-Cloud is running and the `--cloud-url` points exactly to the HTTPS port of the Mock-Cloud (e.g., `https://127.0.0.1:43892`).
 
 ### 3. DEK Core Does Not Sync Bundle
 
 **Symptom**: Logs show `bundle_sync_failed` and DEK evaluates to fallback mode.
-**Fix**: Check if the device has been enrolled successfully and `bootstrap.json` exists in `~/.pollen/dek/`. If testing poisoning scenarios, ensure you haven't intentionally triggered a chaos outage in Mock-Cloud.
+**Fix**: Check if the device has been enrolled successfully and `bootstrap.json` exists in `~/.Pollek/dek/`. If testing poisoning scenarios, ensure you haven't intentionally triggered a chaos outage in Mock-Cloud.
 
 ### 4. Telemetry is Not Visible in Dashboard
 
@@ -25,4 +25,4 @@
 ### 5. eBPF Guardrail Not Working (Linux Only)
 
 **Symptom**: Network egress is not blocked despite policy.
-**Fix**: Verify DEK is running with root privileges (`CAP_BPF` and `CAP_NET_ADMIN`). Check `dmesg` or `journalctl -u pollen-dek` for BPF verifier errors.
+**Fix**: Verify DEK is running with root privileges (`CAP_BPF` and `CAP_NET_ADMIN`). Check `dmesg` or `journalctl -u Pollek-dek` for BPF verifier errors.

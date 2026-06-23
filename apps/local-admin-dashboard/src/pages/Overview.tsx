@@ -66,7 +66,7 @@ export function Overview() {
           Dashboard Overview
         </h2>
         <p className="text-muted-foreground">
-          Real-time metrics and system health for your local Pollen DEK.
+          Real-time metrics and system health for your local Pollek DEK.
         </p>
       </div>
 

@@ -1,13 +1,15 @@
-# Pollen DEK — Open-Source Device Enforcement Kit
+# Pollek DEK — Open-Source Device Enforcement Kit
+
+![Pollek DEK Logo](assets/POLLEK_LOGO.png)
 
 [![CI](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/ci.yml/badge.svg)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/tag/AECInfraconnect/AntiG_Pollen_DEK?include_prereleases&label=release)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases)
 [![Compatibility](https://img.shields.io/badge/Compatibility-Matrix-success.svg)](contracts/COMPATIBILITY.md)
 
-**Pollen DEK** is the local-first AI Agent Governance Runtime that discovers AI agents on a user's computer, deploys enforceable policies to the right PEP, evaluates decisions through local or cloud PDPs, records tamper-aware telemetry, and gives users a dashboard to observe, control, and prove what AI agents did.
+**Pollek DEK** is the local-first AI Agent Governance Runtime that discovers AI agents on a user's computer, deploys enforceable policies to the right PEP, evaluates decisions through local or cloud PDPs, records tamper-aware telemetry, and gives users a dashboard to observe, control, and prove what AI agents did.
 
-It is an Apache-2.0 runtime that **enforces and observes AI-agent, MCP, API, and tool-call activity at the desktop/edge**. It runs **fully locally** with the built-in Local Admin Dashboard, or connects to **Pollen Cloud** (commercial) for managed multi-tenant policy, observability, and compliance. The DEK speaks **one contract** to both — switching targets changes only the endpoint + trust store, never the enforcement code.
+It is an Apache-2.0 runtime that **enforces and observes AI-agent, MCP, API, and tool-call activity at the desktop/edge**. It runs **fully locally** with the built-in Local Admin Dashboard, or connects to **Pollek Cloud** (commercial) for managed multi-tenant policy, observability, and compliance. The DEK speaks **one contract** to both — switching targets changes only the endpoint + trust store, never the enforcement code.
 
 ---
 
@@ -121,7 +123,7 @@ cd apps/local-admin-dashboard && npm run dev
 
 See **[docs/quickstart_local_en.md](docs/quickstart_local_en.md)** (TH: `_th`).
 
-### Pollen Cloud mode
+### Pollek Cloud mode
 
 ```bash
 dek-cli profile set cloud --url https://cloud.<your-cloud-domain> --tenant-id <tenant>
@@ -156,7 +158,7 @@ dek-cli update --channel beta
 ## Architecture (at a glance)
 
 ```
- Local Admin Dashboard            Pollen Cloud (commercial)
+ Local Admin Dashboard            Pollek Cloud (commercial)
   SQLite · tenant=local            MySQL/TiDB · multi-tenant
   HTTP 127.0.0.1 · Bearer          mTLS + OAuth + SPIFFE/SPIRE
             \                         /
@@ -196,9 +198,9 @@ Full detail: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 Start at **[docs/README.md](docs/README.md)** — install guides, user/developer
 guides, runbooks, security model, compliance mapping, and the
-[DEK↔Cloud contract](docs/contracts/pollen-cloud-dek-api.md).
+[DEK↔Cloud contract](docs/contracts/Pollek-cloud-dek-api.md).
 
 ## License
 
 DEK runtime, CLI, agent, SDK, adapters, and example policies are **Apache-2.0**.
-**Pollen Cloud is commercial.** See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+**Pollek Cloud is commercial.** See [LICENSE](LICENSE) and [NOTICE](NOTICE).

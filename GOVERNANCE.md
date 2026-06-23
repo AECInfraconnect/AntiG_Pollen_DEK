@@ -1,6 +1,6 @@
 # Governance
 
-Pollen DEK is an open-source project managed by AEC Infraconnect.
+Pollek DEK is an open-source project managed by AEC Infraconnect.
 
 ## Maintainers
 
@@ -8,4 +8,4 @@ The project is currently led by the internal AEC Infraconnect engineering team, 
 
 ## Roadmap
 
-Decisions regarding the future of Pollen DEK are made via public RFCs (Request for Comments) in GitHub Discussions.
+Decisions regarding the future of Pollek DEK are made via public RFCs (Request for Comments) in GitHub Discussions.

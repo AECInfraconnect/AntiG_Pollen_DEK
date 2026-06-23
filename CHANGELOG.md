@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Pollen DEK are documented here. Format loosely follows
+All notable changes to Pollek DEK are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the project uses semantic-ish
 versioning with pre-release tags (e.g. `1.0.0-beta.1`).
 
@@ -60,7 +60,7 @@ Major feature release: AI Agent Observability, Shadow AI Detection, and the Obse
 
 ## [1.0.0-beta.5] — 2026-06
 
-Pollen DEK beta 5 brings major stability and edge functionality improvements.
+Pollek DEK beta 5 brings major stability and edge functionality improvements.
 
 ### Added
 
@@ -81,13 +81,13 @@ Pollen DEK beta 5 brings major stability and edge functionality improvements.
 - Refactored `latency_ms` to `i64` to match typify types and schema definitions.
 - Restored `PollenError` standard envelope across API specs.
 - Enforced MSRV of Rust 1.85 to support edition 2024 features safely.
-- Genericized Cloud references from `pollen.ai` to `<your-cloud-domain>`.
+- Genericized Cloud references from `Pollek.ai` to `<your-cloud-domain>`.
 
 ## [1.0.0-beta.1] — 2026-06
 
-First public beta. Pollen DEK can be downloaded, installed on Linux/macOS/Windows,
+First public beta. Pollek DEK can be downloaded, installed on Linux/macOS/Windows,
 and run fully locally with the Local Admin Dashboard, or pointed at a Cloud-style
-control plane (exercised via `mock-cloud` until Pollen Cloud is GA).
+control plane (exercised via `mock-cloud` until Pollek Cloud is GA).
 
 ### Added
 
@@ -138,7 +138,7 @@ control plane (exercised via `mock-cloud` until Pollen Cloud is GA).
 
 - Windows/macOS network enforcement is redirect-advisory in beta; kernel-grade
   enforcement (WFP callout driver / macOS System Extension) is in progress.
-- Pollen Cloud is not yet public; the Cloud path is validated against
+- Pollek Cloud is not yet public; the Cloud path is validated against
   `mock-cloud`, and SPIRE-server integration testing is pending.
 - See [ARCHITECTURE.md](ARCHITECTURE.md) and the security model for the full
   capability matrix.

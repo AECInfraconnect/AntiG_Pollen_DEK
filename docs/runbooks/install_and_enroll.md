@@ -2,7 +2,7 @@
 
 ## Objective
 
-To successfully deploy the Pollen DEK on a new Windows host and enroll it with Pollen Cloud to fetch initial certificates and configuration.
+To successfully deploy the Pollek DEK on a new Windows host and enroll it with Pollek Cloud to fetch initial certificates and configuration.
 
 ## Steps
 
@@ -21,7 +21,7 @@ To successfully deploy the Pollen DEK on a new Windows host and enroll it with P
 3. **Execute Enrollment**
 
    ```powershell
-   dekctl enroll --token <enrollment-token> --cloud-url https://api.pollen-cloud.internal
+   dekctl enroll --token <enrollment-token> --cloud-url https://api.Pollek-cloud.internal
    ```
 
 4. **Verify Configuration**
@@ -32,4 +32,4 @@ To successfully deploy the Pollen DEK on a new Windows host and enroll it with P
 
 ## Escalation
 
-If `dekctl doctor` reports MTLS errors, verify that `client.crt` and `client.key` exist in `C:\ProgramData\PollenDEK\certs`. If missing, verify the Pollen Cloud URL and ensure port 43891 is open outbound.
+If `dekctl doctor` reports MTLS errors, verify that `client.crt` and `client.key` exist in `C:\ProgramData\PollenDEK\certs`. If missing, verify the Pollek Cloud URL and ensure port 43891 is open outbound.

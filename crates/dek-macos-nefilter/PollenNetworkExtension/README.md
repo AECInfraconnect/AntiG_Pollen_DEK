@@ -1,4 +1,4 @@
-# Pollen DEK macOS System Extension
+# Pollek DEK macOS System Extension
 
 ## Overview
 

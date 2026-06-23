@@ -1,6 +1,6 @@
-# Pollen DEK v1.0.0-beta.5 Release Notes
+# Pollek DEK v1.0.0-beta.5 Release Notes
 
-We are excited to announce Pollen DEK `v1.0.0-beta.5`. This release focuses on addressing edge deployment gaps and bringing critical control plane capabilities to the local environment.
+We are excited to announce Pollek DEK `v1.0.0-beta.5`. This release focuses on addressing edge deployment gaps and bringing critical control plane capabilities to the local environment.
 
 ## Highlights
 

@@ -28,4 +28,4 @@ To manually rotate the SPIFFE SVID or MTLS certificates if the automated renewal
 
 ## Escalation
 
-If rotation fails with `HTTP 401 Unauthorized`, the device may have been revoked by the admin in Pollen Cloud. Check the Pollen Cloud Dashboard.
+If rotation fails with `HTTP 401 Unauthorized`, the device may have been revoked by the admin in Pollek Cloud. Check the Pollek Cloud Dashboard.

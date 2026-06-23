@@ -1,4 +1,4 @@
-# Pollen DEK Recorder Integration Wiring
+# Pollek DEK Recorder Integration Wiring
 
 This guide outlines the steps required to seamlessly integrate the shared `dek-metrics` crate into the workspace and wire it to the execution paths of `dek-mcp-proxy` and `dek-ext-authz` during merge.
 
@@ -61,7 +61,7 @@ let shutdown = Arc::new(Notify::new());
 // 3. Spawn Push Task
 dek_metrics::spawn_push(
     handle,
-    "https://telemetry.pollen-cloud.internal/v1/metrics".into(), // Use real push URL from config
+    "https://telemetry.Pollek-cloud.internal/v1/metrics".into(), // Use real push URL from config
     client,
     shutdown.clone(),
     Duration::from_secs(60),
@@ -97,7 +97,7 @@ let shutdown = Arc::new(Notify::new());
 
 dek_metrics::spawn_push(
     handle,
-    "https://telemetry.pollen-cloud.internal/v1/metrics".into(),
+    "https://telemetry.Pollek-cloud.internal/v1/metrics".into(),
     client,
     shutdown.clone(),
     Duration::from_secs(60),

@@ -1,4 +1,4 @@
-# Pollen DEK — Production Hardening PR Checklist (Phase 0–5)
+# Pollek DEK — Production Hardening PR Checklist (Phase 0–5)
 
 รวมทุก deliverable เป็น roadmap การ merge เดียว — **ลำดับ, Cargo ที่ต้องเปลี่ยน, ไฟล์ที่แตะ, acceptance** ครบ
 แนะนำ merge ทีละ PR ตามลำดับ (แต่ละ PR build+test เขียวก่อนไป PR ถัดไป)
@@ -147,7 +147,7 @@
 - [ ] hot-reload ไม่ interrupt (ArcSwap)
 - [ ] acceptance matrix A–H เขียวบน CI integration job
 - [ ] ไม่มี local authoring/compiler/dry-run/`--policy-dir` (test ยืนยัน)
-- [ ] cutover ไป Pollen Cloud จริง = เปลี่ยน endpoint + trust store เท่านั้น
+- [ ] cutover ไป Pollek Cloud จริง = เปลี่ยน endpoint + trust store เท่านั้น
 
 ## อ้างอิงไฟล์ (deliverable ที่ทำไว้แล้ว)
 

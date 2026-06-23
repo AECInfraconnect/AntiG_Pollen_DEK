@@ -1,6 +1,6 @@
-# Pollen DEK Developer Guide
+# Pollek DEK Developer Guide
 
-This guide provides concrete code examples, architectural contracts, and operational guidelines for working with Pollen DEK `v1.0.0-beta`.
+This guide provides concrete code examples, architectural contracts, and operational guidelines for working with Pollek DEK `v1.0.0-beta`.
 
 ---
 
@@ -33,7 +33,7 @@ DEK Core locally spools telemetry to a SQLite database. A background flusher pul
 let sink = telemetry_sink.clone();
 sink.emit_async(
     serde_json::json!({
-        "event_type": "pollen.dek.dns_observe",
+        "event_type": "Pollek.dek.dns_observe",
         "cgroup_id": obs.cgroup_id,
         "qname": obs.qname,
         "answers": obs.answers,
@@ -51,7 +51,7 @@ Content-Type: application/json
 
 {
   "events": [
-    { "event_type": "pollen.dek.dns_observe", ... },
+    { "event_type": "Pollek.dek.dns_observe", ... },
     ...
   ]
 }
@@ -61,7 +61,7 @@ Content-Type: application/json
 
 ## 3. Canonical Bundle Signing (JCS)
 
-All policy and configuration artifacts from the Pollen Cloud must be signed using Ed25519. The signature validates the JCS (JSON Canonicalization Scheme) output of the target payload.
+All policy and configuration artifacts from the Pollek Cloud must be signed using Ed25519. The signature validates the JCS (JSON Canonicalization Scheme) output of the target payload.
 
 **Code Example: Mock-Cloud Signing (Cloud side)**
 
@@ -95,7 +95,7 @@ match key_set.verify(now, &signed_bytes, &sigs) {
 
 ## 4. Release Checklist & CI Workflow
 
-Pollen DEK CI automatically generates native installers (`.deb`, `.msi`, `.pkg`) on every tag.
+Pollek DEK CI automatically generates native installers (`.deb`, `.msi`, `.pkg`) on every tag.
 Before tagging a release:
 
 - `[ ]` Ensure `cargo test --workspace` passes cleanly.

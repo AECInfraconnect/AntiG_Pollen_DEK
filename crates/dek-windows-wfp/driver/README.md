@@ -1,4 +1,4 @@
-# Pollen DEK Windows WFP Driver
+# Pollek DEK Windows WFP Driver
 
 ## Overview
 

@@ -57,7 +57,7 @@ export function Settings() {
                 Local Control Plane (127.0.0.1:43890)
               </option>
               <option value="mock-cloud">
-                Mock Pollen Cloud (127.0.0.1:43891)
+                Mock Pollek Cloud (127.0.0.1:43891)
               </option>
             </select>
           </div>

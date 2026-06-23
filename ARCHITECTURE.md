@@ -1,9 +1,9 @@
-# Pollen DEK — Architecture
+# Pollek DEK — Architecture
 
-Pollen DEK is a Rust **Policy Enforcement Point (PEP)** with a local **Policy
+Pollek DEK is a Rust **Policy Enforcement Point (PEP)** with a local **Policy
 Decision Point (PDP)**, built as a multi-crate workspace. It enforces signed
 policy bundles produced by a control plane — either the local-first **Local
-Control Plane** or **Pollen Cloud** — over one shared contract.
+Control Plane** or **Pollek Cloud** — over one shared contract.
 
 ## Dual-mode design
 
@@ -47,7 +47,7 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 
 **Network enforcement (OS)**
 
-- `dek-ebpfd` (+ `dek-ebpf-prog`, `dek-ebpf-common`) — Linux eBPF cgroup enforcement (kernel). Manages dynamic DNS LRU cache eviction and allows runtime toggling between `fail-closed` and `observe-only` modes via pinned BPF maps (`/sys/fs/bpf/pollen-dek`). Fails gracefully if `bpf-linker` is missing on older hosts.
+- `dek-ebpfd` (+ `dek-ebpf-prog`, `dek-ebpf-common`) — Linux eBPF cgroup enforcement (kernel). Manages dynamic DNS LRU cache eviction and allows runtime toggling between `fail-closed` and `observe-only` modes via pinned BPF maps (`/sys/fs/bpf/Pollek-dek`). Fails gracefully if `bpf-linker` is missing on older hosts.
 - `dek-windows-wfp` — Windows Filtering Platform (user-mode today; kernel callout driver in progress).
 - `dek-macos-nefilter` — macOS NetworkExtension / System Extension.
 - **Kernel complexity guard** (`dek-core::kernel_guard`) — only simple, exact rules (CIDR/port/exact-domain, bounded count) go to the kernel; complex rules fall to the user-mode plane to avoid verifier rejection/instability.
@@ -86,7 +86,7 @@ Control Plane** or **Pollen Cloud** — over one shared contract.
 
 ## Identity Propagation
 
-When an agent authenticates with the DEK gateway, identity must propagate to backend MCP servers. Pollen DEK utilizes SPIFFE for this purpose:
+When an agent authenticates with the DEK gateway, identity must propagate to backend MCP servers. Pollek DEK utilizes SPIFFE for this purpose:
 
 - **Token Forwarding**: Passes the original agent token directly if the backend and agent share the same trust domain.
 - **Token Exchange**: DEK can exchange the incoming agent token for a short-lived SPIFFE JWT-SVID (via `dek-spire-node`) bound specifically to the target MCP server. This implements secure impersonation and enforces least-privilege without exposing long-lived credentials.

@@ -1,6 +1,6 @@
 # Compliance Control Mapping
 
-Pollen DEK satisfies several compliance frameworks (NIST 800-53, SOC2, PDPA, HIPAA) through its edge-enforcement architecture, audit logs, and telemetry.
+Pollek DEK satisfies several compliance frameworks (NIST 800-53, SOC2, PDPA, HIPAA) through its edge-enforcement architecture, audit logs, and telemetry.
 
 | Control (framework) | DEK evidence | Source |
 |---|---|---|
