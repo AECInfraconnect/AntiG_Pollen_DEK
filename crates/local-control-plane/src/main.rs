@@ -59,6 +59,9 @@ async fn main() -> anyhow::Result<()> {
         pdp_credentials: Arc::new(PdpCredentialsStore::new(&cfg.data_dir)),
     };
 
+    // Spawn Anomaly Detector (P2)
+    tokio::spawn(local_control_plane::anomaly_detector::start_anomaly_detector(state.clone()));
+
     let static_dir = cfg.dashboard_dir.to_string_lossy().to_string();
     let app = app::create_app(state.clone(), &static_dir);
 

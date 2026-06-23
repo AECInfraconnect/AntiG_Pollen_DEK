@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Zap,
   Globe,
+  Puzzle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -30,6 +31,7 @@ const groups = [
     items: [
       { name: "Agents & Models", href: "/agents", icon: Users },
       { name: "Integrations", href: "/integrations", icon: Wrench },
+      { name: "Plugin Marketplace", href: "/plugin-marketplace", icon: Puzzle },
     ],
   },
   {

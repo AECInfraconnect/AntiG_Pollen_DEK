@@ -3,6 +3,7 @@
 
 pub mod factories;
 
+use std::sync::Arc;
 use dek_pdp_sdk::AdapterRegistry;
 use dek_policy_router::PolicyRouter;
 use serde_json::Value;
@@ -40,7 +41,7 @@ pub fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
     if let Some(openfga) = payload.get("openfga") {
         if !openfga.is_null() {
             match registry.build_adapter("openfga", openfga) {
-                Ok(adapter) => router.register_evaluator("openfga", adapter),
+                Ok(adapter) => router.register_evaluator("openfga", Arc::from(adapter)),
                 Err(e) => {
                     if registry.get("openfga").is_none() {
                         warn!("OpenFGA adapter requested but not compiled in this build.");
@@ -55,7 +56,7 @@ pub fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
     if let Some(cedar) = payload.get("cedar") {
         if !cedar.is_null() {
             match registry.build_adapter("cedar", cedar) {
-                Ok(adapter) => router.register_evaluator("cedar", adapter),
+                Ok(adapter) => router.register_evaluator("cedar", Arc::from(adapter)),
                 Err(e) => {
                     if registry.get("cedar").is_none() {
                         warn!("Cedar adapter requested but not compiled in this build.");
@@ -70,7 +71,7 @@ pub fn load_router_config(router: &mut PolicyRouter, payload: &Value) {
     if let Some(wasm) = payload.get("opa_wasm") {
         if !wasm.is_null() {
             match registry.build_adapter("opa_wasm", wasm) {
-                Ok(adapter) => router.register_evaluator("opa_wasm", adapter),
+                Ok(adapter) => router.register_evaluator("opa_wasm", Arc::from(adapter)),
                 Err(e) => {
                     if registry.get("opa_wasm").is_none() {
                         warn!("OPA adapter requested but not compiled in this build.");

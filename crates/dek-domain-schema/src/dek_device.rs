@@ -18,4 +18,24 @@ pub struct DekDevice {
     pub enforcement_ceiling: String,
     pub status: String,
     pub last_seen_at: String,
+    
+    // P2 Fleet Management
+    #[serde(default)]
+    pub rollout_ring: Option<RolloutRing>,
+    #[serde(default)]
+    pub device_groups: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RolloutRing {
+    Alpha,
+    Beta,
+    Stable,
+}
+
+impl Default for RolloutRing {
+    fn default() -> Self {
+        RolloutRing::Stable
+    }
 }

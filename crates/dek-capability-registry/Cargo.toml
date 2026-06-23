@@ -12,6 +12,7 @@ rust-version.workspace = true
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+dek-domain-schema = { path = "../dek-domain-schema" }
 
 [lints]
 workspace = true

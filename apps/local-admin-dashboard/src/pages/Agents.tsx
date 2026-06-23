@@ -86,16 +86,25 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
                   </td>
                   <td className="px-6 py-4">
                     <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium ${
-                        agent.meta.status === "active"
-                          ? "bg-emerald-500/10 text-emerald-500"
-                          : "bg-muted text-muted-foreground"
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        agent.enforcement_mode === "Enforce"
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm shadow-emerald-500/10"
+                          : agent.enforcement_mode === "Observe"
+                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 shadow-sm shadow-amber-500/10"
+                          : agent.enforcement_mode === "Shadow"
+                          ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-sm shadow-blue-500/10"
+                          : "bg-muted text-muted-foreground border border-border"
                       }`}
                     >
                       <span
-                        className={`h-1.5 w-1.5 rounded-full ${agent.meta.status === "active" ? "bg-emerald-500" : "bg-muted-foreground"}`}
+                        className={`h-1.5 w-1.5 rounded-full shadow-sm ${
+                          agent.enforcement_mode === "Enforce" ? "bg-emerald-500 shadow-emerald-500/50" 
+                          : agent.enforcement_mode === "Observe" ? "bg-amber-500 shadow-amber-500/50"
+                          : agent.enforcement_mode === "Shadow" ? "bg-blue-500 shadow-blue-500/50"
+                          : "bg-muted-foreground"
+                        }`}
                       />
-                      {agent.meta.status}
+                      {agent.enforcement_mode || "Not Enforceable"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-muted-foreground">

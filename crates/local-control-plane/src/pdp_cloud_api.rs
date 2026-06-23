@@ -80,19 +80,38 @@ async fn disconnect_cloud_profile(
 
 async fn cloud_login(
     Path(_tenant): Path<String>,
-    State(_st): State<AppState>,
+    State(st): State<AppState>,
 ) -> Json<CloudPdpProfile> {
-    // Stub: mock login
-    Json(CloudPdpProfile {
+    let mock_endpoint = "http://127.0.0.1:43891";
+    let client = reqwest::Client::new();
+    
+    // Attempt contract discovery
+    let contract_ver = match client.get(&format!("{}/.well-known/pollen-contract", mock_endpoint)).send().await {
+        Ok(resp) if resp.status().is_success() => {
+            if let Ok(json) = resp.json::<serde_json::Value>().await {
+                json.get("preferred").and_then(|v| v.as_str()).unwrap_or("1.0.0").to_string()
+            } else {
+                "1.0.0".to_string()
+            }
+        }
+        _ => "1.0.0".to_string()
+    };
+
+    let profile = CloudPdpProfile {
         tenant_id: Some("mock-tenant".into()),
         device_id: Some("mock-device-123".into()),
-        pdp_endpoint: Some("https://pdp.mock-cloud.pollen.io".into()),
-        contract_version: Some("1.0.0".into()),
+        pdp_endpoint: Some(mock_endpoint.into()),
+        contract_version: Some(contract_ver),
         auth_method: Some("mTLS".into()),
         status: "ready".into(),
         manual_override_enabled: false,
         health: Some(serde_json::json!({ "status": "healthy" })),
-    })
+    };
+
+    // Store the cloud profile locally (stubbed persistence for now since pdp_store schema doesn't have an exact cloud profile column, we can store it as a runtime).
+    let _ = st.pdp_store.upsert_runtime("local", "pollen_cloud", &serde_json::to_value(&profile).unwrap()).await;
+
+    Json(profile)
 }
 
 async fn cloud_discover(

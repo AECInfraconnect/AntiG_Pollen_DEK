@@ -8,7 +8,7 @@ members = [
     "crates/dek-a2a-mediator",
     "crates/dek-execution-sandbox",
     "crates/dek-policy-presets"
-]
+, "examples/plugin-hello-world"]
 exclude = [
     "crates/dek-ebpf-prog",
     "fuzz"

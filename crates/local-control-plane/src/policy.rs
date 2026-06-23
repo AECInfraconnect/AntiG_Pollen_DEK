@@ -10,6 +10,7 @@ use axum::{
 };
 use dek_control_plane_api::policy::*;
 use serde_json::json;
+use std::sync::Arc;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -514,7 +515,7 @@ async fn simulate_policy(
             Ok(adapter) => {
                 router.register_evaluator(
                     "sim_evaluator",
-                    Box::new(SimulateRuntime {
+                    Arc::new(SimulateRuntime {
                         cedar_adapter: adapter,
                     }),
                 );
@@ -572,7 +573,7 @@ async fn simulate_policy(
             }
             router.register_evaluator(
                 "sim_evaluator",
-                Box::new(dek_policy_runtime::MockPolicyRuntime),
+                Arc::new(dek_policy_runtime::MockPolicyRuntime),
             );
         }
     } else if language_id == "open_fga" || language_id == "fga" {
@@ -605,7 +606,7 @@ async fn simulate_policy(
             }
             router.register_evaluator(
                 "sim_evaluator",
-                Box::new(dek_policy_runtime::MockPolicyRuntime),
+                Arc::new(dek_policy_runtime::MockPolicyRuntime),
             );
         }
     } else {

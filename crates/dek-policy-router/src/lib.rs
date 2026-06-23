@@ -165,7 +165,7 @@ impl PdpStats {
 
 pub struct PolicyRouter {
     routes: Vec<Route>,
-    evaluators: HashMap<String, Box<dyn PolicyRuntime>>,
+    evaluators: HashMap<String, Arc<dyn PolicyRuntime>>,
     breakers: HashMap<String, Arc<CircuitBreaker>>,
     stats: HashMap<String, Arc<Mutex<PdpStats>>>,
     overrides: Mutex<HashMap<String, ManualOverride>>,
@@ -237,7 +237,7 @@ impl PolicyRouter {
         None
     }
 
-    pub fn register_evaluator(&mut self, id: &str, evaluator: Box<dyn PolicyRuntime>) {
+    pub fn register_evaluator(&mut self, id: &str, evaluator: Arc<dyn PolicyRuntime>) {
         self.evaluators.insert(id.to_string(), evaluator);
         self.breakers.insert(
             id.to_string(),
@@ -740,9 +740,44 @@ impl PolicyRouter {
             }
         }
 
+        // Dispatch Shadow PDPs asynchronously
+        let shadow_pdps = route.shadow_pdp_ids.clone();
+        if !shadow_pdps.is_empty() && !dry_run {
+            for shadow_id in &shadow_pdps {
+                if let Some(evaluator) = self.evaluators.get(shadow_id) {
+                    let evaluator_clone = evaluator.clone();
+                    let payload_clone = payload.clone();
+                    let shadow_id_clone = shadow_id.clone();
+                    let timeout_ms = self.pdp_timeout_ms;
+                    
+                    tokio::spawn(async move {
+                        let timeout_dur = std::time::Duration::from_millis(timeout_ms);
+                        match tokio::time::timeout(timeout_dur, evaluator_clone.evaluate(payload_clone)).await {
+                            Ok(Ok(res)) => {
+                                tracing::info!(
+                                    "SHADOW_EVAL_COMPLETE: evaluator={} decision={}",
+                                    shadow_id_clone,
+                                    res.decision
+                                );
+                            }
+                            Ok(Err(e)) => {
+                                tracing::error!("SHADOW_EVAL_ERROR: evaluator={} error={}", shadow_id_clone, e);
+                            }
+                            Err(_) => {
+                                tracing::error!("SHADOW_EVAL_TIMEOUT: evaluator={} timeout_ms={}", shadow_id_clone, timeout_ms);
+                            }
+                        }
+                    });
+                } else {
+                    tracing::warn!("Shadow PDP '{}' not found in evaluators map", shadow_id);
+                }
+            }
+        }
+
         combined_decision.metadata = serde_json::json!({
             "matched_route": route.id,
             "selected_engines": to_evaluate_clone,
+            "shadow_engines": shadow_pdps,
             "auto_selected": route.pdp_required.is_empty() && route.pdp_pool.is_empty(),
         });
 
@@ -800,7 +835,7 @@ mod tests {
     #[tokio::test]
     async fn test_route_matches_and_allows() {
         let mut router = PolicyRouter::new();
-        router.register_evaluator("dummy", Box::new(DummyRuntime));
+        router.register_evaluator("dummy", Arc::new(DummyRuntime));
         router.set_routes(vec![Route {
             id: "route1".into(),
             priority: 10,
@@ -862,7 +897,7 @@ mod tests {
     #[tokio::test]
     async fn test_authorize_dry_run() {
         let mut router = PolicyRouter::new();
-        router.register_evaluator("dummy", Box::new(DummyRuntime));
+        router.register_evaluator("dummy", Arc::new(DummyRuntime));
         router.set_routes(vec![Route {
             id: "route1".into(),
             priority: 10,
@@ -898,7 +933,7 @@ mod tests {
     #[tokio::test]
     async fn test_pdp_conditional() {
         let mut router = PolicyRouter::new();
-        router.register_evaluator("dummy", Box::new(DummyRuntime));
+        router.register_evaluator("dummy", Arc::new(DummyRuntime));
         router.set_routes(vec![Route {
             id: "route1".into(),
             priority: 10,

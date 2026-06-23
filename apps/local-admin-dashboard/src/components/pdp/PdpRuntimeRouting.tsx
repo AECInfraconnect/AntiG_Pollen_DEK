@@ -4,6 +4,7 @@ import type { PdpRuntime } from "../../services/api";
 import { LocalEnginesTab } from "./LocalEnginesTab";
 import { CloudPdpTab } from "./CloudPdpTab";
 import { RoutingTab } from "./RoutingTab";
+import { OpenFgaWizard } from "./OpenFgaWizard";
 
 export function PdpRuntimeRouting() {
   const [activeTab, setActiveTab] = useState<
@@ -16,6 +17,7 @@ export function PdpRuntimeRouting() {
     "opa_server" | "openfga_server" | "cedar_http"
   >("opa_server");
   const [newRemoteUrl, setNewRemoteUrl] = useState("http://localhost:8181");
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   // Routing state moved to RoutingTab
 
@@ -126,10 +128,18 @@ export function PdpRuntimeRouting() {
 
         {activeTab === "remote" && (
           <div className="space-y-6">
-            <p className="text-sm text-muted-foreground">
-              Add third-party or custom external PDP servers to be used by the
-              local DEK.
-            </p>
+            <div className="flex justify-between items-start">
+              <p className="text-sm text-muted-foreground max-w-lg">
+                Add third-party or custom external PDP servers to be used by the
+                local DEK.
+              </p>
+              <button 
+                onClick={() => setIsWizardOpen(true)}
+                className="text-xs px-3 py-1.5 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition-colors font-medium"
+              >
+                OpenFGA Quick Setup
+              </button>
+            </div>
 
             <div className="flex gap-2 max-w-2xl bg-muted/30 p-4 rounded-lg items-center">
               <input
@@ -244,6 +254,12 @@ export function PdpRuntimeRouting() {
           </div>
         )}
       </div>
+
+      <OpenFgaWizard 
+        isOpen={isWizardOpen} 
+        onClose={() => setIsWizardOpen(false)} 
+        onComplete={loadData} 
+      />
     </div>
   );
 }

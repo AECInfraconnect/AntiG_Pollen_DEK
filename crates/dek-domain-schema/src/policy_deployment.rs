@@ -28,6 +28,13 @@ pub struct PolicyDeployment {
     pub params: serde_json::Value,
     pub control_bindings: Vec<ControlBinding>,
     pub rollback_snapshot_json: Option<String>,
+    
+    // P2 Fleet Management target rules
+    #[serde(default)]
+    pub target_rollout_ring: Option<crate::dek_device::RolloutRing>,
+    #[serde(default)]
+    pub target_device_groups: Vec<String>,
+    
     pub created_at: String,
     pub updated_at: String,
 }

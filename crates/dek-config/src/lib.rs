@@ -148,8 +148,14 @@ pub struct PolicyConfig {
     pub cedar: Option<CedarConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub opa_wasm: Option<WasmConfig>,
-    #[serde(flatten)]
-    pub extra: std::collections::HashMap<String, serde_json::Value>,
+    #[serde(default)]
+    pub features: std::collections::HashMap<String, serde_json::Value>,
+
+    // P2 Fleet Management
+    #[serde(default)]
+    pub rollout_ring: String,
+    #[serde(default)]
+    pub device_groups: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -218,6 +224,12 @@ pub struct DekConfig {
     pub scale: ScaleConfig,
     #[serde(default)]
     pub preflight_tests: Vec<PreflightTest>,
+
+    // P2 Fleet Management
+    #[serde(default)]
+    pub rollout_ring: String,
+    #[serde(default)]
+    pub device_groups: Vec<String>,
 }
 
 impl DekConfig {

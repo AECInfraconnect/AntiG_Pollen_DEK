@@ -171,7 +171,7 @@ async fn main() -> Result<()> {
         if let Ok(adapter) = OpenFgaAdapter::new("http://localhost:8080", "store_123", None) {
             router.register_evaluator(
                 "openfga",
-                Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))),
+                Arc::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))),
             );
         }
     }
@@ -929,6 +929,7 @@ async fn handle_mcp_request(
                         "default:pii-redactor:1.0:dev",
                         uuid::Uuid::new_v4().to_string(),
                         final_response.to_string().as_bytes(),
+                        100_000_000,
                     )
                     .await
                 {
@@ -1074,6 +1075,7 @@ async fn handle_filter_response(
             "default:pii-redactor:1.0:dev",
             uuid::Uuid::new_v4().to_string(),
             payload.to_string().as_bytes(),
+            100_000_000,
         )
         .await
     {

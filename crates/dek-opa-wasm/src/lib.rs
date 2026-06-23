@@ -299,7 +299,7 @@ impl PolicyEvaluator for OpaWasmAdapter {
             .map_err(|e| PluginError::Execution(format!("opa_eval_ctx_set_input failed: {e}")))?;
 
         // 3. Evaluate with timeout using tokio
-        let eval_limits = self.profile.clone();
+        let _eval_limits = self.profile.clone();
         let eval_task = async move {
             let eval = instance
                 .get_typed_func::<i32, ()>(&mut store, "opa_eval")

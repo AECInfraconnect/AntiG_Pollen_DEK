@@ -20,6 +20,7 @@ import { PolicyPresets } from "./pages/PolicyPresets";
 // Merged composite pages
 import { AgentsAndModels } from "./pages/Ecosystem/AgentsAndModels";
 import { Integrations } from "./pages/Ecosystem/Integrations";
+import { PluginMarketplace } from "./pages/Ecosystem/PluginMarketplace";
 import { IdentityNetwork } from "./pages/Data/IdentityNetwork";
 import { AlertsAndShadowAI } from "./pages/Monitoring/AlertsAndShadowAI";
 
@@ -33,6 +34,7 @@ function App() {
           {/* AI Ecosystem */}
           <Route path="agents" element={<AgentsAndModels />} />
           <Route path="integrations" element={<Integrations />} />
+          <Route path="plugin-marketplace" element={<PluginMarketplace />} />
 
           {/* Data & Context */}
           <Route path="resources" element={<Resources />} />

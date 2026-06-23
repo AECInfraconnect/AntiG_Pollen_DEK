@@ -114,6 +114,36 @@ impl Default for WasmProfile {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PdpProbeResult {
+    pub status: String,
+    pub latency_ms: u64,
+    pub message: String,
+}
+
+pub async fn probe_local_pdp(runtime: &dyn PolicyRuntime) -> PdpProbeResult {
+    let input = serde_json::json!({
+        "principal": "agent:test",
+        "action": "tool.call",
+        "resource": "tool:test",
+        "context": { "probe": true }
+    });
+
+    let started = std::time::Instant::now();
+    match runtime.evaluate(input).await {
+        Ok(decision) => PdpProbeResult {
+            status: "ready".into(),
+            latency_ms: started.elapsed().as_millis() as u64,
+            message: format!("probe decision: {}", decision.allow),
+        },
+        Err(err) => PdpProbeResult {
+            status: "misconfigured".into(),
+            latency_ms: started.elapsed().as_millis() as u64,
+            message: err.to_string(),
+        },
+    }
+}
+
 struct RuntimeState {
     wasi: wasmtime_wasi::preview1::WasiP1Ctx,
     limits: StoreLimits,

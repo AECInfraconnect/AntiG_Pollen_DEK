@@ -23,17 +23,17 @@ pub struct WebAiSignature {
 pub const WEB_AI_CATALOG: &[WebAiSignature] = &[
     WebAiSignature {
         domain: "chatgpt.com",
-        name: "ChatGPT",
+        name: "ChatGPT in Browser",
         vendor: "OpenAI",
     },
     WebAiSignature {
         domain: "claude.ai",
-        name: "Claude",
+        name: "Claude in Browser",
         vendor: "Anthropic",
     },
     WebAiSignature {
         domain: "chat.deepseek.com",
-        name: "DeepSeek Chat",
+        name: "Deepseek in Browser",
         vendor: "DeepSeek",
     },
     WebAiSignature {

@@ -61,6 +61,7 @@ export interface AiAgent {
   trust_level: "untrusted" | "low" | "medium" | "high" | "system";
   capabilities: string[];
   labels: Record<string, string>;
+  enforcement_mode?: "Observe" | "Enforce" | "Shadow" | "NotEnforceable";
 }
 
 export interface McpServer {

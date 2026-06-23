@@ -73,10 +73,12 @@ impl PluginWorker {
         })
     }
 
-    pub async fn invoke_json(&mut self, input: &[u8], max_output: usize) -> Result<Vec<u8>> {
+    pub async fn invoke_json(&mut self, input: &[u8], max_output: usize, fuel_limit: u64) -> Result<Vec<u8>> {
         if input.len() > 1024 * 1024 {
             bail!("plugin input too large");
         }
+
+        self.store.set_fuel(fuel_limit).context("failed to set fuel limit")?;
 
         self.uses += 1;
 

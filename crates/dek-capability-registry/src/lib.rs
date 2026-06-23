@@ -55,3 +55,23 @@ impl DeviceCapabilities {
             || self.kernel.macos_nefilter.is_some()
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct CompatibilityRule {
+    pub preset_id: String,
+    pub pep_types: Vec<String>,
+    pub pdp_kinds: Vec<dek_domain_schema::PdpKind>,
+    pub required_resources: Vec<String>,
+    pub enforceable: bool,
+}
+
+pub fn is_compatible(
+    rule: &CompatibilityRule,
+    pep: &dek_domain_schema::PepBinding,
+    pdp: &dek_domain_schema::PdpRuntime,
+) -> bool {
+    rule.pep_types.contains(&pep.pep_type)
+        && rule.pdp_kinds.contains(&pdp.kind)
+        && pep.can_observe
+        && (!rule.enforceable || pep.can_enforce)
+}

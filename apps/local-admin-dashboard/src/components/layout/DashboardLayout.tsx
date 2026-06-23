@@ -1,10 +1,12 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { FirstRunWizard } from "../FirstRunWizard";
 
 export function DashboardLayout() {
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
+      <FirstRunWizard />
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden relative">
         <Header />

@@ -199,6 +199,7 @@ impl SqliteStore {
             include_str!("../migrations/20260622000000_policy_preset_deployments.sql"),
             include_str!("../migrations/20260622000001_agent_inventory.sql"),
             include_str!("../migrations/20260623000000_observability_v2.sql"),
+            include_str!("../migrations/20260623000000_resource_access_ledger.sql"),
         ];
 
         let tx = conn.transaction()?;
@@ -1839,7 +1840,7 @@ impl ObservabilityStore for SqliteStore {
 
     async fn cost_breakdown_by_agent(
         &self,
-        tenant: &str,
+        _tenant: &str,
         since: &str,
     ) -> Result<Vec<AgentCostRow>> {
         let since_val = since.to_string();

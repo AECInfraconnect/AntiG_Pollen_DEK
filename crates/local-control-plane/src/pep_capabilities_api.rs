@@ -20,6 +20,14 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/pep-capabilities/check",
             post(check_capabilities),
         )
+        .route(
+            "/v1/tenants/:tenant/peps/:id/probe",
+            post(probe_pep),
+        )
+        .route(
+            "/v1/tenants/:tenant/peps/:id/bind",
+            post(bind_pep),
+        )
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -170,5 +178,37 @@ async fn check_capabilities(
                 "reason": "Cryptographic signature validation is mocked"
             }
         ]
+    })))
+}
+
+async fn probe_pep(
+    Path((_tenant, pep_id)): Path<(String, String)>,
+    State(_state): State<AppState>,
+    Json(_req): Json<serde_json::Value>,
+) -> ApiResult<Json<serde_json::Value>> {
+    Ok(Json(serde_json::json!({
+        "pep_id": pep_id,
+        "status": "ready",
+        "latency_ms": 12,
+        "can_observe": true,
+        "can_enforce": true,
+    })))
+}
+
+async fn bind_pep(
+    Path((tenant, _pep_id)): Path<(String, String)>,
+    State(state): State<AppState>,
+    Json(req): Json<serde_json::Value>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let binding_id = format!("bind_{}", uuid::Uuid::new_v4());
+    let mut binding = req.clone();
+    binding["id"] = serde_json::Value::String(binding_id.clone());
+    binding["status"] = serde_json::Value::String("active".to_string());
+    
+    state.registry_store.upsert_raw(&tenant, "pep_binding", &binding_id, &binding).await.map_err(crate::error::ApiError::Internal)?;
+
+    Ok(Json(serde_json::json!({
+        "binding_id": binding_id,
+        "status": "active"
     })))
 }

@@ -195,7 +195,7 @@ async fn main() -> Result<()> {
                 let pool_key = "system:pii-redactor:1.0.0:dummy";
                 let input_bytes = serde_json::to_vec(&payload).unwrap_or_default();
                 if let Ok(redacted_bytes) = plugin_host_clone
-                    .invoke(pool_key, "auto".into(), &input_bytes)
+                    .invoke(pool_key, "auto".into(), &input_bytes, 100_000_000)
                     .await
                 {
                     if let Ok(redacted) = serde_json::from_slice(&redacted_bytes) {

@@ -1,0 +1,15 @@
+[package]
+name = "plugin-hello-world"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+dek-plugin-sdk = { path = "../../crates/dek-plugin-sdk" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[lints]
+workspace = true

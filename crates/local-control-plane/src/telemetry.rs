@@ -59,6 +59,46 @@ pub fn router() -> Router<AppState> {
             get(list_policy_deployments),
         )
         .route("/v1/tenants/:tenant/logs/pep-health", get(list_pep_health))
+        .route(
+            "/v1/tenants/:tenant/telemetry/export",
+            get(export_telemetry),
+        )
+}
+
+#[derive(serde::Deserialize)]
+pub struct ExportParams {
+    pub format: Option<String>,
+}
+
+async fn export_telemetry(
+    axum::extract::Path(tenant): axum::extract::Path<String>,
+    axum::extract::Query(params): axum::extract::Query<ExportParams>,
+    axum::extract::State(st): axum::extract::State<crate::state::AppState>,
+) -> impl axum::response::IntoResponse {
+    let format = params.format.unwrap_or_else(|| "json".into());
+    let mut all_events = Vec::new();
+    
+    for kind in &["decision", "tool_invocation", "resource_access", "policy_deployment", "agent_telemetry"] {
+        if let Ok(mut evs) = st.telemetry_store.list_telemetry(&tenant, kind).await {
+            all_events.append(&mut evs);
+        }
+    }
+    
+    if format == "csv" {
+        let mut csv = String::new();
+        csv.push_str("timestamp,event_type,event_id,tenant_id,details\n");
+        for ev in all_events {
+            let ts = ev.get("timestamp").and_then(|v| v.as_str()).unwrap_or("");
+            let etype = ev.get("type").and_then(|v| v.as_str()).unwrap_or("");
+            let eid = ev.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let details = ev.to_string().replace("\"", "\"\"");
+            csv.push_str(&format!("{},{},{},{},\"{}\"\n", ts, etype, eid, tenant, details));
+        }
+        
+        ([(axum::http::header::CONTENT_TYPE, "text/csv")], csv).into_response()
+    } else {
+        ([(axum::http::header::CONTENT_TYPE, "application/json")], serde_json::to_string(&all_events).unwrap_or_else(|_| "[]".into())).into_response()
+    }
 }
 
 #[derive(serde::Deserialize)]

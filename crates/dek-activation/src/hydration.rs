@@ -33,7 +33,7 @@ pub async fn hydrate_runtime(
                 );
                 router.register_evaluator(
                     "openfga",
-                    Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))),
+                    Arc::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))),
                 );
             }
             Err(e) => {
@@ -52,7 +52,7 @@ pub async fn hydrate_runtime(
                 info!("Loaded Cedar adapter from src: {:?}", cedar_cfg.policy_src);
                 router.register_evaluator(
                     "cedar",
-                    Box::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))),
+                    Arc::new(dek_plugin_host::EvaluatorAdapter::new(Arc::new(adapter))),
                 );
             }
             Err(e) => {

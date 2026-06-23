@@ -95,6 +95,7 @@
       "config_parsers": ["mcp_servers_object"],
       "control_strategies": ["mcp_stdio_wrapper", "observe_only"]
     },
+    {
       "id": "ollama",
       "display_name": "Ollama",
       "agent_type": "local_model_server",
@@ -165,6 +166,41 @@
         "config": ["~/.jupyter", "~/.ipython"],
         "ai_extension": ["jupyter_ai_config.json"]
       },
+      "control_strategies": ["observe_only"]
+    },
+    {
+      "id": "manus_ai",
+      "display_name": "Manus AI",
+      "agent_type": "desktop_agent",
+      "process_names": ["manus", "manus.exe", "Manus"],
+      "control_strategies": ["network_egress_pep", "observe_only"]
+    },
+    {
+      "id": "antigravity",
+      "display_name": "Gemini Pro ใน Antigravity",
+      "agent_type": "ide_extension_agent",
+      "process_names": ["antigravity", "antigravity.exe"],
+      "control_strategies": ["network_egress_pep", "observe_only"]
+    },
+    {
+      "id": "chatgpt_web",
+      "display_name": "ChatGPT in Browser",
+      "agent_type": "web_agent",
+      "process_names": [],
+      "control_strategies": ["observe_only"]
+    },
+    {
+      "id": "claude_web",
+      "display_name": "Claude in Browser",
+      "agent_type": "web_agent",
+      "process_names": [],
+      "control_strategies": ["observe_only"]
+    },
+    {
+      "id": "deepseek_web",
+      "display_name": "Deepseek in Browser",
+      "agent_type": "web_agent",
+      "process_names": [],
       "control_strategies": ["observe_only"]
     }
   ]

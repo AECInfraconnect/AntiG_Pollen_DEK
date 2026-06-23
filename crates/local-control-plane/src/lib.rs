@@ -14,6 +14,7 @@ pub mod signing;
 pub mod state;
 pub mod store;
 pub mod telemetry;
+pub mod anomaly_detector;
 
 pub mod agent_discovery_api;
 pub mod agent_inventory_api;

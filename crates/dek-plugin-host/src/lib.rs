@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
+pub mod manifest;
+
 use dek_plugin_sdk::{EvalRequest, PluginError, PolicyEvaluator, TransformPlugin};
 use dek_policy_router::{PolicyRouter, Route};
 use dek_policy_runtime::{PolicyDecision as OldPolicyDecision, PolicyError, PolicyRuntime};
@@ -112,7 +114,7 @@ impl PluginHost {
         self.policy_evaluators.insert(id.clone(), evaluator.clone());
 
         let adapter = EvaluatorAdapter::new(evaluator);
-        self.router.register_evaluator(&id, Box::new(adapter));
+        self.router.register_evaluator(&id, Arc::new(adapter));
     }
 
     pub fn register_transform(&mut self, transform: Arc<dyn TransformPlugin>) {

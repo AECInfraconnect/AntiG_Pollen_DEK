@@ -17,6 +17,9 @@ pub fn build_engine(cfg: &WasmHostConfig) -> Result<Engine> {
 
     // Required if the host uses async functions or wants async execution.
     config.async_support(true);
+    
+    // Fuel for limiting CPU instructions
+    config.consume_fuel(true);
 
     // Copy-on-write memory initialization can reduce instantiation cost for modules
     // with initialized memory segments.

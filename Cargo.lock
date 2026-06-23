@@ -1848,6 +1848,7 @@ dependencies = [
 name = "dek-capability-registry"
 version = "1.0.0-beta.10"
 dependencies = [
+ "dek-domain-schema",
  "serde",
  "serde_json",
 ]
@@ -2337,8 +2338,11 @@ dependencies = [
  "dek-plugin-sdk",
  "dek-policy-router",
  "dek-policy-runtime",
+ "ed25519-dalek",
+ "hex",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "tokio",
  "tracing",
 ]
@@ -5276,6 +5280,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51bae2ac328883f7acdfea3d66a7c35751187f870bc81f94563733a154d7a670"
 dependencies = [
  "plotters-backend",
+]
+
+[[package]]
+name = "plugin-hello-world"
+version = "0.1.0"
+dependencies = [
+ "dek-plugin-sdk",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
