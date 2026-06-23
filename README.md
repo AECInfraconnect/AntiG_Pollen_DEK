@@ -1,6 +1,6 @@
-# Pollek DEK — Open-Source Device Enforcement Kit
+# POLLEK.AI -- Open Source Local AI Policy Enforcement Kit
 
-![Pollek DEK Logo](assets/POLLEK_LOGO.png)
+<img src="assets/POLLEK_LOGO.png" alt="POLLEK.AI Logo" width="250" />
 
 [![CI](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/ci.yml/badge.svg)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
