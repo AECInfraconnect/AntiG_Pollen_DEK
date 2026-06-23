@@ -141,10 +141,7 @@ impl<K: key_manager::OsKeyStore> Spool<K> {
         }
 
         let writer = state.writer.as_mut().ok_or_else(|| {
-            SpoolError::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Writer failed to initialize",
-            ))
+            SpoolError::Io(std::io::Error::other("Writer failed to initialize"))
         })?;
         writer.append_event(&key, &event)?;
 
