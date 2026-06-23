@@ -318,8 +318,38 @@ async fn register_candidate(
         ));
     }
 
-    let agent = dek_agent_discovery::to_registry_agent_v2(&tenant, &candidate, &req)
+    let mut agent = dek_agent_discovery::to_registry_agent_v2(&tenant, &candidate, &req)
         .map_err(ApiError::Internal)?;
+
+    // Bind stable identity
+    agent.agent_id = candidate.candidate_id.replace("cand_", "agent_");
+
+    // Deduplicate: check if this stable identity is already registered
+    if let Ok(Some(_)) = st
+        .registry_store
+        .get_raw(&tenant, "agent", &agent.agent_id)
+        .await
+    {
+        return Err(ApiError::BadRequest(
+            "Agent with this identity is already registered".to_string(),
+        ));
+    }
+
+    // Schema Validation
+    let schema = schemars::schema_for!(dek_control_plane_api::registry::AiAgent);
+    let schema_val = serde_json::to_value(&schema).map_err(|e| ApiError::Internal(e.into()))?;
+    if let Ok(compiled) = jsonschema::JSONSchema::compile(&schema_val) {
+        let agent_val = serde_json::to_value(&agent).map_err(|e| ApiError::Internal(e.into()))?;
+        let res = compiled
+            .validate(&agent_val)
+            .map_err(|errs| errs.map(|e| e.to_string()).collect::<Vec<_>>().join(", "));
+        if let Err(msg) = res {
+            return Err(ApiError::BadRequest(format!(
+                "Schema validation failed: {}",
+                msg
+            )));
+        }
+    }
 
     let registered = st
         .registry_store

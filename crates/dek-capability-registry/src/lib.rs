@@ -18,14 +18,8 @@ pub struct OsInfo {
     pub arch: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum ControlLevel {
-    ObserveOnly,
-    Enforce,
-    Degraded,
-    Unsupported,
-}
+pub mod detect;
+use dek_domain_schema::control_level::ControlLevel;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PdpCapability {
@@ -125,19 +119,6 @@ impl CapabilityRegistry {
             None
         };
 
-        let wfp_control_level = if std::env::consts::OS == "windows" {
-            let ver = os_version.as_str();
-            // Basic guard: require Windows 10/11
-            // Real probe would also check admin / driver signature here.
-            if ver.contains("Windows 10") || ver.contains("Windows 11") {
-                ControlLevel::Enforce
-            } else {
-                ControlLevel::ObserveOnly
-            }
-        } else {
-            ControlLevel::Unsupported
-        };
-
         DeviceCapabilities {
             device_id: self.device_id.clone(),
             dek_version: self.dek_version.clone(),
@@ -156,24 +137,7 @@ impl CapabilityRegistry {
                     control_level: ControlLevel::Enforce,
                 },
             ],
-            pep: vec![
-                PepCapability {
-                    r#type: "stdio".to_string(),
-                    transports: vec!["mcp".to_string()],
-                    control_level: ControlLevel::Enforce,
-                },
-                PepCapability {
-                    r#type: "kernel".to_string(),
-                    transports: vec![],
-                    control_level: if std::env::consts::OS == "windows" {
-                        wfp_control_level
-                    } else if std::env::consts::OS == "linux" || std::env::consts::OS == "macos" {
-                        ControlLevel::Enforce
-                    } else {
-                        ControlLevel::Unsupported
-                    },
-                },
-            ],
+            pep: detect::detect_pep_capabilities(),
             plugins: vec![],
             kernel: KernelCapabilities {
                 linux_ebpf,

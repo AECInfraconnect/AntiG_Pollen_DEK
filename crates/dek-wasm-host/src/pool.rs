@@ -32,6 +32,8 @@ pub struct PluginWorkerPool {
     max_warm: usize,
     max_worker_uses: u64,
     invoke_timeout: Duration,
+    max_memory_bytes: usize,
+    table_elements: u32,
     warm: Mutex<VecDeque<PluginWorker>>,
     semaphore: Arc<Semaphore>,
 }
@@ -47,6 +49,8 @@ impl PluginWorkerPool {
         max_concurrency: usize,
         max_worker_uses: u64,
         invoke_timeout: Duration,
+        max_memory_bytes: usize,
+        table_elements: u32,
     ) -> Self {
         Self {
             engine,
@@ -56,6 +60,8 @@ impl PluginWorkerPool {
             max_warm,
             max_worker_uses,
             invoke_timeout,
+            max_memory_bytes,
+            table_elements,
             warm: Mutex::new(VecDeque::new()),
             semaphore: Arc::new(Semaphore::new(max_concurrency)),
         }
@@ -69,6 +75,8 @@ impl PluginWorkerPool {
                 self.generation,
                 format!("prewarm-{i}"),
                 self.invoke_timeout,
+                self.max_memory_bytes,
+                self.table_elements,
             )
             .await?;
             self.warm.lock().push_back(worker);
@@ -100,6 +108,8 @@ impl PluginWorkerPool {
             self.generation,
             request_id,
             self.invoke_timeout,
+            self.max_memory_bytes,
+            self.table_elements,
         )
         .await?;
 

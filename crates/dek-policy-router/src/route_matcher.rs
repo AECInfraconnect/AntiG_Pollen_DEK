@@ -2,6 +2,7 @@ use crate::context::PolicyContext;
 use crate::Route;
 use dek_policy_runtime::PolicyDecision;
 
+#[allow(clippy::result_large_err)]
 pub fn match_route<'a>(
     routes: &'a [Route],
     ctx: &PolicyContext<'_>,

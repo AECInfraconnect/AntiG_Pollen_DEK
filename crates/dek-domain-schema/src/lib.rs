@@ -5,6 +5,7 @@ pub mod agent;
 pub mod bundle;
 pub mod capabilities;
 pub mod capability_inventory;
+pub mod control_level;
 pub mod core_objects;
 pub mod decision;
 pub mod dek_device;

@@ -47,6 +47,10 @@ async fn commit_deploy(
     let bundle: dek_bundle_format::PollenPolicyBundle = serde_json::from_value(payload.clone())
         .map_err(|e| crate::error::ApiError::BadRequest(format!("Invalid bundle: {}", e)))?;
 
+    assert_pep_supports(&bundle, &state)
+        .await
+        .map_err(|e| crate::error::ApiError::BadRequest(e.to_string()))?;
+
     activate_bundle(bundle, &state)
         .await
         .map_err(|e| crate::error::ApiError::Internal(anyhow::anyhow!(e)))?;
@@ -56,6 +60,27 @@ async fn commit_deploy(
         "message": "Deployment committed and activated successfully",
         "bundle_version": "v1.0.1"
     })))
+}
+
+pub async fn assert_pep_supports(
+    bundle: &dek_bundle_format::PollenPolicyBundle,
+    _state: &AppState,
+) -> anyhow::Result<()> {
+    let local_caps = dek_capability_registry::detect::detect_pep_capabilities();
+    for req_pep in &bundle.compatibility.required_pep_types {
+        let cap = local_caps.iter().find(|c| &c.r#type == req_pep);
+        if let Some(c) = cap {
+            if bundle.activation.strategy == "enforce" && !c.control_level.may_block() {
+                return Err(anyhow::anyhow!(
+                    "PEP {} does not support enforce mode on this OS",
+                    req_pep
+                ));
+            }
+        } else {
+            return Err(anyhow::anyhow!("Required PEP {} is not available", req_pep));
+        }
+    }
+    Ok(())
 }
 
 pub async fn activate_bundle(

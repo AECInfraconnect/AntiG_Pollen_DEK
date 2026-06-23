@@ -22,6 +22,8 @@ impl PluginWorker {
         generation: u64,
         request_id: String,
         timeout: Duration,
+        max_memory_bytes: usize,
+        table_elements: u32,
     ) -> Result<Self> {
         let state = HostState {
             tenant_id: compiled.key.tenant_id.clone(),
@@ -31,8 +33,8 @@ impl PluginWorker {
             deadline: Instant::now() + timeout,
             dirty: false,
             limits: wasmtime::StoreLimitsBuilder::new()
-                .memory_size(64 * 1024 * 1024)
-                .table_elements(4096)
+                .memory_size(max_memory_bytes)
+                .table_elements(table_elements)
                 .instances(2)
                 .memories(1)
                 .tables(1)

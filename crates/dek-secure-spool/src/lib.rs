@@ -140,9 +140,10 @@ impl<K: key_manager::OsKeyStore> Spool<K> {
             state.current_segment_id = segment_id;
         }
 
-        let writer = state.writer.as_mut().ok_or_else(|| {
-            SpoolError::Io(std::io::Error::other("Writer failed to initialize"))
-        })?;
+        let writer = state
+            .writer
+            .as_mut()
+            .ok_or_else(|| SpoolError::Io(std::io::Error::other("Writer failed to initialize")))?;
         writer.append_event(&key, &event)?;
 
         state.last_hash = audit_entry.entry_hash;
@@ -236,6 +237,7 @@ impl<K: key_manager::OsKeyStore> Spool<K> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use std::fs;

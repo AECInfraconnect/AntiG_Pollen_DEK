@@ -30,7 +30,7 @@ pub fn verify_bundle_signature(
 
     // Canonicalize manifest
     let canonical_payload =
-        serde_json::to_vec(manifest).map_err(|e| ActivationError::SchemaFailed(e.to_string()))?;
+        serde_jcs::to_vec(manifest).map_err(|e| ActivationError::SchemaFailed(e.to_string()))?;
 
     use base64::{engine::general_purpose, Engine as _};
     let signature_bytes = general_purpose::STANDARD

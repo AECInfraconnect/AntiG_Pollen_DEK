@@ -26,6 +26,7 @@ async fn main() -> anyhow::Result<()> {
     }
     tracing_subscriber::fmt::init();
 
+    #[allow(clippy::expect_used)]
     let metrics_handle = dek_metrics::install_recorder("local-control-plane")
         .expect("Failed to install Prometheus recorder");
 

@@ -56,6 +56,8 @@ impl WasmPluginHost {
             self.cfg.default_max_concurrency,
             self.cfg.max_worker_uses,
             Duration::from_millis(self.cfg.invoke_timeout_ms),
+            self.cfg.max_memory_bytes,
+            self.cfg.table_elements,
         ));
 
         pool.prewarm().await?;

@@ -111,9 +111,28 @@ impl ActivationCoordinator {
             return Ok(ActivationDecision::Rejected(e));
         }
 
+        // Atomic swap of the file and LKG
+        let active_path = dek_config::paths::get_active_bundle_path();
+        if req.manifest_path != active_path {
+            crate::lkg::update_lkg(); // Backup current active bundle
+
+            // Atomic swap on POSIX: write to temp, rename. Here we just rename staging file (req.manifest_path) to active_path
+            // If the rename fails on Windows due to file locking, we use copy then delete
+            if let Err(e) = std::fs::rename(&req.manifest_path, &active_path) {
+                warn!("Rename failed, falling back to copy for atomic swap: {}", e);
+                if let Err(copy_err) = std::fs::copy(&req.manifest_path, &active_path) {
+                    *state = ActivationState::Failed;
+                    let _ = crate::lkg::rollback_lkg();
+                    return Ok(ActivationDecision::Rejected(ActivationError::SchemaFailed(
+                        format!("Failed to copy bundle: {}", copy_err),
+                    )));
+                }
+            }
+        }
+
         // 4. Activate modes and update LKG
+        // 4. Activate modes
         *state = ActivationState::Activating;
-        crate::lkg::update_lkg();
         if let Err(e) =
             crate::modes::handle_activation_mode(&req.manifest_path, config.activation_mode.clone())
         {

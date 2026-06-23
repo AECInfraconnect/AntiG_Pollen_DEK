@@ -7,6 +7,8 @@ edition = "2021"
 [dependencies]
 dek-control-plane-api = { version = "0.1.0", path = "../dek-control-plane-api" }
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time", "net", "signal"] }
+jsonschema = "0.17.1"
+schemars = "0.8"
 axum = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -30,6 +32,7 @@ rand = "0.8.5"
 thiserror.workspace = true
 dek-policy-intent = { version = "1.0.0-beta.1", path = "../dek-policy-intent" }
 dek-bundle-format = { version = "1.0.0-beta.1", path = "../dek-bundle-format" }
+dek-capability-registry = { path = "../dek-capability-registry" }
 dek-policy-compiler = { version = "1.0.0-beta.1", path = "../dek-policy-compiler" }
 pollen-contract = { version = "0.1.0", path = "../../contracts/generated/rust/pollen-contract" }
 dek-policy-router = { version = "0.1.0", path = "../dek-policy-router" }

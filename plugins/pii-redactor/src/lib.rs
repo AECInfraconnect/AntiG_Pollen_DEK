@@ -272,8 +272,9 @@ impl DeterministicDetector {
 }
 
 impl Default for DeterministicDetector {
+    #[allow(clippy::panic)]
     fn default() -> Self {
-        Self::new().unwrap_or_else(|_| panic!("Failed to compile regexes")) // Unused in this context, just satisfying Default for now.
+        Self::new().unwrap_or_else(|_| panic!("Failed to compile regexes"))
     }
 }
 

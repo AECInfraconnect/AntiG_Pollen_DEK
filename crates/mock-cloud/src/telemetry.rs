@@ -55,10 +55,10 @@ fn ingest(state: &AppState, events: Vec<serde_json::Value>, kind: &str) -> Resul
         let event: TelemetryEvent = match serde_json::from_value(event_val.clone()) {
             Ok(e) => e,
             Err(e) => {
-                println!(
+                tracing::error!(
                     "Failed to deserialize TelemetryEvent: {} for payload: {}",
                     e,
-                    serde_json::to_string(&event_val).unwrap()
+                    serde_json::to_string(&event_val).unwrap_or_default()
                 );
                 continue;
             }
