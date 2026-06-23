@@ -44,7 +44,7 @@ pub async fn run(cloud_url: &str) -> Result<()> {
     } else {
         None
     };
-    let client = EnrollClient::new(cloud_url, CLIENT_ID, SCOPE, ca_pem.as_deref());
+    let client = EnrollClient::new(cloud_url, CLIENT_ID, SCOPE, ca_pem.as_deref())?;
     let enrollment = client
         .run(|p: &UserPrompt| {
             println!("──────────────────────────────────────────────");

@@ -14,7 +14,6 @@
 //! Side-effect-free: returns an [`Enrollment`]; the caller drives SPIRE + writes
 //! bootstrap.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use serde::Deserialize;
 use std::future::Future;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -153,20 +152,25 @@ pub struct EnrollClient {
 }
 
 impl EnrollClient {
-    pub fn new(cloud_url: &str, client_id: &str, scope: &str, ca_pem: Option<&str>) -> Self {
+    pub fn new(
+        cloud_url: &str,
+        client_id: &str,
+        scope: &str,
+        ca_pem: Option<&str>,
+    ) -> Result<Self, reqwest::Error> {
         let mut builder = reqwest::Client::builder().timeout(Duration::from_secs(15));
         if let Some(pem) = ca_pem {
             if let Ok(cert) = reqwest::Certificate::from_pem(pem.as_bytes()) {
                 builder = builder.add_root_certificate(cert);
             }
         }
-        Self {
+        Ok(Self {
             cloud_url: cloud_url.trim_end_matches('/').to_string(),
             client_id: client_id.to_string(),
             scope: scope.to_string(),
-            http: builder.build().expect("build http client"),
+            http: builder.build()?,
             retry: RetryPolicy::default(),
-        }
+        })
     }
 
     pub fn with_retry_policy(mut self, retry: RetryPolicy) -> Self {

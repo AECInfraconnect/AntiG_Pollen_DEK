@@ -69,8 +69,11 @@ use state::AppState;
 use dek_activation::snapshot::{DekMetadata, RuntimeSnapshot};
 use dek_config::{BootstrapConfig, DekConfig};
 
+mod panic_guard;
+
 #[tokio::main]
 async fn main() -> Result<()> {
+    panic_guard::install_panic_hook();
     if rustls::crypto::CryptoProvider::get_default().is_none() {
         rustls::crypto::ring::default_provider()
             .install_default()

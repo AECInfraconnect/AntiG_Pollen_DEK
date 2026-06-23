@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::len_without_is_empty)]
+#![allow(clippy::expect_used, clippy::len_without_is_empty)]
 use regex::Regex;
 use serde_json::Value;
 
@@ -14,11 +14,14 @@ impl Redactor {
         let patterns = vec![
             // Basic regex to catch typical secrets.
             // Bearer tokens
-            Regex::new(r"Bearer\s+[A-Za-z0-9\-\._~\+/]+").unwrap(),
+            Regex::new(r"Bearer\s+[A-Za-z0-9\-\._~\+/]+")
+                .expect("PII regex is a valid compile-time constant"),
             // Basic Auth
-            Regex::new(r"Basic\s+[A-Za-z0-9\+/=]+").unwrap(),
+            Regex::new(r"Basic\s+[A-Za-z0-9\+/=]+")
+                .expect("PII regex is a valid compile-time constant"),
             // Common API keys
-            Regex::new(r"(?i)(api_key|apikey|sk_live|sk_test|sk-[a-zA-Z0-9]{32,})").unwrap(),
+            Regex::new(r"(?i)(api_key|apikey|sk_live|sk_test|sk-[a-zA-Z0-9]{32,})")
+                .expect("PII regex is a valid compile-time constant"),
         ];
         Self { patterns }
     }

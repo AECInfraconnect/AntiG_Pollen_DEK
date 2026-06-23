@@ -188,8 +188,11 @@ async fn send_ipc_request(host: &str, port: u16, req_payload: IpcRequest) -> Res
     }
 }
 
+mod panic_guard;
+
 #[tokio::main]
 async fn main() -> Result<()> {
+    panic_guard::install_panic_hook();
     if rustls::crypto::CryptoProvider::get_default().is_none() {
         rustls::crypto::ring::default_provider()
             .install_default()

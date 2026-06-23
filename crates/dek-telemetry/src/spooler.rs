@@ -13,7 +13,7 @@
 //!  - Public API is unchanged (new/push/pop_batch/delete_batch/len) plus two
 //!    additions (`with_capacity`, `vacuum`); existing callers keep working.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::len_without_is_empty)]
+#![allow(clippy::len_without_is_empty)]
 
 use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit, OsRng},
@@ -289,6 +289,7 @@ impl Spooler {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
     use serde_json::json;
 

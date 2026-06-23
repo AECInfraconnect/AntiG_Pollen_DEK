@@ -75,7 +75,7 @@ async fn enroll_then_attest_yields_x509_svid() {
     });
 
     // --- 1) device flow ---
-    let client = dek_enroll::EnrollClient::new(&base, "pollen-dek", "dek.enroll", None);
+    let client = dek_enroll::EnrollClient::new(&base, "pollen-dek", "dek.enroll", None).unwrap();
     let enrollment = client
         .run(|p| {
             // sanity: server returned a user code + verification uri

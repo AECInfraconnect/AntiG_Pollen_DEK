@@ -62,7 +62,7 @@ mimalloc = "0.1.52"
 
 [dev-dependencies]
 wiremock = "0.6"
-tokio = { workspace = true, features = ["full", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time", "macros", "signal", "net"] }
 walkdir = "2.3"
 axum = "0.7"
 rcgen = { version = "0.13", features = ["pem", "x509-parser"] }
@@ -95,7 +95,8 @@ maintainer = "Pollen DEK Team"
 copyright = "2026 Pollen"
 license-file = ["../../LICENSE", "4"]
 depends = "$auto"
-section = "utility"
+compression-type = "xz"
+section = "admin"
 priority = "optional"
 assets = [
     ["target/release/dek-core", "usr/bin/", "755"],

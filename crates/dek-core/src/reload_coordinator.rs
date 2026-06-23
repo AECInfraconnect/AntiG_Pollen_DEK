@@ -1,4 +1,3 @@
-#![allow(clippy::panic)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
@@ -17,12 +16,11 @@ pub struct ReloadCoordinator {
 }
 
 impl ReloadCoordinator {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self> {
         let initial_router = std::sync::Arc::new(dek_policy_router::PolicyRouter::new());
-        let initial_plugin_host = std::sync::Arc::new(
-            dek_wasm_host::WasmPluginHost::new(dek_wasm_host::WasmHostConfig::default())
-                .unwrap_or_else(|_| panic!("Failed to init dummy WasmPluginHost")),
-        );
+        let initial_plugin_host = std::sync::Arc::new(dek_wasm_host::WasmPluginHost::new(
+            dek_wasm_host::WasmHostConfig::default(),
+        )?);
         let initial_snapshot = RuntimeSnapshot::new(
             0,
             "initial".into(),
@@ -31,9 +29,9 @@ impl ReloadCoordinator {
             dek_activation::snapshot::DekMetadata::default(),
             initial_plugin_host,
         );
-        Self {
+        Ok(Self {
             activation: Arc::new(ActivationCoordinator::new(initial_snapshot)),
-        }
+        })
     }
 
     pub async fn process_staged_bundle(

@@ -37,13 +37,13 @@ ignore = [
     "RUSTSEC-2026-0095",
     # owner: @AECInfraconnect/security, expiry: 2026-09-20, issue: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/issues/1007, reason: Awaiting tokio patch for timer exploit
     "RUSTSEC-2026-0096",
-    # owner: @maintainer, reason: derivative is unmaintained, transitive from keyring/zbus, no patch available
+    # owner: @AECInfraconnect/security, expiry: 2026-12-31, issue: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/issues/1008, reason: derivative is unmaintained, transitive from keyring/zbus, no patch available
     "RUSTSEC-2024-0388",
-    # owner: @maintainer, reason: fxhash is unmaintained, transitive from wasmtime, no patch available
+    # owner: @AECInfraconnect/security, expiry: 2026-12-31, issue: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/issues/1009, reason: fxhash is unmaintained, transitive from wasmtime, no patch available
     "RUSTSEC-2025-0057",
-    # owner: @maintainer, reason: instant is unmaintained, transitive from fastrand
+    # owner: @AECInfraconnect/security, expiry: 2026-12-31, issue: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/issues/1010, reason: instant is unmaintained, transitive from fastrand
     "RUSTSEC-2024-0384",
-    # owner: @maintainer, reason: paste is unmaintained, transitive from wasmtime
+    # owner: @AECInfraconnect/security, expiry: 2026-12-31, issue: https://github.com/AECInfraconnect/AntiG_Pollen_DEK/issues/1011, reason: paste is unmaintained, transitive from wasmtime
     "RUSTSEC-2024-0436",
 ]
 

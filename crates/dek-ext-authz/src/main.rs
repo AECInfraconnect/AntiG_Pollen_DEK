@@ -229,8 +229,11 @@ impl Authorization for ExtAuthzService {
     }
 }
 
+mod panic_guard;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    panic_guard::install_panic_hook();
     if rustls::crypto::CryptoProvider::get_default().is_none() {
         rustls::crypto::ring::default_provider()
             .install_default()

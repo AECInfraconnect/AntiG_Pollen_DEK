@@ -13,8 +13,11 @@ use local_control_plane::signing::LocalSigner;
 use local_control_plane::state::AppState;
 use local_control_plane::store;
 
+mod panic_guard;
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    panic_guard::install_panic_hook();
     if rustls::crypto::CryptoProvider::get_default().is_none() {
         rustls::crypto::ring::default_provider()
             .install_default()

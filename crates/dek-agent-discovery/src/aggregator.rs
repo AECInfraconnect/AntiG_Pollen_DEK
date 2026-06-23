@@ -116,8 +116,13 @@ pub fn aggregate_evidence(
 
                     if let Some(models_val) = ev.data.get("models") {
                         if let Some(arr) = models_val.as_array() {
-                            if let Some(clf_def) = &dek_fingerprint_defs::embedded_baseline().model_classifier {
-                                let clf = dek_fingerprint_defs::model_classifier::ModelClassifier::new(clf_def);
+                            if let Some(clf_def) =
+                                &dek_fingerprint_defs::embedded_baseline().model_classifier
+                            {
+                                let clf =
+                                    dek_fingerprint_defs::model_classifier::ModelClassifier::new(
+                                        clf_def,
+                                    );
                                 for v in arr {
                                     if let Some(m_name) = v.as_str() {
                                         let mc = clf.classify(m_name);

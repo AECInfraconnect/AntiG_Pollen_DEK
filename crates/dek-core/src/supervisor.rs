@@ -247,7 +247,7 @@ impl Supervisor {
         let liveness = crate::watchdog::Liveness::default();
         let _wd_handle = crate::watchdog::spawn(liveness.clone(), self.cancel.clone());
 
-        let reload_coordinator = Arc::new(crate::reload_coordinator::ReloadCoordinator::new());
+        let reload_coordinator = Arc::new(crate::reload_coordinator::ReloadCoordinator::new()?);
 
         let renew_cfg = crate::svid_renewal::RenewalConfig {
             renew_url: format!(

@@ -68,7 +68,10 @@ enum Commands {
     },
 }
 
+mod panic_guard;
+
 fn main() -> Result<()> {
+    panic_guard::install_panic_hook();
     if rustls::crypto::CryptoProvider::get_default().is_none() {
         rustls::crypto::ring::default_provider()
             .install_default()

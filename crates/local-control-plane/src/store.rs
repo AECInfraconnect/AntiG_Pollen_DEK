@@ -2,9 +2,9 @@ use anyhow::Result;
 use dek_agent_observer::model::{AgentObservationEvent, CostLedgerEntry};
 use dek_control_plane_api::registry::*;
 use dek_policy_suggester::model::PolicySuggestion;
+use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use sqlx::{Row, SqlitePool};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[async_trait::async_trait]
 pub trait RegistryStore: Send + Sync {
@@ -179,14 +179,67 @@ pub trait ObservabilityStore: Send + Sync {
 }
 
 pub struct SqliteStore {
-    pool: SqlitePool,
+    conn: Arc<Mutex<Connection>>,
 }
 
 impl SqliteStore {
+    fn run_migrations(conn: &mut Connection) -> Result<()> {
+        let migrations = [
+            include_str!("../migrations/20260609000000_init.sql"),
+            include_str!("../migrations/20260609000001_bundle_blobs.sql"),
+            include_str!("../migrations/20260609000002_telemetry_events.sql"),
+            include_str!("../migrations/20260620000000_observability_and_policy_suggestions.sql"),
+            include_str!("../migrations/20260621000000_pdp_runtimes_and_routes.sql"),
+            include_str!("../migrations/20260622000000_policy_preset_deployments.sql"),
+            include_str!("../migrations/20260622000001_agent_inventory.sql"),
+        ];
+
+        let tx = conn.transaction()?;
+        tx.execute(
+            "CREATE TABLE IF NOT EXISTS _migrations (id INTEGER PRIMARY KEY, name TEXT NOT NULL)",
+            [],
+        )?;
+
+        for (i, sql) in migrations.iter().enumerate() {
+            let id = i as i64;
+            let count: i64 = tx.query_row(
+                "SELECT count(*) FROM _migrations WHERE id = ?1",
+                params![id],
+                |row| row.get(0),
+            )?;
+            if count == 0 {
+                tx.execute_batch(sql)?;
+                tx.execute(
+                    "INSERT INTO _migrations (id, name) VALUES (?1, ?2)",
+                    params![id, format!("mig_{}", id)],
+                )?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
     pub async fn new(db_url: &str) -> Result<Self> {
-        let pool = SqlitePool::connect(db_url).await?;
-        sqlx::migrate!("./migrations").run(&pool).await?;
-        Ok(Self { pool })
+        let db_path = db_url
+            .strip_prefix("sqlite://")
+            .unwrap_or(db_url)
+            .to_string();
+        let conn = tokio::task::spawn_blocking(move || -> Result<Connection> {
+            let mut conn = if db_path == ":memory:" || db_path.is_empty() {
+                Connection::open_in_memory()?
+            } else {
+                Connection::open(&db_path)?
+            };
+
+            Self::run_migrations(&mut conn)?;
+
+            Ok(conn)
+        })
+        .await??;
+
+        Ok(Self {
+            conn: Arc::new(Mutex::new(conn)),
+        })
     }
 
     async fn upsert_object<T: Serialize>(
@@ -201,26 +254,29 @@ impl SqliteStore {
         let json_data = serde_json::to_string(data)?;
         let now = chrono::Utc::now().to_rfc3339();
 
-        sqlx::query(
-            r#"
-            INSERT INTO registry_objects (tenant_id, object_type, object_id, status, source, data_json, created_at, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
-            ON CONFLICT(tenant_id, object_type, object_id) DO UPDATE SET
-                status=excluded.status,
-                source=excluded.source,
-                data_json=excluded.data_json,
-                updated_at=excluded.updated_at
-            "#
-        )
-        .bind(tenant_id)
-        .bind(object_type)
-        .bind(object_id)
-        .bind(status)
-        .bind(source)
-        .bind(json_data)
-        .bind(now)
-        .execute(&self.pool)
-        .await?;
+        let tenant_id = tenant_id.to_string();
+        let object_type = object_type.to_string();
+        let object_id = object_id.to_string();
+        let status = status.to_string();
+        let source = source.to_string();
+
+        let conn_arc = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let conn = conn_arc.lock().unwrap();
+            conn.execute(
+                r#"
+                INSERT INTO registry_objects (tenant_id, object_type, object_id, status, source, data_json, created_at, updated_at)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
+                ON CONFLICT(tenant_id, object_type, object_id) DO UPDATE SET
+                    status=excluded.status,
+                    source=excluded.source,
+                    data_json=excluded.data_json,
+                    updated_at=excluded.updated_at
+                "#,
+                params![tenant_id, object_type, object_id, status, source, json_data, now],
+            )?;
+            Ok(())
+        }).await??;
 
         Ok(())
     }
@@ -231,16 +287,24 @@ impl SqliteStore {
         object_type: &str,
         object_id: &str,
     ) -> Result<Option<T>> {
-        let row = sqlx::query("SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3")
-            .bind(tenant_id)
-            .bind(object_type)
-            .bind(object_id)
-            .fetch_optional(&self.pool)
-            .await?;
+        let tenant_id = tenant_id.to_string();
+        let object_type = object_type.to_string();
+        let object_id = object_id.to_string();
 
-        if let Some(row) = row {
-            let data_json: String = row.try_get("data_json")?;
-            let obj: T = serde_json::from_str(&data_json)?;
+        let conn_arc = self.conn.clone();
+        let data_json = tokio::task::spawn_blocking(move || -> Result<Option<String>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare("SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3")?;
+            let mut rows = stmt.query(params![tenant_id, object_type, object_id])?;
+            if let Some(row) = rows.next()? {
+                Ok(Some(row.get(0)?))
+            } else {
+                Ok(None)
+            }
+        }).await??;
+
+        if let Some(json) = data_json {
+            let obj: T = serde_json::from_str(&json)?;
             Ok(Some(obj))
         } else {
             Ok(None)
@@ -252,18 +316,27 @@ impl SqliteStore {
         tenant_id: &str,
         object_type: &str,
     ) -> Result<Vec<T>> {
-        let rows = sqlx::query(
-            "SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2",
-        )
-        .bind(tenant_id)
-        .bind(object_type)
-        .fetch_all(&self.pool)
-        .await?;
+        let tenant_id = tenant_id.to_string();
+        let object_type = object_type.to_string();
+
+        let conn_arc = self.conn.clone();
+        let data_jsons = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare(
+                "SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2",
+            )?;
+            let mut rows = stmt.query(params![tenant_id, object_type])?;
+            let mut results = Vec::new();
+            while let Some(row) = rows.next()? {
+                results.push(row.get(0)?);
+            }
+            Ok(results)
+        })
+        .await??;
 
         let mut results = Vec::new();
-        for row in rows {
-            let data_json: String = row.try_get("data_json")?;
-            let obj: T = serde_json::from_str(&data_json)?;
+        for json in data_jsons {
+            let obj: T = serde_json::from_str(&json)?;
             results.push(obj);
         }
         Ok(results)
@@ -275,16 +348,21 @@ impl SqliteStore {
         object_type: &str,
         object_id: &str,
     ) -> Result<bool> {
-        let result = sqlx::query(
-            "DELETE FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3",
-        )
-        .bind(tenant_id)
-        .bind(object_type)
-        .bind(object_id)
-        .execute(&self.pool)
-        .await?;
+        let tenant_id = tenant_id.to_string();
+        let object_type = object_type.to_string();
+        let object_id = object_id.to_string();
 
-        Ok(result.rows_affected() > 0)
+        let conn_arc = self.conn.clone();
+        let rows_affected = tokio::task::spawn_blocking(move || -> Result<usize> {
+            let conn = conn_arc.lock().unwrap();
+            let changed = conn.execute(
+                "DELETE FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3",
+                params![tenant_id, object_type, object_id],
+            )?;
+            Ok(changed)
+        }).await??;
+
+        Ok(rows_affected > 0)
     }
 }
 
@@ -318,22 +396,27 @@ impl RegistryStore for SqliteStore {
     ) -> Result<()> {
         let json_data = serde_json::to_string(data)?;
         let now = chrono::Utc::now().to_rfc3339();
-        sqlx::query(
-            r#"
-            INSERT INTO registry_objects (tenant_id, object_type, object_id, status, source, data_json, created_at, updated_at)
-            VALUES (?1, ?2, ?3, 'raw', 'raw', ?4, ?5, ?5)
-            ON CONFLICT(tenant_id, object_type, object_id) DO UPDATE SET
-                data_json=excluded.data_json,
-                updated_at=excluded.updated_at
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(object_type)
-        .bind(object_id)
-        .bind(&json_data)
-        .bind(&now)
-        .execute(&self.pool)
-        .await?;
+
+        let tenant_id = tenant_id.to_string();
+        let object_type = object_type.to_string();
+        let object_id = object_id.to_string();
+
+        let conn_arc = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let conn = conn_arc.lock().unwrap();
+            conn.execute(
+                r#"
+                INSERT INTO registry_objects (tenant_id, object_type, object_id, status, source, data_json, created_at, updated_at)
+                VALUES (?1, ?2, ?3, 'raw', 'raw', ?4, ?5, ?5)
+                ON CONFLICT(tenant_id, object_type, object_id) DO UPDATE SET
+                    data_json=excluded.data_json,
+                    updated_at=excluded.updated_at
+                "#,
+                params![tenant_id, object_type, object_id, json_data, now],
+            )?;
+            Ok(())
+        })
+        .await??;
         Ok(())
     }
 
@@ -343,18 +426,27 @@ impl RegistryStore for SqliteStore {
         object_type: &str,
         object_id: &str,
     ) -> Result<Option<serde_json::Value>> {
-        let row = sqlx::query(
-            "SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3",
-        )
-        .bind(tenant_id)
-        .bind(object_type)
-        .bind(object_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let tenant_id = tenant_id.to_string();
+        let object_type = object_type.to_string();
+        let object_id = object_id.to_string();
 
-        if let Some(r) = row {
-            let json_str: String = r.try_get("data_json")?;
-            let data: serde_json::Value = serde_json::from_str(&json_str)?;
+        let conn_arc = self.conn.clone();
+        let json_str = tokio::task::spawn_blocking(move || -> Result<Option<String>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare(
+                "SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3"
+            )?;
+            let mut rows = stmt.query(params![tenant_id, object_type, object_id])?;
+            if let Some(row) = rows.next()? {
+                Ok(Some(row.get(0)?))
+            } else {
+                Ok(None)
+            }
+        })
+        .await??;
+
+        if let Some(s) = json_str {
+            let data: serde_json::Value = serde_json::from_str(&s)?;
             Ok(Some(data))
         } else {
             Ok(None)
@@ -362,18 +454,27 @@ impl RegistryStore for SqliteStore {
     }
 
     async fn list_raw(&self, tenant_id: &str, object_type: &str) -> Result<Vec<serde_json::Value>> {
-        let rows = sqlx::query(
-            "SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2",
-        )
-        .bind(tenant_id)
-        .bind(object_type)
-        .fetch_all(&self.pool)
-        .await?;
+        let tenant_id = tenant_id.to_string();
+        let object_type = object_type.to_string();
+
+        let conn_arc = self.conn.clone();
+        let json_strs = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare(
+                "SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2",
+            )?;
+            let mut rows = stmt.query(params![tenant_id, object_type])?;
+            let mut out = Vec::new();
+            while let Some(row) = rows.next()? {
+                out.push(row.get(0)?);
+            }
+            Ok(out)
+        })
+        .await??;
 
         let mut out = Vec::new();
-        for r in rows {
-            let json_str: String = r.try_get("data_json")?;
-            if let Ok(data) = serde_json::from_str(&json_str) {
+        for s in json_strs {
+            if let Ok(data) = serde_json::from_str(&s) {
                 out.push(data);
             }
         }
@@ -567,23 +668,27 @@ impl RegistryStore for SqliteStore {
     ) -> Result<dek_domain_schema::AgentCapabilityInventory> {
         let json_data = serde_json::to_string(&inventory)?;
         let now = chrono::Utc::now().timestamp();
-        sqlx::query(
-            r#"
-            INSERT INTO agent_inventory (tenant, agent_id, device_id, inventory_json, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5)
-            ON CONFLICT(tenant, agent_id) DO UPDATE SET
-                device_id=excluded.device_id,
-                inventory_json=excluded.inventory_json,
-                updated_at=excluded.updated_at
-            "#,
-        )
-        .bind(&inventory.tenant_id)
-        .bind(&inventory.agent_id)
-        .bind(&inventory.device_id)
-        .bind(&json_data)
-        .bind(now)
-        .execute(&self.pool)
-        .await?;
+        let conn_arc = self.conn.clone();
+        let tenant_id = inventory.tenant_id.clone();
+        let agent_id = inventory.agent_id.clone();
+        let device_id = inventory.device_id.clone();
+
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let conn = conn_arc.lock().unwrap();
+            conn.execute(
+                r#"
+                INSERT INTO agent_inventory (tenant, agent_id, device_id, inventory_json, updated_at)
+                VALUES (?1, ?2, ?3, ?4, ?5)
+                ON CONFLICT(tenant, agent_id) DO UPDATE SET
+                    device_id=excluded.device_id,
+                    inventory_json=excluded.inventory_json,
+                    updated_at=excluded.updated_at
+                "#,
+                params![tenant_id, agent_id, device_id, json_data, now],
+            )?;
+            Ok(())
+        })
+        .await??;
         Ok(inventory)
     }
 
@@ -592,15 +697,25 @@ impl RegistryStore for SqliteStore {
         tenant_id: &str,
         agent_id: &str,
     ) -> Result<Option<dek_domain_schema::AgentCapabilityInventory>> {
-        let row = sqlx::query(
-            "SELECT inventory_json FROM agent_inventory WHERE tenant = ?1 AND agent_id = ?2",
-        )
-        .bind(tenant_id)
-        .bind(agent_id)
-        .fetch_optional(&self.pool)
-        .await?;
-        if let Some(r) = row {
-            let json_str: String = r.try_get("inventory_json")?;
+        let tenant_id = tenant_id.to_string();
+        let agent_id = agent_id.to_string();
+
+        let conn_arc = self.conn.clone();
+        let json_str = tokio::task::spawn_blocking(move || -> Result<Option<String>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare(
+                "SELECT inventory_json FROM agent_inventory WHERE tenant = ?1 AND agent_id = ?2",
+            )?;
+            let mut rows = stmt.query(params![tenant_id, agent_id])?;
+            if let Some(row) = rows.next()? {
+                Ok(Some(row.get(0)?))
+            } else {
+                Ok(None)
+            }
+        })
+        .await??;
+
+        if let Some(json_str) = json_str {
             let inv: dek_domain_schema::AgentCapabilityInventory = serde_json::from_str(&json_str)?;
             Ok(Some(inv))
         } else {
@@ -612,13 +727,23 @@ impl RegistryStore for SqliteStore {
         &self,
         tenant_id: &str,
     ) -> Result<Vec<dek_domain_schema::AgentCapabilityInventory>> {
-        let rows = sqlx::query("SELECT inventory_json FROM agent_inventory WHERE tenant = ?1")
-            .bind(tenant_id)
-            .fetch_all(&self.pool)
-            .await?;
+        let tenant_id = tenant_id.to_string();
+        let conn_arc = self.conn.clone();
+        let json_strs = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt =
+                conn.prepare("SELECT inventory_json FROM agent_inventory WHERE tenant = ?1")?;
+            let mut rows = stmt.query(params![tenant_id])?;
+            let mut out = Vec::new();
+            while let Some(row) = rows.next()? {
+                out.push(row.get(0)?);
+            }
+            Ok(out)
+        })
+        .await??;
+
         let mut out = Vec::new();
-        for r in rows {
-            let json_str: String = r.try_get("inventory_json")?;
+        for json_str in json_strs {
             if let Ok(inv) = serde_json::from_str(&json_str) {
                 out.push(inv);
             }
@@ -627,12 +752,19 @@ impl RegistryStore for SqliteStore {
     }
 
     async fn delete_agent_inventory(&self, tenant_id: &str, agent_id: &str) -> Result<bool> {
-        let result = sqlx::query("DELETE FROM agent_inventory WHERE tenant = ?1 AND agent_id = ?2")
-            .bind(tenant_id)
-            .bind(agent_id)
-            .execute(&self.pool)
-            .await?;
-        Ok(result.rows_affected() > 0)
+        let tenant_id = tenant_id.to_string();
+        let agent_id = agent_id.to_string();
+        let conn_arc = self.conn.clone();
+        let rows_affected = tokio::task::spawn_blocking(move || -> Result<usize> {
+            let conn = conn_arc.lock().unwrap();
+            let changed = conn.execute(
+                "DELETE FROM agent_inventory WHERE tenant = ?1 AND agent_id = ?2",
+                params![tenant_id, agent_id],
+            )?;
+            Ok(changed)
+        })
+        .await??;
+        Ok(rows_affected > 0)
     }
 }
 
@@ -707,29 +839,41 @@ impl PolicyStore for SqliteStore {
     }
 
     async fn put_blob(&self, tenant: &str, path: &str, bytes: &[u8]) -> Result<()> {
-        sqlx::query(
-            "INSERT INTO bundle_blobs (tenant_id, path, bytes) VALUES (?1, ?2, ?3) ON CONFLICT(tenant_id, path) DO UPDATE SET bytes=excluded.bytes"
-        )
-        .bind(tenant)
-        .bind(path)
-        .bind(bytes)
-        .execute(&self.pool)
-        .await?;
+        let tenant = tenant.to_string();
+        let path = path.to_string();
+        let bytes = bytes.to_vec();
+        let conn_arc = self.conn.clone();
+
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let conn = conn_arc.lock().unwrap();
+            conn.execute(
+                "INSERT INTO bundle_blobs (tenant_id, path, bytes) VALUES (?1, ?2, ?3) ON CONFLICT(tenant_id, path) DO UPDATE SET bytes=excluded.bytes",
+                params![tenant, path, bytes]
+            )?;
+            Ok(())
+        }).await??;
         Ok(())
     }
 
     async fn get_blob(&self, tenant: &str, path: &str) -> Result<Option<Vec<u8>>> {
-        let row = sqlx::query("SELECT bytes FROM bundle_blobs WHERE tenant_id = ?1 AND path = ?2")
-            .bind(tenant)
-            .bind(path)
-            .fetch_optional(&self.pool)
-            .await?;
-        if let Some(row) = row {
-            let bytes: Vec<u8> = row.try_get("bytes")?;
-            Ok(Some(bytes))
-        } else {
-            Ok(None)
-        }
+        let tenant = tenant.to_string();
+        let path = path.to_string();
+        let conn_arc = self.conn.clone();
+
+        let bytes = tokio::task::spawn_blocking(move || -> Result<Option<Vec<u8>>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt =
+                conn.prepare("SELECT bytes FROM bundle_blobs WHERE tenant_id = ?1 AND path = ?2")?;
+            let mut rows = stmt.query(params![tenant, path])?;
+            if let Some(row) = rows.next()? {
+                Ok(Some(row.get(0)?))
+            } else {
+                Ok(None)
+            }
+        })
+        .await??;
+
+        Ok(bytes)
     }
     async fn upsert_preset_deployment(
         &self,
@@ -758,33 +902,34 @@ impl PolicyStore for SqliteStore {
             .get("params")
             .map(|v| v.to_string())
             .unwrap_or_else(|| "{}".to_string());
+        let tenant_id = tenant_id.to_string();
+        let deployment_id = deployment_id.to_string();
+        let preset_id = preset_id.to_string();
+        let preset_version = preset_version.to_string();
+        let control_mode = control_mode.to_string();
+        let status = status.to_string();
         let now = chrono::Utc::now().to_rfc3339();
 
-        sqlx::query(
-            r#"
-            INSERT INTO policy_preset_deployments (
-                tenant_id, deployment_id, preset_id, preset_version, control_mode, status, target_scopes_json, parameters_json, created_at, updated_at
-            )
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)
-            ON CONFLICT(tenant_id, deployment_id) DO UPDATE SET
-                status=excluded.status,
-                control_mode=excluded.control_mode,
-                target_scopes_json=excluded.target_scopes_json,
-                parameters_json=excluded.parameters_json,
-                updated_at=excluded.updated_at
-            "#
-        )
-        .bind(tenant_id)
-        .bind(deployment_id)
-        .bind(preset_id)
-        .bind(preset_version)
-        .bind(control_mode)
-        .bind(status)
-        .bind(target_scopes_json)
-        .bind(parameters_json)
-        .bind(now)
-        .execute(&self.pool)
-        .await?;
+        let conn_arc = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let conn = conn_arc.lock().unwrap();
+            conn.execute(
+                r#"
+                INSERT INTO policy_preset_deployments (
+                    tenant_id, deployment_id, preset_id, preset_version, control_mode, status, target_scopes_json, parameters_json, created_at, updated_at
+                )
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)
+                ON CONFLICT(tenant_id, deployment_id) DO UPDATE SET
+                    status=excluded.status,
+                    control_mode=excluded.control_mode,
+                    target_scopes_json=excluded.target_scopes_json,
+                    parameters_json=excluded.parameters_json,
+                    updated_at=excluded.updated_at
+                "#,
+                params![tenant_id, deployment_id, preset_id, preset_version, control_mode, status, target_scopes_json, parameters_json, now]
+            )?;
+            Ok(())
+        }).await??;
         Ok(())
     }
 
@@ -793,55 +938,65 @@ impl PolicyStore for SqliteStore {
         tenant_id: &str,
         deployment_id: &str,
     ) -> Result<Option<serde_json::Value>> {
-        let row = sqlx::query(
-            "SELECT * FROM policy_preset_deployments WHERE tenant_id = ?1 AND deployment_id = ?2",
-        )
-        .bind(tenant_id)
-        .bind(deployment_id)
-        .fetch_optional(&self.pool)
-        .await?;
-        if let Some(r) = row {
-            let mut val = serde_json::json!({
-                "deployment_id": r.try_get::<String, _>("deployment_id")?,
-                "preset_id": r.try_get::<String, _>("preset_id")?,
-                "preset_version": r.try_get::<String, _>("preset_version").unwrap_or_default(),
-                "control_mode": r.try_get::<String, _>("control_mode")?,
-                "status": r.try_get::<String, _>("status")?,
-                "created_at": r.try_get::<String, _>("created_at")?,
-                "updated_at": r.try_get::<String, _>("updated_at")?,
-            });
-            let tj: String = r.try_get("target_scopes_json")?;
-            let pj: String = r.try_get("parameters_json")?;
-            val["targets"] = serde_json::from_str(&tj).unwrap_or(serde_json::json!({}));
-            val["params"] = serde_json::from_str(&pj).unwrap_or(serde_json::json!({}));
-            Ok(Some(val))
-        } else {
-            Ok(None)
-        }
+        let tenant_id = tenant_id.to_string();
+        let deployment_id = deployment_id.to_string();
+        let conn_arc = self.conn.clone();
+
+        let val = tokio::task::spawn_blocking(move || -> Result<Option<serde_json::Value>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare("SELECT * FROM policy_preset_deployments WHERE tenant_id = ?1 AND deployment_id = ?2")?;
+            let mut rows = stmt.query(params![tenant_id, deployment_id])?;
+            if let Some(r) = rows.next()? {
+                let mut val = serde_json::json!({
+                    "deployment_id": r.get::<_, String>("deployment_id")?,
+                    "preset_id": r.get::<_, String>("preset_id")?,
+                    "preset_version": r.get::<_, Option<String>>("preset_version")?.unwrap_or_default(),
+                    "control_mode": r.get::<_, String>("control_mode")?,
+                    "status": r.get::<_, String>("status")?,
+                    "created_at": r.get::<_, String>("created_at")?,
+                    "updated_at": r.get::<_, String>("updated_at")?,
+                });
+                let tj: String = r.get("target_scopes_json")?;
+                let pj: String = r.get("parameters_json")?;
+                val["targets"] = serde_json::from_str(&tj).unwrap_or(serde_json::json!({}));
+                val["params"] = serde_json::from_str(&pj).unwrap_or(serde_json::json!({}));
+                Ok(Some(val))
+            } else {
+                Ok(None)
+            }
+        }).await??;
+
+        Ok(val)
     }
 
     async fn list_preset_deployments(&self, tenant_id: &str) -> Result<Vec<serde_json::Value>> {
-        let rows = sqlx::query("SELECT * FROM policy_preset_deployments WHERE tenant_id = ?1")
-            .bind(tenant_id)
-            .fetch_all(&self.pool)
-            .await?;
-        let mut out = Vec::new();
-        for r in rows {
-            let mut val = serde_json::json!({
-                "deployment_id": r.try_get::<String, _>("deployment_id")?,
-                "preset_id": r.try_get::<String, _>("preset_id")?,
-                "preset_version": r.try_get::<String, _>("preset_version").unwrap_or_default(),
-                "control_mode": r.try_get::<String, _>("control_mode")?,
-                "status": r.try_get::<String, _>("status")?,
-                "created_at": r.try_get::<String, _>("created_at")?,
-                "updated_at": r.try_get::<String, _>("updated_at")?,
-            });
-            let tj: String = r.try_get("target_scopes_json")?;
-            let pj: String = r.try_get("parameters_json")?;
-            val["targets"] = serde_json::from_str(&tj).unwrap_or(serde_json::json!({}));
-            val["params"] = serde_json::from_str(&pj).unwrap_or(serde_json::json!({}));
-            out.push(val);
-        }
+        let tenant_id = tenant_id.to_string();
+        let conn_arc = self.conn.clone();
+
+        let out = tokio::task::spawn_blocking(move || -> Result<Vec<serde_json::Value>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare("SELECT * FROM policy_preset_deployments WHERE tenant_id = ?1")?;
+            let mut rows = stmt.query(params![tenant_id])?;
+            let mut out = Vec::new();
+            while let Some(r) = rows.next()? {
+                let mut val = serde_json::json!({
+                    "deployment_id": r.get::<_, String>("deployment_id")?,
+                    "preset_id": r.get::<_, String>("preset_id")?,
+                    "preset_version": r.get::<_, Option<String>>("preset_version")?.unwrap_or_default(),
+                    "control_mode": r.get::<_, String>("control_mode")?,
+                    "status": r.get::<_, String>("status")?,
+                    "created_at": r.get::<_, String>("created_at")?,
+                    "updated_at": r.get::<_, String>("updated_at")?,
+                });
+                let tj: String = r.get("target_scopes_json")?;
+                let pj: String = r.get("parameters_json")?;
+                val["targets"] = serde_json::from_str(&tj).unwrap_or(serde_json::json!({}));
+                val["params"] = serde_json::from_str(&pj).unwrap_or(serde_json::json!({}));
+                out.push(val);
+            }
+            Ok(out)
+        }).await??;
+
         Ok(out)
     }
 
@@ -858,29 +1013,31 @@ impl PolicyStore for SqliteStore {
             .get("status")
             .and_then(|v| v.as_str())
             .unwrap_or("active");
+        let tenant_id = tenant_id.to_string();
+        let binding_id = binding_id.to_string();
+        let deployment_id = deployment_id.to_string();
+        let pep_type = pep_type.to_string();
+        let status = status.to_string();
         let now = chrono::Utc::now().to_rfc3339();
 
-        sqlx::query(
-            r#"
-            INSERT INTO pep_bindings (
-                tenant_id, binding_id, deployment_id, pep_type, config_json, status, created_at, updated_at
-            )
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
-            ON CONFLICT(tenant_id, binding_id) DO UPDATE SET
-                config_json=excluded.config_json,
-                status=excluded.status,
-                updated_at=excluded.updated_at
-            "#
-        )
-        .bind(tenant_id)
-        .bind(binding_id)
-        .bind(deployment_id)
-        .bind(pep_type)
-        .bind(config_json)
-        .bind(status)
-        .bind(now)
-        .execute(&self.pool)
-        .await?;
+        let conn_arc = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let conn = conn_arc.lock().unwrap();
+            conn.execute(
+                r#"
+                INSERT INTO pep_bindings (
+                    tenant_id, binding_id, deployment_id, pep_type, config_json, status, created_at, updated_at
+                )
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
+                ON CONFLICT(tenant_id, binding_id) DO UPDATE SET
+                    config_json=excluded.config_json,
+                    status=excluded.status,
+                    updated_at=excluded.updated_at
+                "#,
+                params![tenant_id, binding_id, deployment_id, pep_type, config_json, status, now]
+            )?;
+            Ok(())
+        }).await??;
         Ok(())
     }
 
@@ -889,26 +1046,34 @@ impl PolicyStore for SqliteStore {
         tenant_id: &str,
         deployment_id: &str,
     ) -> Result<Vec<serde_json::Value>> {
-        let rows =
-            sqlx::query("SELECT * FROM pep_bindings WHERE tenant_id = ?1 AND deployment_id = ?2")
-                .bind(tenant_id)
-                .bind(deployment_id)
-                .fetch_all(&self.pool)
-                .await?;
-        let mut out = Vec::new();
-        for r in rows {
-            let mut val = serde_json::json!({
-                "binding_id": r.try_get::<String, _>("binding_id")?,
-                "deployment_id": r.try_get::<String, _>("deployment_id")?,
-                "pep_type": r.try_get::<String, _>("pep_type")?,
-                "status": r.try_get::<String, _>("status")?,
-                "created_at": r.try_get::<String, _>("created_at")?,
-                "updated_at": r.try_get::<String, _>("updated_at")?,
-            });
-            let cj: String = r.try_get("config_json")?;
-            val["config"] = serde_json::from_str(&cj).unwrap_or(serde_json::json!({}));
-            out.push(val);
-        }
+        let tenant_id = tenant_id.to_string();
+        let deployment_id = deployment_id.to_string();
+        let conn_arc = self.conn.clone();
+
+        let out = tokio::task::spawn_blocking(move || -> Result<Vec<serde_json::Value>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare(
+                "SELECT * FROM pep_bindings WHERE tenant_id = ?1 AND deployment_id = ?2",
+            )?;
+            let mut rows = stmt.query(params![tenant_id, deployment_id])?;
+            let mut out = Vec::new();
+            while let Some(r) = rows.next()? {
+                let mut val = serde_json::json!({
+                    "binding_id": r.get::<_, String>("binding_id")?,
+                    "deployment_id": r.get::<_, String>("deployment_id")?,
+                    "pep_type": r.get::<_, String>("pep_type")?,
+                    "status": r.get::<_, String>("status")?,
+                    "created_at": r.get::<_, String>("created_at")?,
+                    "updated_at": r.get::<_, String>("updated_at")?,
+                });
+                let cj: String = r.get("config_json")?;
+                val["config"] = serde_json::from_str(&cj).unwrap_or(serde_json::json!({}));
+                out.push(val);
+            }
+            Ok(out)
+        })
+        .await??;
+
         Ok(out)
     }
 }
@@ -922,30 +1087,44 @@ impl TelemetryStore for SqliteStore {
         event_id: &str,
         data: &serde_json::Value,
     ) -> Result<()> {
-        sqlx::query(
-            "INSERT INTO telemetry_events (tenant_id, event_type, event_id, data_json, created_at)
-             VALUES (?1,?2,?3,?4,?5)
-             ON CONFLICT(tenant_id,event_id) DO UPDATE SET data_json=?4",
-        )
-        .bind(tenant)
-        .bind(kind)
-        .bind(event_id)
-        .bind(serde_json::to_string(data)?)
-        .bind(chrono::Utc::now().to_rfc3339())
-        .execute(&self.pool)
-        .await?;
+        let tenant = tenant.to_string();
+        let kind = kind.to_string();
+        let event_id = event_id.to_string();
+        let data_json = serde_json::to_string(data)?;
+        let now = chrono::Utc::now().to_rfc3339();
+
+        let conn_arc = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let conn = conn_arc.lock().unwrap();
+            conn.execute(
+                "INSERT INTO telemetry_events (tenant_id, event_type, event_id, data_json, created_at)
+                 VALUES (?1,?2,?3,?4,?5)
+                 ON CONFLICT(tenant_id,event_id) DO UPDATE SET data_json=?4",
+                 params![tenant, kind, event_id, data_json, now]
+            )?;
+            Ok(())
+        }).await??;
         Ok(())
     }
     async fn list_telemetry(&self, tenant: &str, kind: &str) -> Result<Vec<serde_json::Value>> {
-        let rows = sqlx::query(
-            "SELECT data_json FROM telemetry_events WHERE tenant_id=?1 AND event_type=?2 ORDER BY created_at DESC LIMIT 1000")
-            .bind(tenant).bind(kind).fetch_all(&self.pool).await?;
+        let tenant = tenant.to_string();
+        let kind = kind.to_string();
+        let conn_arc = self.conn.clone();
+
+        let rows = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare("SELECT data_json FROM telemetry_events WHERE tenant_id=?1 AND event_type=?2 ORDER BY created_at DESC LIMIT 1000")?;
+            let mut rows = stmt.query(params![tenant, kind])?;
+            let mut out = Vec::new();
+            while let Some(row) = rows.next()? {
+                out.push(row.get(0)?);
+            }
+            Ok(out)
+        }).await??;
+
         Ok(rows
             .into_iter()
-            .filter_map(|r| {
-                let j: String = r.try_get("data_json").ok()?;
-                serde_json::from_str(&j).ok()
-            })
+            .filter_map(|j| serde_json::from_str(&j).ok())
             .collect())
     }
 }
@@ -980,79 +1159,101 @@ impl PdpStore for SqliteStore {
 
         let now = chrono::Utc::now().to_rfc3339();
 
-        sqlx::query(
-            r#"
-            INSERT INTO pdp_runtimes (
-                tenant_id, id, name, category, kind, enabled, status, endpoint, auth_ref, capabilities_json, health_json, created_at, updated_at
-            )
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12)
-            ON CONFLICT(tenant_id, id) DO UPDATE SET
-                name=excluded.name,
-                category=excluded.category,
-                kind=excluded.kind,
-                enabled=excluded.enabled,
-                status=excluded.status,
-                endpoint=excluded.endpoint,
-                auth_ref=excluded.auth_ref,
-                capabilities_json=excluded.capabilities_json,
-                health_json=excluded.health_json,
-                updated_at=excluded.updated_at
-            "#
-        )
-        .bind(tenant)
-        .bind(id)
-        .bind(name)
-        .bind(category)
-        .bind(kind)
-        .bind(enabled)
-        .bind(status)
-        .bind(endpoint)
-        .bind(auth_ref)
-        .bind(capabilities_json)
-        .bind(health_json)
-        .bind(now)
-        .execute(&self.pool)
-        .await?;
+        let tenant = tenant.to_string();
+        let id = id.to_string();
+        let name = name.to_string();
+        let category = category.to_string();
+        let kind = kind.to_string();
+        let status = status.to_string();
+        let endpoint = endpoint.map(|s| s.to_string());
+        let auth_ref = auth_ref.map(|s| s.to_string());
+
+        let conn_arc = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let conn = conn_arc.lock().unwrap();
+            conn.execute(
+                r#"
+                INSERT INTO pdp_runtimes (
+                    tenant_id, id, name, category, kind, enabled, status, endpoint, auth_ref, capabilities_json, health_json, created_at, updated_at
+                )
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12)
+                ON CONFLICT(tenant_id, id) DO UPDATE SET
+                    name=excluded.name,
+                    category=excluded.category,
+                    kind=excluded.kind,
+                    enabled=excluded.enabled,
+                    status=excluded.status,
+                    endpoint=excluded.endpoint,
+                    auth_ref=excluded.auth_ref,
+                    capabilities_json=excluded.capabilities_json,
+                    health_json=excluded.health_json,
+                    updated_at=excluded.updated_at
+                "#,
+                params![tenant, id, name, category, kind, enabled, status, endpoint, auth_ref, capabilities_json, health_json, now]
+            )?;
+            Ok(())
+        }).await??;
 
         Ok(())
     }
 
     async fn get_runtime(&self, tenant: &str, id: &str) -> Result<Option<serde_json::Value>> {
-        let row = sqlx::query("SELECT * FROM pdp_runtimes WHERE tenant_id = ?1 AND id = ?2")
-            .bind(tenant)
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await?;
+        let tenant = tenant.to_string();
+        let id = id.to_string();
+        let conn_arc = self.conn.clone();
 
-        if let Some(r) = row {
-            Ok(Some(Self::row_to_pdp_runtime(r)?))
-        } else {
-            Ok(None)
-        }
+        let out = tokio::task::spawn_blocking(move || -> Result<Option<serde_json::Value>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt =
+                conn.prepare("SELECT * FROM pdp_runtimes WHERE tenant_id = ?1 AND id = ?2")?;
+            let mut rows = stmt.query(params![tenant, id])?;
+            if let Some(r) = rows.next()? {
+                Ok(Some(Self::row_to_pdp_runtime(&r)?))
+            } else {
+                Ok(None)
+            }
+        })
+        .await??;
+
+        Ok(out)
     }
 
     async fn list_runtimes(&self, tenant: &str) -> Result<Vec<serde_json::Value>> {
-        let rows = sqlx::query("SELECT * FROM pdp_runtimes WHERE tenant_id = ?1")
-            .bind(tenant)
-            .fetch_all(&self.pool)
-            .await?;
+        let tenant = tenant.to_string();
+        let conn_arc = self.conn.clone();
 
-        let mut results = Vec::new();
-        for r in rows {
-            if let Ok(val) = Self::row_to_pdp_runtime(r) {
-                results.push(val);
+        let out = tokio::task::spawn_blocking(move || -> Result<Vec<serde_json::Value>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare("SELECT * FROM pdp_runtimes WHERE tenant_id = ?1")?;
+            let mut rows = stmt.query(params![tenant])?;
+            let mut results = Vec::new();
+            while let Some(r) = rows.next()? {
+                if let Ok(val) = Self::row_to_pdp_runtime(&r) {
+                    results.push(val);
+                }
             }
-        }
-        Ok(results)
+            Ok(results)
+        })
+        .await??;
+
+        Ok(out)
     }
 
     async fn delete_runtime(&self, tenant: &str, id: &str) -> Result<bool> {
-        let result = sqlx::query("DELETE FROM pdp_runtimes WHERE tenant_id = ?1 AND id = ?2")
-            .bind(tenant)
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
-        Ok(result.rows_affected() > 0)
+        let tenant = tenant.to_string();
+        let id = id.to_string();
+        let conn_arc = self.conn.clone();
+
+        let rows_affected = tokio::task::spawn_blocking(move || -> Result<usize> {
+            let conn = conn_arc.lock().unwrap();
+            Ok(conn.execute(
+                "DELETE FROM pdp_runtimes WHERE tenant_id = ?1 AND id = ?2",
+                params![tenant, id],
+            )?)
+        })
+        .await??;
+
+        Ok(rows_affected > 0)
     }
 
     async fn upsert_route(&self, tenant: &str, id: &str, data: &serde_json::Value) -> Result<()> {
@@ -1101,103 +1302,121 @@ impl PdpStore for SqliteStore {
 
         let now = chrono::Utc::now().to_rfc3339();
 
-        sqlx::query(
-            r#"
-            INSERT INTO pdp_routes (
-                tenant_id, id, name, enabled, priority, match_cond_json, mode, primary_pdp_id, fallback_pdp_ids_json, shadow_pdp_ids_json, merge_strategy, failure_behavior, timeout_ms, max_retries, created_at, updated_at
-            )
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?15)
-            ON CONFLICT(tenant_id, id) DO UPDATE SET
-                name=excluded.name,
-                enabled=excluded.enabled,
-                priority=excluded.priority,
-                match_cond_json=excluded.match_cond_json,
-                mode=excluded.mode,
-                primary_pdp_id=excluded.primary_pdp_id,
-                fallback_pdp_ids_json=excluded.fallback_pdp_ids_json,
-                shadow_pdp_ids_json=excluded.shadow_pdp_ids_json,
-                merge_strategy=excluded.merge_strategy,
-                failure_behavior=excluded.failure_behavior,
-                timeout_ms=excluded.timeout_ms,
-                max_retries=excluded.max_retries,
-                updated_at=excluded.updated_at
-            "#
-        )
-        .bind(tenant)
-        .bind(id)
-        .bind(name)
-        .bind(enabled)
-        .bind(priority)
-        .bind(match_cond_json)
-        .bind(mode)
-        .bind(primary_pdp_id)
-        .bind(fallback_pdp_ids_json)
-        .bind(shadow_pdp_ids_json)
-        .bind(merge_strategy)
-        .bind(failure_behavior)
-        .bind(timeout_ms)
-        .bind(max_retries)
-        .bind(now)
-        .execute(&self.pool)
-        .await?;
+        let tenant = tenant.to_string();
+        let id = id.to_string();
+        let name = name.to_string();
+        let mode = mode.to_string();
+        let primary_pdp_id = primary_pdp_id.to_string();
+        let merge_strategy = merge_strategy.to_string();
+        let failure_behavior = failure_behavior.to_string();
+
+        let conn_arc = self.conn.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let conn = conn_arc.lock().unwrap();
+            conn.execute(
+                r#"
+                INSERT INTO pdp_routes (
+                    tenant_id, id, name, enabled, priority, match_cond_json, mode, primary_pdp_id, fallback_pdp_ids_json, shadow_pdp_ids_json, merge_strategy, failure_behavior, timeout_ms, max_retries, created_at, updated_at
+                )
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?15)
+                ON CONFLICT(tenant_id, id) DO UPDATE SET
+                    name=excluded.name,
+                    enabled=excluded.enabled,
+                    priority=excluded.priority,
+                    match_cond_json=excluded.match_cond_json,
+                    mode=excluded.mode,
+                    primary_pdp_id=excluded.primary_pdp_id,
+                    fallback_pdp_ids_json=excluded.fallback_pdp_ids_json,
+                    shadow_pdp_ids_json=excluded.shadow_pdp_ids_json,
+                    merge_strategy=excluded.merge_strategy,
+                    failure_behavior=excluded.failure_behavior,
+                    timeout_ms=excluded.timeout_ms,
+                    max_retries=excluded.max_retries,
+                    updated_at=excluded.updated_at
+                "#,
+                params![tenant, id, name, enabled, priority, match_cond_json, mode, primary_pdp_id, fallback_pdp_ids_json, shadow_pdp_ids_json, merge_strategy, failure_behavior, timeout_ms, max_retries, now]
+            )?;
+            Ok(())
+        }).await??;
 
         Ok(())
     }
 
     async fn get_route(&self, tenant: &str, id: &str) -> Result<Option<serde_json::Value>> {
-        let row = sqlx::query("SELECT * FROM pdp_routes WHERE tenant_id = ?1 AND id = ?2")
-            .bind(tenant)
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await?;
+        let tenant = tenant.to_string();
+        let id = id.to_string();
+        let conn_arc = self.conn.clone();
 
-        if let Some(r) = row {
-            Ok(Some(Self::row_to_pdp_route(r)?))
-        } else {
-            Ok(None)
-        }
+        let out = tokio::task::spawn_blocking(move || -> Result<Option<serde_json::Value>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt =
+                conn.prepare("SELECT * FROM pdp_routes WHERE tenant_id = ?1 AND id = ?2")?;
+            let mut rows = stmt.query(params![tenant, id])?;
+            if let Some(r) = rows.next()? {
+                Ok(Some(Self::row_to_pdp_route(&r)?))
+            } else {
+                Ok(None)
+            }
+        })
+        .await??;
+
+        Ok(out)
     }
 
     async fn list_routes(&self, tenant: &str) -> Result<Vec<serde_json::Value>> {
-        let rows =
-            sqlx::query("SELECT * FROM pdp_routes WHERE tenant_id = ?1 ORDER BY priority DESC")
-                .bind(tenant)
-                .fetch_all(&self.pool)
-                .await?;
+        let tenant = tenant.to_string();
+        let conn_arc = self.conn.clone();
 
-        let mut results = Vec::new();
-        for r in rows {
-            if let Ok(val) = Self::row_to_pdp_route(r) {
-                results.push(val);
+        let out = tokio::task::spawn_blocking(move || -> Result<Vec<serde_json::Value>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn
+                .prepare("SELECT * FROM pdp_routes WHERE tenant_id = ?1 ORDER BY priority DESC")?;
+            let mut rows = stmt.query(params![tenant])?;
+            let mut results = Vec::new();
+            while let Some(r) = rows.next()? {
+                if let Ok(val) = Self::row_to_pdp_route(&r) {
+                    results.push(val);
+                }
             }
-        }
-        Ok(results)
+            Ok(results)
+        })
+        .await??;
+
+        Ok(out)
     }
 
     async fn delete_route(&self, tenant: &str, id: &str) -> Result<bool> {
-        let result = sqlx::query("DELETE FROM pdp_routes WHERE tenant_id = ?1 AND id = ?2")
-            .bind(tenant)
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
-        Ok(result.rows_affected() > 0)
+        let tenant = tenant.to_string();
+        let id = id.to_string();
+        let conn_arc = self.conn.clone();
+
+        let rows_affected = tokio::task::spawn_blocking(move || -> Result<usize> {
+            let conn = conn_arc.lock().unwrap();
+            Ok(conn.execute(
+                "DELETE FROM pdp_routes WHERE tenant_id = ?1 AND id = ?2",
+                params![tenant, id],
+            )?)
+        })
+        .await??;
+
+        Ok(rows_affected > 0)
     }
 }
 
 impl SqliteStore {
-    fn row_to_pdp_runtime(row: sqlx::sqlite::SqliteRow) -> Result<serde_json::Value> {
-        let id: String = row.try_get("id")?;
-        let name: String = row.try_get("name")?;
-        let category: String = row.try_get("category")?;
-        let kind: String = row.try_get("kind")?;
-        let enabled: bool = row.try_get("enabled")?;
-        let status: String = row.try_get("status")?;
-        let endpoint: Option<String> = row.try_get("endpoint")?;
-        let auth_ref: Option<String> = row.try_get("auth_ref")?;
-        let capabilities_json: String = row.try_get("capabilities_json")?;
-        let health_json: Option<String> = row.try_get("health_json")?;
-        let created_at: String = row.try_get("created_at")?;
-        let updated_at: String = row.try_get("updated_at")?;
+    fn row_to_pdp_runtime(row: &rusqlite::Row<'_>) -> Result<serde_json::Value> {
+        let id: String = row.get("id")?;
+        let name: String = row.get("name")?;
+        let category: String = row.get("category")?;
+        let kind: String = row.get("kind")?;
+        let enabled: bool = row.get("enabled")?;
+        let status: String = row.get("status")?;
+        let endpoint: Option<String> = row.get("endpoint")?;
+        let auth_ref: Option<String> = row.get("auth_ref")?;
+        let capabilities_json: String = row.get("capabilities_json")?;
+        let health_json: Option<String> = row.get("health_json")?;
+        let created_at: String = row.get("created_at")?;
+        let updated_at: String = row.get("updated_at")?;
 
         let capabilities: serde_json::Value =
             serde_json::from_str(&capabilities_json).unwrap_or_else(|_| serde_json::json!([]));
@@ -1228,22 +1447,22 @@ impl SqliteStore {
         Ok(obj)
     }
 
-    fn row_to_pdp_route(row: sqlx::sqlite::SqliteRow) -> Result<serde_json::Value> {
-        let id: String = row.try_get("id")?;
-        let name: String = row.try_get("name")?;
-        let enabled: bool = row.try_get("enabled")?;
-        let priority: i64 = row.try_get("priority")?;
-        let match_cond_json: String = row.try_get("match_cond_json")?;
-        let mode: String = row.try_get("mode")?;
-        let primary_pdp_id: String = row.try_get("primary_pdp_id")?;
-        let fallback_pdp_ids_json: String = row.try_get("fallback_pdp_ids_json")?;
-        let shadow_pdp_ids_json: String = row.try_get("shadow_pdp_ids_json")?;
-        let merge_strategy: String = row.try_get("merge_strategy")?;
-        let failure_behavior: String = row.try_get("failure_behavior")?;
-        let timeout_ms: i64 = row.try_get("timeout_ms")?;
-        let max_retries: i64 = row.try_get("max_retries")?;
-        let created_at: String = row.try_get("created_at")?;
-        let updated_at: String = row.try_get("updated_at")?;
+    fn row_to_pdp_route(row: &rusqlite::Row<'_>) -> Result<serde_json::Value> {
+        let id: String = row.get("id")?;
+        let name: String = row.get("name")?;
+        let enabled: bool = row.get("enabled")?;
+        let priority: i64 = row.get("priority")?;
+        let match_cond_json: String = row.get("match_cond_json")?;
+        let mode: String = row.get("mode")?;
+        let primary_pdp_id: String = row.get("primary_pdp_id")?;
+        let fallback_pdp_ids_json: String = row.get("fallback_pdp_ids_json")?;
+        let shadow_pdp_ids_json: String = row.get("shadow_pdp_ids_json")?;
+        let merge_strategy: String = row.get("merge_strategy")?;
+        let failure_behavior: String = row.get("failure_behavior")?;
+        let timeout_ms: i64 = row.get("timeout_ms")?;
+        let max_retries: i64 = row.get("max_retries")?;
+        let created_at: String = row.get("created_at")?;
+        let updated_at: String = row.get("updated_at")?;
 
         let match_cond: serde_json::Value =
             serde_json::from_str(&match_cond_json).unwrap_or_else(|_| serde_json::json!({}));
@@ -1408,38 +1627,52 @@ pub async fn seed_pdp_defaults(store: &Arc<dyn PdpStore>) -> Result<()> {
 impl ObservabilityStore for SqliteStore {
     async fn insert_observation_event(&self, event: &AgentObservationEvent) -> Result<()> {
         let payload = serde_json::to_string(event)?;
-        sqlx::query(
-            r#"
-            INSERT INTO observation_events (id, tenant_id, trace_id, agent_id, shadow_candidate_id, tool_id, resource_id, surface, action, pep_type, risk_level, timestamp, payload_json)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
-            "#
-        )
-        .bind(&event.event_id)
-        .bind(&event.tenant_id)
-        .bind(&event.trace_id)
-        .bind(&event.agent_id)
-        .bind(&event.shadow_candidate_id)
-        .bind(&event.tool_id)
-        .bind(&event.resource_id)
-        .bind(&event.surface)
-        .bind(&event.action)
-        .bind(&event.pep_type)
-        .bind(&event.risk_level)
-        .bind(&event.timestamp)
-        .bind(&payload)
-        .execute(&self.pool)
-        .await?;
+        let conn_arc = self.conn.clone();
+
+        let event_id = event.event_id.clone();
+        let tenant_id = event.tenant_id.clone();
+        let trace_id = event.trace_id.clone();
+        let agent_id = event.agent_id.clone();
+        let shadow_candidate_id = event.shadow_candidate_id.clone();
+        let tool_id = event.tool_id.clone();
+        let resource_id = event.resource_id.clone();
+        let surface = event.surface.clone();
+        let action = event.action.clone();
+        let pep_type = event.pep_type.clone();
+        let risk_level = event.risk_level.clone();
+        let timestamp = event.timestamp.clone();
+
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let conn = conn_arc.lock().unwrap();
+            conn.execute(
+                r#"
+                INSERT INTO observation_events (id, tenant_id, trace_id, agent_id, shadow_candidate_id, tool_id, resource_id, surface, action, pep_type, risk_level, timestamp, payload_json)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                "#,
+                params![event_id, tenant_id, trace_id, agent_id, shadow_candidate_id, tool_id, resource_id, surface, action, pep_type, risk_level, timestamp, payload]
+            )?;
+            Ok(())
+        }).await??;
         Ok(())
     }
 
     async fn list_observation_events(&self, tenant_id: &str) -> Result<Vec<AgentObservationEvent>> {
-        let rows = sqlx::query("SELECT payload_json FROM observation_events WHERE tenant_id = ?1 ORDER BY timestamp DESC LIMIT 100")
-            .bind(tenant_id)
-            .fetch_all(&self.pool)
-            .await?;
+        let tenant_id = tenant_id.to_string();
+        let conn_arc = self.conn.clone();
+
+        let json_strs = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare("SELECT payload_json FROM observation_events WHERE tenant_id = ?1 ORDER BY timestamp DESC LIMIT 100")?;
+            let mut rows = stmt.query(params![tenant_id])?;
+            let mut out = Vec::new();
+            while let Some(row) = rows.next()? {
+                out.push(row.get(0)?);
+            }
+            Ok(out)
+        }).await??;
+
         let mut out = Vec::new();
-        for r in rows {
-            let j: String = r.try_get("payload_json")?;
+        for j in json_strs {
             if let Ok(e) = serde_json::from_str(&j) {
                 out.push(e);
             }
@@ -1448,87 +1681,113 @@ impl ObservabilityStore for SqliteStore {
     }
 
     async fn insert_cost_ledger(&self, entry: &CostLedgerEntry) -> Result<()> {
-        sqlx::query(
-            r#"
-            INSERT INTO cost_ledger (id, agent_id, provider, model, input_tokens, output_tokens, total_tokens, input_cost, output_cost, total_cost, currency, estimated, timestamp)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
-            "#
-        )
-        .bind(&entry.event_id)
-        .bind(&entry.agent_id)
-        .bind(&entry.provider)
-        .bind(&entry.model)
-        .bind(entry.input_tokens)
-        .bind(entry.output_tokens)
-        .bind(entry.total_tokens)
-        .bind(entry.input_cost)
-        .bind(entry.output_cost)
-        .bind(entry.total_cost)
-        .bind(&entry.currency)
-        .bind(entry.estimated)
-        .bind(&entry.timestamp)
-        .execute(&self.pool)
-        .await?;
+        let conn_arc = self.conn.clone();
+
+        let event_id = entry.event_id.clone();
+        let agent_id = entry.agent_id.clone();
+        let provider = entry.provider.clone();
+        let model = entry.model.clone();
+        let input_tokens = entry.input_tokens;
+        let output_tokens = entry.output_tokens;
+        let total_tokens = entry.total_tokens;
+        let input_cost = entry.input_cost;
+        let output_cost = entry.output_cost;
+        let total_cost = entry.total_cost;
+        let currency = entry.currency.clone();
+        let estimated = entry.estimated;
+        let timestamp = entry.timestamp.clone();
+
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let conn = conn_arc.lock().unwrap();
+            conn.execute(
+                r#"
+                INSERT INTO cost_ledger (id, agent_id, provider, model, input_tokens, output_tokens, total_tokens, input_cost, output_cost, total_cost, currency, estimated, timestamp)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                "#,
+                params![event_id, agent_id, provider, model, input_tokens, output_tokens, total_tokens, input_cost, output_cost, total_cost, currency, estimated, timestamp]
+            )?;
+            Ok(())
+        }).await??;
         Ok(())
     }
 
     async fn list_cost_ledger(&self) -> Result<Vec<CostLedgerEntry>> {
-        let rows = sqlx::query("SELECT id, agent_id, provider, model, input_tokens, output_tokens, total_tokens, input_cost, output_cost, total_cost, currency, estimated, timestamp FROM cost_ledger ORDER BY timestamp DESC")
-            .fetch_all(&self.pool)
-            .await?;
-        let mut out = Vec::new();
-        for r in rows {
-            out.push(CostLedgerEntry {
-                event_id: r.try_get("id")?,
-                agent_id: r.try_get("agent_id")?,
-                provider: r.try_get("provider")?,
-                model: r.try_get("model")?,
-                input_tokens: r.try_get("input_tokens")?,
-                output_tokens: r.try_get("output_tokens")?,
-                total_tokens: r.try_get("total_tokens")?,
-                input_cost: r.try_get("input_cost")?,
-                output_cost: r.try_get("output_cost")?,
-                total_cost: r.try_get("total_cost")?,
-                currency: r.try_get("currency")?,
-                estimated: r.try_get("estimated")?,
-                timestamp: r.try_get("timestamp")?,
-            });
-        }
+        let conn_arc = self.conn.clone();
+
+        let out = tokio::task::spawn_blocking(move || -> Result<Vec<CostLedgerEntry>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare("SELECT id, agent_id, provider, model, input_tokens, output_tokens, total_tokens, input_cost, output_cost, total_cost, currency, estimated, timestamp FROM cost_ledger ORDER BY timestamp DESC")?;
+            let mut rows = stmt.query(params![])?;
+            let mut out = Vec::new();
+            while let Some(r) = rows.next()? {
+                out.push(CostLedgerEntry {
+                    event_id: r.get("id")?,
+                    agent_id: r.get("agent_id")?,
+                    provider: r.get("provider")?,
+                    model: r.get("model")?,
+                    input_tokens: r.get("input_tokens")?,
+                    output_tokens: r.get("output_tokens")?,
+                    total_tokens: r.get("total_tokens")?,
+                    input_cost: r.get("input_cost")?,
+                    output_cost: r.get("output_cost")?,
+                    total_cost: r.get("total_cost")?,
+                    currency: r.get("currency")?,
+                    estimated: r.get("estimated")?,
+                    timestamp: r.get("timestamp")?,
+                });
+            }
+            Ok(out)
+        }).await??;
+
         Ok(out)
     }
 
     async fn upsert_policy_suggestion(&self, suggestion: &PolicySuggestion) -> Result<()> {
         let payload = serde_json::to_string(suggestion)?;
-        sqlx::query(
-            r#"
-            INSERT INTO policy_suggestions (id, tenant_id, target_agent_id, target_resource_id, suggestion_type, status, created_at, data_json)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
-            ON CONFLICT(id) DO UPDATE SET
-                status=excluded.status,
-                data_json=excluded.data_json
-            "#
-        )
-        .bind(&suggestion.suggestion_id)
-        .bind(&suggestion.tenant_id)
-        .bind(&suggestion.target_agent_id)
-        .bind(&suggestion.target_resource_id)
-        .bind(format!("{:?}", suggestion.suggestion_type))
-        .bind(format!("{:?}", suggestion.status))
-        .bind(&suggestion.created_at)
-        .bind(&payload)
-        .execute(&self.pool)
-        .await?;
+        let conn_arc = self.conn.clone();
+
+        let suggestion_id = suggestion.suggestion_id.clone();
+        let tenant_id = suggestion.tenant_id.clone();
+        let target_agent_id = suggestion.target_agent_id.clone();
+        let target_resource_id = suggestion.target_resource_id.clone();
+        let suggestion_type = format!("{:?}", suggestion.suggestion_type);
+        let status = format!("{:?}", suggestion.status);
+        let created_at = suggestion.created_at.clone();
+
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let conn = conn_arc.lock().unwrap();
+            conn.execute(
+                r#"
+                INSERT INTO policy_suggestions (id, tenant_id, target_agent_id, target_resource_id, suggestion_type, status, created_at, data_json)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+                ON CONFLICT(id) DO UPDATE SET
+                    status=excluded.status,
+                    data_json=excluded.data_json
+                "#,
+                params![suggestion_id, tenant_id, target_agent_id, target_resource_id, suggestion_type, status, created_at, payload]
+            )?;
+            Ok(())
+        }).await??;
         Ok(())
     }
 
     async fn list_policy_suggestions(&self, tenant_id: &str) -> Result<Vec<PolicySuggestion>> {
-        let rows = sqlx::query("SELECT data_json FROM policy_suggestions WHERE tenant_id = ?1 ORDER BY created_at DESC")
-            .bind(tenant_id)
-            .fetch_all(&self.pool)
-            .await?;
+        let tenant_id = tenant_id.to_string();
+        let conn_arc = self.conn.clone();
+
+        let json_strs = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
+            let conn = conn_arc.lock().unwrap();
+            let mut stmt = conn.prepare("SELECT data_json FROM policy_suggestions WHERE tenant_id = ?1 ORDER BY created_at DESC")?;
+            let mut rows = stmt.query(params![tenant_id])?;
+            let mut out = Vec::new();
+            while let Some(row) = rows.next()? {
+                out.push(row.get(0)?);
+            }
+            Ok(out)
+        }).await??;
+
         let mut out = Vec::new();
-        for r in rows {
-            let j: String = r.try_get("data_json")?;
+        for j in json_strs {
             if let Ok(s) = serde_json::from_str(&j) {
                 out.push(s);
             }

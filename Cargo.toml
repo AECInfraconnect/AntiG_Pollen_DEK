@@ -49,8 +49,8 @@ panic = "deny"
 todo = "deny"
 unimplemented = "deny"
 dbg_macro = "deny"
-print_stdout = "allow"
-print_stderr = "allow"
+print_stdout = "deny"
+print_stderr = "deny"
 
 
 [profile.release]

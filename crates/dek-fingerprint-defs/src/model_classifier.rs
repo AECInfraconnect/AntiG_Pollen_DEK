@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::model::*;
 use regex::Regex;
-use std::collections::HashMap;
 use tracing::warn;
 
 pub struct PrecompiledVendor {
@@ -52,16 +51,22 @@ pub struct ModelClassifier {
 impl ModelClassifier {
     pub fn new(def: &ModelClassifierDef) -> Self {
         // Compile vendors
-        let vendors = def.vendors.iter().map(|v| PrecompiledVendor {
-            ns: v.ns.clone(),
-            vendor: v.vendor.clone(),
-            license_class: v.license_class.clone(),
-            flags: v.flags.clone(),
-        }).collect();
+        let vendors = def
+            .vendors
+            .iter()
+            .map(|v| PrecompiledVendor {
+                ns: v.ns.clone(),
+                vendor: v.vendor.clone(),
+                license_class: v.license_class.clone(),
+                flags: v.flags.clone(),
+            })
+            .collect();
 
         // Compile family rules
-        let family_rules = def.family_rules.iter().filter_map(|r| {
-            match Regex::new(&r.pattern) {
+        let family_rules = def
+            .family_rules
+            .iter()
+            .filter_map(|r| match Regex::new(&r.pattern) {
                 Ok(re) => Some(PrecompiledFamilyRule {
                     id: r.id.clone(),
                     re,
@@ -74,27 +79,33 @@ impl ModelClassifier {
                     warn!("Failed to compile family_rule regex for '{}': {}", r.id, e);
                     None
                 }
-            }
-        }).collect();
+            })
+            .collect();
 
         // Compile popular models
-        let popular_models = def.popular_models.iter().filter_map(|p| {
-            let pattern = p.match_.as_ref().unwrap_or(&p.match_pattern);
-            match Regex::new(pattern) {
-                Ok(re) => Some(PrecompiledPopularModel {
-                    re,
-                    def: p.clone(),
-                }),
-                Err(e) => {
-                    warn!("Failed to compile popular_model regex for '{}': {}", p.display, e);
-                    None
+        let popular_models = def
+            .popular_models
+            .iter()
+            .filter_map(|p| {
+                let pattern = p.match_.as_ref().unwrap_or(&p.match_pattern);
+                match Regex::new(pattern) {
+                    Ok(re) => Some(PrecompiledPopularModel { re, def: p.clone() }),
+                    Err(e) => {
+                        warn!(
+                            "Failed to compile popular_model regex for '{}': {}",
+                            p.display, e
+                        );
+                        None
+                    }
                 }
-            }
-        }).collect();
+            })
+            .collect();
 
         // Compile risk flags
-        let risk_flags = def.risk_flags.iter().filter_map(|r| {
-            match Regex::new(&r.pattern) {
+        let risk_flags = def
+            .risk_flags
+            .iter()
+            .filter_map(|r| match Regex::new(&r.pattern) {
                 Ok(re) => Some(PrecompiledRiskFlag {
                     re,
                     flag: r.flag.clone(),
@@ -106,8 +117,8 @@ impl ModelClassifier {
                     warn!("Failed to compile risk_flag regex for '{}': {}", r.flag, e);
                     None
                 }
-            }
-        }).collect();
+            })
+            .collect();
 
         // Compile attribute parsers
         let mut params_b_re = None;
@@ -292,7 +303,13 @@ impl ModelClassifier {
         }
     }
 
-    fn finalize(&self, id: &str, mut base: ClassBase, vendor: Option<String>, vflags: Vec<String>) -> ModelClass {
+    fn finalize(
+        &self,
+        id: &str,
+        mut base: ClassBase,
+        vendor: Option<String>,
+        vflags: Vec<String>,
+    ) -> ModelClass {
         if base.params_total_b.is_none() {
             base.params_total_b = self.parse_params_b(id);
         }
@@ -333,7 +350,7 @@ impl ModelClassifier {
                 base.flags.push(flag);
             }
         }
-        
+
         let needs_human = base.matched_tier == "unknown" || risk >= 0.7;
 
         ModelClass {

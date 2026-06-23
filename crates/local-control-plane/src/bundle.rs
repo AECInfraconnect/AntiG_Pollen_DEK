@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 // SPDX-License-Identifier: Apache-2.0
 //! bundle.rs — build signed policy bundles in the SAME format as Pollen Cloud
 
@@ -115,8 +114,7 @@ pub async fn build_signed_bundle(
         },
     };
 
-    let signed_bytes = serde_json::to_vec(&manifest)
-        .unwrap_or_else(|e| panic!("JSON serialization failed: {}", e));
+    let signed_bytes = serde_json::to_vec(&manifest)?;
     let sig_b64 = _signer.sign_b64(&signed_bytes);
 
     let envelope = serde_json::json!({
@@ -361,8 +359,8 @@ async fn get_artifact(
     State(st): State<AppState>,
 ) -> ApiResult<(StatusCode, Vec<u8>)> {
     if sha == "network_guardrails.json" {
-        let signed_bytes = serde_json::to_vec(&serde_json::json!([]))
-            .unwrap_or_else(|e| panic!("JSON serialization failed: {}", e));
+        let signed_bytes =
+            serde_json::to_vec(&serde_json::json!([])).map_err(|e| ApiError::Internal(e.into()))?;
         let sig_b64 = st.signer.sign_b64(&signed_bytes);
         let signed_payload = serde_json::json!({
             "signed": [],
@@ -375,8 +373,7 @@ async fn get_artifact(
         });
         return Ok((
             StatusCode::OK,
-            serde_json::to_vec(&signed_payload)
-                .unwrap_or_else(|e| panic!("JSON serialization failed: {}", e)),
+            serde_json::to_vec(&signed_payload).map_err(|e| ApiError::Internal(e.into()))?,
         ));
     }
 

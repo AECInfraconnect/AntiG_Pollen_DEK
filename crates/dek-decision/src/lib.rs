@@ -119,7 +119,7 @@ impl PolicyRouter {
         for adapter in self.adapters.values() {
             let eval_future = std::panic::AssertUnwindSafe(adapter.evaluate(request));
             let result = futures::FutureExt::catch_unwind(eval_future).await;
-            
+
             match result {
                 Ok(Ok(res)) => {
                     if matches!(res.decision, DecisionEffect::Deny) {
