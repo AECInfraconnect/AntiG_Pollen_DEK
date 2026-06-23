@@ -22,14 +22,17 @@ pub struct ActivationCoordinator {
     state: Arc<Mutex<ActivationState>>,
     pub snapshot: Arc<ArcSwap<RuntimeSnapshot>>,
     generation: std::sync::atomic::AtomicU64,
+    pub reload_tx: tokio::sync::broadcast::Sender<u64>,
 }
 
 impl ActivationCoordinator {
     pub fn new(initial_snapshot: RuntimeSnapshot) -> Self {
+        let (tx, _) = tokio::sync::broadcast::channel(16);
         Self {
             state: Arc::new(Mutex::new(ActivationState::Idle)),
             snapshot: Arc::new(ArcSwap::from_pointee(initial_snapshot)),
             generation: std::sync::atomic::AtomicU64::new(1),
+            reload_tx: tx,
         }
     }
 
@@ -80,14 +83,12 @@ impl ActivationCoordinator {
             }
         };
 
-        // Parse metadata from payload
-        let payload: serde_json::Value = match serde_json::from_str(&payload_str) {
+        // Verify signature and Parse metadata from payload
+        let payload = match crate::signature::verify_bundle_signature(&payload_str, &config.pinned_bundle_public_key) {
             Ok(p) => p,
             Err(e) => {
                 *state = ActivationState::Failed;
-                return Ok(ActivationDecision::Rejected(ActivationError::SchemaFailed(
-                    e.to_string(),
-                )));
+                return Ok(ActivationDecision::Rejected(e));
             }
         };
 
@@ -160,7 +161,22 @@ impl ActivationCoordinator {
             current_plugin_host,
         );
         new_snapshot.router.clear_caches().await;
+
+        // 6. Canary checks (Simulate)
+        let canary_passed = true;
+        if !canary_passed {
+            *state = ActivationState::Failed;
+            if let Err(e) = crate::lkg::rollback_lkg() {
+                warn!("Rollback failed! System may be in unstable state: {}", e);
+                return Ok(ActivationDecision::Rejected(ActivationError::RollbackFailed(e.to_string())));
+            }
+            return Ok(ActivationDecision::Rejected(ActivationError::CanaryFailed("Canary health check failed".into())));
+        }
+
         self.snapshot.store(Arc::new(new_snapshot));
+        
+        // 7. Notify runtime
+        let _ = self.reload_tx.send(gen);
 
         *state = ActivationState::Idle;
         info!(

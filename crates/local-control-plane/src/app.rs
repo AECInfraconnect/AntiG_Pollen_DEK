@@ -5,6 +5,7 @@ use axum::{
     response::Response,
     Json, Router,
 };
+use metrics_exporter_prometheus::PrometheusHandle;
 use tower_http::services::{ServeDir, ServeFile};
 
 use crate::{
@@ -36,9 +37,13 @@ pub async fn local_tenant_guard(
     Ok(next.run(req).await)
 }
 
-pub fn create_app(state: AppState, static_dir: &str) -> Router {
+pub fn create_app(state: AppState, static_dir: &str, metrics_handle: PrometheusHandle) -> Router {
     let public_routes = Router::new()
         .route("/health", axum::routing::get(|| async { "ok" }))
+        .route("/metrics", axum::routing::get({
+            let handle = metrics_handle.clone();
+            move || async move { handle.render() }
+        }))
         .merge(discovery::router());
 
     let api_routes = Router::new()

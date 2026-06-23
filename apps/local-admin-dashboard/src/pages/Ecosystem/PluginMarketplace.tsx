@@ -21,7 +21,8 @@ export function PluginMarketplace() {
       name: "Malware Scanner",
       version: "2.1.0",
       vendor: "Security Inc",
-      description: "Scans files for malware signatures during filesystem access.",
+      description:
+        "Scans files for malware signatures during filesystem access.",
       verified: true,
     },
     {
@@ -47,9 +48,12 @@ export function PluginMarketplace() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Plugin Marketplace</h2>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Plugin Marketplace
+          </h2>
           <p className="text-muted-foreground">
-            Discover and install verifiable Wasm plugins to extend the local Local Enforcement Kit.
+            Discover and install verifiable Wasm plugins to extend the local
+            Local Enforcement Kit.
           </p>
         </div>
       </div>
@@ -71,9 +75,13 @@ export function PluginMarketplace() {
                   </p>
                 </div>
                 {plugin.verified ? (
-                  <div title="Verified Publisher"><CheckCircle className="h-5 w-5 text-green-500" /></div>
+                  <div title="Verified Publisher">
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  </div>
                 ) : (
-                  <div title="Community Plugin"><ShieldAlert className="h-5 w-5 text-yellow-500" /></div>
+                  <div title="Community Plugin">
+                    <ShieldAlert className="h-5 w-5 text-yellow-500" />
+                  </div>
                 )}
               </div>
               <p className="text-sm">{plugin.description}</p>

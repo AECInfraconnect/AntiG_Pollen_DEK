@@ -221,7 +221,7 @@ impl Supervisor {
             }
         });
 
-        let spool = Arc::new(dek_secure_spool::Spool {});
+        let spool = Arc::new(dek_secure_spool::Spool::default());
 
         let _ebpf = crate::ebpf::load_and_attach(Some(dns_tx), Some(spool.clone())).await;
 
@@ -354,7 +354,7 @@ impl Supervisor {
             self.bootstrap.device_id.clone(),
             self.cancel.clone(),
             reload_coordinator.clone(),
-            Some(Arc::new(dek_secure_spool::Spool {})),
+            Some(Arc::new(dek_secure_spool::Spool::default())),
             active_network_rules,
         );
 

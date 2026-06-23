@@ -120,7 +120,7 @@ mod tests {
 
     #[async_trait]
     impl PolicyRuntime for DummyRuntime {
-        async fn evaluate(&self, _input: serde_json::Value) -> Result<PolicyDecision, PolicyError> {
+        async fn evaluate(&self, _input: Arc<serde_json::Value>) -> Result<PolicyDecision, PolicyError> {
             Ok(PolicyDecision {
                 evaluator_id: "dummy".to_string(),
                 evaluator_type: "dummy".to_string(),

@@ -15,3 +15,17 @@ pub fn update_lkg() {
         }
     }
 }
+
+pub fn rollback_lkg() -> Result<(), std::io::Error> {
+    let active_path = dek_config::paths::get_active_bundle_path();
+    let lkg_path = dek_config::paths::get_data_dir().join("active_bundle_lkg.json");
+
+    if lkg_path.exists() {
+        tracing::warn!("Rolling back to Last Known Good (LKG) bundle!");
+        // Atomic rename from LKG to active
+        std::fs::rename(&lkg_path, &active_path)?;
+        Ok(())
+    } else {
+        Err(std::io::Error::new(std::io::ErrorKind::NotFound, "LKG not found"))
+    }
+}

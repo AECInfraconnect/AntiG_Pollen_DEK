@@ -20,7 +20,12 @@ export function Entities({ hideHeader = false }: { hideHeader?: boolean }) {
   }, []);
 
   const deleteEntity = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this entity? Note: Make sure no active policies depend on it.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this entity? Note: Make sure no active policies depend on it.",
+      )
+    )
+      return;
     try {
       await RegistryApi.deleteEntity(id);
       fetchEntities();

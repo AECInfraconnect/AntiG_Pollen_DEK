@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Shield, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { DeploymentApi } from "../../services/api";
-import type {
-  PolicyPresetV2,
-  ControlMode,
-} from "../../types/policy-presets";
+import type { PolicyPresetV2, ControlMode } from "../../types/policy-presets";
 import { PolicyPreview } from "./PolicyPreview";
 import { AgentSelector } from "../policy-deployment/AgentSelector";
 import { PolicyGoalSelector } from "../policy-deployment/PolicyGoalSelector";
@@ -68,6 +65,11 @@ export function PresetWizard({
     setParams(defaultParams);
   }, [preset]);
 
+  const [capabilities, setCapabilities] = useState<any[]>([]);
+  useEffect(() => {
+    PolicyApi.getCapabilities().then(res => setCapabilities(res.capabilities || [])).catch(console.error);
+  }, []);
+
   const nextStep = () => {
     const idx = STEP_ORDER.indexOf(step);
     if (idx < STEP_ORDER.length - 1) {
@@ -89,7 +91,7 @@ export function PresetWizard({
         preset_id: preset.id,
         control_mode: controlMode,
         selected_pep_types: selectedPeps,
-        targets: { 
+        targets: {
           agent_ids: selectedAgents,
           provider_ids: selectedProviders,
         },
@@ -114,7 +116,7 @@ export function PresetWizard({
         preset_id: preset.id,
         control_mode: controlMode,
         selected_pep_types: selectedPeps,
-        targets: { 
+        targets: {
           agent_ids: selectedAgents,
           provider_ids: selectedProviders,
         },
@@ -138,7 +140,7 @@ export function PresetWizard({
         preset_id: preset.id,
         control_mode: controlMode,
         selected_pep_types: selectedPeps,
-        targets: { 
+        targets: {
           agent_ids: selectedAgents,
           provider_ids: selectedProviders,
         },
@@ -177,7 +179,8 @@ export function PresetWizard({
                 {preset.parameters.map((p) => (
                   <div key={p.key} className="space-y-1 text-sm">
                     <label className="font-medium text-foreground block">
-                      {p.label} {p.required && <span className="text-red-500">*</span>}
+                      {p.label}{" "}
+                      {p.required && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type={p.value_type === "integer" ? "number" : "text"}
@@ -194,7 +197,9 @@ export function PresetWizard({
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">No parameters required.</div>
+              <div className="text-sm text-muted-foreground">
+                No parameters required.
+              </div>
             )}
           </div>
         );
@@ -242,7 +247,9 @@ export function PresetWizard({
           <div className="space-y-4 text-center py-12">
             <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <h4 className="font-medium text-xl">Deployment Successful</h4>
-            <p className="text-muted-foreground">The policy bindings have been applied.</p>
+            <p className="text-muted-foreground">
+              The policy bindings have been applied.
+            </p>
           </div>
         );
       default:
@@ -262,6 +269,16 @@ export function PresetWizard({
       }
       nextStep();
     } else if (step === "pdp") {
+      if (controlMode === "enforce") {
+        const unsupported = selectedPeps.filter(pepId => {
+          const cap = capabilities.find(c => c.pep_type === pepId);
+          return !cap || cap.status !== "available" || cap.mode === "observe_only";
+        });
+        if (unsupported.length > 0) {
+          alert("Cannot deploy 'enforce' mode to unsupported or observe-only PEPs: " + unsupported.join(", "));
+          return;
+        }
+      }
       generatePreview();
     } else if (step === "preview") {
       runSimulation();
@@ -282,18 +299,23 @@ export function PresetWizard({
             <Shield className="h-5 w-5 text-primary" />
             Wizard: {preset.title}
           </h3>
-          <button onClick={onClose} className="p-1 hover:bg-muted rounded text-muted-foreground">
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-muted rounded text-muted-foreground"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="flex bg-muted/10 border-b">
           <div className="flex-1 overflow-x-auto p-2 flex items-center gap-1 text-xs">
-            {STEP_ORDER.filter(s => s !== "scan").map((s, i) => (
+            {STEP_ORDER.filter((s) => s !== "scan").map((s, i) => (
               <div
                 key={s}
                 className={`px-3 py-1.5 rounded-full capitalize whitespace-nowrap font-medium ${
-                  step === s ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                  step === s
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground"
                 }`}
               >
                 {i + 1}. {s}
@@ -302,9 +324,7 @@ export function PresetWizard({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          {renderStepContent()}
-        </div>
+        <div className="flex-1 overflow-y-auto p-6">{renderStepContent()}</div>
 
         <div className="border-t p-4 flex justify-between items-center bg-muted/20">
           <button
@@ -314,13 +334,19 @@ export function PresetWizard({
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
-          
+
           <button
             onClick={handleNext}
             disabled={loading}
             className="px-5 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 text-sm font-medium flex items-center gap-2 shadow-lg disabled:opacity-50"
           >
-            {loading ? "Processing..." : step === "logs" ? "Finish" : step === "simulate" ? "Deploy Policy" : "Next Step"}
+            {loading
+              ? "Processing..."
+              : step === "logs"
+                ? "Finish"
+                : step === "simulate"
+                  ? "Deploy Policy"
+                  : "Next Step"}
             {!loading && step !== "logs" && <ArrowRight className="h-4 w-4" />}
           </button>
         </div>

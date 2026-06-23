@@ -2,7 +2,7 @@ name: Cleanup Old Workflows
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Run daily at midnight
+    - cron: "0 0 * * *" # Run daily at midnight
   workflow_dispatch: # Allow manual trigger via UI or API
 
 jobs:

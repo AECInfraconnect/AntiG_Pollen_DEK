@@ -43,8 +43,8 @@ export function LocalEnginesTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Built-in PDP engines managed by Local Enforcement Kit. Local engines do not require
-          endpoints.
+          Built-in PDP engines managed by Local Enforcement Kit. Local engines
+          do not require endpoints.
         </p>
         <button
           onClick={reload}

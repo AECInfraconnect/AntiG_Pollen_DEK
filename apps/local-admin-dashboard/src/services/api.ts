@@ -106,7 +106,9 @@ export class ControlPlaneClient {
   }
 
   async deleteMcpServer(serverId: string): Promise<void> {
-    return this.fetchApi(`/registry/mcp-servers/${serverId}`, { method: "DELETE" });
+    return this.fetchApi(`/registry/mcp-servers/${serverId}`, {
+      method: "DELETE",
+    });
   }
 
   async listTools(): Promise<Tool[]> {
@@ -124,7 +126,9 @@ export class ControlPlaneClient {
   }
 
   async deleteResource(resourceId: string): Promise<void> {
-    return this.fetchApi(`/registry/resources/${resourceId}`, { method: "DELETE" });
+    return this.fetchApi(`/registry/resources/${resourceId}`, {
+      method: "DELETE",
+    });
   }
   async listEntities(): Promise<Entity[]> {
     const data = await this.fetchApi("/registry/entities");
@@ -132,7 +136,9 @@ export class ControlPlaneClient {
   }
 
   async deleteEntity(entityId: string): Promise<void> {
-    return this.fetchApi(`/registry/entities/${entityId}`, { method: "DELETE" });
+    return this.fetchApi(`/registry/entities/${entityId}`, {
+      method: "DELETE",
+    });
   }
 
   async listRelationships(): Promise<Relationship[]> {
@@ -141,7 +147,9 @@ export class ControlPlaneClient {
   }
 
   async deleteRelationship(relId: string): Promise<void> {
-    return this.fetchApi(`/registry/relationships/${relId}`, { method: "DELETE" });
+    return this.fetchApi(`/registry/relationships/${relId}`, {
+      method: "DELETE",
+    });
   }
 
   async listBlackboxAiProviders(): Promise<BlackboxAiProvider[]> {
@@ -150,7 +158,9 @@ export class ControlPlaneClient {
   }
 
   async deleteBlackboxAi(providerId: string): Promise<void> {
-    return this.fetchApi(`/registry/blackbox-ai/${providerId}`, { method: "DELETE" });
+    return this.fetchApi(`/registry/blackbox-ai/${providerId}`, {
+      method: "DELETE",
+    });
   }
 
   // Policies
@@ -433,24 +443,32 @@ export const defaultClient = new ControlPlaneClient(getStoredProfile());
 
 export const DeploymentApi = {
   listInventory: () => defaultClient.fetchApi("/agent-inventory"),
-  getInventory: (agentId: string) => defaultClient.fetchApi(`/agent-inventory/${agentId}`),
-  recommend: (payload: any) => defaultClient.fetchApi("/policy-deployment/recommend", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  }),
-  preview: (payload: any) => defaultClient.fetchApi("/policy-deployment/preview", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  }),
-  simulate: (payload: any) => defaultClient.fetchApi("/policy-deployment/simulate", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  }),
-  deploy: (payload: any) => defaultClient.fetchApi("/policy-deployment/deploy", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  }),
-  rollback: (deploymentId: string) => defaultClient.fetchApi(`/policy-deployment/${deploymentId}/rollback`, { method: "POST" }),
+  getInventory: (agentId: string) =>
+    defaultClient.fetchApi(`/agent-inventory/${agentId}`),
+  recommend: (payload: any) =>
+    defaultClient.fetchApi("/policy-deployment/recommend", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  preview: (payload: any) =>
+    defaultClient.fetchApi("/policy-deployment/preview", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  simulate: (payload: any) =>
+    defaultClient.fetchApi("/policy-deployment/simulate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  deploy: (payload: any) =>
+    defaultClient.fetchApi("/policy-deployment/deploy", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  rollback: (deploymentId: string) =>
+    defaultClient.fetchApi(`/policy-deployment/${deploymentId}/rollback`, {
+      method: "POST",
+    }),
 };
 
 export const LogApi = {
@@ -484,7 +502,8 @@ export const RegistryApi = {
   deleteBlackboxAi: (id: string) => defaultClient.deleteBlackboxAi(id),
   listDiscoveryCandidates: () => defaultClient.listDiscoveryCandidates(),
   clearDiscoveryCandidates: () => defaultClient.clearDiscoveryCandidates(),
-  deleteDiscoveryCandidate: (id: string) => defaultClient.deleteDiscoveryCandidate(id),
+  deleteDiscoveryCandidate: (id: string) =>
+    defaultClient.deleteDiscoveryCandidate(id),
   triggerDiscoveryScan: (req?: any) => defaultClient.triggerDiscoveryScan(req),
   listDiscoveryScans: () => defaultClient.listDiscoveryScans(),
   getDiscoveryScanStatus: (scanId: string) =>
@@ -528,6 +547,7 @@ export const PolicyApi = {
     defaultClient.simulatePreset(id, payload),
   checkPepCapabilities: (req: unknown) =>
     defaultClient.checkPepCapabilities(req),
+  getCapabilities: () => defaultClient.fetchApi("/pep-capabilities"),
 };
 
 export const BundleApi = {

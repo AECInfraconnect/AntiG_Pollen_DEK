@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
@@ -20,77 +20,76 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-    
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
-      with:
-        components: rustfmt, clippy
-        
-    - name: Rust Cache
-      uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-      
-    - name: Check Formatting
-      run: cargo fmt --all -- --check
-      
-    - name: Check default workspace
-      run: cargo check --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --locked
-      
-    - name: Clippy default workspace
-      run: cargo clippy --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --all-targets --locked -- -D warnings
-      
-    - name: Test default workspace
-      run: cargo test --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --locked
-      
-    - name: Build release default workspace
-      env:
-        DEK_SKIP_EBPF_BUILD: "1"
-      run: cargo build --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --release --locked
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Check default workspace
+        run: cargo check --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --locked
+
+      - name: Clippy default workspace
+        run: cargo clippy --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --all-targets --locked -- -D warnings
+
+      - name: Test default workspace
+        run: cargo test --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --locked
+
+      - name: Build release default workspace
+        env:
+          DEK_SKIP_EBPF_BUILD: "1"
+        run: cargo build --workspace --exclude dek-ebpf-prog --exclude pii-redactor-plugin --release --locked
 
   ebpf_build:
     name: eBPF Build (Linux Only)
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-    - name: Install Rust nightly for eBPF
-      uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
-      with:
-        toolchain: nightly
-        components: rust-src, llvm-tools-preview
-    - name: Rust Cache
-      uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-    - name: Install bpf-linker
-      run: cargo install bpf-linker
-    - name: Build eBPF Prog
-      run: cargo +nightly build --manifest-path crates/dek-ebpf-prog/Cargo.toml --target bpfel-unknown-none -Z build-std=core --release
-    - name: Build eBPF Daemon
-      run: cargo build --manifest-path crates/dek-ebpfd/Cargo.toml --release
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install Rust nightly for eBPF
+        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
+        with:
+          toolchain: nightly
+          components: rust-src, llvm-tools-preview
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - name: Install bpf-linker
+        run: cargo install bpf-linker
+      - name: Build eBPF Prog
+        run: cargo +nightly build --manifest-path crates/dek-ebpf-prog/Cargo.toml --target bpfel-unknown-none -Z build-std=core --release
+      - name: Build eBPF Daemon
+        run: cargo build --manifest-path crates/dek-ebpfd/Cargo.toml --release
 
   wasm_build:
     name: WASM Plugin Build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-    - name: Install wasm32-wasip1 target
-      uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
-      with:
-        targets: wasm32-wasip1
-    - name: Build WASM Plugins
-      run: cargo build --target wasm32-wasip1 -p pii-redactor-plugin
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install wasm32-wasip1 target
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          targets: wasm32-wasip1
+      - name: Build WASM Plugins
+        run: cargo build --target wasm32-wasip1 -p pii-redactor-plugin
 
   security_insights_check:
     name: Verify SECURITY-INSIGHTS.yml Links
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-    - name: Check URLs
-      run: |
-        missing=0
-        for wf in $(grep -oE 'actions/workflows/[a-zA-Z0-9_-]+\.yml' SECURITY-INSIGHTS.yml | awk -F'/' '{print $3}'); do
-           if [ ! -f ".github/workflows/$wf" ]; then
-              echo "Error: Referenced workflow $wf does not exist."
-              missing=1
-           fi
-        done
-        exit $missing
-
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Check URLs
+        run: |
+          missing=0
+          for wf in $(grep -oE 'actions/workflows/[a-zA-Z0-9_-]+\.yml' SECURITY-INSIGHTS.yml | awk -F'/' '{print $3}'); do
+             if [ ! -f ".github/workflows/$wf" ]; then
+                echo "Error: Referenced workflow $wf does not exist."
+                missing=1
+             fi
+          done
+          exit $missing

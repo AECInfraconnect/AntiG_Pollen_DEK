@@ -79,7 +79,8 @@ export function PolicySuggestions() {
                   ? new Date(sortedSuggestions[0].created_at).getTime()
                   : 0;
               const latestSuggestions = sortedSuggestions.filter(
-                (s) => new Date(s.created_at).getTime() > latestScanTime - 60000,
+                (s) =>
+                  new Date(s.created_at).getTime() > latestScanTime - 60000,
               );
               const previousSuggestions = sortedSuggestions.filter(
                 (s) =>

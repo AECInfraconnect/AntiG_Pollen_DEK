@@ -80,8 +80,8 @@ export function CloudPdpTab() {
           Connect to Pollek Cloud PDP
         </h4>
         <p className="max-w-md mx-auto text-sm">
-          Connect this Local Enforcement Kit to a fully managed Pollek Cloud PDP. Configuration
-          and routing will be synced automatically.
+          Connect this Local Enforcement Kit to a fully managed Pollek Cloud
+          PDP. Configuration and routing will be synced automatically.
         </p>
         <button
           onClick={handleLogin}

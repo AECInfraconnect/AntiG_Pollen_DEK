@@ -48,6 +48,8 @@ windows-dpapi = "0.2.0"
 dek-domain-schema = { version = "0.1.0", path = "../dek-domain-schema" }
 dek-telemetry = { version = "0.1.0", path = "../dek-telemetry" }
 dek-errors = { version = "0.1.0", path = "../dek-errors" }
+dek-metrics = { path = "../dek-metrics" }
+metrics-exporter-prometheus = "0.13"
 
 [dev-dependencies]
 tempfile = "3.27.0"

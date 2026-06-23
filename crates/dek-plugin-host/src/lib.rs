@@ -5,7 +5,7 @@ pub mod manifest;
 
 use dek_plugin_sdk::{EvalRequest, PluginError, PolicyEvaluator, TransformPlugin};
 use dek_policy_router::{PolicyRouter, Route};
-use dek_policy_runtime::{PolicyDecision as OldPolicyDecision, PolicyError, PolicyRuntime};
+use dek_policy_runtime::{PolicyDecision as OldPolicyDecision, PolicyError, PolicyRuntime, PolicyResult};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -27,7 +27,7 @@ impl EvaluatorAdapter {
 
 #[async_trait::async_trait]
 impl PolicyRuntime for EvaluatorAdapter {
-    async fn evaluate(&self, input: serde_json::Value) -> Result<OldPolicyDecision, PolicyError> {
+    async fn evaluate(&self, input: Arc<serde_json::Value>) -> PolicyResult {
         let request_id = input
             .get("request_id")
             .and_then(|v| v.as_str())
@@ -62,7 +62,7 @@ impl PolicyRuntime for EvaluatorAdapter {
             subject,
             action,
             resource,
-            payload: input.clone(),
+            payload: (*input).clone(),
             context: Default::default(),
         };
 

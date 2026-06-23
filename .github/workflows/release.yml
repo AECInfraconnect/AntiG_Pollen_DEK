@@ -3,8 +3,8 @@ name: Release Supply Chain
 on:
   push:
     tags:
-      - 'v*.*.*'
-      - 'v*.*.*-*'
+      - "v*.*.*"
+      - "v*.*.*-*"
   workflow_dispatch:
     inputs:
       version:
@@ -102,7 +102,7 @@ jobs:
           cp target/${{ matrix.target }}/release/dek-mcp-proxy staging/dek-mcp-proxy || cp target/${{ matrix.target }}/release/dek-mcp-proxy.exe staging/dek-mcp-proxy.exe
           cp target/${{ matrix.target }}/release/dek-ext-authz staging/dek-ext-authz || cp target/${{ matrix.target }}/release/dek-ext-authz.exe staging/dek-ext-authz.exe
           cp target/${{ matrix.target }}/release/dek-cli staging/dek-cli || cp target/${{ matrix.target }}/release/dek-cli.exe staging/dek-cli.exe
-          
+
       - name: Sign macOS Binaries
         if: matrix.os == 'macos-latest'
         env:
@@ -124,12 +124,12 @@ jobs:
           security create-keychain -p "" build.keychain
           security import cert.p12 -k build.keychain -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
-          
+
           codesign --force --options runtime --sign "Developer ID Application" staging/dek-core
           codesign --force --options runtime --sign "Developer ID Application" staging/dek-mcp-proxy
           codesign --force --options runtime --sign "Developer ID Application" staging/dek-ext-authz
           codesign --force --options runtime --sign "Developer ID Application" staging/dek-cli
-          
+
           # Zip for notarization
           ditto -c -k --keepParent staging staging.zip
           xcrun notarytool submit staging.zip --apple-id "$APPLE_DEV_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
@@ -237,7 +237,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: pollen-dek-sboms
-          path: 'pollen-dek.cdx.json'
+          path: "pollen-dek.cdx.json"
 
   release:
     name: Publish Release
@@ -289,13 +289,13 @@ jobs:
       - name: Attest Build Provenance
         uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
         with:
-          subject-path: 'release_artifacts/*'
+          subject-path: "release_artifacts/*"
 
       - name: Attest SBOM
         uses: actions/attest-sbom@5122b253c73d544ca1c5f71dd022f470df08b461 # v2.1.0
         with:
-          subject-path: 'release_artifacts/*.tar.gz'
-          sbom-path: 'release_artifacts/pollen-dek.cdx.json'
+          subject-path: "release_artifacts/*.tar.gz"
+          sbom-path: "release_artifacts/pollen-dek.cdx.json"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
@@ -307,7 +307,7 @@ jobs:
           generate_release_notes: true
 
 # Verification Instructions for End-Users:
-# 
+#
 # 1. Verify Checksums:
 #    sha256sum -c SHA256SUMS
 #

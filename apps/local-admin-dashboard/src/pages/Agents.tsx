@@ -21,7 +21,12 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
   }, []);
 
   const deleteAgent = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this agent? Note: Make sure no active policies depend on it.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this agent? Note: Make sure no active policies depend on it.",
+      )
+    )
+      return;
     try {
       await RegistryApi.deleteAgent(id);
       fetchAgents();
@@ -106,18 +111,21 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
                         agent.enforcement_mode === "Enforce"
                           ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm shadow-emerald-500/10"
                           : agent.enforcement_mode === "Observe"
-                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 shadow-sm shadow-amber-500/10"
-                          : agent.enforcement_mode === "Shadow"
-                          ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-sm shadow-blue-500/10"
-                          : "bg-muted text-muted-foreground border border-border"
+                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 shadow-sm shadow-amber-500/10"
+                            : agent.enforcement_mode === "Shadow"
+                              ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-sm shadow-blue-500/10"
+                              : "bg-muted text-muted-foreground border border-border"
                       }`}
                     >
                       <span
                         className={`h-1.5 w-1.5 rounded-full shadow-sm ${
-                          agent.enforcement_mode === "Enforce" ? "bg-emerald-500 shadow-emerald-500/50" 
-                          : agent.enforcement_mode === "Observe" ? "bg-amber-500 shadow-amber-500/50"
-                          : agent.enforcement_mode === "Shadow" ? "bg-blue-500 shadow-blue-500/50"
-                          : "bg-muted-foreground"
+                          agent.enforcement_mode === "Enforce"
+                            ? "bg-emerald-500 shadow-emerald-500/50"
+                            : agent.enforcement_mode === "Observe"
+                              ? "bg-amber-500 shadow-amber-500/50"
+                              : agent.enforcement_mode === "Shadow"
+                                ? "bg-blue-500 shadow-blue-500/50"
+                                : "bg-muted-foreground"
                         }`}
                       />
                       {agent.enforcement_mode || "Not Enforceable"}
@@ -131,7 +139,11 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
-                      <RegisterControlBar agentId={agent.agent_id} tenantId="local" onSuccess={() => window.location.reload()} />
+                      <RegisterControlBar
+                        agentId={agent.agent_id}
+                        tenantId="local"
+                        onSuccess={() => window.location.reload()}
+                      />
                       <button
                         onClick={() => deleteAgent(agent.agent_id)}
                         className="px-3 py-1 text-xs text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded border border-red-500/20 transition-colors"

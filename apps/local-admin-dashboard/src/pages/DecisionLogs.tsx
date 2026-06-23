@@ -35,10 +35,10 @@ export function DecisionLogs() {
   const load = useCallback(() => {
     setLoading(true);
     fetch("http://localhost:3000/v1/tenants/default/observations?kind=decision")
-      .then(res => res.json())
+      .then((res) => res.json())
       .then((data: any[]) => {
         // Map AgentObservationEvent to match UI expectation
-        const mapped = data.map(ev => ({
+        const mapped = data.map((ev) => ({
           timestamp: ev.timestamp,
           event_id: ev.event_id,
           payload: {
@@ -47,7 +47,7 @@ export function DecisionLogs() {
             request_id: ev.trace_id,
             matched_policy_ids: ev.decision?.matched_policy_ids,
             latency_ms: ev.latency_ms,
-          }
+          },
         }));
         setEvents(mapped as any);
       })
@@ -88,7 +88,12 @@ export function DecisionLogs() {
   };
 
   const clearHistory = async () => {
-    if (!confirm("Are you sure you want to clear all decision logs? This cannot be undone.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to clear all decision logs? This cannot be undone.",
+      )
+    )
+      return;
     try {
       await TelemetryApi.clearDecisionLogs();
       load();
@@ -140,38 +145,37 @@ export function DecisionLogs() {
             Logs
           </h2>
           <p className="text-muted-foreground">
-            Every authorization decision the Local Enforcement Kit enforced (local workspace).
+            Every authorization decision the Local Enforcement Kit enforced
+            (local workspace).
           </p>
         </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={clearHistory}
-                  className="bg-red-500/10 text-red-400 hover:bg-red-500/20 px-3 py-1.5 rounded-lg text-sm transition-colors border border-red-500/20"
-                >
-                  Clear History
-                </button>
-                <button
-                  onClick={exportJSON}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-sm transition-colors border border-slate-700"
-                >
-                  <Download className="w-4 h-4" /> JSON
-                </button>
-                <button
-                  onClick={exportCSV}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-sm transition-colors border border-slate-700"
-                >
-                  <Download className="w-4 h-4" /> CSV
-                </button>
-                <button
-                  onClick={load}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-200 transition-colors"
-                  title="Refresh"
-                >
-                  <RefreshCw
-                    className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-                  />
-                </button>
-              </div>
+        <div className="flex gap-2">
+          <button
+            onClick={clearHistory}
+            className="bg-red-500/10 text-red-400 hover:bg-red-500/20 px-3 py-1.5 rounded-lg text-sm transition-colors border border-red-500/20"
+          >
+            Clear History
+          </button>
+          <button
+            onClick={exportJSON}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-sm transition-colors border border-slate-700"
+          >
+            <Download className="w-4 h-4" /> JSON
+          </button>
+          <button
+            onClick={exportCSV}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-sm transition-colors border border-slate-700"
+          >
+            <Download className="w-4 h-4" /> CSV
+          </button>
+          <button
+            onClick={load}
+            className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-200 transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

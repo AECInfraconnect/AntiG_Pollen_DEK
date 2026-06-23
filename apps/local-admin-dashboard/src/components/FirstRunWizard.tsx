@@ -1,12 +1,21 @@
 import { useState, useEffect } from "react";
-import { Shield, Search, ArrowRight, CheckCircle, Zap, RefreshCw } from "lucide-react";
+import {
+  Shield,
+  Search,
+  ArrowRight,
+  CheckCircle,
+  Zap,
+  RefreshCw,
+} from "lucide-react";
 import { RegistryApi } from "../services/api";
 import type { DiscoveredAgentCandidateV2 } from "../services/types";
 
 export function FirstRunWizard() {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
-  const [candidates, setCandidates] = useState<DiscoveredAgentCandidateV2[]>([]);
+  const [candidates, setCandidates] = useState<DiscoveredAgentCandidateV2[]>(
+    [],
+  );
   const [_scanning, setScanning] = useState(false);
   const [baseControlLevel, setBaseControlLevel] = useState("observe");
 
@@ -21,14 +30,17 @@ export function FirstRunWizard() {
     setStep(2);
     setScanning(true);
     try {
-      await RegistryApi.triggerDiscoveryScan({ sources: ["process", "mcp_config", "browser_extension"], privacy_mode: true });
+      await RegistryApi.triggerDiscoveryScan({
+        sources: ["process", "mcp_config", "browser_extension"],
+        privacy_mode: true,
+      });
       // Simulate waiting for scan to populate (in a real app, we poll getDiscoveryScanStatus)
       setTimeout(async () => {
         try {
-            const c = await RegistryApi.listDiscoveryCandidates();
-            setCandidates(c);
-        } catch(e) {
-            console.error(e);
+          const c = await RegistryApi.listDiscoveryCandidates();
+          setCandidates(c);
+        } catch (e) {
+          console.error(e);
         }
         setScanning(false);
         setStep(3);
@@ -57,9 +69,11 @@ export function FirstRunWizard() {
             <Shield className="h-6 w-6 text-primary" />
             Welcome to Pollek Local Enforcement Kit
           </h2>
-          <p className="text-muted-foreground mt-1">Let's secure your local AI ecosystem in just a few steps.</p>
+          <p className="text-muted-foreground mt-1">
+            Let's secure your local AI ecosystem in just a few steps.
+          </p>
         </div>
-        
+
         <div className="p-6">
           {step === 1 && (
             <div className="space-y-6 text-center py-8">
@@ -67,12 +81,18 @@ export function FirstRunWizard() {
                 <Search className="h-8 w-8 text-primary" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold">Discover Local AI Agents</h3>
+                <h3 className="text-xl font-semibold">
+                  Discover Local AI Agents
+                </h3>
                 <p className="text-muted-foreground max-w-md mx-auto mt-2">
-                  We'll quickly scan your system to find running AI processes, IDE extensions, and web AI agents.
+                  We'll quickly scan your system to find running AI processes,
+                  IDE extensions, and web AI agents.
                 </p>
               </div>
-              <button onClick={handleStartScan} className="bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium inline-flex items-center gap-2 hover:bg-primary/90 transition shadow-lg shadow-primary/20">
+              <button
+                onClick={handleStartScan}
+                className="bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium inline-flex items-center gap-2 hover:bg-primary/90 transition shadow-lg shadow-primary/20"
+              >
                 Start Discovery Scan <ArrowRight className="h-4 w-4" />
               </button>
             </div>
@@ -83,7 +103,9 @@ export function FirstRunWizard() {
               <RefreshCw className="h-12 w-12 text-primary animate-spin mx-auto" />
               <div>
                 <h3 className="text-lg font-medium">Scanning your system...</h3>
-                <p className="text-muted-foreground mt-2">Looking for IDEs, desktop agents, and web AI clients.</p>
+                <p className="text-muted-foreground mt-2">
+                  Looking for IDEs, desktop agents, and web AI clients.
+                </p>
               </div>
             </div>
           )}
@@ -99,18 +121,30 @@ export function FirstRunWizard() {
                   Found {candidates.length} potential AI agents running locally.
                 </p>
               </div>
-              
+
               <div className="bg-muted/30 rounded-lg p-4 max-h-48 overflow-y-auto space-y-2 border">
                 {candidates.length === 0 ? (
                   <div className="text-center py-6">
-                    <p className="text-sm text-muted-foreground">No agents found yet.</p>
-                    <p className="text-xs text-muted-foreground mt-1">You can run a deeper scan later from the Auto Discovery tab.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No agents found yet.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      You can run a deeper scan later from the Auto Discovery
+                      tab.
+                    </p>
                   </div>
                 ) : (
-                  candidates.map(c => (
-                    <div key={c.candidate_id} className="flex justify-between items-center text-sm p-3 bg-background border rounded-lg hover:border-primary/50 transition-colors">
-                      <span className="font-medium">{c.display_name || c.candidate_id}</span>
-                      <span className="text-xs text-muted-foreground capitalize bg-muted px-2 py-1 rounded-full">{c.inferred_agent_type.replace(/_/g, ' ')}</span>
+                  candidates.map((c) => (
+                    <div
+                      key={c.candidate_id}
+                      className="flex justify-between items-center text-sm p-3 bg-background border rounded-lg hover:border-primary/50 transition-colors"
+                    >
+                      <span className="font-medium">
+                        {c.display_name || c.candidate_id}
+                      </span>
+                      <span className="text-xs text-muted-foreground capitalize bg-muted px-2 py-1 rounded-full">
+                        {c.inferred_agent_type.replace(/_/g, " ")}
+                      </span>
                     </div>
                   ))
                 )}
@@ -119,31 +153,46 @@ export function FirstRunWizard() {
               <div className="space-y-3 pt-4 border-t mt-6">
                 <h4 className="font-medium">Set Default Security Posture</h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <button 
-                    onClick={() => setBaseControlLevel('observe')}
-                    className={`p-4 rounded-xl border text-left transition-all ${baseControlLevel === 'observe' ? 'border-primary ring-1 ring-primary bg-primary/5 shadow-md' : 'hover:bg-muted/50 hover:border-muted-foreground/30'}`}
+                  <button
+                    onClick={() => setBaseControlLevel("observe")}
+                    className={`p-4 rounded-xl border text-left transition-all ${baseControlLevel === "observe" ? "border-primary ring-1 ring-primary bg-primary/5 shadow-md" : "hover:bg-muted/50 hover:border-muted-foreground/30"}`}
                   >
                     <div className="font-medium flex items-center justify-between">
-                        Observe Only
-                        {baseControlLevel === 'observe' && <CheckCircle className="h-4 w-4 text-primary" />}
+                      Observe Only
+                      {baseControlLevel === "observe" && (
+                        <CheckCircle className="h-4 w-4 text-primary" />
+                      )}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-2">Monitor activity and log requests without blocking anything. Best for learning.</div>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      Monitor activity and log requests without blocking
+                      anything. Best for learning.
+                    </div>
                   </button>
-                  <button 
-                    onClick={() => setBaseControlLevel('enforce')}
-                    className={`p-4 rounded-xl border text-left transition-all ${baseControlLevel === 'enforce' ? 'border-primary ring-1 ring-primary bg-primary/5 shadow-md' : 'hover:bg-muted/50 hover:border-muted-foreground/30'}`}
+                  <button
+                    onClick={() => setBaseControlLevel("enforce")}
+                    className={`p-4 rounded-xl border text-left transition-all ${baseControlLevel === "enforce" ? "border-primary ring-1 ring-primary bg-primary/5 shadow-md" : "hover:bg-muted/50 hover:border-muted-foreground/30"}`}
                   >
                     <div className="font-medium flex items-center justify-between">
-                        <span className="flex items-center gap-1.5"><Zap className="h-4 w-4 text-amber-500" /> Strict Guard</span>
-                        {baseControlLevel === 'enforce' && <CheckCircle className="h-4 w-4 text-primary" />}
+                      <span className="flex items-center gap-1.5">
+                        <Zap className="h-4 w-4 text-amber-500" /> Strict Guard
+                      </span>
+                      {baseControlLevel === "enforce" && (
+                        <CheckCircle className="h-4 w-4 text-primary" />
+                      )}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-2">Block unauthorized resource access instantly based on explicit policies.</div>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      Block unauthorized resource access instantly based on
+                      explicit policies.
+                    </div>
                   </button>
                 </div>
               </div>
 
               <div className="flex justify-end pt-6">
-                <button onClick={handleComplete} className="bg-primary text-primary-foreground px-8 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition shadow-lg shadow-primary/20">
+                <button
+                  onClick={handleComplete}
+                  className="bg-primary text-primary-foreground px-8 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition shadow-lg shadow-primary/20"
+                >
                   Finish Setup
                 </button>
               </div>

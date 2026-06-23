@@ -190,6 +190,28 @@ impl WfpFilterManager {
         info!(filter_id, app_path, "WFP app filter added");
         Ok(filter_id)
     }
+
+    pub fn start_observation_loop(&self) {
+        if let Some(spool) = self.spool.clone() {
+            tokio::spawn(async move {
+                // In reality, this would listen to ETW or FwpmNetEventsSubscribe0.
+                // For demonstration, we periodically generate an observation event.
+                loop {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+                    let event = crate::sni_observe::observe_connection(
+                        0x08080808, // 8.8.8.8
+                        443,
+                        "C:\\Windows\\System32\\svchost.exe",
+                        Some("dns.google".to_string()),
+                        "observe",
+                    );
+                    if let Ok(buf) = serde_json::to_vec(&event) {
+                        let _ = spool.enqueue(buf).await;
+                    }
+                }
+            });
+        }
+    }
 }
 
 impl NetworkEnforcer for WfpFilterManager {
@@ -214,6 +236,10 @@ impl NetworkEnforcer for WfpFilterManager {
             self.engine_handle = Some(handle);
             self.is_active = true;
             info!("WFP Engine initialized and ALE_AUTH_CONNECT sublayers ready");
+
+            // Start observation telemetry
+            self.start_observation_loop();
+
             Ok(())
         }
 

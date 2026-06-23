@@ -20,7 +20,12 @@ export function BlackboxAI({ hideHeader = false }: { hideHeader?: boolean }) {
   }, []);
 
   const deleteProvider = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this provider? Note: Make sure no active policies depend on it.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this provider? Note: Make sure no active policies depend on it.",
+      )
+    )
+      return;
     try {
       await RegistryApi.deleteBlackboxAi(id);
       fetchProviders();

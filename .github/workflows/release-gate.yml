@@ -3,7 +3,7 @@ name: Release Gate
 on:
   push:
     tags:
-      - 'v*-beta*'
+      - "v*-beta*"
 
 permissions:
   contents: read
@@ -59,4 +59,6 @@ jobs:
       - name: Build Binaries (Acceptance Matrix A-K)
         run: cargo build --release --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin
 
-
+      - name: End-to-End Local Smoke Test
+        if: runner.os == 'Linux'
+        run: bash scripts/smoke/install_and_run.sh

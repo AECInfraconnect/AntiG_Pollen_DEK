@@ -25,7 +25,12 @@ export function Resources() {
 
   const deleteResource = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this resource? Note: Make sure no active policies depend on it.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this resource? Note: Make sure no active policies depend on it.",
+      )
+    )
+      return;
     try {
       await RegistryApi.deleteResource(id);
       fetchResources();

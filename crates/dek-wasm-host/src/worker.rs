@@ -30,9 +30,17 @@ impl PluginWorker {
             request_id,
             deadline: Instant::now() + timeout,
             dirty: false,
+            limits: wasmtime::StoreLimitsBuilder::new()
+                .memory_size(64 * 1024 * 1024)
+                .table_elements(4096)
+                .instances(2)
+                .memories(1)
+                .tables(1)
+                .build(),
         };
 
         let mut store = Store::new(engine, state);
+        store.limiter(|state| &mut state.limits);
 
         let instance = compiled
             .instance_pre
@@ -101,11 +109,20 @@ impl PluginWorker {
             .write(&mut self.store, ptr as usize, input)
             .context("failed to write input to guest memory")?;
 
-        let result = self
+        let result = match self
             .decide
             .call_async(&mut self.store, (ptr, input.len() as i32))
             .await
-            .context("plugin decide call failed")?;
+        {
+            Ok(r) => r,
+            Err(e) => {
+                if let Some(trap) = e.downcast_ref::<wasmtime::Trap>() {
+                    tracing::error!("WASM Plugin trapped: {:?}", trap);
+                    bail!("Plugin trapped: {:?}", trap);
+                }
+                bail!("Plugin decide call failed: {:?}", e);
+            }
+        };
 
         // Always deallocate input.
         self.dealloc

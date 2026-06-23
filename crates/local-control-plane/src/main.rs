@@ -26,6 +26,9 @@ async fn main() -> anyhow::Result<()> {
     }
     tracing_subscriber::fmt::init();
 
+    let metrics_handle = dek_metrics::install_recorder("local-control-plane")
+        .expect("Failed to install Prometheus recorder");
+
     let cfg = LocalControlPlaneConfig::from_env()?;
 
     let store = Arc::new(store::SqliteStore::new(&cfg.db_url).await?);
@@ -67,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
     tokio::spawn(local_control_plane::anomaly_detector::start_anomaly_detector(state.clone()));
 
     let static_dir = cfg.dashboard_dir.to_string_lossy().to_string();
-    let app = app::create_app(state.clone(), &static_dir);
+    let app = app::create_app(state.clone(), &static_dir, metrics_handle);
 
     store::seed_pdp_defaults(&state.pdp_store).await?;
 

@@ -2,7 +2,7 @@ name: Nightly Soak Test
 
 on:
   schedule:
-    - cron: '0 3 * * *'
+    - cron: "0 3 * * *"
 
 permissions:
   contents: read

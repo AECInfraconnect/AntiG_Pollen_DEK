@@ -465,7 +465,7 @@ async fn simulate_policy(
     impl dek_policy_runtime::PolicyRuntime for SimulateRuntime {
         async fn evaluate(
             &self,
-            input: serde_json::Value,
+            input: std::sync::Arc<serde_json::Value>,
         ) -> Result<dek_policy_runtime::PolicyDecision, dek_policy_runtime::PolicyError> {
             let req = dek_plugin_sdk::EvalRequest {
                 request_id: "sim-123".into(),
@@ -473,7 +473,7 @@ async fn simulate_policy(
                 subject: None,
                 action: None,
                 resource: None,
-                payload: input,
+                payload: (*input).clone(),
                 context: std::collections::BTreeMap::new(),
             };
             use dek_plugin_sdk::PolicyEvaluator;

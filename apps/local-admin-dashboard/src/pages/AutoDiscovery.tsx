@@ -28,7 +28,12 @@ export function AutoDiscovery() {
   };
 
   const clearCandidates = async () => {
-    if (!confirm("Are you sure you want to clear all discovery candidates? This cannot be undone.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to clear all discovery candidates? This cannot be undone.",
+      )
+    )
+      return;
     try {
       await RegistryApi.clearDiscoveryCandidates();
       fetchCandidates();
@@ -291,12 +296,27 @@ export function AutoDiscovery() {
             ) : (
               <div className="space-y-8">
                 {(() => {
-                  const sortedCandidates = [...candidates].sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime());
-                  const latestScanTime = sortedCandidates.length > 0 ? new Date(sortedCandidates[0].last_seen).getTime() : 0;
-                  const latestCandidates = sortedCandidates.filter(c => new Date(c.last_seen).getTime() > latestScanTime - 60000);
-                  const previousCandidates = sortedCandidates.filter(c => new Date(c.last_seen).getTime() <= latestScanTime - 60000);
+                  const sortedCandidates = [...candidates].sort(
+                    (a, b) =>
+                      new Date(b.last_seen).getTime() -
+                      new Date(a.last_seen).getTime(),
+                  );
+                  const latestScanTime =
+                    sortedCandidates.length > 0
+                      ? new Date(sortedCandidates[0].last_seen).getTime()
+                      : 0;
+                  const latestCandidates = sortedCandidates.filter(
+                    (c) =>
+                      new Date(c.last_seen).getTime() > latestScanTime - 60000,
+                  );
+                  const previousCandidates = sortedCandidates.filter(
+                    (c) =>
+                      new Date(c.last_seen).getTime() <= latestScanTime - 60000,
+                  );
 
-                  const renderCandidateList = (list: DiscoveredAgentCandidateV2[]) => (
+                  const renderCandidateList = (
+                    list: DiscoveredAgentCandidateV2[],
+                  ) => (
                     <div className="space-y-4">
                       {list.map((c, idx) => (
                         <div
@@ -316,7 +336,8 @@ export function AutoDiscovery() {
                             <div className="flex gap-2">
                               {c.status === "registered" ? (
                                 <span className="inline-flex items-center gap-1 text-xs text-green-500 bg-green-500/10 border border-green-500/20 font-medium px-2.5 py-1 rounded-md">
-                                  <CheckCircle className="w-3.5 h-3.5" /> Registered
+                                  <CheckCircle className="w-3.5 h-3.5" />{" "}
+                                  Registered
                                 </span>
                               ) : (
                                 <button
@@ -343,9 +364,13 @@ export function AutoDiscovery() {
                               {c.risk_score} |{" "}
                               <span className="font-medium">Confidence:</span>{" "}
                               {(c.confidence * 100).toFixed(0)}% <br />
-                              <span className="font-medium">First seen:</span>{" "}
+                              <span className="font-medium">
+                                First seen:
+                              </span>{" "}
                               {new Date(c.first_seen).toLocaleString()} <br />
-                              <span className="font-medium">Last seen:</span>{" "}
+                              <span className="font-medium">
+                                Last seen:
+                              </span>{" "}
                               {new Date(c.last_seen).toLocaleString()}
                             </p>
                           </div>
@@ -383,7 +408,7 @@ export function AutoDiscovery() {
                           {renderCandidateList(latestCandidates)}
                         </div>
                       )}
-                      
+
                       {previousCandidates.length > 0 && (
                         <div className="pt-4 border-t">
                           <h4 className="font-medium text-sm text-muted-foreground mb-3">

@@ -213,7 +213,7 @@ async fn main() -> Result<()> {
     // Task 3: Read parent stdin, intercept, and optionally pipe to child stdin
     let agent_id = args.agent_id.clone();
     let server_id = args.server_id.clone();
-    tokio::spawn(async move {
+    let parent_stdin_task = tokio::spawn(async move {
         while let Ok(Some(line)) = parent_stdin.next_line().await {
             info!("[wrapper] Intercepted Request: {}", line);
 
@@ -352,16 +352,30 @@ async fn main() -> Result<()> {
         }
     });
 
-    // Task 4: Write all output to parent stdout
-    while let Some(mut output) = rx_out.recv().await {
-        output.push('\n');
-        if parent_stdout.write_all(output.as_bytes()).await.is_err() {
-            break;
+    let parent_stdout_task = tokio::spawn(async move {
+        // Task 4: Write all output to parent stdout
+        while let Some(mut output) = rx_out.recv().await {
+            output.push('\n');
+            if parent_stdout.write_all(output.as_bytes()).await.is_err() {
+                break;
+            }
+        }
+    });
+
+    tokio::select! {
+        _ = parent_stdout_task => {
+            info!("Parent stdout task completed or tx_out dropped.");
+        }
+        status = child.wait() => {
+            info!("Child exited with {:?}", status);
+        }
+        _ = parent_stdin_task => {
+            info!("Parent stdin closed (Dead client detection).");
         }
     }
 
-    let status = child.wait().await?;
-    info!("dek-stdio-wrapper exiting with status: {}", status);
+    // Ensure child process is killed if we're exiting due to client disconnect
+    let _ = child.kill().await;
 
     Ok(())
 }

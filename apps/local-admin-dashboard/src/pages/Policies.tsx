@@ -449,7 +449,8 @@ function PolicyEditor({
             htmlFor="policy-source"
             className="text-xs font-medium text-muted-foreground"
           >
-            Policy source (compiled on the control plane, not the Local Enforcement Kit)
+            Policy source (compiled on the control plane, not the Local
+            Enforcement Kit)
           </label>
           <textarea
             id="policy-source"

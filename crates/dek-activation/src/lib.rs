@@ -9,6 +9,7 @@ pub mod lkg;
 pub mod modes;
 pub mod preflight;
 pub mod snapshot;
+pub mod signature;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActivationSource {

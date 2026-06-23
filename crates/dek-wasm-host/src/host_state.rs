@@ -8,4 +8,5 @@ pub struct HostState {
     pub request_id: String,
     pub deadline: Instant,
     pub dirty: bool,
+    pub limits: wasmtime::StoreLimits,
 }

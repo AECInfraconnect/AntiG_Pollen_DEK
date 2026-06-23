@@ -209,6 +209,8 @@ pub enum EnterpriseProfile {
 pub struct DekConfig {
     pub device_id: String,
     pub tenant_id: String,
+    #[serde(default)]
+    pub pinned_bundle_public_key: String,
     pub mtls: MtlsConfig,
     pub spire_server: Option<SpireServerConfig>,
     pub policy_config: Option<PolicyConfig>,

@@ -1,4 +1,3 @@
-
 import { SimulationSummary } from "../presets/SimulationSummary";
 
 export function SimulationResults({ simResult }: { simResult: any }) {

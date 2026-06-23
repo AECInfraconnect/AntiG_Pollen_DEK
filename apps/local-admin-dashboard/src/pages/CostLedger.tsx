@@ -73,17 +73,22 @@ export function CostLedger() {
         {Object.keys(breakdown).length === 0 ? (
           <div className="flex h-[200px] items-center justify-center rounded-md border border-dashed border-muted">
             <p className="text-sm text-muted-foreground">
-              No detailed breakdowns yet. Configure dek-agent-observer to capture
-              provider usage.
+              No detailed breakdowns yet. Configure dek-agent-observer to
+              capture provider usage.
             </p>
           </div>
         ) : (
           <div className="space-y-4">
             {Object.entries(breakdown).map(([agentId, cost]) => (
-              <div key={agentId} className="flex justify-between items-center p-3 border rounded-lg">
+              <div
+                key={agentId}
+                className="flex justify-between items-center p-3 border rounded-lg"
+              >
                 <span className="font-medium">{agentId}</span>
                 <div className="flex items-center gap-4">
-                  <span className="text-muted-foreground">${cost.toFixed(2)}</span>
+                  <span className="text-muted-foreground">
+                    ${cost.toFixed(2)}
+                  </span>
                   <RegisterControlBar agentId={agentId} tenantId="local" />
                 </div>
               </div>

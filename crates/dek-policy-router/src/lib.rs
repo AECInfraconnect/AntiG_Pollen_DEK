@@ -12,6 +12,11 @@ use std::collections::HashMap;
 mod engine_selector;
 pub use engine_selector::{DecisionKind, EngineSelector};
 
+pub mod context;
+pub mod route_matcher;
+pub mod engine_plan;
+pub mod merge;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum EnforcementMode {
@@ -334,83 +339,12 @@ impl PolicyRouter {
         payload: serde_json::Value,
         dry_run: bool,
     ) -> Result<PolicyDecision> {
-        // Support both old nested schema and new NormalizedMcpEvent schema
-        let method = payload
-            .get("request_type")
-            .and_then(|v| v.as_str())
-            .or_else(|| {
-                payload
-                    .get("mcp")
-                    .and_then(|mcp| mcp.get("method"))
-                    .and_then(|v| v.as_str())
-            })
-            .or_else(|| payload.get("action").and_then(|v| v.as_str()))
-            .unwrap_or("");
+        let payload_arc = Arc::new(payload);
+        let ctx = context::PolicyContext::extract(&payload_arc);
 
-        // Extract optional matching context from payload
-        let tool_category = payload
-            .get("mcp")
-            .and_then(|mcp| mcp.get("category"))
-            .and_then(|v| v.as_str());
-        let resource_type = payload.get("resource").and_then(|v| {
-            if v.is_object() {
-                v.get("kind")
-                    .or_else(|| v.get("resource_type"))
-                    .or_else(|| v.get("type"))
-                    .and_then(|k| k.as_str())
-            } else {
-                v.as_str()
-            }
-        });
-        let severity_level = payload.get("severity").and_then(|v| v.as_str());
-
-        let mut matched_route = None;
-        for route in &self.routes {
-            let mut matches = true;
-
-            if let Some(ref m) = route.match_rule.method {
-                if m != "*" && m != method {
-                    matches = false;
-                }
-            }
-            if let Some(ref cat) = route.match_rule.tool_category {
-                if Some(cat.as_str()) != tool_category && cat != "*" {
-                    matches = false;
-                }
-            }
-            if let Some(ref res) = route.match_rule.resource_type {
-                if Some(res.as_str()) != resource_type && res != "*" {
-                    matches = false;
-                }
-            }
-            if let Some(ref sev) = route.match_rule.severity_level {
-                if Some(sev.as_str()) != severity_level && sev != "*" {
-                    matches = false;
-                }
-            }
-
-            if matches {
-                matched_route = Some(route);
-                break;
-            }
-        }
-
-        let route = match matched_route {
-            Some(r) => r,
-            None => {
-                return Ok(PolicyDecision {
-                    evaluator_id: "router_default".into(),
-                    evaluator_type: "router".into(),
-                    required: true,
-                    status: "success".into(),
-                    decision: "deny".into(),
-                    allow: false,
-                    reason: "no matching route".into(),
-                    effects: serde_json::json!({}),
-                    obligations: vec![],
-                    metadata: serde_json::json!({}),
-                })
-            }
+        let route = match route_matcher::match_route(&self.routes, &ctx) {
+            Ok(r) => r,
+            Err(default_deny) => return Ok(default_deny),
         };
 
         tracing::info!(
@@ -438,69 +372,36 @@ impl PolicyRouter {
             });
         }
 
-        let mut combined_decision = PolicyDecision {
-            evaluator_id: "router_combiner".into(),
-            evaluator_type: "router".into(),
-            required: true,
-            status: "success".into(),
-            decision: "allow".into(),
-            allow: true,
-            reason: "All evaluators passed".into(),
-            effects: serde_json::json!({}),
-            obligations: vec![],
-            metadata: serde_json::json!({}),
+        let mut combined_decision = merge::initial_decision();
+
+        let selected_pool_pdp = if !route.pdp_pool.is_empty() {
+            self.select_pdp_from_pool(&route.pdp_pool, &route.failover_strategy)
+        } else {
+            None
         };
 
-        let mut to_evaluate = route.pdp_required.clone();
-        for cond in &route.pdp_conditional {
-            if payload.get(&cond.required_payload_key).is_some() || cond.required_payload_key == "*"
-            {
-                to_evaluate.push(cond.evaluator.clone());
+        let available = self.evaluator_ids();
+        let plan = match engine_plan::EnginePlan::build(route, &ctx, &available, selected_pool_pdp) {
+            Some(p) => p,
+            None => {
+                return Ok(PolicyDecision {
+                    evaluator_id: "router_autoselect".into(),
+                    evaluator_type: "router".into(),
+                    required: true,
+                    status: "success".into(),
+                    decision: "deny".into(),
+                    allow: false,
+                    reason: "no suitable policy engine available for request".into(),
+                    effects: serde_json::json!({}),
+                    obligations: vec![],
+                    metadata: serde_json::json!({ "auto_select": "none_available" }),
+                });
             }
-        }
-        if !route.pdp_pool.is_empty() {
-            if let Some(pdp) = self.select_pdp_from_pool(&route.pdp_pool, &route.failover_strategy)
-            {
-                to_evaluate.push(pdp);
-            }
-        }
+        };
 
-        // AUTO-SELECT: ถ้าไม่มีระบุอะไรเลย ให้ใช้ auto select
-        if to_evaluate.is_empty() && route.primary_pdp_id.is_empty() {
-            let available = self.evaluator_ids();
-            match EngineSelector::resolve(method, &payload, &available) {
-                Some(engine) => {
-                    tracing::info!(
-                        "auto-selected engine '{}' (kind inferred from request)",
-                        engine
-                    );
-                    to_evaluate.push(engine);
-                }
-                None => {
-                    return Ok(PolicyDecision {
-                        evaluator_id: "router_autoselect".into(),
-                        evaluator_type: "router".into(),
-                        required: true,
-                        status: "success".into(),
-                        decision: "deny".into(),
-                        allow: false,
-                        reason: "no suitable policy engine available for request".into(),
-                        effects: serde_json::json!({}),
-                        obligations: vec![],
-                        metadata: serde_json::json!({ "auto_select": "none_available" }),
-                    });
-                }
-            }
-        }
-
-        // Add primary_pdp_id if it's set and we haven't already added engines
-        if !route.primary_pdp_id.is_empty() {
-            to_evaluate.insert(0, route.primary_pdp_id.clone());
-        }
-
-        let to_evaluate_clone = to_evaluate.clone();
-        let mut evaluate_queue = to_evaluate;
-        let mut fallback_queue = route.fallback_pdp_ids.clone();
+        let to_evaluate_clone = plan.evaluate_queue.clone();
+        let mut evaluate_queue = plan.evaluate_queue;
+        let mut fallback_queue = plan.fallback_queue;
 
         while !evaluate_queue.is_empty() {
             let ev_id = evaluate_queue.remove(0);
@@ -524,7 +425,7 @@ impl PolicyRouter {
                 }
 
                 let start_time = std::time::Instant::now();
-                let eval_fut = evaluator.evaluate(payload.clone());
+                let eval_fut = evaluator.evaluate(payload_arc.clone());
                 let timeout_dur = std::time::Duration::from_millis(self.pdp_timeout_ms);
 
                 match tokio::time::timeout(timeout_dur, eval_fut).await {
@@ -547,29 +448,14 @@ impl PolicyRouter {
                             }
                         }
 
-                        // Combine obligations
-                        combined_decision
-                            .obligations
-                            .extend(res.obligations.clone());
+                        merge::merge_decision(&mut combined_decision, res.clone(), &route.merge_strategy);
 
-                        // Merge effects (simple mock merge)
-                        if let serde_json::Value::Object(mut combined_map) =
-                            combined_decision.effects.clone()
-                        {
-                            if let serde_json::Value::Object(res_map) = res.effects.clone() {
-                                for (k, v) in res_map {
-                                    combined_map.insert(k, v);
-                                }
-                            }
-                            combined_decision.effects = serde_json::Value::Object(combined_map);
-                        }
-
-                        if !res.allow {
-                            // Deny overrides
-                            combined_decision.allow = false;
-                            combined_decision.decision = "deny".into();
+                        if !combined_decision.allow && (route.merge_strategy == "deny_overrides" || route.merge_strategy.is_empty()) {
+                            // Short-circuit on deny if deny_overrides
                             combined_decision.reason = format!("Blocked by {}", ev_id);
-                            // Short-circuit on deny
+                            break;
+                        } else if combined_decision.allow && route.merge_strategy == "permit_overrides" {
+                            // Short-circuit on allow if permit_overrides
                             break;
                         }
                     }
@@ -741,12 +627,12 @@ impl PolicyRouter {
         }
 
         // Dispatch Shadow PDPs asynchronously
-        let shadow_pdps = route.shadow_pdp_ids.clone();
+        let shadow_pdps = plan.shadow_pdps;
         if !shadow_pdps.is_empty() && !dry_run {
             for shadow_id in &shadow_pdps {
                 if let Some(evaluator) = self.evaluators.get(shadow_id) {
                     let evaluator_clone = evaluator.clone();
-                    let payload_clone = payload.clone();
+                    let payload_clone = payload_arc.clone();
                     let shadow_id_clone = shadow_id.clone();
                     let timeout_ms = self.pdp_timeout_ms;
 
@@ -816,7 +702,7 @@ mod tests {
     impl PolicyRuntime for DummyRuntime {
         async fn evaluate(
             &self,
-            _input: serde_json::Value,
+            _input: std::sync::Arc<serde_json::Value>,
         ) -> std::result::Result<PolicyDecision, dek_policy_runtime::PolicyError> {
             Ok(PolicyDecision {
                 evaluator_id: "dummy".into(),
@@ -905,6 +791,60 @@ mod tests {
         let res = router.authorize(payload).await.unwrap();
         assert_eq!(res.decision, "allow");
         assert_eq!(res.reason, "Break-glass mode activated");
+    }
+
+    #[tokio::test]
+    async fn test_merge_strategy_permit_overrides() {
+        let mut router = PolicyRouter::new();
+        struct DenyRuntime;
+        #[async_trait]
+        impl PolicyRuntime for DenyRuntime {
+            async fn evaluate(&self, _input: std::sync::Arc<serde_json::Value>) -> std::result::Result<PolicyDecision, dek_policy_runtime::PolicyError> {
+                Ok(PolicyDecision {
+                    evaluator_id: "deny".into(),
+                    evaluator_type: "dummy".into(),
+                    required: true,
+                    status: "success".into(),
+                    decision: "deny".into(),
+                    allow: false,
+                    reason: "denied by policy".into(),
+                    effects: serde_json::json!({}),
+                    obligations: vec![],
+                    metadata: serde_json::json!({}),
+                })
+            }
+            fn version(&self) -> String { "1.0".into() }
+        }
+
+        router.register_evaluator("dummy", Arc::new(DummyRuntime)); // Returns allow
+        router.register_evaluator("deny", Arc::new(DenyRuntime)); // Returns deny
+
+        router.set_routes(vec![Route {
+            id: "route_permit".into(),
+            priority: 10,
+            enforcement_mode: EnforcementMode::Standard,
+            match_rule: EnterpriseMatchRule {
+                method: Some("permit".into()),
+                tool_category: None,
+                resource_type: None,
+                severity_level: None,
+            },
+            pdp_required: vec!["deny".into(), "dummy".into()],
+            pdp_conditional: vec![],
+            pdp_pool: vec![],
+            failover_strategy: FailoverStrategy::Priority,
+            mode: Default::default(),
+            primary_pdp_id: "".into(),
+            fallback_pdp_ids: vec![],
+            shadow_pdp_ids: vec![],
+            merge_strategy: "permit_overrides".into(),
+            failure_behavior: Default::default(),
+        }]);
+
+        let payload = serde_json::json!({ "request_type": "permit" });
+        let res = router.authorize(payload).await.unwrap();
+        // Even though deny evaluated first, permit_overrides + dummy allow should yield allow
+        assert_eq!(res.decision, "allow");
     }
 
     #[tokio::test]

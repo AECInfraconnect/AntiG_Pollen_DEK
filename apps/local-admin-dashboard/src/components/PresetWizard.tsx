@@ -267,9 +267,13 @@ export function PresetWizard({
             Cancel
           </button>
           {!preset.previewOnly && (
-            <button 
-              disabled={!capabilities.some(c => c.status === "available")}
-              title={!capabilities.some(c => c.status === "available") ? "No compatible Policy Enforcement Point available" : ""}
+            <button
+              disabled={!capabilities.some((c) => c.status === "available")}
+              title={
+                !capabilities.some((c) => c.status === "available")
+                  ? "No compatible Policy Enforcement Point available"
+                  : ""
+              }
               className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
             >
               Create Draft

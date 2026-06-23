@@ -92,7 +92,10 @@ export function OpenFgaWizard({ isOpen, onClose, onComplete }: Props) {
             <Server className="h-6 w-6 text-primary" />
             OpenFGA Setup
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-muted rounded-full transition-colors"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -107,14 +110,20 @@ export function OpenFgaWizard({ isOpen, onClose, onComplete }: Props) {
           {step === 1 && (
             <div className="space-y-6">
               <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">1</div>
+                <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">
+                  1
+                </div>
                 <div>
-                  <h3 className="text-lg font-semibold">Start OpenFGA Docker Container</h3>
+                  <h3 className="text-lg font-semibold">
+                    Start OpenFGA Docker Container
+                  </h3>
                   <p className="text-muted-foreground mt-1">
-                    OpenFGA requires a running server. The easiest way is to use Docker. Run the following command in your terminal:
+                    OpenFGA requires a running server. The easiest way is to use
+                    Docker. Run the following command in your terminal:
                   </p>
                   <pre className="mt-4 p-4 bg-muted/50 rounded-lg border font-mono text-sm overflow-x-auto text-primary">
-                    docker run -p 8080:8080 -p 8081:8081 -p 3000:3000 openfga/openfga run
+                    docker run -p 8080:8080 -p 8081:8081 -p 3000:3000
+                    openfga/openfga run
                   </pre>
                 </div>
               </div>
@@ -124,7 +133,9 @@ export function OpenFgaWizard({ isOpen, onClose, onComplete }: Props) {
                   disabled={checking}
                   className="bg-primary text-primary-foreground px-6 py-2 rounded-md font-medium inline-flex items-center gap-2 hover:opacity-90 transition disabled:opacity-50"
                 >
-                  {checking ? "Checking..." : "I've started it. Check connection."}
+                  {checking
+                    ? "Checking..."
+                    : "I've started it. Check connection."}
                   {!checking && <ArrowRight className="h-4 w-4" />}
                 </button>
               </div>
@@ -134,17 +145,27 @@ export function OpenFgaWizard({ isOpen, onClose, onComplete }: Props) {
           {step === 2 && (
             <div className="space-y-6">
               <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">2</div>
+                <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">
+                  2
+                </div>
                 <div>
-                  <h3 className="text-lg font-semibold">Create an Authorization Store</h3>
+                  <h3 className="text-lg font-semibold">
+                    Create an Authorization Store
+                  </h3>
                   <p className="text-muted-foreground mt-1">
-                    OpenFGA is running successfully. Now we need to create a dedicated Store for Local Enforcement Kit to use.
+                    OpenFGA is running successfully. Now we need to create a
+                    dedicated Store for Local Enforcement Kit to use.
                   </p>
                   <div className="mt-6 p-4 border rounded-lg bg-muted/30 flex items-center gap-4">
                     <Database className="h-8 w-8 text-muted-foreground" />
                     <div>
-                      <div className="font-medium">Store Name: pollen-dek-store</div>
-                      <div className="text-xs text-muted-foreground">This store will hold all relationship tuples managed by Local Enforcement Kit.</div>
+                      <div className="font-medium">
+                        Store Name: pollen-dek-store
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        This store will hold all relationship tuples managed by
+                        Local Enforcement Kit.
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -165,14 +186,17 @@ export function OpenFgaWizard({ isOpen, onClose, onComplete }: Props) {
           {step === 3 && (
             <div className="space-y-6">
               <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">3</div>
+                <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">
+                  3
+                </div>
                 <div>
                   <h3 className="text-lg font-semibold flex items-center gap-2">
                     <CheckCircle className="h-5 w-5 text-emerald-500" />
                     Setup Complete
                   </h3>
                   <p className="text-muted-foreground mt-1">
-                    Your OpenFGA store has been created and is ready to be used by Local Enforcement Kit.
+                    Your OpenFGA store has been created and is ready to be used
+                    by Local Enforcement Kit.
                   </p>
                   <div className="mt-4 p-4 bg-muted/50 rounded-lg border font-mono text-sm break-all">
                     <strong>Store ID:</strong> {storeId}

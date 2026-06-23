@@ -2,16 +2,16 @@ name: dashboard-ci
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'apps/local-admin-dashboard/**'
-      - 'contracts/generated/typescript/**'
-      - '.github/workflows/dashboard-ci.yml'
+      - "apps/local-admin-dashboard/**"
+      - "contracts/generated/typescript/**"
+      - ".github/workflows/dashboard-ci.yml"
   pull_request:
     paths:
-      - 'apps/local-admin-dashboard/**'
-      - 'contracts/generated/typescript/**'
-      - '.github/workflows/dashboard-ci.yml'
+      - "apps/local-admin-dashboard/**"
+      - "contracts/generated/typescript/**"
+      - ".github/workflows/dashboard-ci.yml"
 
 permissions:
   contents: read
@@ -30,7 +30,7 @@ jobs:
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: apps/local-admin-dashboard/package-lock.json
 
       - name: Install dependencies

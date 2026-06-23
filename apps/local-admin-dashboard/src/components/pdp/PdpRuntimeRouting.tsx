@@ -133,7 +133,7 @@ export function PdpRuntimeRouting() {
                 Add third-party or custom external PDP servers to be used by the
                 local Local Enforcement Kit.
               </p>
-              <button 
+              <button
                 onClick={() => setIsWizardOpen(true)}
                 className="text-xs px-3 py-1.5 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition-colors font-medium"
               >
@@ -255,10 +255,10 @@ export function PdpRuntimeRouting() {
         )}
       </div>
 
-      <OpenFgaWizard 
-        isOpen={isWizardOpen} 
-        onClose={() => setIsWizardOpen(false)} 
-        onComplete={loadData} 
+      <OpenFgaWizard
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onComplete={loadData}
       />
     </div>
   );

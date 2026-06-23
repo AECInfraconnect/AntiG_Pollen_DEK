@@ -40,7 +40,7 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait PolicyRuntime: Send + Sync {
-    async fn evaluate(&self, input: serde_json::Value) -> PolicyResult;
+    async fn evaluate(&self, input: std::sync::Arc<serde_json::Value>) -> PolicyResult;
     fn version(&self) -> String;
     async fn clear_cache(&self) {}
 }
@@ -53,7 +53,7 @@ pub struct MockPolicyRuntime;
 
 #[async_trait]
 impl PolicyRuntime for MockPolicyRuntime {
-    async fn evaluate(&self, input: serde_json::Value) -> PolicyResult {
+    async fn evaluate(&self, input: std::sync::Arc<serde_json::Value>) -> PolicyResult {
         // A simple mock matching the SRS Appendix A policy:
         // allow if mcp.method == "tools/call" and mcp.tool_name == "safe.echo"
         let allow = if let Some(mcp) = input.get("mcp") {
@@ -130,7 +130,7 @@ pub async fn probe_local_pdp(runtime: &dyn PolicyRuntime) -> PdpProbeResult {
     });
 
     let started = std::time::Instant::now();
-    match runtime.evaluate(input).await {
+    match runtime.evaluate(std::sync::Arc::new(input)).await {
         Ok(decision) => PdpProbeResult {
             status: "ready".into(),
             latency_ms: started.elapsed().as_millis() as u64,
@@ -186,9 +186,9 @@ impl WasmtimePolicyRuntime {
 
 #[async_trait]
 impl PolicyRuntime for WasmtimePolicyRuntime {
-    async fn evaluate(&self, input: serde_json::Value) -> PolicyResult {
+    async fn evaluate(&self, input: std::sync::Arc<serde_json::Value>) -> PolicyResult {
         let input_str =
-            serde_json::to_string(&input).map_err(|e| PolicyError::Invalid(e.to_string()))?;
+            serde_json::to_string(&*input).map_err(|e| PolicyError::Invalid(e.to_string()))?;
         let stdin = MemoryInputPipe::new(bytes::Bytes::from(input_str.into_bytes()));
         let stdout = MemoryOutputPipe::new(self.profile.max_memory_bytes);
 
@@ -286,7 +286,7 @@ mod tests {
             }
         });
 
-        let decision = runtime.evaluate(input).await.unwrap();
+        let decision = runtime.evaluate(std::sync::Arc::new(input)).await.unwrap();
         assert!(decision.allow);
         assert_eq!(decision.reason, "allowed by guardrail policy");
     }
@@ -301,7 +301,7 @@ mod tests {
             }
         });
 
-        let decision = runtime.evaluate(input).await.unwrap();
+        let decision = runtime.evaluate(std::sync::Arc::new(input)).await.unwrap();
         assert!(!decision.allow);
         assert_eq!(decision.reason, "tool is not allowed");
     }
