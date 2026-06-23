@@ -1,7 +1,6 @@
 use crate::state::AppState;
-use dek_domain_schema::{AgentStatus, ControlMode};
+use dek_domain_schema::ControlMode;
 use serde_json::json;
-use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use tracing::{info, warn};
 
@@ -40,7 +39,7 @@ pub async fn start_anomaly_detector(state: AppState) {
         }
 
         // 3. Update trust score and trigger playbooks
-        if let Ok(mut agents) = state.registry_store.list_agents(tenant_id).await {
+        if let Ok(agents) = state.registry_store.list_agents(tenant_id).await {
             for agent in agents {
                 let fails = fail_counts.get(&agent.agent_id).copied().unwrap_or(0);
 

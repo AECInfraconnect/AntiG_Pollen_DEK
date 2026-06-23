@@ -41,7 +41,6 @@ pub fn extract_identity_hint(ev: &DiscoveryEvidenceV2) -> Option<IdentityHint> {
             agent_type: Some(InferredAgentType::CliAgent),
             capability_tags: vec!["code.agentic".into()],
             confidence: ev.confidence,
-            ..Default::default()
         }),
         EvidenceSource::Container => Some(IdentityHint {
             name: s("name").or_else(|| s("image")),

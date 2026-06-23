@@ -1,7 +1,9 @@
 use dek_plugin_sdk::{EvalRequest, PolicyDecision};
 
+#[allow(dead_code)]
 struct HelloWorldPlugin;
 
+#[allow(dead_code)]
 impl HelloWorldPlugin {
     fn new() -> Self {
         Self

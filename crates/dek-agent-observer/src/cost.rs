@@ -1,4 +1,4 @@
-use crate::model::{AgentObservationEvent, CostLedgerEntry, EventKind};
+use crate::model::{AgentObservationEvent, CostLedgerEntry};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -88,7 +88,7 @@ pub fn check_budget(policy: &BudgetPolicy, todays_entries: &[CostLedgerEntry]) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::TokenUsage;
+    use crate::model::{EventKind, TokenUsage};
 
     #[test]
     fn test_calculate_cost() -> Result<(), Box<dyn std::error::Error>> {

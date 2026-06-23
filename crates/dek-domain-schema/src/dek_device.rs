@@ -26,16 +26,11 @@ pub struct DekDevice {
     pub device_groups: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum RolloutRing {
     Alpha,
     Beta,
+    #[default]
     Stable,
-}
-
-impl Default for RolloutRing {
-    fn default() -> Self {
-        RolloutRing::Stable
-    }
 }

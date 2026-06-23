@@ -87,7 +87,7 @@ async fn cloud_login(
 
     // Attempt contract discovery
     let contract_ver = match client
-        .get(&format!("{}/.well-known/pollen-contract", mock_endpoint))
+        .get(format!("{}/.well-known/pollen-contract", mock_endpoint))
         .send()
         .await
     {
@@ -121,7 +121,7 @@ async fn cloud_login(
         .upsert_runtime(
             "local",
             "pollen_cloud",
-            &serde_json::to_value(&profile).unwrap(),
+            &serde_json::to_value(&profile).unwrap_or_default(),
         )
         .await;
 
