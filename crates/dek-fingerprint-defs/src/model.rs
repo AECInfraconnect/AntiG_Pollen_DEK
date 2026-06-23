@@ -2,6 +2,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignedDefinition {
+    pub payload: FingerprintDefinition,
+    pub signature: String, // base64 encoded ed25519 signature
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FingerprintDefinition {
     pub schema_version: String,
     pub definition_version: u64,

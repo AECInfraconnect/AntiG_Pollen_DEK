@@ -16,22 +16,53 @@ impl DefinitionStore {
     pub fn load(on_disk_path: PathBuf, pubkey: Option<&VerifyingKey>) -> Self {
         let mut def = crate::embedded_baseline();
         if let Ok(raw) = std::fs::read(&on_disk_path) {
-            // Need a SignedDefinition struct if one exists, or just read the payload
-            // For now, if we can parse it as FingerprintDefinition, we'll take it if it's newer
-            if let Ok(disk) = serde_json::from_slice::<FingerprintDefinition>(&raw) {
-                // In a real implementation with SignedDefinition, verify signature here
-                if disk.definition_version > def.definition_version
-                    && disk.schema_version == def.schema_version
-                {
-                    def = disk;
-                    tracing::info!(
-                        version = def.definition_version,
-                        "loaded on-disk definition"
-                    );
+            // First try parsing as SignedDefinition
+            if let Ok(signed) = serde_json::from_slice::<SignedDefinition>(&raw) {
+                let is_valid = if let Some(pk) = pubkey {
+                    if let Ok(payload_bytes) = serde_json::to_vec(&signed.payload) {
+                        use base64::{Engine as _, engine::general_purpose::STANDARD};
+                        if let Ok(sig_bytes) = STANDARD.decode(&signed.signature) {
+                            if let Ok(sig) = Signature::from_slice(&sig_bytes) {
+                                pk.verify(&payload_bytes, &sig).is_ok()
+                            } else { false }
+                        } else { false }
+                    } else { false }
                 } else {
-                    tracing::warn!(
-                        "on-disk definition rejected (sig/version/schema) — using embedded"
-                    );
+                    true // If no pubkey provided, assume valid (for local/testing)
+                };
+
+                if is_valid {
+                    let disk = signed.payload;
+                    if disk.definition_version > def.definition_version
+                        && disk.schema_version == def.schema_version
+                    {
+                        def = disk;
+                        tracing::info!(
+                            version = def.definition_version,
+                            "loaded signed on-disk definition"
+                        );
+                    } else {
+                        tracing::warn!("on-disk signed definition rejected (version/schema)");
+                    }
+                } else {
+                    tracing::error!("on-disk definition signature verification failed!");
+                }
+            } else if let Ok(disk) = serde_json::from_slice::<FingerprintDefinition>(&raw) {
+                // Fallback to raw FingerprintDefinition if allowed (e.g. pubkey is None)
+                if pubkey.is_none() {
+                    if disk.definition_version > def.definition_version
+                        && disk.schema_version == def.schema_version
+                    {
+                        def = disk;
+                        tracing::info!(
+                            version = def.definition_version,
+                            "loaded unsigned on-disk definition"
+                        );
+                    } else {
+                        tracing::warn!("on-disk definition rejected (version/schema)");
+                    }
+                } else {
+                    tracing::error!("unsigned on-disk definition found but pubkey is required");
                 }
             }
         }
