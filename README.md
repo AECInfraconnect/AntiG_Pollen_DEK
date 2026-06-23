@@ -5,14 +5,9 @@
 [![Release](https://img.shields.io/github/v/tag/AECInfraconnect/AntiG_Pollen_DEK?include_prereleases&label=release)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases)
 [![Compatibility](https://img.shields.io/badge/Compatibility-Matrix-success.svg)](contracts/COMPATIBILITY.md)
 
-**Pollen DEK** is an Apache-2.0 runtime that **enforces and observes AI-agent, MCP,
-API, and tool-call activity at the desktop/edge** — a Policy Enforcement Point
-(PEP) with a local Policy Decision Point (PDP).
+**Pollen DEK** is the local-first AI Agent Governance Runtime that discovers AI agents on a user's computer, deploys enforceable policies to the right PEP, evaluates decisions through local or cloud PDPs, records tamper-aware telemetry, and gives users a dashboard to observe, control, and prove what AI agents did.
 
-It runs **fully locally** with the built-in Local Admin Dashboard, or connects to
-**Pollen Cloud** (commercial) for managed multi-tenant policy, observability, and
-compliance. The DEK speaks **one contract** to both — switching targets changes
-only the endpoint + trust store, never the enforcement code.
+It is an Apache-2.0 runtime that **enforces and observes AI-agent, MCP, API, and tool-call activity at the desktop/edge**. It runs **fully locally** with the built-in Local Admin Dashboard, or connects to **Pollen Cloud** (commercial) for managed multi-tenant policy, observability, and compliance. The DEK speaks **one contract** to both — switching targets changes only the endpoint + trust store, never the enforcement code.
 
 ---
 
