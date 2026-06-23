@@ -19,8 +19,8 @@ To manually rotate the SPIFFE SVID or MTLS certificates if the automated renewal
    openssl x509 -in C:\ProgramData\PollenDEK\certs\client.crt -text -noout | Select-String "Not After"
    ```
 
-3. **Restart DEK Core (Optional)**
-   While DEK handles rotation dynamically, if telemetry components hang:
+3. **Restart Local Enforcement Kit Core (Optional)**
+   While Local Enforcement Kit handles rotation dynamically, if telemetry components hang:
 
    ```powershell
    Restart-Service PollenDEK

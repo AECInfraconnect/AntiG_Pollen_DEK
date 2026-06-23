@@ -1,10 +1,10 @@
-# Pollek DEK Security Model
+# Pollek Local Enforcement Kit Security Model
 
-This document outlines the security architecture and threat models addressed by Pollek DEK `v1.0.0-beta`.
+This document outlines the security architecture and threat models addressed by Pollek Local Enforcement Kit `v1.0.0-beta`.
 
 ## 1. Supply Chain Security
 
-Pollek DEK ensures cryptographic trust from compilation to execution:
+Pollek Local Enforcement Kit ensures cryptographic trust from compilation to execution:
 
 - **Reproducible Builds**: Built using GitHub Actions with `cargo auditable` provenance.
 - **SBOM**: Full CycloneDX Software Bill of Materials provided with every release.
@@ -12,7 +12,7 @@ Pollek DEK ensures cryptographic trust from compilation to execution:
 
 ## 2. Secure Cloud Communication
 
-Communication between DEK and Pollek Cloud (or Mock-Cloud) is heavily secured:
+Communication between Local Enforcement Kit and Pollek Cloud (or Mock-Cloud) is heavily secured:
 
 - **Enrollment Phase**: Performed over TLS 1.2+ using a short-lived device code.
 - **Active Phase (mTLS)**: Once enrolled, all subsequent telemetry, config pulls, and bundle synchronizations occur over strictly authenticated mTLS.
@@ -20,23 +20,23 @@ Communication between DEK and Pollek Cloud (or Mock-Cloud) is heavily secured:
 
 ## 3. Dynamic Policy Bundle Security
 
-DEK enforces policies dynamically through signed WebAssembly (WASM) bundles.
+Local Enforcement Kit enforces policies dynamically through signed WebAssembly (WASM) bundles.
 
 - **Tamper Evidence**: Every bundle manifest contains SHA-256 hashes of the policies and WASM artifacts.
-- **Signatures**: The entire bundle manifest is cryptographically signed by the Cloud control plane. DEK rejects any bundle with a mismatched or missing signature.
-- **Monotonic Versioning**: Rollback attacks are prevented. DEK rejects bundles with a `version` less than or equal to the currently active bundle version.
+- **Signatures**: The entire bundle manifest is cryptographically signed by the Cloud control plane. Local Enforcement Kit rejects any bundle with a mismatched or missing signature.
+- **Monotonic Versioning**: Rollback attacks are prevented. Local Enforcement Kit rejects bundles with a `version` less than or equal to the currently active bundle version.
 - **Isolation**: Policies are compiled into WASI modules and executed inside Wasmtime with strict CPU fuel limits, memory limits, and no system access.
 
 ## 4. Fallback and Resilience
 
-When DEK cannot reach the Cloud (e.g., network outage or DDoS):
+When Local Enforcement Kit cannot reach the Cloud (e.g., network outage or DDoS):
 
-- **Last Known Good**: DEK will continue enforcing the latest verified policy bundle in memory.
-- **Fail-Closed Option**: If specifically configured or if the bundle expires during an extended outage, DEK falls back to a strict "Default Deny" mode to prevent unprotected traffic egress.
+- **Last Known Good**: Local Enforcement Kit will continue enforcing the latest verified policy bundle in memory.
+- **Fail-Closed Option**: If specifically configured or if the bundle expires during an extended outage, Local Enforcement Kit falls back to a strict "Default Deny" mode to prevent unprotected traffic egress.
 
 ## 5. Local State Protection
 
-DEK stores its bootstrap identity and telemetry spool locally.
+Local Enforcement Kit stores its bootstrap identity and telemetry spool locally.
 
 - **Windows**: Encrypted using DPAPI.
 - **macOS**: Encrypted and stored in the Keychain.

@@ -1,6 +1,6 @@
 # Release Verification Guide
 
-This guide explains how to verify the authenticity and integrity of Pollek DEK `v1.0.0-beta` release artifacts.
+This guide explains how to verify the authenticity and integrity of Pollek Local Enforcement Kit `v1.0.0-beta` release artifacts.
 
 ## 1. Checksums Verification
 
@@ -43,6 +43,6 @@ cosign verify-blob \
 
 ## 3. SBOM (Software Bill of Materials)
 
-A CycloneDX SBOM is included with every release. It contains the full dependency tree of the Pollek DEK application, ensuring supply-chain transparency.
+A CycloneDX SBOM is included with every release. It contains the full dependency tree of the Pollek Local Enforcement Kit application, ensuring supply-chain transparency.
 
 You can inspect the SBOM using tools like `syft` or upload it to your vulnerability management system.

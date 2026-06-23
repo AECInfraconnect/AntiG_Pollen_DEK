@@ -1,19 +1,19 @@
-# Pollek DEK User Guide
+# Pollek Local Enforcement Kit User Guide
 
 ## Overview
 
-Pollek DEK (Distributed Enforcement Kernel) is an endpoint security and policy enforcement tool.
+Pollek Local Enforcement Kit (Distributed Enforcement Kernel) is an endpoint security and policy enforcement tool.
 
 ## Key Components
 
-- **Pollek DEK Core (`Pollek-dek`)**: The background service that manages identity, downloads policies, and controls enforcement.
-- **Pollek DEK CLI (`Pollek-dekctl`)**: Command-line tool to enroll, manage, and troubleshoot the DEK.
+- **Pollek Local Enforcement Kit Core (`Pollek-Local Enforcement Kit`)**: The background service that manages identity, downloads policies, and controls enforcement.
+- **Pollek Local Enforcement Kit CLI (`Pollek-dekctl`)**: Command-line tool to enroll, manage, and troubleshoot the Local Enforcement Kit.
 - **Pollek MCP Proxy (`Pollek-mcp-proxy`)**: A local proxy for Model Context Protocol (MCP) tool usage, authorizing requests before they reach the tools.
 - **Mock Cloud (`Pollek-mock-cloud`)**: Local simulation of Pollek Cloud for development and beta testing.
 
 ## Local Admin Dashboard Features
 
-The Local Admin Dashboard (accessible at `http://127.0.0.1:3000` when running the Local Control Plane) provides several powerful features for managing your local DEK instance:
+The Local Admin Dashboard (accessible at `http://127.0.0.1:3000` when running the Local Control Plane) provides several powerful features for managing your local Local Enforcement Kit instance:
 
 ### 1. Dry-run Simulator
 
@@ -41,8 +41,8 @@ Configure and verify connections to external Policy Decision Points (PDPs) like 
 
 ## Configuration
 
-Configuration is located at `~/.Pollek/dek/` by default during the beta phase, utilizing `bootstrap.json`.
+Configuration is located at `~/.Pollek/Local Enforcement Kit/` by default during the beta phase, utilizing `bootstrap.json`.
 
 ## Logs
 
-Logs can be viewed using the `Pollek-dekctl logs` command, or found in the `~/.Pollek/dek/logs/` directory.
+Logs can be viewed using the `Pollek-dekctl logs` command, or found in the `~/.Pollek/Local Enforcement Kit/logs/` directory.

@@ -140,7 +140,7 @@ export function DecisionLogs() {
             Logs
           </h2>
           <p className="text-muted-foreground">
-            Every authorization decision the DEK enforced (local workspace).
+            Every authorization decision the Local Enforcement Kit enforced (local workspace).
           </p>
         </div>
               <div className="flex gap-2">

@@ -1,17 +1,17 @@
-# Pollek DEK Policy Enforcement Flows Design & Implementation Guide
+# Pollek Local Enforcement Kit Policy Enforcement Flows Design & Implementation Guide
 
 **Document version:** 1.0  
-**Target release:** Pollek DEK v1.0.0-beta / Mock-Cloud test release  
+**Target release:** Pollek Local Enforcement Kit v1.0.0-beta / Mock-Cloud test release  
 **Date:** 2026-06-10  
-**Audience:** Pollek DEK core developers, Local Dashboard developers, Mock-Cloud/Pollek Cloud developers, policy-engine developers, OS enforcement developers
+**Audience:** Pollek Local Enforcement Kit core developers, Local Dashboard developers, Mock-Cloud/Pollek Cloud developers, policy-engine developers, OS enforcement developers
 
 ---
 
 ## 1. Executive Summary
 
-เอกสารนี้ออกแบบ **Policy Enforcement Flows** ของระบบ Pollek DEK ตั้งแต่การสร้าง Policy บน Pollek Cloud / Mock-Cloud / Local Dashboard ไปจนถึงการ compile, validate, deploy, hot reload, enforce และ audit บน DEK runtime จริง โดยออกแบบให้เข้ากับ repository ปัจจุบันของ `AECInfraconnect/AntiG_Pollen_DEK` ให้มากที่สุด
+เอกสารนี้ออกแบบ **Policy Enforcement Flows** ของระบบ Pollek Local Enforcement Kit ตั้งแต่การสร้าง Policy บน Pollek Cloud / Mock-Cloud / Local Dashboard ไปจนถึงการ compile, validate, deploy, hot reload, enforce และ audit บน Local Enforcement Kit runtime จริง โดยออกแบบให้เข้ากับ repository ปัจจุบันของ `AECInfraconnect/AntiG_Pollen_DEK` ให้มากที่สุด
 
-จาก repo ล่าสุด Pollek DEK มีโครงสร้างที่เหมาะกับแนวทางนี้อยู่แล้ว ได้แก่:
+จาก repo ล่าสุด Pollek Local Enforcement Kit มีโครงสร้างที่เหมาะกับแนวทางนี้อยู่แล้ว ได้แก่:
 
 - `dek-core` เป็น supervisor / sidecar process
 - `dek-policy-router` สำหรับ route request ไปยัง evaluator หลายแบบ
@@ -28,7 +28,7 @@
 1. ให้สร้าง policy ในรูปแบบกลางชื่อ **Pollek Policy Intent (PPI)** ก่อนเสมอ
 2. ให้ระบบ compile policy จาก PPI ไปยัง PDP target แบบอัตโนมัติ: OPA, Cedar, OpenFGA, OS Kernel Policy, WASM plugin config
 3. ให้ policy bundle เป็น immutable, signed, versioned และ atomic-hot-reload ได้
-4. ให้ DEK เลือก PDP/PEP/OS layer ตาม `policy_type`, `enforcement_point`, `target_scope`, `latency_budget`, `required_context`
+4. ให้ Local Enforcement Kit เลือก PDP/PEP/OS layer ตาม `policy_type`, `enforcement_point`, `target_scope`, `latency_budget`, `required_context`
 5. ให้ Local Dashboard ไม่มี AI แต่มี structured editor + template + validator; Pollek Cloud/Mock-Cloud มี Natural Language Policy Editor + AI Compiler Orchestrator
 6. ให้ Entity lifecycle เป็น first-class model: Tenant, Device, Workload, Process, Agent, MCP Server, Tool, Resource, Network Destination, User, Group, Policy, Bundle, Plugin, PDP, PEP
 7. ให้ kernel-layer enforcement ใช้เฉพาะ policy ที่ตัดสินจาก metadata ได้ เช่น IP, port, protocol, process identity, binary hash, DNS-derived destination; ส่วน semantic/data policy ต้องใช้ L7/MCP/API PEP
@@ -39,7 +39,7 @@
 
 ### 2.1 OPA
 
-OPA ออกแบบสำหรับ distributed policy enforcement โดยให้ policy/data อยู่ใกล้ service เพื่อ latency ต่ำและ availability สูง และมี management APIs สำหรับ bundle distribution, decision logs, status และ discovery. แนวคิดนี้เหมาะกับ Pollek DEK ที่ต้องทำ local-first enforcement และ sync จาก control plane.
+OPA ออกแบบสำหรับ distributed policy enforcement โดยให้ policy/data อยู่ใกล้ service เพื่อ latency ต่ำและ availability สูง และมี management APIs สำหรับ bundle distribution, decision logs, status และ discovery. แนวคิดนี้เหมาะกับ Pollek Local Enforcement Kit ที่ต้องทำ local-first enforcement และ sync จาก control plane.
 
 Key practices:
 
@@ -91,12 +91,12 @@ References:
 
 ### 2.4 SPIFFE/SPIRE Workload Identity
 
-SPIFFE ID เป็น URI ที่ identify workload อย่าง unique; workload อาจละเอียดถึงระดับ process และ SVID เป็น credential ที่พิสูจน์ identity ได้. Pollek DEK ควร bind policy scope กับ workload identity ไม่ใช่แค่ process name หรือ path.
+SPIFFE ID เป็น URI ที่ identify workload อย่าง unique; workload อาจละเอียดถึงระดับ process และ SVID เป็น credential ที่พิสูจน์ identity ได้. Pollek Local Enforcement Kit ควร bind policy scope กับ workload identity ไม่ใช่แค่ process name หรือ path.
 
 Key practices:
 
-- ใช้ SPIFFE ID สำหรับ DEK, workload, agent, MCP server, local PDP, plugin host
-- X.509-SVID เหมาะกับ mTLS ระหว่าง DEK ↔ control plane / local components
+- ใช้ SPIFFE ID สำหรับ Local Enforcement Kit, workload, agent, MCP server, local PDP, plugin host
+- X.509-SVID เหมาะกับ mTLS ระหว่าง Local Enforcement Kit ↔ control plane / local components
 - JWT-SVID เหมาะกับ request-bound assertion หรือ exchange กับ external service
 - trust domain ควรแยก environment เช่น dev/staging/prod/tenant
 
@@ -125,11 +125,11 @@ References:
 
 ### 3.1 Local-first, cloud-managed
 
-DEK ต้อง enforce ได้แม้ Cloud offline โดยใช้ active bundle ล่าสุดที่ verified แล้ว
+Local Enforcement Kit ต้อง enforce ได้แม้ Cloud offline โดยใช้ active bundle ล่าสุดที่ verified แล้ว
 
 ```text
-Cloud/Mock-Cloud unavailable  ->  DEK keeps last good bundle
-Invalid new bundle            ->  DEK rejects and stays on last good bundle
+Cloud/Mock-Cloud unavailable  ->  Local Enforcement Kit keeps last good bundle
+Invalid new bundle            ->  Local Enforcement Kit rejects and stays on last good bundle
 Policy engine crash           ->  fail-closed for protected mode, fail-open-audit for observe mode
 Kernel module unavailable     ->  degrade to L7/MCP enforcement if possible and raise critical health event
 ```
@@ -147,7 +147,7 @@ Compiler Orchestrator
         ↓
 OPA / Cedar / OpenFGA / OS Kernel Policy / WASM Plugin Config
         ↓ package as signed bundle
-DEK hot reload
+Local Enforcement Kit hot reload
 ```
 
 ### 3.3 Explicit scope and target
@@ -280,7 +280,7 @@ DRAFT
   -> COMPILED         # target artifacts generated
   -> PACKAGED         # signed immutable bundle produced
   -> DEPLOYED         # assigned to device/groups
-  -> ACTIVE           # DEK has activated it
+  -> ACTIVE           # Local Enforcement Kit has activated it
   -> SUPERSEDED       # replaced by newer version
   -> ROLLED_BACK      # rollback occurred
   -> RETIRED          # no longer deployable
@@ -297,7 +297,7 @@ CREATED -> SIGNED -> PUBLISHED -> DOWNLOADED -> VERIFIED -> STAGED -> ACTIVATED 
 
 ## 6. Pollek Policy Intent (PPI)
 
-PPI คือ policy intermediate representation ที่ UI, AI editor, compiler, simulator และ DEK ใช้ร่วมกัน
+PPI คือ policy intermediate representation ที่ UI, AI editor, compiler, simulator และ Local Enforcement Kit ใช้ร่วมกัน
 
 ### 6.1 PPI YAML example
 
@@ -415,7 +415,7 @@ sequenceDiagram
   participant Sim as Policy Simulator
   participant Gov as Governance Approval
   participant Bundle as Bundle Builder
-  participant DEK as DEK Fleet
+  participant Local Enforcement Kit as Local Enforcement Kit Fleet
 
   Admin->>CloudUI: Describe policy in natural language
   CloudUI->>AI: Send prompt + entity inventory + templates + capability matrix
@@ -428,7 +428,7 @@ sequenceDiagram
   Sim-->>CloudUI: Simulation report
   CloudUI->>Gov: Submit for approval
   Gov-->>Bundle: Approved policy version
-  Bundle-->>DEK: Publish signed bundle
+  Bundle-->>Local Enforcement Kit: Publish signed bundle
 ```
 
 ### 7.2 Local Admin Dashboard without AI
@@ -452,7 +452,7 @@ flowchart TD
   G --> H[Local Compiler]
   H --> I[Local Simulator]
   I --> J[Local Bundle Builder]
-  J --> K[DEK Hot Reload]
+  J --> K[Local Enforcement Kit Hot Reload]
 ```
 
 ### 7.3 Mock-Cloud role
@@ -465,7 +465,7 @@ Mode B: LLM-compatible API stub that returns PPI fixture
 Mode C: manual PPI editor with compile/simulate/deploy flow
 ```
 
-Mock-Cloud ควรมี endpoints เหมือน production Cloud เพื่อไม่ต้องเปลี่ยน DEK client:
+Mock-Cloud ควรมี endpoints เหมือน production Cloud เพื่อไม่ต้องเปลี่ยน Local Enforcement Kit client:
 
 ```http
 POST /v1/policy-intents/draft
@@ -881,9 +881,9 @@ fn now_ms() -> u64 { 0 }
 
 ## 11. Capability Registry
 
-DEK ต้องตรวจสอบก่อน deploy ว่าเครื่องนั้นมี PDP/PEP/OS module อะไรบ้าง
+Local Enforcement Kit ต้องตรวจสอบก่อน deploy ว่าเครื่องนั้นมี PDP/PEP/OS module อะไรบ้าง
 
-### 11.1 Capability document from DEK
+### 11.1 Capability document from Local Enforcement Kit
 
 ```json
 {
@@ -1000,7 +1000,7 @@ Telemetry event -> dek-core/dek-telemetry -> encrypted spool -> Cloud/Mock-Cloud
 | API authorization | POST /v1/chat allowed by role | OPA/Cedar | ext_authz/API gateway | Not needed |
 | Data redaction | redact email/phone before telemetry | WASM plugin + OPA obligations | plugin_host/MCP/API | Not needed |
 | Relationship access | user member of team can access resource | OpenFGA | MCP/API/ext_authz | Not needed |
-| Device posture policy | allow only healthy DEK devices | Cedar/OPA | all PEPs | Optional for L4 |
+| Device posture policy | allow only healthy Local Enforcement Kit devices | Cedar/OPA | all PEPs | Optional for L4 |
 | Rate/quota | max 120 rpm | OPA + local counters | MCP/API | Not kernel in beta |
 | DNS/IP cache policy | allow resolved IP for hostname | OS L4 plan | eBPF/WFP/NEFilter | Required |
 
@@ -1072,7 +1072,7 @@ Use `dek-windows-wfp`:
 ```cpp
 // Simplified WFP static filter sketch
 FWPM_FILTER0 filter = {0};
-filter.displayData.name = const_cast<wchar_t*>(L"Pollek DEK outbound allow api.openai.com:443");
+filter.displayData.name = const_cast<wchar_t*>(L"Pollek Local Enforcement Kit outbound allow api.openai.com:443");
 filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V4;
 filter.action.type = FWP_ACTION_PERMIT;
 filter.weight.type = FWP_EMPTY;
@@ -1090,7 +1090,7 @@ if (status != ERROR_SUCCESS) {
 Use `dek-macos-nefilter`:
 
 - NEFilterDataProvider decides new TCP/UDP flows
-- control provider receives policy updates from DEK daemon
+- control provider receives policy updates from Local Enforcement Kit daemon
 - use metadata-first enforcement; avoid payload exfiltration and TLS MITM in beta
 
 ```swift
@@ -1169,14 +1169,14 @@ DISCOVERED -> REGISTERED -> ATTESTED -> APPROVED -> ACTIVE -> SUSPENDED -> RETIR
 
 ```mermaid
 sequenceDiagram
-  participant DEK
+  participant Local Enforcement Kit
   participant Discover as Discovery Module
   participant Registry as Entity Registry
   participant Admin as Local/Cloud Admin
   participant SPIRE as SPIRE/SVID
   participant Policy as Policy Compiler
 
-  Discover->>DEK: detect process/MCP server/tool/network destination
+  Discover->>Local Enforcement Kit: detect process/MCP server/tool/network destination
   DEK->>Registry: register discovered entity
   Registry-->>Admin: approval required
   Admin->>Registry: approve/bind owner/labels/risk
@@ -1189,7 +1189,7 @@ sequenceDiagram
 
 | Entity | Required identity binding | Required lifecycle control |
 |---|---|---|
-| DEK device | device certificate + SVID | enrollment, rotation, revoke |
+| Local Enforcement Kit device | device certificate + SVID | enrollment, rotation, revoke |
 | Workload/process | binary hash + path + signer + optional SVID | discovery, approval, drift detection |
 | Agent | parent workload + runtime instance ID | session lifecycle, delegation expiry |
 | MCP server | transport + executable + tool list | tool inventory, risk classification |
@@ -1283,7 +1283,7 @@ Compatible conceptually with OPA decision logs but extended with Pollek fields:
 
 ```text
 1. Overview
-   - DEK status, active bundle, PDP/PEP health, OS provider status
+   - Local Enforcement Kit status, active bundle, PDP/PEP health, OS provider status
 2. Entities
    - discovered workloads, agents, MCP servers, tools, network destinations
 3. Policies
@@ -1511,7 +1511,7 @@ fn compose_decisions(req: DecisionRequest, partials: Vec<PartialDecision>, plan:
 
 - Bundle must be signed
 - Verify checksum of every artifact
-- Verify minimum DEK version and ABI compatibility
+- Verify minimum Local Enforcement Kit version and ABI compatibility
 - Reject unsigned plugin WASM in enforce mode
 - Keep last known good bundle
 - Use atomic generation switch
@@ -1567,8 +1567,8 @@ For Pollek Cloud AI Policy Editor:
 ### 23.2 Integration tests
 
 ```text
-- Mock-Cloud creates policy -> compile -> build bundle -> DEK downloads -> hot reload
-- Local Dashboard creates structured policy -> local-control-plane -> DEK active
+- Mock-Cloud creates policy -> compile -> build bundle -> Local Enforcement Kit downloads -> hot reload
+- Local Dashboard creates structured policy -> local-control-plane -> Local Enforcement Kit active
 - MCP tool call allow/deny
 - stdio wrapper allow/deny
 - ext_authz allow/deny
@@ -1686,7 +1686,7 @@ plugin.rejected
 - OS L4 compiler
 - test vector simulator
 
-### Phase 3 — DEK hot reload
+### Phase 3 — Local Enforcement Kit hot reload
 
 - Bundle download/verify/stage/activate
 - ArcSwap active generation
@@ -1729,7 +1729,7 @@ plugin.rejected
 - Create policy from Mock-Cloud deterministic NL stub
 - Compile at least 3 targets: OPA, Cedar, OS L4
 - Bundle signed/checksummed at least using local dev key
-- DEK downloads, verifies, hot reloads bundle
+- Local Enforcement Kit downloads, verifies, hot reloads bundle
 - MCP proxy enforces allow/deny
 - One OS provider works per OS target:
   - Linux eBPF if running Linux
@@ -1829,7 +1829,7 @@ flowchart TB
     LBUNDLE[Local Bundle Service]
   end
 
-  subgraph DEK[Pollek DEK]
+  subgraph Local Enforcement Kit[Pollek Local Enforcement Kit]
     CORE[dek-core]
     SYNC[dek-policy-syncer]
     ROUTER[dek-policy-router]
@@ -1908,7 +1908,7 @@ flowchart TB
 6. **OS kernel layer is reserved for metadata L4 enforcement** and must never depend on payload semantics.
 7. **Hot reload is atomic and rollback-safe** with last-good bundle.
 8. **Local Dashboard has no AI** but still uses the same PPI/compiler pipeline.
-9. **Mock-Cloud must mimic production Cloud APIs** to avoid rewriting DEK client code later.
+9. **Mock-Cloud must mimic production Cloud APIs** to avoid rewriting Local Enforcement Kit client code later.
 10. **Entity lifecycle and capability registry are required before deployment** to prevent invalid policy assignment.
 
 ---
@@ -1918,8 +1918,8 @@ flowchart TB
 ```text
 1. Start Mock-Cloud
 2. Start Local Admin Dashboard or Mock-Cloud UI
-3. Register DEK device with bootstrap.json/mTLS
-4. DEK posts capability document
+3. Register Local Enforcement Kit device with bootstrap.json/mTLS
+4. Local Enforcement Kit posts capability document
 5. Admin creates policy: "Allow Claude Desktop approved agent to call api.openai.com:443 and filesystem.read_file only under workspace"
 6. Mock-Cloud creates PPI draft
 7. Compiler emits:
@@ -1929,9 +1929,9 @@ flowchart TB
 8. Simulator passes test vectors
 9. Admin approves
 10. Bundle is signed and published
-11. DEK downloads and verifies bundle
-12. DEK stages PDP artifacts and OS L4 plan
-13. DEK atomically activates generation
+11. Local Enforcement Kit downloads and verifies bundle
+12. Local Enforcement Kit stages PDP artifacts and OS L4 plan
+13. Local Enforcement Kit atomically activates generation
 14. MCP call is allowed/denied based on Cedar/OPA
 15. Network connect is allowed/denied by OS provider
 16. Decision logs and telemetry go to Mock-Cloud

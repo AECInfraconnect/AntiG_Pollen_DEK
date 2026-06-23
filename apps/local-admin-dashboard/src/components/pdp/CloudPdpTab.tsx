@@ -80,7 +80,7 @@ export function CloudPdpTab() {
           Connect to Pollek Cloud PDP
         </h4>
         <p className="max-w-md mx-auto text-sm">
-          Connect this DEK to a fully managed Pollek Cloud PDP. Configuration
+          Connect this Local Enforcement Kit to a fully managed Pollek Cloud PDP. Configuration
           and routing will be synced automatically.
         </p>
         <button
@@ -99,7 +99,7 @@ export function CloudPdpTab() {
         <div>
           <h3 className="font-medium">Pollek Cloud Connected</h3>
           <p className="text-sm text-muted-foreground">
-            This DEK is enrolled with Pollek Cloud.
+            This Local Enforcement Kit is enrolled with Pollek Cloud.
           </p>
         </div>
         <div className="flex gap-2">

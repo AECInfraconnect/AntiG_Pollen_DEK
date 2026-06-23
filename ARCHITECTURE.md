@@ -1,6 +1,6 @@
-# Pollek DEK — Architecture
+# Pollek Local Enforcement Kit — Architecture
 
-Pollek DEK is a Rust **Policy Enforcement Point (PEP)** with a local **Policy
+Pollek Local Enforcement Kit is a Rust **Policy Enforcement Point (PEP)** with a local **Policy
 Decision Point (PDP)**, built as a multi-crate workspace. It enforces signed
 policy bundles produced by a control plane — either the local-first **Local
 Control Plane** or **Pollek Cloud** — over one shared contract.
@@ -17,10 +17,10 @@ Control Plane** or **Pollek Cloud** — over one shared contract.
 
 **Invariants (same in both modes):**
 
-- **I1** identical schema / bundle format / telemetry envelope (`dek-control-plane-api` is the single source of truth) — the DEK can't tell Local from Cloud.
+- **I1** identical schema / bundle format / telemetry envelope (`dek-control-plane-api` is the single source of truth) — the Local Enforcement Kit can't tell Local from Cloud.
 - **I2** protocol/security may differ (Local = HTTP+Bearer, Cloud = mTLS+OAuth+SPIFFE).
-- **I3** bundles are always signed; the DEK verifies identically and fail-closed.
-- **I4** storage differs behind a trait; the DEK is unaffected.
+- **I3** bundles are always signed; the Local Enforcement Kit verifies identically and fail-closed.
+- **I4** storage differs behind a trait; the Local Enforcement Kit is unaffected.
 - **I5** hot-reload behaves the same (polling + SSE push). Cutover = `dek-cli profile set`.
 
 ## Crate map
@@ -47,7 +47,7 @@ Control Plane** or **Pollek Cloud** — over one shared contract.
 
 **Network enforcement (OS)**
 
-- `dek-ebpfd` (+ `dek-ebpf-prog`, `dek-ebpf-common`) — Linux eBPF cgroup enforcement (kernel). Manages dynamic DNS LRU cache eviction and allows runtime toggling between `fail-closed` and `observe-only` modes via pinned BPF maps (`/sys/fs/bpf/Pollek-dek`). Fails gracefully if `bpf-linker` is missing on older hosts.
+- `dek-ebpfd` (+ `dek-ebpf-prog`, `dek-ebpf-common`) — Linux eBPF cgroup enforcement (kernel). Manages dynamic DNS LRU cache eviction and allows runtime toggling between `fail-closed` and `observe-only` modes via pinned BPF maps (`/sys/fs/bpf/Pollek-Local Enforcement Kit`). Fails gracefully if `bpf-linker` is missing on older hosts.
 - `dek-windows-wfp` — Windows Filtering Platform (user-mode today; kernel callout driver in progress).
 - `dek-macos-nefilter` — macOS NetworkExtension / System Extension.
 - **Kernel complexity guard** (`dek-core::kernel_guard`) — only simple, exact rules (CIDR/port/exact-domain, bounded count) go to the kernel; complex rules fall to the user-mode plane to avoid verifier rejection/instability.
@@ -76,7 +76,7 @@ Control Plane** or **Pollek Cloud** — over one shared contract.
 
 ## Decision data flow
 
-1. App sends a `DecisionRequest` to the DEK PEP on `127.0.0.1:43890`.
+1. App sends a `DecisionRequest` to the Local Enforcement Kit PEP on `127.0.0.1:43890`.
 2. Content Guard scans tool parameters for prompt-injection or PII leakage, then Rate + Trust limiters enforce quotas and calculate anomaly scores.
 3. `dek-policy-router` matches a route; if no engine is pinned, `engine_selector` picks one (Cedar/OPA/OpenFGA/eBPF) by decision kind — choosing only engines compiled into this build. Parameter-level data is loaded into the decision context.
 4. The selected evaluator(s) run (behind circuit breakers + admission control).
@@ -86,10 +86,10 @@ Control Plane** or **Pollek Cloud** — over one shared contract.
 
 ## Identity Propagation
 
-When an agent authenticates with the DEK gateway, identity must propagate to backend MCP servers. Pollek DEK utilizes SPIFFE for this purpose:
+When an agent authenticates with the Local Enforcement Kit gateway, identity must propagate to backend MCP servers. Pollek Local Enforcement Kit utilizes SPIFFE for this purpose:
 
 - **Token Forwarding**: Passes the original agent token directly if the backend and agent share the same trust domain.
-- **Token Exchange**: DEK can exchange the incoming agent token for a short-lived SPIFFE JWT-SVID (via `dek-spire-node`) bound specifically to the target MCP server. This implements secure impersonation and enforces least-privilege without exposing long-lived credentials.
+- **Token Exchange**: Local Enforcement Kit can exchange the incoming agent token for a short-lived SPIFFE JWT-SVID (via `dek-spire-node`) bound specifically to the target MCP server. This implements secure impersonation and enforces least-privilege without exposing long-lived credentials.
 
 ## Failure posture (fail-closed everywhere)
 
@@ -100,4 +100,4 @@ When an agent authenticates with the DEK gateway, identity must propagate to bac
 - Kernel rule apply fails → block-all at the kernel plane.
 
 Authoring and compilation happen on the control plane (Local or Cloud) — **never
-on the DEK**.
+on the Local Enforcement Kit**.

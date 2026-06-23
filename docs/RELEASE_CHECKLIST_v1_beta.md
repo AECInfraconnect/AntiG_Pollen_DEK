@@ -1,4 +1,4 @@
-# Pollek DEK v1.0.0-beta Release Checklist
+# Pollek Local Enforcement Kit v1.0.0-beta Release Checklist
 
 ## A. Version and Tagging
 
@@ -32,7 +32,7 @@
 
 ## F. Installers
 
-- [ ] Windows Installer (`.ps1`) works and registers DEK as service.
+- [ ] Windows Installer (`.ps1`) works and registers Local Enforcement Kit as service.
 - [ ] macOS Installer (`.sh`) correctly drops LaunchDaemon.
 - [ ] Linux Installer (`.sh`) sets up systemd properly.
 

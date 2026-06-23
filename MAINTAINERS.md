@@ -1,6 +1,6 @@
 # Maintainers
 
-The following people are current maintainers of the Pollek DEK project:
+The following people are current maintainers of the Pollek Local Enforcement Kit project:
 
 | Name | GitHub | Email |
 | ---- | ------ | ----- |

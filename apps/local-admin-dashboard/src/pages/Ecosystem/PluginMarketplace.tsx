@@ -49,7 +49,7 @@ export function PluginMarketplace() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Plugin Marketplace</h2>
           <p className="text-muted-foreground">
-            Discover and install verifiable Wasm plugins to extend the local DEK.
+            Discover and install verifiable Wasm plugins to extend the local Local Enforcement Kit.
           </p>
         </div>
       </div>

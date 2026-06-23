@@ -1,4 +1,4 @@
-# Pollek DEK Windows WFP Driver
+# Pollek Local Enforcement Kit Windows WFP Driver
 
 ## Overview
 

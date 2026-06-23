@@ -131,7 +131,7 @@ export function PdpRuntimeRouting() {
             <div className="flex justify-between items-start">
               <p className="text-sm text-muted-foreground max-w-lg">
                 Add third-party or custom external PDP servers to be used by the
-                local DEK.
+                local Local Enforcement Kit.
               </p>
               <button 
                 onClick={() => setIsWizardOpen(true)}

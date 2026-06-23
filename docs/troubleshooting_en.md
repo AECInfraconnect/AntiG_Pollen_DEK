@@ -1,4 +1,4 @@
-# Pollek DEK Troubleshooting Guide
+# Pollek Local Enforcement Kit Troubleshooting Guide
 
 ## Common Issues
 
@@ -12,17 +12,17 @@
 **Symptom**: `Pollek-dekctl enroll` hangs or returns a connection error.
 **Fix**: Verify that Mock-Cloud is running and the `--cloud-url` points exactly to the HTTPS port of the Mock-Cloud (e.g., `https://127.0.0.1:43892`).
 
-### 3. DEK Core Does Not Sync Bundle
+### 3. Local Enforcement Kit Core Does Not Sync Bundle
 
-**Symptom**: Logs show `bundle_sync_failed` and DEK evaluates to fallback mode.
-**Fix**: Check if the device has been enrolled successfully and `bootstrap.json` exists in `~/.Pollek/dek/`. If testing poisoning scenarios, ensure you haven't intentionally triggered a chaos outage in Mock-Cloud.
+**Symptom**: Logs show `bundle_sync_failed` and Local Enforcement Kit evaluates to fallback mode.
+**Fix**: Check if the device has been enrolled successfully and `bootstrap.json` exists in `~/.Pollek/Local Enforcement Kit/`. If testing poisoning scenarios, ensure you haven't intentionally triggered a chaos outage in Mock-Cloud.
 
 ### 4. Telemetry is Not Visible in Dashboard
 
 **Symptom**: You trigger MCP actions, but the `/admin/dashboard` does not show new events.
-**Fix**: Telemetry is buffered and flushed periodically (default 5s). Wait for the flush interval, or manually trigger a flush. Ensure DEK has a valid network connection to the Mock-Cloud.
+**Fix**: Telemetry is buffered and flushed periodically (default 5s). Wait for the flush interval, or manually trigger a flush. Ensure Local Enforcement Kit has a valid network connection to the Mock-Cloud.
 
 ### 5. eBPF Guardrail Not Working (Linux Only)
 
 **Symptom**: Network egress is not blocked despite policy.
-**Fix**: Verify DEK is running with root privileges (`CAP_BPF` and `CAP_NET_ADMIN`). Check `dmesg` or `journalctl -u Pollek-dek` for BPF verifier errors.
+**Fix**: Verify Local Enforcement Kit is running with root privileges (`CAP_BPF` and `CAP_NET_ADMIN`). Check `dmesg` or `journalctl -u Pollek-Local Enforcement Kit` for BPF verifier errors.

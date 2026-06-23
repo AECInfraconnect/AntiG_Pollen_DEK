@@ -12,6 +12,6 @@ Instead, please email security@aecinfraconnect.com with the details of the vulne
 
 ## Threat Model & Scope
 
-Pollek DEK treats the local environment with a bounded trust model. Any bypass of the application-level proxy on Windows/macOS is currently out of scope for security bounties until the OS-level enforcement (WFP/NetworkExtension) becomes stable.
+Pollek Local Enforcement Kit treats the local environment with a bounded trust model. Any bypass of the application-level proxy on Windows/macOS is currently out of scope for security bounties until the OS-level enforcement (WFP/NetworkExtension) becomes stable.
 
 Bypassing the proxy on Linux when eBPF guardrails are enabled IS considered a vulnerability.

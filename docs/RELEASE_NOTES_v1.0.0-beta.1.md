@@ -1,4 +1,4 @@
-# Pollek DEK v1.0.0-beta.1 Release Notes
+# Pollek Local Enforcement Kit v1.0.0-beta.1 Release Notes
 
 This release introduces end-to-end auto-update capabilities, OS installers, and kernel-level enforcement foundations.
 

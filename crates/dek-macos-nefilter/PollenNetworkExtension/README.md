@@ -1,4 +1,4 @@
-# Pollek DEK macOS System Extension
+# Pollek Local Enforcement Kit macOS System Extension
 
 ## Overview
 

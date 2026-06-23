@@ -1,10 +1,10 @@
-# Pollek DEK - First Run UX & Quickstart
+# Pollek Local Enforcement Kit - First Run UX & Quickstart
 
-This guide provides a rapid end-to-end walkthrough (under 10 minutes) for deploying the Pollek DEK and enforcing your first policy.
+This guide provides a rapid end-to-end walkthrough (under 10 minutes) for deploying the Pollek Local Enforcement Kit and enforcing your first policy.
 
 ## 1. Prerequisites
 
-Ensure you have the latest DEK release binaries downloaded (`dek-core`, `dek-mcp-proxy`, `dek-ext-authz`, `dek-cli`).
+Ensure you have the latest Local Enforcement Kit release binaries downloaded (`dek-core`, `dek-mcp-proxy`, `dek-ext-authz`, `dek-cli`).
 Place them in your PATH or a working directory.
 
 ## 2. Enrollment
@@ -28,7 +28,7 @@ dek-cli status
 
 *The doctor command runs local diagnostics, ensuring ports are available and certs are valid.*
 
-## 4. Run DEK Core
+## 4. Run Local Enforcement Kit Core
 
 Start the core policy engine (runs in the background or foreground):
 
@@ -38,7 +38,7 @@ dek-core
 
 ## 5. Hot Reload & Rotate
 
-You can dynamically push new policies from the Cloud. The DEK will hot-reload without dropping connections:
+You can dynamically push new policies from the Cloud. The Local Enforcement Kit will hot-reload without dropping connections:
 
 ```bash
 dek-cli debug reload
@@ -52,13 +52,13 @@ dek-cli debug rotate-identity
 
 ---
 
-# การเริ่มต้นใช้งาน Pollek DEK ฉบับเร่งด่วน
+# การเริ่มต้นใช้งาน Pollek Local Enforcement Kit ฉบับเร่งด่วน
 
-คู่มือนี้เป็นขั้นตอนเริ่มต้นใช้งาน Pollek DEK อย่างรวดเร็ว (ภายใน 10 นาที) เพื่อใช้สำหรับตรวจสอบและบังคับใช้นโยบาย (Policy)
+คู่มือนี้เป็นขั้นตอนเริ่มต้นใช้งาน Pollek Local Enforcement Kit อย่างรวดเร็ว (ภายใน 10 นาที) เพื่อใช้สำหรับตรวจสอบและบังคับใช้นโยบาย (Policy)
 
 ## 1. การเตรียมความพร้อม
 
-ดาวน์โหลดไฟล์ไบนารีสำหรับ DEK release ล่าสุด (`dek-core`, `dek-mcp-proxy`, `dek-ext-authz`, `dek-cli`)
+ดาวน์โหลดไฟล์ไบนารีสำหรับ Local Enforcement Kit release ล่าสุด (`dek-core`, `dek-mcp-proxy`, `dek-ext-authz`, `dek-cli`)
 และวางไว้ใน PATH หรือโฟลเดอร์ทำงานของคุณ
 
 ## 2. การลงทะเบียนอุปกรณ์ (Enrollment)
@@ -82,7 +82,7 @@ dek-cli status
 
 *คำสั่ง doctor จะวิเคราะห์ความสมบูรณ์ของระบบ พอร์ตที่ใช้ และความถูกต้องของใบรับรองต่างๆ*
 
-## 4. เริ่มใช้งาน DEK Core
+## 4. เริ่มใช้งาน Local Enforcement Kit Core
 
 สั่งรัน policy engine หลัก:
 
@@ -92,7 +92,7 @@ dek-core
 
 ## 5. การอัปเดตแบบ Hot Reload และการเปลี่ยนใบรับรอง (Rotate)
 
-คุณสามารถส่งนโยบายใหม่จาก Cloud มาได้ทันที DEK จะทำการโหลดข้อมูลใหม่ (hot-reload) โดยไม่ทำให้การเชื่อมต่อปัจจุบันขาดหาย:
+คุณสามารถส่งนโยบายใหม่จาก Cloud มาได้ทันที Local Enforcement Kit จะทำการโหลดข้อมูลใหม่ (hot-reload) โดยไม่ทำให้การเชื่อมต่อปัจจุบันขาดหาย:
 
 ```bash
 dek-cli debug reload

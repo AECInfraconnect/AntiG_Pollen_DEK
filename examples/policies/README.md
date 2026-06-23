@@ -1,6 +1,6 @@
-# Pollek DEK Example Policies
+# Pollek Local Enforcement Kit Example Policies
 
-This directory contains simple generic policies for each of the supported Policy Decision Point (PDP) engines in the Pollek DEK ecosystem.
+This directory contains simple generic policies for each of the supported Policy Decision Point (PDP) engines in the Pollek Local Enforcement Kit ecosystem.
 
 ## Supported PDPs
 
@@ -10,7 +10,7 @@ AWS Cedar is a policy language and evaluation engine for identity-based and reso
 
 ### 2. Open Policy Agent / OPA (`opa.example.rego`)
 
-OPA is a general-purpose policy engine. Policies are written in Rego. Pollek DEK executes OPA policies as compiled WebAssembly (WASM) modules.
+OPA is a general-purpose policy engine. Policies are written in Rego. Pollek Local Enforcement Kit executes OPA policies as compiled WebAssembly (WASM) modules.
 
 ### 3. OpenFGA (`openfga.example.json`)
 

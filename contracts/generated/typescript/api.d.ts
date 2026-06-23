@@ -30,7 +30,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Send an Inter-Agent Trust Protocol (IATP) message via the DEK mediator. */
+        /** @description Send an Inter-Agent Trust Protocol (IATP) message via the Local Enforcement Kit mediator. */
         post: operations["A2AApi_sendMessage"];
         delete?: never;
         options?: never;

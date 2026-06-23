@@ -1,6 +1,6 @@
 # Mock-Cloud Sandbox Quickstart
 
-The Pollek DEK Mock-Cloud provides a local, self-contained environment to test DEK integration without a real backend.
+The Pollek Local Enforcement Kit Mock-Cloud provides a local, self-contained environment to test Local Enforcement Kit integration without a real backend.
 
 ## Quickstart Steps
 
@@ -12,16 +12,16 @@ Follow these 6 steps to complete the sandbox scenario:
 Pollek-mock-cloud --seed sandbox
 ```
 
-### 2. Enroll DEK
+### 2. Enroll Local Enforcement Kit
 
 ```bash
 Pollek-dekctl enroll --cloud-url https://127.0.0.1:43892
 ```
 
-### 3. Start DEK
+### 3. Start Local Enforcement Kit
 
 ```bash
-Pollek-dek --config ~/.Pollek/dek/bootstrap.json
+Pollek-Local Enforcement Kit --config ~/.Pollek/Local Enforcement Kit/bootstrap.json
 ```
 
 ### 4. Start MCP Proxy

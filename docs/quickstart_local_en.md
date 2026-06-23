@@ -1,13 +1,13 @@
-# Pollek DEK — Local Mode Quickstart
+# Pollek Local Enforcement Kit — Local Mode Quickstart
 
 Run the **entire Pollek stack on one machine** — no Pollek Cloud required. The
 **Local Control Plane** is a single-user, `tenant_id=local` stand-in for Cloud:
-you author policies, publish signed bundles, and the DEK enforces them and streams
+you author policies, publish signed bundles, and the Local Enforcement Kit enforces them and streams
 decision logs back — all on `localhost`.
 
 > Same schema, API contract, bundle format, and telemetry envelope as Cloud.
 > Switching to Pollek Cloud later changes only the endpoint + trust store
-> (`dek-cli profile set cloud ...`) — the DEK's enforcement code is unchanged.
+> (`dek-cli profile set cloud ...`) — the Local Enforcement Kit's enforcement code is unchanged.
 
 ## Prerequisites
 
@@ -59,7 +59,7 @@ Local Control Plane listening on http://127.0.0.1:3000
 local control-plane signing key: local-ab12cd34 (pub Base64EncodedKey==)
 ```
 
-## 3. Point the DEK at the Local Control Plane
+## 3. Point the Local Enforcement Kit at the Local Control Plane
 
 > **Note for Windows Users:** Keep the terminal from Step 2 open, and open a **NEW terminal window or tab** for Step 3 and beyond.
 
@@ -82,7 +82,7 @@ For Windows PowerShell:
 .\target\debug\dek-cli.exe profile show     # confirm mode=local, tenant_id=local
 ```
 
-## 4. Run the DEK
+## 4. Run the Local Enforcement Kit
 
 *(Note: In local mode, `profile set local` already bootstraps the configuration, so we skip `dek-cli enroll`)*
 
@@ -124,7 +124,7 @@ curl -X POST http://127.0.0.1:3000/v1/tenants/local/policies \
 curl -X POST http://127.0.0.1:3000/v1/tenants/local/policies/pol-allow-echo/publish
 ```
 
-The DEK picks up the signed bundle on its next sync (a few seconds), verifies the
+The Local Enforcement Kit picks up the signed bundle on its next sync (a few seconds), verifies the
 signature against the pinned local key, and hot-reloads it.
 
 ## 6. Enforce + view decision logs
@@ -153,10 +153,10 @@ View them in the dashboard under **Audit & Decision Logs**. You can also explore
 ## What just happened
 
 1. The Local Control Plane **signed** the bundle with its own key.
-2. The DEK **verified** it exactly as it verifies Pollek Cloud bundles — fail-closed if the signature doesn't match.
+2. The Local Enforcement Kit **verified** it exactly as it verifies Pollek Cloud bundles — fail-closed if the signature doesn't match.
 3. Decisions came back over the **same telemetry envelope** Cloud uses.
 
-So the DEK never knows whether it's talking to Local or Cloud.
+So the Local Enforcement Kit never knows whether it's talking to Local or Cloud.
 
 ## Switching to Pollek Cloud (later)
 
@@ -178,14 +178,14 @@ For Windows PowerShell:
 
 ## Guardrails (always on)
 
-- The DEK never authors or compiles policy locally — that happens on the control plane.
+- The Local Enforcement Kit never authors or compiles policy locally — that happens on the control plane.
 - Bundles are always signed; unverifiable bundles are rejected (fail-closed).
-- If the control plane is unreachable, the DEK serves the last-known-good bundle; once stale past `max_bundle_age`, enforcement defaults to deny.
+- If the control plane is unreachable, the Local Enforcement Kit serves the last-known-good bundle; once stale past `max_bundle_age`, enforcement defaults to deny.
 
 ## Troubleshooting
 
 - **Dashboard shows HTTP 404:** The local control plane can't find the web UI files. Stop it (`Ctrl+C`), set `$env:DEK_DASHBOARD_DIR=".\apps\local-admin-dashboard\dist"` (Windows) or `export DEK_DASHBOARD_DIR="./apps/local-admin-dashboard/dist"` (Linux/mac), and restart `local-control-plane`.
-- **`bootstrap already exists` error:** If you accidentally ran `dek-cli enroll` or have leftover configs from previous runs, stop `dek-core`, delete the config folder (`C:\ProgramData\PollenDEK` on Windows or `~/.Pollek-dek` / `/etc/Pollek-dek` on Linux), and repeat Step 3.
+- **`bootstrap already exists` error:** If you accidentally ran `dek-cli enroll` or have leftover configs from previous runs, stop `dek-core`, delete the config folder (`C:\ProgramData\PollenDEK` on Windows or `~/.Pollek-Local Enforcement Kit` / `/etc/Pollek-Local Enforcement Kit` on Linux), and repeat Step 3.
 - **`dek-cli doctor`** reports cert/connectivity/permission problems and how to fix them.
 - **No decisions logged?** Confirm `dek-core` is running and `dek-cli status` shows a recently synced bundle.
 - **Bundle rejected?** The pinned trust key probably doesn't match the Local CP's key — re-run step 3 with the current `public_b64`.

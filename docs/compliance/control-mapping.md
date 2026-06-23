@@ -1,8 +1,8 @@
 # Compliance Control Mapping
 
-Pollek DEK satisfies several compliance frameworks (NIST 800-53, SOC2, PDPA, HIPAA) through its edge-enforcement architecture, audit logs, and telemetry.
+Pollek Local Enforcement Kit satisfies several compliance frameworks (NIST 800-53, SOC2, PDPA, HIPAA) through its edge-enforcement architecture, audit logs, and telemetry.
 
-| Control (framework) | DEK evidence | Source |
+| Control (framework) | Local Enforcement Kit evidence | Source |
 |---|---|---|
 | **AC-3 Access Enforcement (NIST 800-53)** | Every decision (allow/deny + reason + policy_id) | `TelemetryEvent::Decision` -> decision-logs |
 | **AC-4 Information Flow (network egress)** | Network guardrail enforce/block events | `os_guardrail`/`ebpf_guardrail` |

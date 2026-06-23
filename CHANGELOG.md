@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Pollek DEK are documented here. Format loosely follows
+All notable changes to Pollek Local Enforcement Kit are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the project uses semantic-ish
 versioning with pre-release tags (e.g. `1.0.0-beta.1`).
 
@@ -60,7 +60,7 @@ Major feature release: AI Agent Observability, Shadow AI Detection, and the Obse
 
 ## [1.0.0-beta.5] — 2026-06
 
-Pollek DEK beta 5 brings major stability and edge functionality improvements.
+Pollek Local Enforcement Kit beta 5 brings major stability and edge functionality improvements.
 
 ### Added
 
@@ -85,7 +85,7 @@ Pollek DEK beta 5 brings major stability and edge functionality improvements.
 
 ## [1.0.0-beta.1] — 2026-06
 
-First public beta. Pollek DEK can be downloaded, installed on Linux/macOS/Windows,
+First public beta. Pollek Local Enforcement Kit can be downloaded, installed on Linux/macOS/Windows,
 and run fully locally with the Local Admin Dashboard, or pointed at a Cloud-style
 control plane (exercised via `mock-cloud` until Pollek Cloud is GA).
 
@@ -131,7 +131,7 @@ control plane (exercised via `mock-cloud` until Pollek Cloud is GA).
 - Fail-closed everywhere: no/stale bundle → strict-deny; PDP down or circuit
   open → deny; Cloud unreachable → last-known-good then strict-deny; expired,
   un-renewable identity → deny; kernel apply failure → block-all.
-- Bundles are always signed; the DEK verifies identically regardless of source.
+- Bundles are always signed; the Local Enforcement Kit verifies identically regardless of source.
 - Update artifacts must pass SHA-256 **and** cosign verification before apply.
 
 ### Known limitations

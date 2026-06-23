@@ -1,6 +1,6 @@
-# Pollek DEK Documentation
+# Pollek Local Enforcement Kit Documentation
 
-Welcome to the Pollek DEK documentation.
+Welcome to the Pollek Local Enforcement Kit documentation.
 
 ## Getting Started
 

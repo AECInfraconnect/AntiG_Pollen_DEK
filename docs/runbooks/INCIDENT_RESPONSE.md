@@ -1,4 +1,4 @@
-# Pollek DEK Incident Response Runbook
+# Pollek Local Enforcement Kit Incident Response Runbook
 
 ## Identifying an Incident
 
@@ -22,13 +22,13 @@ Run `dek-cli status` to verify certificate expiration and Spire agent health.
 
 ### 3. Check Active Bundle
 
-Inspect the `active_bundle.json` at `/etc/Pollek-dek/` (Linux) or `C:\ProgramData\PollenDEK\` (Windows).
+Inspect the `active_bundle.json` at `/etc/Pollek-Local Enforcement Kit/` (Linux) or `C:\ProgramData\PollenDEK\` (Windows).
 Validate the bundle schema using:
-`dek-cli validate-bundle --path /etc/Pollek-dek/active_bundle.json`
+`dek-cli validate-bundle --path /etc/Pollek-Local Enforcement Kit/active_bundle.json`
 
 ## Escalation
 
-If an active threat actor is detected bypassing DEK controls:
+If an active threat actor is detected bypassing Local Enforcement Kit controls:
 
 1. Issue an **Emergency Deny** via the Cloud Management API:
    `POST /v1/tenants/{tenant_id}/devices/{device_id}/emergency_deny`

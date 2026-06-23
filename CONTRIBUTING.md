@@ -1,4 +1,4 @@
-# Contributing to Pollek DEK
+# Contributing to Pollek Local Enforcement Kit
 
 We welcome contributions from the community!
 

@@ -1,12 +1,12 @@
-# Pollek DEK — คู่มือเริ่มต้นแบบ Local Mode
+# Pollek Local Enforcement Kit — คู่มือเริ่มต้นแบบ Local Mode
 
 รัน **ทั้ง stack ของ Pollek บนเครื่องเดียว** — ไม่ต้องมี Pollek Cloud
 **Local Control Plane** ทำหน้าที่เป็น control plane แบบ single-user (`tenant_id=local`)
-แทน Cloud: author policy, publish signed bundle แล้ว DEK เอาไป enforce พร้อมส่ง
+แทน Cloud: author policy, publish signed bundle แล้ว Local Enforcement Kit เอาไป enforce พร้อมส่ง
 decision log กลับมา ทั้งหมดบน localhost
 
 > ใช้ schema / API contract / bundle format / telemetry envelope เดียวกับ Cloud
-> เปลี่ยนไป Cloud ทีหลังแก้แค่ endpoint + trust store — โค้ด enforcement ของ DEK ไม่เปลี่ยน
+> เปลี่ยนไป Cloud ทีหลังแก้แค่ endpoint + trust store — โค้ด enforcement ของ Local Enforcement Kit ไม่เปลี่ยน
 
 ## สิ่งที่ต้องมี
 
@@ -51,7 +51,7 @@ $env:DEK_LCP_AUTH_DISABLE="1"
 
 ตอนเริ่มจะ log public key ที่ใช้เซ็น bundle (`http://127.0.0.1:3000`)
 
-## 3. ชี้ DEK ไปที่ Local Control Plane
+## 3. ชี้ Local Enforcement Kit ไปที่ Local Control Plane
 
 > **สำหรับผู้ใช้ Windows PowerShell:** ให้เปิด **หน้าต่าง PowerShell ใหม่ (หรือแท็บใหม่)** สำหรับขั้นตอนนี้เป็นต้นไป โดยปล่อยหน้าต่างของข้อ 2 ให้ทำงานค้างไว้
 
@@ -74,7 +74,7 @@ $env:DEK_LCP_AUTH_DISABLE="1"
 .\target\debug\dek-cli.exe profile show
 ```
 
-## 4. รัน DEK
+## 4. รัน Local Enforcement Kit
 
 *(หมายเหตุ: ใน Local Mode คำสั่ง `profile set local` ได้ทำการสร้างไฟล์ตั้งค่าไปแล้ว จึงไม่ต้องรัน `dek-cli enroll` ซ้ำ)*
 
@@ -116,7 +116,7 @@ curl -X POST http://127.0.0.1:3000/v1/tenants/local/policies \
 curl -X POST http://127.0.0.1:3000/v1/tenants/local/policies/pol-allow-echo/publish
 ```
 
-DEK จะ sync bundle ใหม่ใน sync รอบถัดไป → verify ลายเซ็นกับ local key → hot-reload
+Local Enforcement Kit จะ sync bundle ใหม่ใน sync รอบถัดไป → verify ลายเซ็นกับ local key → hot-reload
 
 ## 6. Enforce + ดู decision log
 
@@ -142,10 +142,10 @@ curl -s http://127.0.0.1:3000/v1/tenants/local/telemetry/decision-logs
 ## เกิดอะไรขึ้น
 
 1. Local Control Plane **เซ็น** bundle ด้วย key ของตัวเอง
-2. DEK **verify** เหมือน Cloud bundle เป๊ะ — fail-closed ถ้าลายเซ็นไม่ตรง
+2. Local Enforcement Kit **verify** เหมือน Cloud bundle เป๊ะ — fail-closed ถ้าลายเซ็นไม่ตรง
 3. decision ส่งกลับด้วย **telemetry envelope เดียวกับ Cloud**
 
-DEK จึงไม่รู้ว่ากำลังคุยกับ Local หรือ Cloud
+Local Enforcement Kit จึงไม่รู้ว่ากำลังคุยกับ Local หรือ Cloud
 
 ## เปลี่ยนไป Pollek Cloud (ภายหลัง)
 
@@ -165,7 +165,7 @@ DEK จึงไม่รู้ว่ากำลังคุยกับ Local 
 
 ## Guardrails (เปิดตลอด)
 
-- DEK ไม่ author/compile policy ที่เครื่อง — ทำที่ control plane
+- Local Enforcement Kit ไม่ author/compile policy ที่เครื่อง — ทำที่ control plane
 - bundle ต้องเซ็นเสมอ; verify ไม่ผ่าน = reject (fail-closed)
 - control plane ติดต่อไม่ได้ → ใช้ last-known-good; เกิน `max_bundle_age` → default deny
 

@@ -1,6 +1,6 @@
 # Pollek Contract Hub
 
-Single source of truth for APIs, schemas, events, and catalogs between Pollek Cloud, DEK, Local Control Plane, and Local Admin Dashboard.
+Single source of truth for APIs, schemas, events, and catalogs between Pollek Cloud, Local Enforcement Kit, Local Control Plane, and Local Admin Dashboard.
 
 ## Overview
 

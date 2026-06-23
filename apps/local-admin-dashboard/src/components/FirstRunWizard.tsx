@@ -55,7 +55,7 @@ export function FirstRunWizard() {
         <div className="p-6 border-b bg-muted/30">
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" />
-            Welcome to Pollek DEK
+            Welcome to Pollek Local Enforcement Kit
           </h2>
           <p className="text-muted-foreground mt-1">Let's secure your local AI ecosystem in just a few steps.</p>
         </div>

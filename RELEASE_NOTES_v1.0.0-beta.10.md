@@ -1,6 +1,6 @@
-# Pollek DEK v1.0.0-beta.10 Release Notes
+# Pollek Local Enforcement Kit v1.0.0-beta.10 Release Notes
 
-We are excited to announce Pollek DEK `v1.0.0-beta.10` — the largest feature release since public beta. This release introduces the full **AI Agent Observability stack**, **Shadow AI Detection**, and the **Observe → Suggest → Enforce Governance Loop**.
+We are excited to announce Pollek Local Enforcement Kit `v1.0.0-beta.10` — the largest feature release since public beta. This release introduces the full **AI Agent Observability stack**, **Shadow AI Detection**, and the **Observe → Suggest → Enforce Governance Loop**.
 
 ## Highlights
 
@@ -42,7 +42,7 @@ We are excited to announce Pollek DEK `v1.0.0-beta.10` — the largest feature r
 
 ## Upgrading
 
-To upgrade your DEK CLI to the latest version via the beta channel:
+To upgrade your Local Enforcement Kit CLI to the latest version via the beta channel:
 
 ```bash
 dek-cli update --channel beta

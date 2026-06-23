@@ -1,4 +1,4 @@
-// Pollek DEK Registry API Models
+// Pollek Local Enforcement Kit Registry API Models
 
 export interface ObjectMeta {
   schema_version: string;

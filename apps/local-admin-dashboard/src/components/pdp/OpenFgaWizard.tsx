@@ -138,13 +138,13 @@ export function OpenFgaWizard({ isOpen, onClose, onComplete }: Props) {
                 <div>
                   <h3 className="text-lg font-semibold">Create an Authorization Store</h3>
                   <p className="text-muted-foreground mt-1">
-                    OpenFGA is running successfully. Now we need to create a dedicated Store for DEK to use.
+                    OpenFGA is running successfully. Now we need to create a dedicated Store for Local Enforcement Kit to use.
                   </p>
                   <div className="mt-6 p-4 border rounded-lg bg-muted/30 flex items-center gap-4">
                     <Database className="h-8 w-8 text-muted-foreground" />
                     <div>
                       <div className="font-medium">Store Name: pollen-dek-store</div>
-                      <div className="text-xs text-muted-foreground">This store will hold all relationship tuples managed by DEK.</div>
+                      <div className="text-xs text-muted-foreground">This store will hold all relationship tuples managed by Local Enforcement Kit.</div>
                     </div>
                   </div>
                 </div>
@@ -172,7 +172,7 @@ export function OpenFgaWizard({ isOpen, onClose, onComplete }: Props) {
                     Setup Complete
                   </h3>
                   <p className="text-muted-foreground mt-1">
-                    Your OpenFGA store has been created and is ready to be used by DEK.
+                    Your OpenFGA store has been created and is ready to be used by Local Enforcement Kit.
                   </p>
                   <div className="mt-4 p-4 bg-muted/50 rounded-lg border font-mono text-sm break-all">
                     <strong>Store ID:</strong> {storeId}

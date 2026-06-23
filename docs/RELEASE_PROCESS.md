@@ -1,6 +1,6 @@
-# Pollek DEK Release Process
+# Pollek Local Enforcement Kit Release Process
 
-This document defines the strict, required process for releasing a new version of Pollek DEK, ensuring that re-tagging failures, dirty histories, and incomplete CI artifacts do not block releases.
+This document defines the strict, required process for releasing a new version of Pollek Local Enforcement Kit, ensuring that re-tagging failures, dirty histories, and incomplete CI artifacts do not block releases.
 
 ## 1. Pre-flight Checklist
 

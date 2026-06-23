@@ -1,6 +1,6 @@
-# Pollek Cloud ↔ DEK API Contracts
+# Pollek Cloud ↔ Local Enforcement Kit API Contracts
 
-This document is the Single Source of Truth for the APIs and data models used between the Pollek Cloud (and Mock-Cloud) and the Data Execution Kernel (DEK).
+This document is the Single Source of Truth for the APIs and data models used between the Pollek Cloud (and Mock-Cloud) and the Data Execution Kernel (Local Enforcement Kit).
 
 ## JSON Schemas
 
@@ -45,7 +45,7 @@ Used to manage policies and perform simulation testing.
 
 ### 3. Bundle APIs
 
-Used by DEK to fetch TUF-lite metadata and the securely signed bundles.
+Used by Local Enforcement Kit to fetch TUF-lite metadata and the securely signed bundles.
 
 - `GET  /v1/tenants/{tenant_id}/devices/{device_id}/bundles/metadata/root.json`
 - `GET  /v1/tenants/{tenant_id}/devices/{device_id}/bundles/metadata/timestamp.json`
@@ -56,7 +56,7 @@ Used by DEK to fetch TUF-lite metadata and the securely signed bundles.
 - `POST /v1/tenants/{tenant_id}/bundles/canary`
 - `POST /v1/tenants/{tenant_id}/bundles/rollback`
 
-### 4. DEK Config APIs
+### 4. Local Enforcement Kit Config APIs
 
 Device-specific configurations and credentials.
 
@@ -67,7 +67,7 @@ Device-specific configurations and credentials.
 
 ### 5. Telemetry APIs
 
-Used by DEK to send telemetry to the cloud.
+Used by Local Enforcement Kit to send telemetry to the cloud.
 
 - `POST /v1/telemetry/events`
 - `POST /v1/telemetry/decision-logs`

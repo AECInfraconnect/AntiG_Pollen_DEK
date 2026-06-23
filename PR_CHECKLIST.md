@@ -1,4 +1,4 @@
-# Pollek DEK — Production Hardening PR Checklist (Phase 0–5)
+# Pollek Local Enforcement Kit — Production Hardening PR Checklist (Phase 0–5)
 
 รวมทุก deliverable เป็น roadmap การ merge เดียว — **ลำดับ, Cargo ที่ต้องเปลี่ยน, ไฟล์ที่แตะ, acceptance** ครบ
 แนะนำ merge ทีละ PR ตามลำดับ (แต่ละ PR build+test เขียวก่อนไป PR ถัดไป)

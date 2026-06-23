@@ -1,8 +1,8 @@
-# Runbook: Install and Enroll DEK
+# Runbook: Install and Enroll Local Enforcement Kit
 
 ## Objective
 
-To successfully deploy the Pollek DEK on a new Windows host and enroll it with Pollek Cloud to fetch initial certificates and configuration.
+To successfully deploy the Pollek Local Enforcement Kit on a new Windows host and enroll it with Pollek Cloud to fetch initial certificates and configuration.
 
 ## Steps
 

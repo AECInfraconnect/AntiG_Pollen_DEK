@@ -1,19 +1,19 @@
-# คู่มือการใช้งาน Pollek DEK
+# คู่มือการใช้งาน Pollek Local Enforcement Kit
 
 ## ภาพรวม
 
-Pollek DEK (Distributed Enforcement Kernel) คือเครื่องมือสำหรับรักษาความปลอดภัยระดับ endpoint และบังคับใช้นโยบาย (policy enforcement)
+Pollek Local Enforcement Kit (Distributed Enforcement Kernel) คือเครื่องมือสำหรับรักษาความปลอดภัยระดับ endpoint และบังคับใช้นโยบาย (policy enforcement)
 
 ## ส่วนประกอบสำคัญ
 
-- **Pollek DEK Core (`Pollek-dek`)**: เซอร์วิสเบื้องหลังที่จัดการการยืนยันตัวตน ดาวน์โหลดนโยบาย และควบคุมการบังคับใช้
-- **Pollek DEK CLI (`Pollek-dekctl`)**: เครื่องมือ Command-line สำหรับลงทะเบียน จัดการ และตรวจสอบการทำงานของ DEK
+- **Pollek Local Enforcement Kit Core (`Pollek-Local Enforcement Kit`)**: เซอร์วิสเบื้องหลังที่จัดการการยืนยันตัวตน ดาวน์โหลดนโยบาย และควบคุมการบังคับใช้
+- **Pollek Local Enforcement Kit CLI (`Pollek-dekctl`)**: เครื่องมือ Command-line สำหรับลงทะเบียน จัดการ และตรวจสอบการทำงานของ Local Enforcement Kit
 - **Pollek MCP Proxy (`Pollek-mcp-proxy`)**: พร็อกซีสำหรับการใช้งาน Model Context Protocol (MCP) ช่วยตรวจสอบสิทธิ์ก่อนส่งคำขอไปยังเครื่องมือต่างๆ
 - **Mock Cloud (`Pollek-mock-cloud`)**: ระบบจำลองการทำงานของ Pollek Cloud สำหรับการพัฒนาและทดสอบในช่วง Beta
 
 ## ฟีเจอร์ของ Local Admin Dashboard
 
-Local Admin Dashboard (เข้าถึงได้ที่ `http://127.0.0.1:3000` เมื่อรัน Local Control Plane) มีฟีเจอร์สำหรับจัดการ DEK ภายในเครื่องของคุณ:
+Local Admin Dashboard (เข้าถึงได้ที่ `http://127.0.0.1:3000` เมื่อรัน Local Control Plane) มีฟีเจอร์สำหรับจัดการ Local Enforcement Kit ภายในเครื่องของคุณ:
 
 ### 1. Simulator (จำลองการทำงาน)
 
@@ -41,8 +41,8 @@ Local Admin Dashboard (เข้าถึงได้ที่ `http://127.0.0.1
 
 ## การตั้งค่า
 
-ในช่วงทดสอบ Beta ไฟล์การตั้งค่าจะอยู่ที่ `~/.Pollek/dek/` โดยค่าเริ่มต้น ซึ่งจะใช้ไฟล์ `bootstrap.json`
+ในช่วงทดสอบ Beta ไฟล์การตั้งค่าจะอยู่ที่ `~/.Pollek/Local Enforcement Kit/` โดยค่าเริ่มต้น ซึ่งจะใช้ไฟล์ `bootstrap.json`
 
 ## บันทึกการทำงาน (Logs)
 
-สามารถดู Logs ได้โดยใช้คำสั่ง `Pollek-dekctl logs` หรือเปิดดูไฟล์ในโฟลเดอร์ `~/.Pollek/dek/logs/`
+สามารถดู Logs ได้โดยใช้คำสั่ง `Pollek-dekctl logs` หรือเปิดดูไฟล์ในโฟลเดอร์ `~/.Pollek/Local Enforcement Kit/logs/`

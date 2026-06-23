@@ -1,4 +1,4 @@
-# Pollek DEK Recorder Integration Wiring
+# Pollek Local Enforcement Kit Recorder Integration Wiring
 
 This guide outlines the steps required to seamlessly integrate the shared `dek-metrics` crate into the workspace and wire it to the execution paths of `dek-mcp-proxy` and `dek-ext-authz` during merge.
 

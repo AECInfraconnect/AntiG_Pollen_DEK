@@ -1,6 +1,6 @@
-# Pollek DEK Developer Guide
+# Pollek Local Enforcement Kit Developer Guide
 
-This guide provides concrete code examples, architectural contracts, and operational guidelines for working with Pollek DEK `v1.0.0-beta`.
+This guide provides concrete code examples, architectural contracts, and operational guidelines for working with Pollek Local Enforcement Kit `v1.0.0-beta`.
 
 ---
 
@@ -25,15 +25,15 @@ cargo run -p mock-cloud -- --dev-insecure-allow-no-client-cert
 
 ## 2. Telemetry Batch Flush Architecture
 
-DEK Core locally spools telemetry to a SQLite database. A background flusher pulls up to 50 events at a time and POSTs them to the Mock-Cloud.
+Local Enforcement Kit Core locally spools telemetry to a SQLite database. A background flusher pulls up to 50 events at a time and POSTs them to the Mock-Cloud.
 
-**Code Example: Emitting Telemetry (DEK side)**
+**Code Example: Emitting Telemetry (Local Enforcement Kit side)**
 
 ```rust
 let sink = telemetry_sink.clone();
 sink.emit_async(
     serde_json::json!({
-        "event_type": "Pollek.dek.dns_observe",
+        "event_type": "Pollek.Local Enforcement Kit.dns_observe",
         "cgroup_id": obs.cgroup_id,
         "qname": obs.qname,
         "answers": obs.answers,
@@ -51,7 +51,7 @@ Content-Type: application/json
 
 {
   "events": [
-    { "event_type": "Pollek.dek.dns_observe", ... },
+    { "event_type": "Pollek.Local Enforcement Kit.dns_observe", ... },
     ...
   ]
 }
@@ -76,7 +76,7 @@ let signed_bytes = serde_jcs::to_vec(&payload["signed"]).unwrap();
 let signature = signing_key.sign(&signed_bytes);
 ```
 
-**Code Example: DEK Verifying (DEK side)**
+**Code Example: Local Enforcement Kit Verifying (Local Enforcement Kit side)**
 
 ```rust
 // 1. Serialize incoming payload to JCS
@@ -95,7 +95,7 @@ match key_set.verify(now, &signed_bytes, &sigs) {
 
 ## 4. Release Checklist & CI Workflow
 
-Pollek DEK CI automatically generates native installers (`.deb`, `.msi`, `.pkg`) on every tag.
+Pollek Local Enforcement Kit CI automatically generates native installers (`.deb`, `.msi`, `.pkg`) on every tag.
 Before tagging a release:
 
 - `[ ]` Ensure `cargo test --workspace` passes cleanly.
@@ -113,7 +113,7 @@ To run a full e2e acceptance test locally:
 cargo run -p mock-cloud &
 MOCK_PID=$!
 
-# 2. Start DEK Core
+# 2. Start Local Enforcement Kit Core
 sudo -E cargo run -p dek-core
 
 # 3. Terminate
@@ -124,7 +124,7 @@ kill $MOCK_PID
 
 ## 6. AI Agent Work Orders
 
-When assigning work to an AI Agent for DEK, format requests as follows:
+When assigning work to an AI Agent for Local Enforcement Kit, format requests as follows:
 
 ```markdown
 <WORK_ORDER>

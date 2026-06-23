@@ -76,7 +76,7 @@ export function Sidebar() {
     <div className="flex h-full w-64 flex-col border-r bg-card/50 backdrop-blur-xl">
       <div className="flex h-16 items-center border-b px-6">
         <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent flex items-center gap-2">
-          <Globe className="h-5 w-5" /> Pollek DEK
+          <Globe className="h-5 w-5" /> Pollek Local Enforcement Kit
         </h1>
         <span className="ml-2 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
           v2
