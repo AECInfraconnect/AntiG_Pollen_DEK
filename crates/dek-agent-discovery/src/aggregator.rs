@@ -3,6 +3,76 @@ use std::collections::{BTreeMap, HashMap};
 
 pub fn aggregate_evidence(
     tenant_id: &str,
+    evidence: Vec<DiscoveryEvidenceV2>,
+) -> Vec<DiscoveredAgentCandidateV2> {
+    let raw = aggregate_by_merge_key(tenant_id, evidence);
+    coalesce_by_identity(tenant_id, raw)
+}
+
+fn coalesce_by_identity(
+    tenant: &str,
+    raw: Vec<DiscoveredAgentCandidateV2>,
+) -> Vec<DiscoveredAgentCandidateV2> {
+    use std::collections::HashMap;
+    let mut by_key: HashMap<String, DiscoveredAgentCandidateV2> = HashMap::new();
+
+    for mut c in raw {
+        let key = crate::identity_key::identity_key(
+            c.matched_signature_id.as_deref(),
+            c.vendor.as_deref(),
+            c.product.as_deref(),
+            c.suggested_registration.process_path_hash.as_deref(),
+            &c.display_name,
+        );
+        c.candidate_id = crate::identity_key::deterministic_candidate_id(tenant, &key);
+        // Also update the target_candidate_id in suggested control bindings
+        for cb in &mut c.suggested_control_bindings {
+            cb.target_candidate_id = c.candidate_id.clone();
+        }
+
+        match by_key.get_mut(&key) {
+            Some(existing) => {
+                existing.evidence.extend(std::mem::take(&mut c.evidence));
+                existing.confidence = existing.confidence.max(c.confidence);
+                existing.risk_score = existing.risk_score.max(c.risk_score);
+                existing.instance_count = existing.instance_count.saturating_add(1);
+                
+                for _cap in c.suggested_registration.declared_tools.iter().chain(c.labels.keys()) {
+                    // Not strictly capabilities but labels could be merged.
+                    // We'll merge labels.
+                    for (k, v) in c.labels.iter() {
+                        if !existing.labels.contains_key(k) {
+                            existing.labels.insert(k.clone(), v.clone());
+                        }
+                    }
+                }
+                
+                if is_better_name(&c.display_name, &existing.display_name) {
+                    existing.display_name = c.display_name;
+                    existing.vendor = c.vendor.or(existing.vendor.take());
+                    existing.product = c.product.or(existing.product.take());
+                    existing.inferred_agent_type = c.inferred_agent_type;
+                }
+                
+                existing.first_seen = std::cmp::min(existing.first_seen.clone(), c.first_seen);
+                existing.last_seen = std::cmp::max(existing.last_seen.clone(), c.last_seen);
+            }
+            None => {
+                c.instance_count = 1;
+                by_key.insert(key, c);
+            }
+        }
+    }
+    by_key.into_values().collect()
+}
+
+fn is_better_name(new: &str, old: &str) -> bool {
+    let bad = |s: &str| s == "Unknown Agent" || s.contains("unconfirmed") || basename_no_ext(s) == s && s.len() > 15;
+    bad(old) && !bad(new)
+}
+
+fn aggregate_by_merge_key(
+    tenant_id: &str,
     mut evidence: Vec<DiscoveryEvidenceV2>,
 ) -> Vec<DiscoveredAgentCandidateV2> {
     // Group evidence by merge_key
@@ -62,7 +132,8 @@ pub fn aggregate_evidence(
                             ctx.cli_on_path.push(basename_no_ext(exe));
                         }
                         if let Some(pkg) = npm_pkg_from_argv(&p.cmd_template) {
-                            ctx.packages.push(("npm".into(), pkg));
+                            ctx.packages.push(("npm".into(), pkg.clone()));
+                            ctx.cli_on_path.push(pkg);
                         }
                     }
                 }
@@ -202,8 +273,10 @@ pub fn aggregate_evidence(
         }
 
         let resolved_by_signature = decision.best.is_some();
+        let mut matched_signature_id = None;
 
         if let Some(best) = decision.best {
+            matched_signature_id = Some(best.signature_id.clone());
             name = best.display_name.clone();
             vendor = best.vendor.clone();
             product = best.product.clone();
@@ -255,7 +328,7 @@ pub fn aggregate_evidence(
         }
 
         let mut control_bindings = Vec::new();
-        let cand_id = format!("cand_{}", uuid::Uuid::new_v4());
+        let cand_id = String::new();
 
         for server in &mcp_servers {
             let binding_id = format!("bind_{}", uuid::Uuid::new_v4());
@@ -302,6 +375,8 @@ pub fn aggregate_evidence(
             tenant_id: tenant_id.to_string(),
             device_id: "device-local".into(),
             status,
+            instance_count: 1,
+            matched_signature_id,
             display_name: name.clone(),
             vendor,
             product,

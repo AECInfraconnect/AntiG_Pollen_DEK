@@ -40,11 +40,11 @@ pub fn router() -> Router<AppState> {
         // dashboard read-side
         .route(
             "/v1/tenants/:tenant/telemetry/decision-logs",
-            get(list_decision_logs),
+            get(list_decision_logs).delete(clear_decision_logs),
         )
         .route(
             "/v1/tenants/:tenant/logs/decisions",
-            get(list_decision_logs),
+            get(list_decision_logs).delete(clear_decision_logs),
         )
         .route(
             "/v1/tenants/:tenant/logs/tool-invocations",
@@ -226,6 +226,15 @@ async fn list_decision_logs(
         StatusCode::OK,
         Json(json!({ "count": items.len(), "decisions": items })),
     )
+}
+
+async fn clear_decision_logs(
+    Path(tenant): Path<String>,
+    State(st): State<AppState>,
+) -> impl IntoResponse {
+    let _ = st.telemetry_store.clear_telemetry(&tenant, "decision_log").await;
+    let _ = st.telemetry_store.clear_telemetry(&tenant, "decision").await;
+    (StatusCode::OK, Json(json!({"status": "success"})))
 }
 
 async fn list_tool_invocations(

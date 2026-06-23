@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Database, MoreVertical, Plus } from "lucide-react";
+import { RegistryApi } from "../services/api";
 import type { Resource } from "../services/api";
 import { ResourceDetailDrawer } from "../components/ResourceDetailDrawer";
 
@@ -10,13 +11,29 @@ export function Resources() {
     null,
   );
 
-  useEffect(() => {
-    fetch("http://localhost:3000/v1/tenants/default/observations/resources")
-      .then(res => res.json())
+  const fetchResources = () => {
+    setLoading(true);
+    RegistryApi.listResources()
       .then(setResources)
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchResources();
   }, []);
+
+  const deleteResource = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this resource? Note: Make sure no active policies depend on it.")) return;
+    try {
+      await RegistryApi.deleteResource(id);
+      fetchResources();
+    } catch (err) {
+      console.error("Failed to delete resource:", err);
+      alert("Failed to delete resource");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -108,9 +125,17 @@ export function Resources() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-muted-foreground hover:text-foreground transition-colors p-1">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
+                    <div className="flex justify-end items-center gap-2">
+                      <button className="p-2 text-muted-foreground hover:bg-muted rounded-md transition-colors">
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={(e) => deleteResource(e, resource.resource_id)}
+                        className="px-3 py-1 text-xs text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded border border-red-500/20 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

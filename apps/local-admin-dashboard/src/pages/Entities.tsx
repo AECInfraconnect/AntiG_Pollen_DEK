@@ -7,12 +7,28 @@ export function Entities({ hideHeader = false }: { hideHeader?: boolean }) {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchEntities = () => {
+    setLoading(true);
     RegistryApi.listEntities()
       .then(setEntities)
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchEntities();
   }, []);
+
+  const deleteEntity = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this entity? Note: Make sure no active policies depend on it.")) return;
+    try {
+      await RegistryApi.deleteEntity(id);
+      fetchEntities();
+    } catch (e) {
+      console.error("Failed to delete entity:", e);
+      alert("Failed to delete entity");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -100,9 +116,17 @@ export function Entities({ hideHeader = false }: { hideHeader?: boolean }) {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-muted-foreground hover:text-foreground transition-colors p-1">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button className="p-2 text-muted-foreground hover:bg-muted rounded-md transition-colors">
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteEntity(entity.entity_id)}
+                        className="px-3 py-1 text-xs text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded border border-red-500/20 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

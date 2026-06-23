@@ -33,6 +33,8 @@ impl FingerprintService {
             FingerprintDb {
                 version: cur.version,
                 by_id: cur.by_id.clone(),
+                web_ai: cur.web_ai.clone(),
+                installed_apps: cur.installed_apps.clone(),
             }
         };
 
@@ -54,6 +56,8 @@ impl FingerprintService {
                 *prev_w = Some(FingerprintDb {
                     version: w.version,
                     by_id: w.by_id.clone(),
+                    web_ai: w.web_ai.clone(),
+                    installed_apps: w.installed_apps.clone(),
                 });
             }
 

@@ -28,6 +28,13 @@ pub trait RegistryStore: Send + Sync {
         object_id: &str,
     ) -> Result<Option<serde_json::Value>>;
     async fn list_raw(&self, tenant_id: &str, object_type: &str) -> Result<Vec<serde_json::Value>>;
+    async fn delete_raw(
+        &self,
+        tenant_id: &str,
+        object_type: &str,
+        object_id: &str,
+    ) -> Result<bool>;
+    async fn clear_raw(&self, tenant_id: &str, object_type: &str) -> Result<u64>;
 
     async fn upsert_blackbox_ai(&self, provider: BlackboxAiProvider) -> Result<BlackboxAiProvider>;
     async fn get_blackbox_ai(
@@ -154,6 +161,7 @@ pub trait TelemetryStore: Send + Sync {
         data: &serde_json::Value,
     ) -> Result<()>;
     async fn list_telemetry(&self, tenant: &str, kind: &str) -> Result<Vec<serde_json::Value>>;
+    async fn clear_telemetry(&self, tenant: &str, kind: &str) -> Result<u64>;
 }
 
 #[async_trait::async_trait]
@@ -173,6 +181,7 @@ pub trait PdpStore: Send + Sync {
 pub trait ObservabilityStore: Send + Sync {
     async fn insert_observation_event(&self, event: &AgentObservationEvent) -> Result<()>;
     async fn list_observation_events(&self, tenant_id: &str) -> Result<Vec<AgentObservationEvent>>;
+    async fn clear_observation_events(&self, tenant_id: &str) -> Result<u64>;
     async fn insert_cost_ledger(&self, entry: &CostLedgerEntry) -> Result<()>;
     async fn list_cost_ledger(&self) -> Result<Vec<CostLedgerEntry>>;
     async fn upsert_policy_suggestion(&self, suggestion: &PolicySuggestion) -> Result<()>;
@@ -398,6 +407,29 @@ impl SqliteStore {
 
 #[async_trait::async_trait]
 impl RegistryStore for SqliteStore {
+    async fn delete_raw(
+        &self,
+        tenant_id: &str,
+        object_type: &str,
+        object_id: &str,
+    ) -> Result<bool> {
+        self.delete_object(tenant_id, object_type, object_id).await
+    }
+
+    async fn clear_raw(&self, tenant_id: &str, object_type: &str) -> Result<u64> {
+        let tenant_id = tenant_id.to_string();
+        let object_type = object_type.to_string();
+        let conn_arc = self.conn.clone();
+        let count = tokio::task::spawn_blocking(move || -> Result<usize> {
+            let conn = conn_arc.lock().unwrap();
+            Ok(conn.execute(
+                "DELETE FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2",
+                params![tenant_id, object_type],
+            )?)
+        }).await??;
+        Ok(count as u64)
+    }
+
     async fn upsert_agent(&self, agent: AiAgent) -> Result<AiAgent> {
         let status = serde_json::to_string(&agent.meta.status)?.replace("\"", "");
         let source = serde_json::to_string(&agent.meta.source)?.replace("\"", "");
@@ -900,8 +932,7 @@ impl PolicyStore for SqliteStore {
             } else {
                 Ok(None)
             }
-        })
-        .await??;
+        }).await??;
 
         Ok(bytes)
     }
@@ -1101,8 +1132,7 @@ impl PolicyStore for SqliteStore {
                 out.push(val);
             }
             Ok(out)
-        })
-        .await??;
+        }).await??;
 
         Ok(out)
     }
@@ -1156,6 +1186,20 @@ impl TelemetryStore for SqliteStore {
             .into_iter()
             .filter_map(|j| serde_json::from_str(&j).ok())
             .collect())
+    }
+
+    async fn clear_telemetry(&self, tenant: &str, kind: &str) -> Result<u64> {
+        let tenant = tenant.to_string();
+        let kind = kind.to_string();
+        let conn_arc = self.conn.clone();
+        let count = tokio::task::spawn_blocking(move || -> Result<usize> {
+            let conn = conn_arc.lock().unwrap();
+            Ok(conn.execute(
+                "DELETE FROM telemetry_events WHERE tenant_id = ?1 AND event_type = ?2",
+                params![tenant, kind],
+            )?)
+        }).await??;
+        Ok(count as u64)
     }
 }
 
@@ -1655,6 +1699,19 @@ pub async fn seed_pdp_defaults(store: &Arc<dyn PdpStore>) -> Result<()> {
 
 #[async_trait::async_trait]
 impl ObservabilityStore for SqliteStore {
+    async fn clear_observation_events(&self, tenant_id: &str) -> Result<u64> {
+        let tenant_id = tenant_id.to_string();
+        let conn_arc = self.conn.clone();
+        let count = tokio::task::spawn_blocking(move || -> Result<usize> {
+            let conn = conn_arc.lock().unwrap();
+            Ok(conn.execute(
+                "DELETE FROM observation_events WHERE tenant_id = ?1",
+                params![tenant_id],
+            )?)
+        }).await??;
+        Ok(count as u64)
+    }
+
     async fn insert_observation_event(&self, event: &AgentObservationEvent) -> Result<()> {
         let payload = serde_json::to_string(event)?;
         let conn_arc = self.conn.clone();

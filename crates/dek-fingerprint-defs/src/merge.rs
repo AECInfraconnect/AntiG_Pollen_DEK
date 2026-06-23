@@ -4,6 +4,8 @@ use std::collections::HashMap;
 pub struct FingerprintDb {
     pub version: u64,
     pub by_id: HashMap<String, AgentSignatureV2>,
+    pub web_ai: HashMap<String, WebAiSignatureDef>,
+    pub installed_apps: HashMap<String, InstalledAppSignatureDef>,
 }
 
 impl FingerprintDb {
@@ -13,9 +15,21 @@ impl FingerprintDb {
             .into_iter()
             .map(|s| (s.id.clone(), s))
             .collect();
+        let web_ai = base
+            .web_ai_signatures
+            .into_iter()
+            .map(|s| (s.domain.clone(), s))
+            .collect();
+        let installed_apps = base
+            .installed_app_signatures
+            .into_iter()
+            .map(|s| (s.id.clone(), s))
+            .collect();
         Self {
             version: base.definition_version,
             by_id,
+            web_ai,
+            installed_apps,
         }
     }
 
@@ -24,6 +38,16 @@ impl FingerprintDb {
             DefinitionKind::Full => {
                 self.by_id = def
                     .signatures
+                    .into_iter()
+                    .map(|s| (s.id.clone(), s))
+                    .collect();
+                self.web_ai = def
+                    .web_ai_signatures
+                    .into_iter()
+                    .map(|s| (s.domain.clone(), s))
+                    .collect();
+                self.installed_apps = def
+                    .installed_app_signatures
                     .into_iter()
                     .map(|s| (s.id.clone(), s))
                     .collect();
@@ -39,8 +63,16 @@ impl FingerprintDb {
                 for sig in def.signatures {
                     self.by_id.insert(sig.id.clone(), sig);
                 }
+                for sig in def.web_ai_signatures {
+                    self.web_ai.insert(sig.domain.clone(), sig);
+                }
+                for sig in def.installed_app_signatures {
+                    self.installed_apps.insert(sig.id.clone(), sig);
+                }
                 for id in &def.removed_ids {
                     self.by_id.remove(id);
+                    self.web_ai.remove(id);
+                    self.installed_apps.remove(id);
                 }
             }
         }
@@ -103,6 +135,7 @@ mod tests {
             catalog_hash: "".into(),
             model_classifier: None,
             web_ai_signatures: vec![],
+            installed_app_signatures: vec![],
         };
         let mut db = FingerprintDb::from_baseline(base);
         let delta = FingerprintDefinition {
@@ -117,6 +150,7 @@ mod tests {
             catalog_hash: "".into(),
             model_classifier: None,
             web_ai_signatures: vec![],
+            installed_app_signatures: vec![],
         };
         db.apply(delta).unwrap();
         assert!(db.by_id.contains_key("goose_cli"));
@@ -127,8 +161,10 @@ mod tests {
     #[test]
     fn delta_rejects_wrong_base() {
         let mut db = FingerprintDb {
-            version: 5,
-            by_id: Default::default(),
+            version: 1,
+            by_id: std::collections::HashMap::new(),
+            web_ai: std::collections::HashMap::new(),
+            installed_apps: std::collections::HashMap::new(),
         };
         let bad = FingerprintDefinition {
             schema_version: "v2".into(),
@@ -142,6 +178,7 @@ mod tests {
             catalog_hash: "bad".into(),
             model_classifier: None,
             web_ai_signatures: vec![],
+            installed_app_signatures: vec![],
         };
         assert!(db.apply(bad).is_err());
     }

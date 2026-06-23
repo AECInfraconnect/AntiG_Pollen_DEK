@@ -1,3 +1,4 @@
+#![allow(clippy::print_stdout)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
@@ -23,8 +24,7 @@ fn main() {
 
         // Write modified JSON payload to stdout
         if let Ok(output_str) = serde_json::to_string(&payload) {
-            #[allow(clippy::print_stdout)]
-            print!("{}", output_str);
+            println!("{}", output_str);
         }
     }
 }

@@ -57,7 +57,29 @@ pub fn extract_identity_hint(ev: &DiscoveryEvidenceV2) -> Option<IdentityHint> {
             confidence: ev.confidence,
             ..Default::default()
         }),
-        EvidenceSource::InstalledAppScan | EvidenceSource::BrowserExtension => Some(IdentityHint {
+        EvidenceSource::InstalledAppScan => {
+            let agent_type = s("agent_type").map(|at| match at.as_str() {
+                "desktop_agent" => InferredAgentType::DesktopAgent,
+                "ide_agent" => InferredAgentType::IdeAgent,
+                "cli_agent" => InferredAgentType::CliAgent,
+                "browser_agent" => InferredAgentType::BrowserAgent,
+                _ => InferredAgentType::AutomationAgent,
+            });
+            let capability_tags = d.get("capability_tags")
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .unwrap_or_default();
+                
+            Some(IdentityHint {
+                name: s("name"),
+                vendor: s("vendor"),
+                product: s("product"),
+                agent_type,
+                capability_tags,
+                confidence: ev.confidence,
+            })
+        },
+        EvidenceSource::BrowserExtension => Some(IdentityHint {
             name: s("name"),
             vendor: s("vendor"),
             confidence: ev.confidence,

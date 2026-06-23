@@ -7,12 +7,28 @@ export function BlackboxAI({ hideHeader = false }: { hideHeader?: boolean }) {
   const [providers, setProviders] = useState<BlackboxAiProvider[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchProviders = () => {
+    setLoading(true);
     RegistryApi.listBlackboxAiProviders()
       .then(setProviders)
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchProviders();
   }, []);
+
+  const deleteProvider = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this provider? Note: Make sure no active policies depend on it.")) return;
+    try {
+      await RegistryApi.deleteBlackboxAi(id);
+      fetchProviders();
+    } catch (e) {
+      console.error("Failed to delete provider:", e);
+      alert("Failed to delete provider");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -97,9 +113,17 @@ export function BlackboxAI({ hideHeader = false }: { hideHeader?: boolean }) {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-muted-foreground hover:text-foreground transition-colors p-1">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button className="p-2 text-muted-foreground hover:bg-muted rounded-md transition-colors">
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteProvider(provider.provider_id)}
+                        className="px-3 py-1 text-xs text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded border border-red-500/20 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

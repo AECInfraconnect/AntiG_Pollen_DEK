@@ -6,6 +6,7 @@ pub struct DiscoveryOrchestrator {
     tenant_id: String,
     sni_source: Option<std::sync::Arc<dyn crate::web_ai_scan::SniFlowSource>>,
     definitions: std::sync::Arc<dek_fingerprint_defs::model::FingerprintDefinition>,
+    config: crate::config::DiscoveryConfig,
 }
 
 impl DiscoveryOrchestrator {
@@ -17,6 +18,7 @@ impl DiscoveryOrchestrator {
             tenant_id: tenant_id.to_string(),
             sni_source: None,
             definitions,
+            config: crate::config::DiscoveryConfig::default(),
         }
     }
 
@@ -85,6 +87,7 @@ impl DiscoveryOrchestrator {
 
         if wants_source("process") {
             let tx_cl = ev_tx.clone();
+            let config = self.config.clone();
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
                 if let Ok(processes) =
@@ -92,7 +95,6 @@ impl DiscoveryOrchestrator {
                         .await
                         .unwrap_or(Ok(vec![]))
                 {
-                    let config = crate::config::DiscoveryConfig::default();
                     for p in processes {
                         let conf = crate::fingerprint::fingerprint_process(&p.process_name);
                         if conf > config.min_fingerprint_confidence {
@@ -205,15 +207,32 @@ impl DiscoveryOrchestrator {
         if wants_source("web_ai") {
             let tx_cl = ev_tx.clone();
             let defs = self.definitions.clone();
+            let config = self.config.clone();
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
-                let config = crate::config::DiscoveryConfig::default();
                 if let Ok(mut x) = tokio::task::spawn_blocking(move || {
                     crate::web_ai_scan::scan_web_ai(
                         sni_src.as_deref(),
                         &config,
                         &defs.web_ai_signatures,
                     )
+                })
+                .await
+                .unwrap_or(Ok(vec![]))
+                {
+                    ev.append(&mut x);
+                }
+                let _ = tx_cl.send(ev).await;
+            }));
+        }
+
+        if wants_source("installed_app") {
+            let tx_cl = ev_tx.clone();
+            let defs = self.definitions.clone();
+            tasks.push(tokio::spawn(async move {
+                let mut ev = Vec::new();
+                if let Ok(mut x) = tokio::task::spawn_blocking(move || {
+                    crate::installed_app_scan::scan_installed_apps(&defs.installed_app_signatures)
                 })
                 .await
                 .unwrap_or(Ok(vec![]))

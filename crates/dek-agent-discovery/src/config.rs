@@ -1,3 +1,4 @@
+#[derive(Clone, Debug)]
 pub struct DiscoveryConfig {
     pub min_fingerprint_confidence: f64,
     pub cost_alert_threshold_usd: f64,

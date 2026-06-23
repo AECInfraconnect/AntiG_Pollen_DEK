@@ -27,6 +27,28 @@ export function AutoDiscovery() {
       .finally(() => setLoadingCandidates(false));
   };
 
+  const clearCandidates = async () => {
+    if (!confirm("Are you sure you want to clear all discovery candidates? This cannot be undone.")) return;
+    try {
+      await RegistryApi.clearDiscoveryCandidates();
+      fetchCandidates();
+    } catch (e) {
+      console.error("Failed to clear candidates:", e);
+      alert("Failed to clear candidates");
+    }
+  };
+
+  const deleteCandidate = async (candidateId: string) => {
+    if (!confirm("Are you sure you want to delete this candidate?")) return;
+    try {
+      await RegistryApi.deleteDiscoveryCandidate(candidateId);
+      fetchCandidates();
+    } catch (e) {
+      console.error("Failed to delete candidate:", e);
+      alert("Failed to delete candidate");
+    }
+  };
+
   useEffect(() => {
     fetchCandidates();
   }, []);
@@ -208,6 +230,12 @@ export function AutoDiscovery() {
             Deep Scan
           </button>
         )}
+        <button
+          onClick={clearCandidates}
+          className="bg-red-500/10 text-red-400 hover:bg-red-500/20 h-10 px-4 rounded-md text-sm font-medium transition-colors border border-red-500/20"
+        >
+          Clear History
+        </button>
       </div>
 
       {scanJob && (
@@ -297,6 +325,12 @@ export function AutoDiscovery() {
                                   Register & Enforce
                                 </button>
                               )}
+                              <button
+                                onClick={() => deleteCandidate(c.candidate_id)}
+                                className="text-xs border border-red-500/20 bg-red-500/10 text-red-400 px-3 py-1.5 rounded hover:bg-red-500/20 font-medium transition-colors ml-2"
+                              >
+                                Delete
+                              </button>
                             </div>
                           </div>
                           <div className="space-y-1">

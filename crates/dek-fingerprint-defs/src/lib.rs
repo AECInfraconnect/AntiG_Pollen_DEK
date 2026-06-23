@@ -21,5 +21,6 @@ pub fn embedded_baseline() -> FingerprintDefinition {
         catalog_hash: String::new(),
         model_classifier: None,
         web_ai_signatures: vec![],
+        installed_app_signatures: vec![],
     })
 }

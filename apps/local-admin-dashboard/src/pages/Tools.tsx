@@ -10,12 +10,29 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
   const [loading, setLoading] = useState(true);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
 
-  useEffect(() => {
+  const fetchTools = () => {
+    setLoading(true);
     RegistryApi.listTools()
       .then(setTools)
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchTools();
   }, []);
+
+  const deleteTool = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this tool? Note: Make sure no active policies depend on it.")) return;
+    try {
+      await RegistryApi.deleteTool(id);
+      fetchTools();
+    } catch (err) {
+      console.error("Failed to delete tool:", err);
+      alert("Failed to delete tool");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -113,11 +130,16 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
                       {tool.risk_level}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                    <RegisterControlBar agentId={(tool as any).agent_id || "unknown"} tenantId="local" />
-                    <button className="text-muted-foreground hover:text-foreground transition-colors p-1">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end items-center gap-2">
+                      <RegisterControlBar toolId={tool.tool_id} tenantId="local" onSuccess={() => window.location.reload()} />
+                      <button
+                        onClick={(e) => deleteTool(e, tool.tool_id)}
+                        className="px-3 py-1 text-xs text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded border border-red-500/20 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

@@ -149,6 +149,10 @@ pub struct DiscoveredAgentCandidateV2 {
     pub tenant_id: String,
     pub device_id: String,
     pub status: DiscoveryStatus,
+    #[serde(default)]
+    pub instance_count: u32,
+    #[serde(default)]
+    pub matched_signature_id: Option<String>,
     pub display_name: String,
     pub vendor: Option<String>,
     pub product: Option<String>,

@@ -8,12 +8,28 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
   const [agents, setAgents] = useState<AiAgent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchAgents = () => {
+    setLoading(true);
     RegistryApi.listAgents()
       .then(setAgents)
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchAgents();
   }, []);
+
+  const deleteAgent = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this agent? Note: Make sure no active policies depend on it.")) return;
+    try {
+      await RegistryApi.deleteAgent(id);
+      fetchAgents();
+    } catch (e) {
+      console.error("Failed to delete agent:", e);
+      alert("Failed to delete agent");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -113,11 +129,16 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
                   <td className="px-6 py-4 text-muted-foreground">
                     {new Date(agent.meta.updated_at).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                    <RegisterControlBar agentId={agent.agent_id} tenantId="local" onSuccess={() => window.location.reload()} />
-                    <button onClick={() => alert('Agent options coming soon!')} className="text-muted-foreground hover:text-foreground transition-colors p-1">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <RegisterControlBar agentId={agent.agent_id} tenantId="local" onSuccess={() => window.location.reload()} />
+                      <button
+                        onClick={() => deleteAgent(agent.agent_id)}
+                        className="px-3 py-1 text-xs text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded border border-red-500/20 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

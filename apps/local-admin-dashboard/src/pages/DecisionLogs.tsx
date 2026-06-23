@@ -7,10 +7,11 @@ import {
   ShieldAlert,
   Download,
 } from "lucide-react";
-import type {
-  TelemetryEventEnvelope,
-  DecisionResult,
-  DecisionEffect,
+import {
+  TelemetryApi,
+  type TelemetryEventEnvelope,
+  type DecisionResult,
+  type DecisionEffect,
 } from "../services/api";
 
 const EFFECT_STYLE: Record<
@@ -86,6 +87,17 @@ export function DecisionLogs() {
     URL.revokeObjectURL(url);
   };
 
+  const clearHistory = async () => {
+    if (!confirm("Are you sure you want to clear all decision logs? This cannot be undone.")) return;
+    try {
+      await TelemetryApi.clearDecisionLogs();
+      load();
+    } catch (e) {
+      console.error("Failed to clear decision logs:", e);
+      alert("Failed to clear decision logs");
+    }
+  };
+
   const exportCSV = () => {
     const header = [
       "Timestamp",
@@ -131,29 +143,35 @@ export function DecisionLogs() {
             Every authorization decision the DEK enforced (local workspace).
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={exportCSV}
-            disabled={decisions.length === 0}
-            className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50 disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" /> CSV
-          </button>
-          <button
-            onClick={exportJSON}
-            disabled={decisions.length === 0}
-            className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50 disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" /> JSON
-          </button>
-          <button
-            onClick={load}
-            className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />{" "}
-            Refresh
-          </button>
-        </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={clearHistory}
+                  className="bg-red-500/10 text-red-400 hover:bg-red-500/20 px-3 py-1.5 rounded-lg text-sm transition-colors border border-red-500/20"
+                >
+                  Clear History
+                </button>
+                <button
+                  onClick={exportJSON}
+                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-sm transition-colors border border-slate-700"
+                >
+                  <Download className="w-4 h-4" /> JSON
+                </button>
+                <button
+                  onClick={exportCSV}
+                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-sm transition-colors border border-slate-700"
+                >
+                  <Download className="w-4 h-4" /> CSV
+                </button>
+                <button
+                  onClick={load}
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-200 transition-colors"
+                  title="Refresh"
+                >
+                  <RefreshCw
+                    className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                  />
+                </button>
+              </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

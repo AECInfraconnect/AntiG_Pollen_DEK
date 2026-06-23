@@ -237,9 +237,16 @@ pub fn claw_family_heuristic(ctx: &ResolutionContext) -> Option<AgentMatch> {
 
     // ดึงชื่อ variant ออกมาเป็น guess (เช่น "thclaw")
     let guess = extract_claw_variant(&hay).unwrap_or_else(|| "unknown-claw".into());
+    let pretty = match guess.as_str() {
+        "openclaw" => "OpenClaw",
+        "hiclaw" => "HiClaw",
+        "qwenpaw" => "QwenPaw",
+        "clawhub" => "ClawHub",
+        other => other,
+    };
     Some(AgentMatch {
         signature_id: format!("claw_family_generic:{guess}"),
-        display_name: format!("{guess} (Claw-family, unconfirmed)"),
+        display_name: format!("{pretty} (Claw-family, unconfirmed)"),
         vendor: Some("claw-family".into()),
         product: Some(guess),
         agent_type: "automation_agent".into(),
@@ -258,17 +265,30 @@ pub fn claw_family_heuristic(ctx: &ResolutionContext) -> Option<AgentMatch> {
 }
 
 fn extract_claw_variant(hay: &str) -> Option<String> {
-    // หา token ที่มีคำว่า claw หรือ paw
-    for token in hay.split_whitespace() {
-        if token.contains("claw") || token.contains("paw") {
-            // ทำความสะอาดพวก / หรือ \
-            let clean = token.replace(|c: char| !c.is_alphanumeric() && c != '-', "");
-            if !clean.is_empty() {
-                return Some(clean);
-            }
+    // แตกทั้ง whitespace และ path separator → ได้ segment จริง
+    let segments: Vec<&str> = hay
+        .split(|c: char| c.is_whitespace() || c == '/' || c == '\\')
+        .collect();
+    // 1) เจอ node_modules/<pkg> → เอา pkg
+    for w in segments.windows(2) {
+        if w[0] == "node_modules" && (w[1].contains("claw") || w[1].contains("paw")) {
+            return Some(clean_token(w[1]));
+        }
+    }
+    // 2) segment ใดที่ลงท้าย/มี claw|paw และสั้นพอเป็นชื่อ package
+    for seg in &segments {
+        let s = clean_token(seg);
+        if (s.contains("claw") || s.contains("paw")) && s.len() <= 20 && !s.is_empty() {
+            return Some(s);
         }
     }
     None
+}
+
+fn clean_token(t: &str) -> String {
+    t.trim_end_matches(".js")
+        .trim_end_matches(".exe")
+        .replace(|c: char| !c.is_alphanumeric() && c != '-' && c != '_', "")
 }
 
 // Helpers for string matching

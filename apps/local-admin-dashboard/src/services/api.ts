@@ -95,23 +95,62 @@ export class ControlPlaneClient {
   async listAgents(): Promise<AiAgent[]> {
     return this.fetchApi("/registry/agents");
   }
+
+  async deleteAgent(agentId: string): Promise<void> {
+    return this.fetchApi(`/registry/agents/${agentId}`, { method: "DELETE" });
+  }
+
   async listMcpServers(): Promise<McpServer[]> {
-    return this.fetchApi("/registry/mcp-servers");
+    const data = await this.fetchApi("/registry/mcp-servers");
+    return data.mcp_servers ?? data;
   }
+
+  async deleteMcpServer(serverId: string): Promise<void> {
+    return this.fetchApi(`/registry/mcp-servers/${serverId}`, { method: "DELETE" });
+  }
+
   async listTools(): Promise<Tool[]> {
-    return this.fetchApi("/registry/tools");
+    const data = await this.fetchApi("/registry/tools");
+    return data.tools ?? data;
   }
+
+  async deleteTool(toolId: string): Promise<void> {
+    return this.fetchApi(`/registry/tools/${toolId}`, { method: "DELETE" });
+  }
+
   async listResources(): Promise<Resource[]> {
-    return this.fetchApi("/registry/resources");
+    const data = await this.fetchApi("/registry/resources");
+    return data.resources ?? data;
+  }
+
+  async deleteResource(resourceId: string): Promise<void> {
+    return this.fetchApi(`/registry/resources/${resourceId}`, { method: "DELETE" });
   }
   async listEntities(): Promise<Entity[]> {
-    return this.fetchApi("/registry/entities");
+    const data = await this.fetchApi("/registry/entities");
+    return data.entities ?? data;
   }
+
+  async deleteEntity(entityId: string): Promise<void> {
+    return this.fetchApi(`/registry/entities/${entityId}`, { method: "DELETE" });
+  }
+
   async listRelationships(): Promise<Relationship[]> {
-    return this.fetchApi("/registry/relationships");
+    const data = await this.fetchApi("/registry/relationships");
+    return data.relationships ?? data;
   }
+
+  async deleteRelationship(relId: string): Promise<void> {
+    return this.fetchApi(`/registry/relationships/${relId}`, { method: "DELETE" });
+  }
+
   async listBlackboxAiProviders(): Promise<BlackboxAiProvider[]> {
-    return this.fetchApi("/registry/blackbox-ai");
+    const data = await this.fetchApi("/registry/blackbox-ai");
+    return data.providers ?? data;
+  }
+
+  async deleteBlackboxAi(providerId: string): Promise<void> {
+    return this.fetchApi(`/registry/blackbox-ai/${providerId}`, { method: "DELETE" });
   }
 
   // Policies
@@ -265,11 +304,23 @@ export class ControlPlaneClient {
     return data.decisions ?? data;
   }
 
+  async clearDecisionLogs(): Promise<void> {
+    return this.fetchApi("/telemetry/decision-logs", { method: "DELETE" });
+  }
+
   // Shadow AI & Discovery
   async listDiscoveryCandidates(): Promise<DiscoveredAgentCandidateV2[]> {
     return this.fetchApi("/discovery/candidates")
       .then((data: any) => data.candidates ?? data)
       .catch(() => []); // Mock fallback if endpoint not exist
+  }
+
+  async clearDiscoveryCandidates(): Promise<void> {
+    return this.fetchApi("/discovery/candidates", { method: "DELETE" });
+  }
+
+  async deleteDiscoveryCandidate(id: string): Promise<void> {
+    return this.fetchApi(`/discovery/candidates/${id}`, { method: "DELETE" });
   }
 
   async triggerDiscoveryScan(
@@ -418,13 +469,22 @@ export const switchProfile = (profile: "local" | "mock-cloud") => {
 
 export const RegistryApi = {
   listAgents: () => defaultClient.listAgents(),
+  deleteAgent: (id: string) => defaultClient.deleteAgent(id),
   listMcpServers: () => defaultClient.listMcpServers(),
+  deleteMcpServer: (id: string) => defaultClient.deleteMcpServer(id),
   listTools: () => defaultClient.listTools(),
+  deleteTool: (id: string) => defaultClient.deleteTool(id),
   listResources: () => defaultClient.listResources(),
+  deleteResource: (id: string) => defaultClient.deleteResource(id),
   listEntities: () => defaultClient.listEntities(),
+  deleteEntity: (id: string) => defaultClient.deleteEntity(id),
   listRelationships: () => defaultClient.listRelationships(),
+  deleteRelationship: (id: string) => defaultClient.deleteRelationship(id),
   listBlackboxAiProviders: () => defaultClient.listBlackboxAiProviders(),
+  deleteBlackboxAi: (id: string) => defaultClient.deleteBlackboxAi(id),
   listDiscoveryCandidates: () => defaultClient.listDiscoveryCandidates(),
+  clearDiscoveryCandidates: () => defaultClient.clearDiscoveryCandidates(),
+  deleteDiscoveryCandidate: (id: string) => defaultClient.deleteDiscoveryCandidate(id),
   triggerDiscoveryScan: (req?: any) => defaultClient.triggerDiscoveryScan(req),
   listDiscoveryScans: () => defaultClient.listDiscoveryScans(),
   getDiscoveryScanStatus: (scanId: string) =>
@@ -479,6 +539,7 @@ export const BundleApi = {
 
 export const TelemetryApi = {
   listDecisionLogs: () => defaultClient.listDecisionLogs(),
+  clearDecisionLogs: () => defaultClient.clearDecisionLogs(),
 };
 
 export const ConnectorApi = {

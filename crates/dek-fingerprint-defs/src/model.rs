@@ -22,6 +22,22 @@ pub struct FingerprintDefinition {
     pub model_classifier: Option<ModelClassifierDef>,
     #[serde(default)]
     pub web_ai_signatures: Vec<WebAiSignatureDef>,
+    #[serde(default)]
+    pub installed_app_signatures: Vec<InstalledAppSignatureDef>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstalledAppSignatureDef {
+    #[serde(default)]
+    pub id: String,
+    pub name: String,
+    pub vendor: String,
+    pub product: String,
+    pub agent_type: String,
+    #[serde(default)]
+    pub capability_tags: Vec<String>,
+    #[serde(default)]
+    pub markers: Vec<InstallMarker>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

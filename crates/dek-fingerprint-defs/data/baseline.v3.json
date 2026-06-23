@@ -2117,5 +2117,117 @@
         "risk_base": 0.3
       }
     ]
-  }
+  },
+  "installed_app_signatures": [
+    {
+      "name": "Antigravity (Gemini)",
+      "vendor": "Google",
+      "product": "Antigravity Agentic IDE",
+      "agent_type": "ide_agent",
+      "markers": [
+        {
+          "os": "windows",
+          "paths": [
+            "%LOCALAPPDATA%\\Programs\\Antigravity"
+          ],
+          "process_names": []
+        },
+        {
+          "os": "all",
+          "paths": [
+            "~/.gemini",
+            "~/.gemini/settings.json",
+            "~/.gemini/GEMINI.md",
+            ".agents"
+          ],
+          "process_names": []
+        },
+        {
+          "os": "macos",
+          "paths": [
+            "~/Library/Application Support/Antigravity"
+          ],
+          "process_names": []
+        }
+      ],
+      "capability_tags": [
+        "code.agentic",
+        "tool.use",
+        "net.egress.llm"
+      ]
+    },
+    {
+      "name": "Claude Desktop",
+      "vendor": "Anthropic",
+      "product": "Claude",
+      "agent_type": "desktop_agent",
+      "markers": [
+        {
+          "os": "macos",
+          "paths": [
+            "~/Library/Application Support/Claude/claude_desktop_config.json"
+          ],
+          "process_names": []
+        },
+        {
+          "os": "windows",
+          "paths": [
+            "%APPDATA%\\Claude\\claude_desktop_config.json"
+          ],
+          "process_names": []
+        }
+      ],
+      "capability_tags": [
+        "mcp.client",
+        "tool.use"
+      ]
+    },
+    {
+      "name": "ChatGPT Desktop",
+      "vendor": "OpenAI",
+      "product": "ChatGPT",
+      "agent_type": "desktop_agent",
+      "markers": [
+        {
+          "os": "windows",
+          "paths": [
+            "%LOCALAPPDATA%\\Programs\\ChatGPT"
+          ],
+          "process_names": []
+        },
+        {
+          "os": "macos",
+          "paths": [
+            "~/Applications/ChatGPT.app"
+          ],
+          "process_names": []
+        }
+      ],
+      "capability_tags": [
+        "web.chat"
+      ]
+    }
+  ],
+  "web_ai_signatures": [
+    {
+      "domain": "manus.im",
+      "name": "Manus AI",
+      "vendor": "Manus",
+      "capability_tags": [
+        "browser.control",
+        "automation"
+      ],
+      "risk_weight": 0.6
+    },
+    {
+      "domain": "manus.ai",
+      "name": "Manus AI",
+      "vendor": "Manus",
+      "capability_tags": [
+        "browser.control",
+        "automation"
+      ],
+      "risk_weight": 0.6
+    }
+  ]
 }

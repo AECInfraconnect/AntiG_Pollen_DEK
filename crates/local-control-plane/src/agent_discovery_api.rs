@@ -65,7 +65,11 @@ pub fn router() -> Router<AppState> {
         )
         .route(
             "/v1/tenants/:tenant/discovery/candidates",
-            get(list_candidates),
+            get(list_candidates).delete(clear_candidates),
+        )
+        .route(
+            "/v1/tenants/:tenant/discovery/candidates/:candidate_id",
+            axum::routing::delete(delete_candidate),
         )
         .route(
             "/v1/tenants/:tenant/discovery/candidates/:candidate/register",
@@ -241,6 +245,39 @@ async fn list_candidates(
         "schema_version": "agent-discovery-candidate-list.v1",
         "candidates": items
     })))
+}
+
+async fn clear_candidates(
+    Path(tenant): Path<String>,
+    State(st): State<AppState>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let count = st
+        .registry_store
+        .clear_raw(&tenant, "discovery_candidate")
+        .await
+        .map_err(ApiError::Internal)?;
+
+    Ok(Json(serde_json::json!({
+        "status": "cleared",
+        "deleted_count": count
+    })))
+}
+
+async fn delete_candidate(
+    Path((tenant, candidate_id)): Path<(String, String)>,
+    State(st): State<AppState>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let deleted = st
+        .registry_store
+        .delete_raw(&tenant, "discovery_candidate", &candidate_id)
+        .await
+        .map_err(ApiError::Internal)?;
+
+    if deleted {
+        Ok(Json(serde_json::json!({ "status": "deleted" })))
+    } else {
+        Err(ApiError::NotFound(candidate_id))
+    }
 }
 
 async fn register_candidate(
