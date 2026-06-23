@@ -23,6 +23,7 @@ import { Integrations } from "./pages/Ecosystem/Integrations";
 import { PluginMarketplace } from "./pages/Ecosystem/PluginMarketplace";
 import { IdentityNetwork } from "./pages/Data/IdentityNetwork";
 import { AlertsAndShadowAI } from "./pages/Monitoring/AlertsAndShadowAI";
+import { Entities } from "./pages/Entities";
 
 function App() {
   return (
@@ -69,10 +70,7 @@ function App() {
             path="tools"
             element={<Navigate to="/integrations" replace />}
           />
-          <Route
-            path="entities"
-            element={<Navigate to="/identities" replace />}
-          />
+          <Route path="entities" element={<Entities />} />
           <Route
             path="relationships"
             element={<Navigate to="/identities" replace />}

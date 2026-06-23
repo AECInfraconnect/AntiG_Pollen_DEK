@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, MoreVertical, Plus } from "lucide-react";
+import { Users, Plus } from "lucide-react";
 import { RegistryApi } from "../services/api";
 import type { AiAgent } from "../services/api";
 import { RegisterControlBar } from "../components/RegisterControlBar";

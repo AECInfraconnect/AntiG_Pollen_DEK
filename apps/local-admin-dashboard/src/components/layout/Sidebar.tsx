@@ -58,6 +58,7 @@ const groups = [
     title: "System Settings",
     items: [
       { name: "Identities", href: "/identities", icon: Network },
+      { name: "Entities", href: "/entities", icon: Users },
       { name: "Data Resources", href: "/resources", icon: Database },
       { name: "Simulator", href: "/simulator", icon: Activity },
       { name: "Bundles & Sync", href: "/bundles", icon: Server },

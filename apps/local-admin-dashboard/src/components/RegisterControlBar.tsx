@@ -52,7 +52,7 @@ export const RegisterControlBar: React.FC<RegisterControlBarProps> = ({ agentId,
         disabled={loading}
         className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-8 px-3"
       >
-        {loading ? '...' : 'Register & Deploy'}
+        {loading ? '...' : 'Deploy'}
       </button>
       {result && <span className={`text-xs font-medium ${result === 'Success!' ? 'text-emerald-500' : 'text-destructive'}`}>{result}</span>}
     </div>

@@ -109,6 +109,7 @@ export function AutoDiscovery() {
               "cli_agent",
               "container",
               "browser_extension",
+              "web_ai",
             ];
       const result = await RegistryApi.triggerDiscoveryScan({
         sources,

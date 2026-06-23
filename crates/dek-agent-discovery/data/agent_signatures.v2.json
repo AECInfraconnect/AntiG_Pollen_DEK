@@ -203,5 +203,35 @@
       "process_names": [],
       "control_strategies": ["observe_only"]
     }
+  ],
+  "web_ai_signatures": [
+    {
+      "domain": "chatgpt.com",
+      "name": "ChatGPT in Browser",
+      "vendor": "OpenAI",
+      "capability_tags": ["LLM", "Chat"],
+      "risk_weight": 0.4
+    },
+    {
+      "domain": "claude.ai",
+      "name": "Claude in Browser",
+      "vendor": "Anthropic",
+      "capability_tags": ["LLM", "Chat"],
+      "risk_weight": 0.4
+    },
+    {
+      "domain": "deepseek.com",
+      "name": "Deepseek in Browser",
+      "vendor": "Deepseek",
+      "capability_tags": ["LLM", "Chat"],
+      "risk_weight": 0.4
+    },
+    {
+      "domain": "gemini.google.com",
+      "name": "Gemini Pro ใน Antigravity",
+      "vendor": "Google",
+      "capability_tags": ["LLM", "Chat"],
+      "risk_weight": 0.4
+    }
   ]
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Wrench, MoreVertical, Plus } from "lucide-react";
+import { Wrench, Plus } from "lucide-react";
 import { RegistryApi } from "../services/api";
 import type { Tool } from "../services/api";
 import { ToolDetailDrawer } from "../components/ToolDetailDrawer";
@@ -132,7 +132,7 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end items-center gap-2">
-                      <RegisterControlBar toolId={tool.tool_id} tenantId="local" onSuccess={() => window.location.reload()} />
+                      <RegisterControlBar agentId={tool.tool_id} tenantId="local" onSuccess={() => window.location.reload()} />
                       <button
                         onClick={(e) => deleteTool(e, tool.tool_id)}
                         className="px-3 py-1 text-xs text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded border border-red-500/20 transition-colors"
