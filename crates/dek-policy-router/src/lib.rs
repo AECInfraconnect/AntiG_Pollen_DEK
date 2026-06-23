@@ -13,9 +13,9 @@ mod engine_selector;
 pub use engine_selector::{DecisionKind, EngineSelector};
 
 pub mod context;
-pub mod route_matcher;
 pub mod engine_plan;
 pub mod merge;
+pub mod route_matcher;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -381,7 +381,8 @@ impl PolicyRouter {
         };
 
         let available = self.evaluator_ids();
-        let plan = match engine_plan::EnginePlan::build(route, &ctx, &available, selected_pool_pdp) {
+        let plan = match engine_plan::EnginePlan::build(route, &ctx, &available, selected_pool_pdp)
+        {
             Some(p) => p,
             None => {
                 return Ok(PolicyDecision {
@@ -448,13 +449,22 @@ impl PolicyRouter {
                             }
                         }
 
-                        merge::merge_decision(&mut combined_decision, res.clone(), &route.merge_strategy);
+                        merge::merge_decision(
+                            &mut combined_decision,
+                            res.clone(),
+                            &route.merge_strategy,
+                        );
 
-                        if !combined_decision.allow && (route.merge_strategy == "deny_overrides" || route.merge_strategy.is_empty()) {
+                        if !combined_decision.allow
+                            && (route.merge_strategy == "deny_overrides"
+                                || route.merge_strategy.is_empty())
+                        {
                             // Short-circuit on deny if deny_overrides
                             combined_decision.reason = format!("Blocked by {}", ev_id);
                             break;
-                        } else if combined_decision.allow && route.merge_strategy == "permit_overrides" {
+                        } else if combined_decision.allow
+                            && route.merge_strategy == "permit_overrides"
+                        {
                             // Short-circuit on allow if permit_overrides
                             break;
                         }
@@ -799,7 +809,10 @@ mod tests {
         struct DenyRuntime;
         #[async_trait]
         impl PolicyRuntime for DenyRuntime {
-            async fn evaluate(&self, _input: std::sync::Arc<serde_json::Value>) -> std::result::Result<PolicyDecision, dek_policy_runtime::PolicyError> {
+            async fn evaluate(
+                &self,
+                _input: std::sync::Arc<serde_json::Value>,
+            ) -> std::result::Result<PolicyDecision, dek_policy_runtime::PolicyError> {
                 Ok(PolicyDecision {
                     evaluator_id: "deny".into(),
                     evaluator_type: "dummy".into(),
@@ -813,7 +826,9 @@ mod tests {
                     metadata: serde_json::json!({}),
                 })
             }
-            fn version(&self) -> String { "1.0".into() }
+            fn version(&self) -> String {
+                "1.0".into()
+            }
         }
 
         router.register_evaluator("dummy", Arc::new(DummyRuntime)); // Returns allow

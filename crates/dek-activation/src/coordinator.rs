@@ -84,7 +84,10 @@ impl ActivationCoordinator {
         };
 
         // Verify signature and Parse metadata from payload
-        let payload = match crate::signature::verify_bundle_signature(&payload_str, &config.pinned_bundle_public_key) {
+        let payload = match crate::signature::verify_bundle_signature(
+            &payload_str,
+            &config.pinned_bundle_public_key,
+        ) {
             Ok(p) => p,
             Err(e) => {
                 *state = ActivationState::Failed;
@@ -168,13 +171,17 @@ impl ActivationCoordinator {
             *state = ActivationState::Failed;
             if let Err(e) = crate::lkg::rollback_lkg() {
                 warn!("Rollback failed! System may be in unstable state: {}", e);
-                return Ok(ActivationDecision::Rejected(ActivationError::RollbackFailed(e.to_string())));
+                return Ok(ActivationDecision::Rejected(
+                    ActivationError::RollbackFailed(e.to_string()),
+                ));
             }
-            return Ok(ActivationDecision::Rejected(ActivationError::CanaryFailed("Canary health check failed".into())));
+            return Ok(ActivationDecision::Rejected(ActivationError::CanaryFailed(
+                "Canary health check failed".into(),
+            )));
         }
 
         self.snapshot.store(Arc::new(new_snapshot));
-        
+
         // 7. Notify runtime
         let _ = self.reload_tx.send(gen);
 

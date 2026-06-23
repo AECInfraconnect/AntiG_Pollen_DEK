@@ -1,6 +1,6 @@
-use crate::Route;
 use crate::context::PolicyContext;
 use crate::EngineSelector;
+use crate::Route;
 
 pub struct EnginePlan {
     pub evaluate_queue: Vec<String>,
@@ -9,10 +9,17 @@ pub struct EnginePlan {
 }
 
 impl EnginePlan {
-    pub fn build(route: &Route, ctx: &PolicyContext<'_>, available_evaluators: &[String], selected_pool_pdp: Option<String>) -> Option<Self> {
+    pub fn build(
+        route: &Route,
+        ctx: &PolicyContext<'_>,
+        available_evaluators: &[String],
+        selected_pool_pdp: Option<String>,
+    ) -> Option<Self> {
         let mut to_evaluate = route.pdp_required.clone();
         for cond in &route.pdp_conditional {
-            if ctx.payload.get(&cond.required_payload_key).is_some() || cond.required_payload_key == "*" {
+            if ctx.payload.get(&cond.required_payload_key).is_some()
+                || cond.required_payload_key == "*"
+            {
                 to_evaluate.push(cond.evaluator.clone());
             }
         }

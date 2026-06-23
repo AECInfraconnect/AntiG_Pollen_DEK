@@ -26,7 +26,7 @@ pub fn merge_decision(combined: &mut PolicyDecision, res: PolicyDecision, strate
         }
         combined.effects = serde_json::Value::Object(combined_map);
     }
-    
+
     match strategy {
         "deny_overrides" => {
             if !res.allow {

@@ -26,6 +26,9 @@ pub fn rollback_lkg() -> Result<(), std::io::Error> {
         std::fs::rename(&lkg_path, &active_path)?;
         Ok(())
     } else {
-        Err(std::io::Error::new(std::io::ErrorKind::NotFound, "LKG not found"))
+        Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "LKG not found",
+        ))
     }
 }

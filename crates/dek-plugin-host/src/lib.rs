@@ -5,7 +5,9 @@ pub mod manifest;
 
 use dek_plugin_sdk::{EvalRequest, PluginError, PolicyEvaluator, TransformPlugin};
 use dek_policy_router::{PolicyRouter, Route};
-use dek_policy_runtime::{PolicyDecision as OldPolicyDecision, PolicyError, PolicyRuntime, PolicyResult};
+use dek_policy_runtime::{
+    PolicyDecision as OldPolicyDecision, PolicyError, PolicyResult, PolicyRuntime,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 

@@ -83,7 +83,10 @@ pub struct CapabilityRegistry {
 
 impl CapabilityRegistry {
     pub fn new(device_id: String, dek_version: String) -> Self {
-        Self { device_id, dek_version }
+        Self {
+            device_id,
+            dek_version,
+        }
     }
 
     pub fn gather(&self) -> DeviceCapabilities {
@@ -127,7 +130,7 @@ impl CapabilityRegistry {
                     version: None,
                     mode: None,
                     status: "ready".to_string(),
-                }
+                },
             ],
             pep: vec![
                 PepCapability {
@@ -138,8 +141,12 @@ impl CapabilityRegistry {
                 PepCapability {
                     r#type: "kernel".to_string(),
                     transports: vec![],
-                    status: if std::env::consts::OS == "windows" { "ready".to_string() } else { "unavailable".to_string() },
-                }
+                    status: if std::env::consts::OS == "windows" {
+                        "ready".to_string()
+                    } else {
+                        "unavailable".to_string()
+                    },
+                },
             ],
             plugins: vec![],
             kernel: KernelCapabilities {

@@ -5,9 +5,9 @@ pub mod os;
 pub mod segment;
 
 use std::path::PathBuf;
+use thiserror::Error;
 use tokio::sync::Mutex;
 use uuid::Uuid;
-use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SpoolError {
@@ -85,7 +85,7 @@ impl Spool {
             0, // seq will be set by writer later ideally, or just 0 for demo
             chrono::Utc::now().to_rfc3339(),
             payload_json,
-            &prev_hash
+            &prev_hash,
         );
 
         let event = segment::TelemetryEvent {
@@ -124,16 +124,19 @@ impl Spool {
                 self.tenant_id.clone(),
                 self.device_id.clone(),
                 segment_id.clone(),
-            ).map_err(|e| e.to_string())?;
+            )
+            .map_err(|e| e.to_string())?;
             state.writer = Some(writer);
             state.current_segment_id = segment_id;
         }
 
         let writer = state.writer.as_mut().unwrap();
-        writer.append_event(&key, &event).map_err(|e| e.to_string())?;
-        
+        writer
+            .append_event(&key, &event)
+            .map_err(|e| e.to_string())?;
+
         state.last_hash = audit_entry.entry_hash;
-        
+
         Ok(())
     }
 
@@ -164,7 +167,8 @@ impl Spool {
 
     pub async fn replay(&self) -> Result<Vec<audit::AuditEntry>, SpoolError> {
         let key = if let Some(km) = &self.key_manager {
-            km.active_aead_key().map_err(|e| SpoolError::KeyManager(e.to_string()))?
+            km.active_aead_key()
+                .map_err(|e| SpoolError::KeyManager(e.to_string()))?
         } else {
             crypto::AeadKey::new("dummy", [0u8; 32])
         };
@@ -178,8 +182,14 @@ impl Spool {
                         if let Ok(records) = segment::read_encrypted_records(&path) {
                             for record in records {
                                 if let Ok(plaintext) = key.decrypt_record(&record) {
-                                    if let Ok(event) = serde_json::from_slice::<segment::TelemetryEvent>(&plaintext) {
-                                        if let Ok(audit_entry) = serde_json::from_value::<audit::AuditEntry>(event.body) {
+                                    if let Ok(event) =
+                                        serde_json::from_slice::<segment::TelemetryEvent>(
+                                            &plaintext,
+                                        )
+                                    {
+                                        if let Ok(audit_entry) =
+                                            serde_json::from_value::<audit::AuditEntry>(event.body)
+                                        {
                                             results.push(audit_entry);
                                         }
                                     }
@@ -190,7 +200,7 @@ impl Spool {
                 }
             }
         }
-        
+
         // Ensure chain validity
         if !results.is_empty() {
             results.sort_by_key(|e| e.timestamp.clone()); // Simplistic order for replay
@@ -210,29 +220,43 @@ mod tests {
     #[tokio::test]
     async fn test_spool_enqueue_and_replay() {
         let dir = std::env::temp_dir().join(format!("test_spool_{}", Uuid::new_v4()));
-        let spool = Spool::new(dir.clone(), 1024 * 1024, None, "test".to_string(), "test".to_string());
-        
+        let spool = Spool::new(
+            dir.clone(),
+            1024 * 1024,
+            None,
+            "test".to_string(),
+            "test".to_string(),
+        );
+
         spool.enqueue(b"event1".to_vec()).await.unwrap();
         spool.enqueue(b"event2".to_vec()).await.unwrap();
-        
+
         let replays = spool.replay().await.unwrap();
         assert_eq!(replays.len(), 2);
         assert_eq!(replays[0].payload_json, "event1");
         assert_eq!(replays[1].payload_json, "event2");
-        
+
         let _ = fs::remove_dir_all(dir);
     }
 
     #[tokio::test]
     async fn test_spool_full() {
         let dir = std::env::temp_dir().join(format!("test_spool_{}", Uuid::new_v4()));
-        let spool = Spool::new(dir.clone(), 10, None, "test".to_string(), "test".to_string()); // Very small limit
-        
+        let spool = Spool::new(
+            dir.clone(),
+            10,
+            None,
+            "test".to_string(),
+            "test".to_string(),
+        ); // Very small limit
+
         // First might succeed or fail depending on metadata, but eventually it hits the limit
         let _ = spool.enqueue(b"event1".to_vec()).await;
-        let err = spool.enqueue(b"very long event string to fill up spool size quickly".to_vec()).await;
+        let err = spool
+            .enqueue(b"very long event string to fill up spool size quickly".to_vec())
+            .await;
         assert!(err.is_err());
-        
+
         let _ = fs::remove_dir_all(dir);
     }
 }

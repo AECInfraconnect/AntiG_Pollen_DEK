@@ -40,10 +40,13 @@ pub async fn local_tenant_guard(
 pub fn create_app(state: AppState, static_dir: &str, metrics_handle: PrometheusHandle) -> Router {
     let public_routes = Router::new()
         .route("/health", axum::routing::get(|| async { "ok" }))
-        .route("/metrics", axum::routing::get({
-            let handle = metrics_handle.clone();
-            move || async move { handle.render() }
-        }))
+        .route(
+            "/metrics",
+            axum::routing::get({
+                let handle = metrics_handle.clone();
+                move || async move { handle.render() }
+            }),
+        )
         .merge(discovery::router());
 
     let api_routes = Router::new()

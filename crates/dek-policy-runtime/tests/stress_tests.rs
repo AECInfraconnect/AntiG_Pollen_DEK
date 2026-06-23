@@ -41,7 +41,7 @@ async fn test_wasm_fuel_exhaustion() {
     };
 
     let runtime = WasmtimePolicyRuntime::new(path.to_str().unwrap(), Some(profile)).unwrap();
-    let decision = runtime.evaluate(json!({})).await.unwrap();
+    let decision = runtime.evaluate(std::sync::Arc::new(json!({}))).await.unwrap();
 
     // The execution should fail gracefully, and the host shouldn't hang.
     assert!(!decision.allow);
@@ -74,7 +74,7 @@ async fn test_wasm_memory_exhaustion() {
     };
 
     let runtime = WasmtimePolicyRuntime::new(path.to_str().unwrap(), Some(profile)).unwrap();
-    let decision = runtime.evaluate(json!({})).await.unwrap();
+    let decision = runtime.evaluate(std::sync::Arc::new(json!({}))).await.unwrap();
 
     // The execution should fail due to OOM
     assert!(!decision.allow);

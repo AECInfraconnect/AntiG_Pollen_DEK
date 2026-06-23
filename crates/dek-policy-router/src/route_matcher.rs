@@ -1,8 +1,11 @@
-use crate::{Route};
 use crate::context::PolicyContext;
+use crate::Route;
 use dek_policy_runtime::PolicyDecision;
 
-pub fn match_route<'a>(routes: &'a [Route], ctx: &PolicyContext<'_>) -> Result<&'a Route, PolicyDecision> {
+pub fn match_route<'a>(
+    routes: &'a [Route],
+    ctx: &PolicyContext<'_>,
+) -> Result<&'a Route, PolicyDecision> {
     for route in routes {
         let mut matches = true;
 

@@ -50,7 +50,9 @@ impl LocalControlPlaneHarness {
             )),
         };
 
-        let app = app::create_app(state, "dummy_static_dir");
+        let builder = metrics_exporter_prometheus::PrometheusBuilder::new();
+        let metrics_handle = builder.build_recorder().handle();
+        let app = app::create_app(state, "dummy_static_dir", metrics_handle);
 
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();

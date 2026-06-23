@@ -115,12 +115,16 @@ mod tests {
     use super::*;
     use async_trait::async_trait;
     use serde_json::json;
+    use std::sync::Arc;
 
     struct DummyRuntime;
 
     #[async_trait]
     impl PolicyRuntime for DummyRuntime {
-        async fn evaluate(&self, _input: Arc<serde_json::Value>) -> Result<PolicyDecision, PolicyError> {
+        async fn evaluate(
+            &self,
+            _input: Arc<serde_json::Value>,
+        ) -> Result<PolicyDecision, PolicyError> {
             Ok(PolicyDecision {
                 evaluator_id: "dummy".to_string(),
                 evaluator_type: "dummy".to_string(),
