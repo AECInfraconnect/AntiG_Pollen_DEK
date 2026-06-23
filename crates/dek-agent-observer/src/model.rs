@@ -16,7 +16,7 @@ pub struct AgentObservationEvent {
     pub timestamp: String,
     pub payload_json: String,
     pub token_usage: Option<TokenUsage>,
-    
+
     // Unified Event fields
     #[serde(default)]
     pub event_kind: EventKind,

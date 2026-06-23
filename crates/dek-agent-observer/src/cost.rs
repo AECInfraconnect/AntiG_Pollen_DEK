@@ -129,6 +129,12 @@ mod tests {
                 output_tokens: Some(2_000_000),
                 total_tokens: Some(3_000_000),
             }),
+            event_kind: EventKind::Generic,
+            decision: None,
+            tool_call: None,
+            resource_access: None,
+            latency_ms: None,
+            provider: None,
         };
 
         let cost = calculate_cost(&event, "openai", &catalog).ok_or("should calculate cost")?;

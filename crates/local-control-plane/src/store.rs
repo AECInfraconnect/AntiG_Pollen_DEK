@@ -177,9 +177,10 @@ pub trait ObservabilityStore: Send + Sync {
     async fn list_cost_ledger(&self) -> Result<Vec<CostLedgerEntry>>;
     async fn upsert_policy_suggestion(&self, suggestion: &PolicySuggestion) -> Result<()>;
     async fn list_policy_suggestions(&self, tenant_id: &str) -> Result<Vec<PolicySuggestion>>;
-    
+
     // Aggregation queries
-    async fn cost_breakdown_by_agent(&self, tenant: &str, since: &str) -> Result<Vec<AgentCostRow>>;
+    async fn cost_breakdown_by_agent(&self, tenant: &str, since: &str)
+        -> Result<Vec<AgentCostRow>>;
     async fn tool_usage_by_agent(&self, tenant: &str, since: &str) -> Result<Vec<ToolUsageRow>>;
 }
 
@@ -1651,9 +1652,11 @@ impl ObservabilityStore for SqliteStore {
         let pep_type = event.pep_type.clone();
         let risk_level = event.risk_level.clone();
         let timestamp = event.timestamp.clone();
-        
+
         // new fields
-        let event_kind = serde_json::to_string(&event.event_kind).unwrap_or_else(|_| "\"generic\"".into()).replace("\"", "");
+        let event_kind = serde_json::to_string(&event.event_kind)
+            .unwrap_or_else(|_| "\"generic\"".into())
+            .replace("\"", "");
         let provider = event.provider.clone();
         let input_tokens = event.token_usage.as_ref().and_then(|u| u.input_tokens);
         let output_tokens = event.token_usage.as_ref().and_then(|u| u.output_tokens);
@@ -1817,10 +1820,14 @@ impl ObservabilityStore for SqliteStore {
         Ok(out)
     }
 
-    async fn cost_breakdown_by_agent(&self, tenant: &str, since: &str) -> Result<Vec<AgentCostRow>> {
+    async fn cost_breakdown_by_agent(
+        &self,
+        tenant: &str,
+        since: &str,
+    ) -> Result<Vec<AgentCostRow>> {
         let since_val = since.to_string();
         let conn_arc = self.conn.clone();
-        
+
         let rows = tokio::task::spawn_blocking(move || -> Result<Vec<AgentCostRow>> {
             let conn = conn_arc.lock().unwrap();
             let sql = r#"
@@ -1843,7 +1850,8 @@ impl ObservabilityStore for SqliteStore {
                 });
             }
             Ok(result)
-        }).await??;
+        })
+        .await??;
         Ok(rows)
     }
 
@@ -1851,7 +1859,7 @@ impl ObservabilityStore for SqliteStore {
         let tenant_val = tenant.to_string();
         let since_val = since.to_string();
         let conn_arc = self.conn.clone();
-        
+
         let rows = tokio::task::spawn_blocking(move || -> Result<Vec<ToolUsageRow>> {
             let conn = conn_arc.lock().unwrap();
             let sql = r#"

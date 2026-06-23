@@ -11,9 +11,15 @@ use serde_json::json;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/v1/tenants/:tenant/observations", post(ingest_observation).get(list_observations))
+        .route(
+            "/v1/tenants/:tenant/observations",
+            post(ingest_observation).get(list_observations),
+        )
         .route("/v1/tenants/:tenant/observations/costs", get(cost_summary))
-        .route("/v1/tenants/:tenant/observations/resources", get(list_resources))
+        .route(
+            "/v1/tenants/:tenant/observations/resources",
+            get(list_resources),
+        )
 }
 
 async fn ingest_observation(
@@ -44,12 +50,10 @@ async fn ingest_observation(
     let catalog_path = std::path::PathBuf::from("pollen-local-data/price_catalog.v1.json");
     let catalog: dek_agent_observer::cost::PriceCatalog = if catalog_path.exists() {
         let content = std::fs::read_to_string(&catalog_path).unwrap_or_default();
-        serde_json::from_str(&content).unwrap_or_else(|_| {
-            dek_agent_observer::cost::PriceCatalog {
-                catalog_version: "2026-06".into(),
-                currency: "USD".into(),
-                providers: std::collections::HashMap::new(),
-            }
+        serde_json::from_str(&content).unwrap_or_else(|_| dek_agent_observer::cost::PriceCatalog {
+            catalog_version: "2026-06".into(),
+            currency: "USD".into(),
+            providers: std::collections::HashMap::new(),
         })
     } else {
         dek_agent_observer::cost::PriceCatalog {
@@ -78,7 +82,8 @@ async fn ingest_observation(
             // Assuming today's entries can be fetched (Mock empty for now as check_budget just evaluates)
             let todays_entries = vec![cost_entry];
             match dek_agent_observer::cost::check_budget(&policy, &todays_entries) {
-                dek_agent_observer::cost::BudgetDecision::CostExceeded | dek_agent_observer::cost::BudgetDecision::TokenExceeded => {
+                dek_agent_observer::cost::BudgetDecision::CostExceeded
+                | dek_agent_observer::cost::BudgetDecision::TokenExceeded => {
                     tracing::warn!("Budget exceeded for agent {:?}", ev.agent_id);
                     // Emit alert or notify PEP
                 }
@@ -86,7 +91,7 @@ async fn ingest_observation(
             }
         }
     }
-    
+
     // OTel metrics
     dek_agent_observer::otel::emit_span(&ev);
 
@@ -137,7 +142,11 @@ async fn cost_summary(
     }
 
     let mut agent_breakdown = std::collections::HashMap::new();
-    if let Ok(agent_costs) = state.observability_store.cost_breakdown_by_agent(&tenant, "1970-01-01").await {
+    if let Ok(agent_costs) = state
+        .observability_store
+        .cost_breakdown_by_agent(&tenant, "1970-01-01")
+        .await
+    {
         for ac in agent_costs {
             agent_breakdown.insert(ac.agent_id, ac.cost);
         }
@@ -166,9 +175,18 @@ async fn list_observations(
     Path(tenant): Path<String>,
     axum::extract::Query(query): axum::extract::Query<ListQuery>,
 ) -> impl IntoResponse {
-    let events = match state.observability_store.list_observation_events(&tenant).await {
+    let events = match state
+        .observability_store
+        .list_observation_events(&tenant)
+        .await
+    {
         Ok(e) => e,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))),
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": e.to_string()})),
+            )
+        }
     };
 
     let filtered: Vec<_> = if let Some(kind_str) = query.kind {
@@ -179,24 +197,40 @@ async fn list_observations(
             "resource_access" => dek_agent_observer::model::EventKind::ResourceAccess,
             _ => dek_agent_observer::model::EventKind::Generic,
         };
-        events.into_iter().filter(|e| e.event_kind == kind_enum).collect()
+        events
+            .into_iter()
+            .filter(|e| e.event_kind == kind_enum)
+            .collect()
     } else {
         events
     };
 
-    (StatusCode::OK, Json(serde_json::to_value(filtered).unwrap_or(json!([]))))
+    (
+        StatusCode::OK,
+        Json(serde_json::to_value(filtered).unwrap_or(json!([]))),
+    )
 }
 
 async fn list_resources(
     State(state): State<AppState>,
     Path(tenant): Path<String>,
 ) -> impl IntoResponse {
-    let events = match state.observability_store.list_observation_events(&tenant).await {
+    let events = match state
+        .observability_store
+        .list_observation_events(&tenant)
+        .await
+    {
         Ok(e) => e,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))),
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": e.to_string()})),
+            )
+        }
     };
 
-    let resources: Vec<_> = events.into_iter()
+    let resources: Vec<_> = events
+        .into_iter()
         .filter(|e| e.event_kind == dek_agent_observer::model::EventKind::ResourceAccess)
         .filter_map(|e| {
             e.resource_access.map(|ra| {

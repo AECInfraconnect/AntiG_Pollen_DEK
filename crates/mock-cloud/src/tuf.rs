@@ -87,7 +87,14 @@ async fn get_tuf_metadata(
                 "created_at": "2024-01-01T00:00:00Z",
                 "expires_at": "2030-01-01T00:00:00Z",
                 "activation_mode": "full",
-                "artifacts": []
+                "artifacts": [
+                    {
+                        "name": "policies.json",
+                        "artifact_type": "cedar",
+                        "sha256": "dummy_hash_for_policies",
+                        "url": null
+                    }
+                ]
             });
 
             use sha2::{Digest, Sha256};

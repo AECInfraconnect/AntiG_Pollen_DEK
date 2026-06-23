@@ -148,7 +148,10 @@ async fn register_agent(
         Err(_) => None,
     };
 
-    let name = inv_opt.as_ref().map(|i| i.display_name.clone()).unwrap_or_else(|| format!("Agent {}", agent_id));
+    let name = inv_opt
+        .as_ref()
+        .map(|i| i.display_name.clone())
+        .unwrap_or_else(|| format!("Agent {}", agent_id));
     let agent_type = dek_control_plane_api::registry::AgentType::CustomMcpClient; // fallback, since the schema enum differs
 
     // 2. Promote to managed agent

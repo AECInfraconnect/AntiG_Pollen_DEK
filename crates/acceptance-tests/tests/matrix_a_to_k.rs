@@ -108,8 +108,8 @@ async fn setup() -> Result<Proc> {
 
     let mock = Command::new(bin("mock-cloud"))
         .current_dir(workspace_dir())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
         .env("DEK_LOG_DIR", &tmp_logs)
         .spawn()
         .context("spawn mock-cloud")?;

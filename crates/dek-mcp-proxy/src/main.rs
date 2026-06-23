@@ -792,7 +792,11 @@ async fn handle_mcp_request(
             compliance_tags.dedup();
 
             if let Some(telemetry) = &state.telemetry {
-                let action = if normalized.request_type.is_empty() { "tools/call".into() } else { normalized.request_type.clone() };
+                let action = if normalized.request_type.is_empty() {
+                    "tools/call".into()
+                } else {
+                    normalized.request_type.clone()
+                };
                 let is_resource = action == "resources/read" || action == "resources/list";
 
                 let obs = dek_agent_observer::model::AgentObservationEvent {
@@ -801,7 +805,11 @@ async fn handle_mcp_request(
                     trace_id: decision_req.request_id.clone(),
                     agent_id: normalized.agent_id.clone(),
                     shadow_candidate_id: None,
-                    tool_id: if is_resource { None } else { normalized.tool_name.clone() },
+                    tool_id: if is_resource {
+                        None
+                    } else {
+                        normalized.tool_name.clone()
+                    },
                     resource_id: None,
                     surface: "mcp".into(),
                     action: action.clone(),
@@ -810,20 +818,34 @@ async fn handle_mcp_request(
                     timestamp: chrono::Utc::now().to_rfc3339(),
                     payload_json: "{}".into(),
                     token_usage: None,
-                    event_kind: if is_resource { dek_agent_observer::model::EventKind::ResourceAccess } else { dek_agent_observer::model::EventKind::ToolCall },
+                    event_kind: if is_resource {
+                        dek_agent_observer::model::EventKind::ResourceAccess
+                    } else {
+                        dek_agent_observer::model::EventKind::ToolCall
+                    },
                     decision: Some(dek_agent_observer::model::DecisionInfo {
                         allow: decision.allow,
-                        reason_code: if decision.allow { "OK".into() } else { "DENY".into() },
+                        reason_code: if decision.allow {
+                            "OK".into()
+                        } else {
+                            "DENY".into()
+                        },
                         obligations: decision.obligations.clone(),
                         matched_policy_ids: vec![],
                         compliance_tags: compliance_tags.clone(),
                     }),
-                    tool_call: if is_resource { None } else {
+                    tool_call: if is_resource {
+                        None
+                    } else {
                         Some(dek_agent_observer::model::ToolCall {
                             tool_name: normalized.tool_name.clone().unwrap_or_default(),
                             server: None,
                             args_summary: None,
-                            result_status: if decision.allow { "ok".into() } else { "denied".into() },
+                            result_status: if decision.allow {
+                                "ok".into()
+                            } else {
+                                "denied".into()
+                            },
                         })
                     },
                     resource_access: if is_resource {
@@ -833,7 +855,9 @@ async fn handle_mcp_request(
                             bytes: None,
                             verb: "read".into(),
                         })
-                    } else { None },
+                    } else {
+                        None
+                    },
                     latency_ms: Some(start_time.elapsed().as_millis() as i64),
                     provider: None,
                 };
