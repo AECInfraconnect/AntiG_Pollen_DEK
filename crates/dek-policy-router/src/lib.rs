@@ -354,7 +354,9 @@ impl PolicyRouter {
             .and_then(|v| v.as_str());
         let resource_type = payload.get("resource").and_then(|v| {
             if v.is_object() {
-                v.get("kind").and_then(|k| k.as_str())
+                v.get("kind")
+                 .or_else(|| v.get("resource_type"))
+                 .and_then(|k| k.as_str())
             } else {
                 v.as_str()
             }

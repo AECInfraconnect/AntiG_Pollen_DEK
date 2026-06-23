@@ -15,6 +15,7 @@ fuzz_target!(|data: &[u8]| {
                     targets: Default::default(),
                     params: std::collections::BTreeMap::new(),
                     dry_run_first: false,
+                    pdp_route: None,
                 };
                 
                 // Fuzz passing malicious strings as param values
