@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use tracing::{info, warn};
 
-pub async fn start_anomaly_detector(state: Arc<AppState>) {
+pub async fn start_anomaly_detector(state: AppState) {
     info!("Starting P2 Anomaly Detector...");
     loop {
         sleep(Duration::from_secs(30)).await;
@@ -34,52 +34,47 @@ pub async fn start_anomaly_detector(state: Arc<AppState>) {
 
         // 3. Update trust score and trigger playbooks
         if let Ok(mut agents) = state.registry_store.list_agents(tenant_id).await {
-            for mut agent in agents {
-                let fails = fail_counts.get(&agent.id).copied().unwrap_or(0);
+            for agent in agents {
+                let fails = fail_counts.get(&agent.agent_id).copied().unwrap_or(0);
                 
                 if fails > 5 {
-                    let old_score = agent.trust_score;
-                    agent.trust_score = (agent.trust_score - fails * 5).max(0);
-                    
-                    if old_score != agent.trust_score {
-                        warn!(
-                            "AnomalyDetector: Agent {} trust score degraded {} -> {} due to {} policy violations.",
-                            agent.id, old_score, agent.trust_score, fails
-                        );
+                    warn!(
+                        "AnomalyDetector: Agent {} has high failure rate ({} failures).",
+                        agent.agent_id, fails
+                    );
 
-                        // Auto-remediation playbook
-                        if agent.trust_score < 50 && agent.status == AgentStatus::Controlled {
-                            warn!("AnomalyDetector: Triggering Auto-Kill Switch playbook for agent {}! Trust score critically low.", agent.id);
-                            
-                            // Emulate playbook mutating the agent's policy deployment to StrictDeny
-                            if let Ok(mut deployments) = state.policy_store.list_deployments(tenant_id).await {
-                                for mut dep in deployments {
-                                    if dep.control_bindings.iter().any(|b| b.agent_id == agent.id) {
-                                        dep.control_mode = ControlMode::StrictDeny;
-                                        let _ = state.policy_store.put_deployment(&dep).await;
+                    // Auto-remediation playbook
+                    warn!("AnomalyDetector: Triggering Auto-Kill Switch playbook for agent {}! Failure rate critically high.", agent.agent_id);
+                    
+                    // Emulate playbook mutating the agent's policy deployment to StrictDeny
+                    if let Ok(deployments) = state.policy_store.list_preset_deployments(tenant_id).await {
+                        for dep_val in deployments {
+                            if let Ok(mut dep) = serde_json::from_value::<dek_domain_schema::policy_deployment::PolicyDeployment>(dep_val) {
+                                if dep.control_bindings.iter().any(|b| b.agent_id == agent.agent_id) {
+                                    dep.control_mode = ControlMode::StrictDeny;
+                                    if let Ok(val) = serde_json::to_value(&dep) {
+                                        let _ = state.policy_store.upsert_preset_deployment(tenant_id, &dep.deployment_id, &val).await;
                                         info!("AnomalyDetector: Mutated deployment {} to StrictDeny.", dep.deployment_id);
                                     }
                                 }
                             }
-
-                            // Emit security event telemetry
-                            let sec_event = json!({
-                                "type": "security_event",
-                                "schema_version": "pollen.telemetry.v2",
-                                "tenant_id": tenant_id,
-                                "event_id": uuid::Uuid::new_v4().to_string(),
-                                "timestamp": chrono::Utc::now().to_rfc3339(),
-                                "severity": "critical",
-                                "name": "auto_kill_switch_triggered",
-                                "agent_id": agent.id,
-                                "trust_score": agent.trust_score,
-                                "trigger": format!("Failed {} policies in short time window", fails)
-                            });
-                            let _ = state.telemetry_store.put_telemetry("security_event", &sec_event.to_string()).await;
                         }
-                        
-                        let _ = state.registry_store.put_agent(tenant_id, &agent).await;
                     }
+
+                    // Emit security event telemetry
+                    let sec_event = json!({
+                        "type": "security_event",
+                        "schema_version": "pollen.telemetry.v2",
+                        "tenant_id": tenant_id,
+                        "event_id": uuid::Uuid::new_v4().to_string(),
+                        "timestamp": chrono::Utc::now().to_rfc3339(),
+                        "severity": "critical",
+                        "name": "auto_kill_switch_triggered",
+                        "agent_id": agent.agent_id,
+                        "trigger": format!("Failed {} policies in short time window", fails)
+                    });
+                    let event_id = sec_event["event_id"].as_str().unwrap_or("").to_string();
+                    let _ = state.telemetry_store.put_telemetry(tenant_id, "security_event", &event_id, &sec_event).await;
                 }
             }
         }

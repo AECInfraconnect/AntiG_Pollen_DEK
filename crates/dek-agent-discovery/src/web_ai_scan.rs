@@ -14,86 +14,28 @@ pub trait SniFlowSource: Send + Sync {
     fn recent_flows(&self, since: Duration) -> Vec<SniFlow>;
 }
 
-pub struct WebAiSignature {
-    pub domain: &'static str,
-    pub name: &'static str,
-    pub vendor: &'static str,
-}
-
-pub const WEB_AI_CATALOG: &[WebAiSignature] = &[
-    WebAiSignature {
-        domain: "chatgpt.com",
-        name: "ChatGPT in Browser",
-        vendor: "OpenAI",
-    },
-    WebAiSignature {
-        domain: "claude.ai",
-        name: "Claude in Browser",
-        vendor: "Anthropic",
-    },
-    WebAiSignature {
-        domain: "chat.deepseek.com",
-        name: "Deepseek in Browser",
-        vendor: "DeepSeek",
-    },
-    WebAiSignature {
-        domain: "perplexity.ai",
-        name: "Perplexity",
-        vendor: "Perplexity",
-    },
-    WebAiSignature {
-        domain: "poe.com",
-        name: "Poe",
-        vendor: "Quora",
-    },
-    WebAiSignature {
-        domain: "gemini.google.com",
-        name: "Gemini",
-        vendor: "Google",
-    },
-    WebAiSignature {
-        domain: "copilot.microsoft.com",
-        name: "Copilot",
-        vendor: "Microsoft",
-    },
-    WebAiSignature {
-        domain: "huggingface.co/chat",
-        name: "HuggingChat",
-        vendor: "HuggingFace",
-    },
-    WebAiSignature {
-        domain: "grok.com",
-        name: "Grok",
-        vendor: "xAI",
-    },
-    WebAiSignature {
-        domain: "chat.mistral.ai",
-        name: "Mistral",
-        vendor: "Mistral AI",
-    },
-];
-
 pub fn scan_web_ai(
     sni_source: Option<&dyn SniFlowSource>,
     config: &crate::config::DiscoveryConfig,
+    catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef],
 ) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
 
     if config.enable_browser_history_scan {
-        if let Ok(mut hist) = scan_history() {
+        if let Ok(mut hist) = scan_history(catalog) {
             evidence.append(&mut hist);
         }
     }
 
     if config.enable_browser_session_scan {
-        if let Ok(mut sess) = scan_sessions() {
+        if let Ok(mut sess) = scan_sessions(catalog) {
             evidence.append(&mut sess);
         }
     }
 
     if config.enable_network_sni_scan {
         if let Some(source) = sni_source {
-            if let Ok(mut net) = scan_network_sni(source) {
+            if let Ok(mut net) = scan_network_sni(source, catalog) {
                 evidence.append(&mut net);
             }
         }
@@ -102,7 +44,8 @@ pub fn scan_web_ai(
     Ok(evidence)
 }
 
-fn scan_history() -> Result<Vec<DiscoveryEvidenceV2>> {
+
+fn scan_history(catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef]) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
     let history_paths = get_browser_history_paths();
 
@@ -129,8 +72,8 @@ fn scan_history() -> Result<Vec<DiscoveryEvidenceV2>> {
                     for url_result in url_iter.flatten() {
                         if let Ok(parsed_url) = url::Url::parse(&url_result) {
                             if let Some(host) = parsed_url.host_str() {
-                                for sig in WEB_AI_CATALOG {
-                                    if host.ends_with(sig.domain) {
+                                for sig in catalog {
+                                    if host.ends_with(&sig.domain) {
                                         let origin = format!("{}://{}", parsed_url.scheme(), host);
 
                                         evidence.push(DiscoveryEvidenceV2 {
@@ -142,8 +85,9 @@ fn scan_history() -> Result<Vec<DiscoveryEvidenceV2>> {
                                             redacted: true,
                                             data: serde_json::json!({
                                                 "origin": origin,
-                                                "name": sig.name,
-                                                "vendor": sig.vendor,
+                                                "name": sig.name.clone(),
+                                                "vendor": sig.vendor.clone(),
+                                                "capability_tags": sig.capability_tags.clone(),
                                             }),
                                             merge_key: Some(sig.domain.to_string()),
                                             source_path_hash: Some(
@@ -172,7 +116,7 @@ fn scan_history() -> Result<Vec<DiscoveryEvidenceV2>> {
     Ok(evidence)
 }
 
-fn scan_sessions() -> Result<Vec<DiscoveryEvidenceV2>> {
+fn scan_sessions(catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef]) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
     let session_paths = get_browser_session_paths();
 
@@ -210,8 +154,8 @@ fn scan_sessions() -> Result<Vec<DiscoveryEvidenceV2>> {
         for file_path in files_to_scan {
             if let Ok(content) = std::fs::read(&file_path) {
                 let content_str = String::from_utf8_lossy(&content);
-                for sig in WEB_AI_CATALOG {
-                    if content_str.contains(sig.domain) {
+                for sig in catalog {
+                    if content_str.contains(&sig.domain) {
                         evidence.push(DiscoveryEvidenceV2 {
                             evidence_id: uuid::Uuid::new_v4().to_string(),
                             source: EvidenceSource::BrowserSession,
@@ -221,8 +165,9 @@ fn scan_sessions() -> Result<Vec<DiscoveryEvidenceV2>> {
                             redacted: true,
                             data: serde_json::json!({
                                 "origin": format!("https://{}", sig.domain),
-                                "name": sig.name,
-                                "vendor": sig.vendor,
+                                "name": sig.name.clone(),
+                                "vendor": sig.vendor.clone(),
+                                "capability_tags": sig.capability_tags.clone(),
                             }),
                             merge_key: Some(sig.domain.to_string()),
                             source_path_hash: Some(crate::redaction::sha256_string(
@@ -241,15 +186,15 @@ fn scan_sessions() -> Result<Vec<DiscoveryEvidenceV2>> {
     Ok(evidence)
 }
 
-fn scan_network_sni(source: &dyn SniFlowSource) -> Result<Vec<DiscoveryEvidenceV2>> {
+fn scan_network_sni(source: &dyn SniFlowSource, catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef]) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
 
     // Query recent flows from the injected source (e.g., from spool or eBPF directly)
     let recent_snis = source.recent_flows(Duration::from_secs(3600));
 
     for flow in recent_snis {
-        for sig in WEB_AI_CATALOG {
-            if flow.sni_host.ends_with(sig.domain) {
+        for sig in catalog {
+            if flow.sni_host.ends_with(&sig.domain) {
                 evidence.push(DiscoveryEvidenceV2 {
                     evidence_id: uuid::Uuid::new_v4().to_string(),
                     source: EvidenceSource::NetworkSni,

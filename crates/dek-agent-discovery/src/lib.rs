@@ -10,6 +10,7 @@ pub mod container_scan;
 pub mod error;
 pub mod fingerprint;
 pub mod human_loop;
+pub mod identity_hint;
 pub mod ide_extension_scan;
 pub mod identity;
 pub mod local_model_probe;

@@ -7,6 +7,23 @@
   "base_version": null,
   "removed_ids": [],
   "catalog_hash": "sha256:dummyhashforbaseline",
+  "model_classifier": {
+    "vendors": [],
+    "family_rules": [],
+    "attribute_parsers": {},
+    "risk_flags": [],
+    "popular_models": []
+  },
+  "web_ai_signatures": [
+    {"domain":"chatgpt.com","name":"ChatGPT","vendor":"OpenAI","capability_tags":["web.chat","net.egress.llm"]},
+    {"domain":"claude.ai","name":"Claude","vendor":"Anthropic","capability_tags":["web.chat","net.egress.llm"]},
+    {"domain":"gemini.google.com","name":"Gemini","vendor":"Google","capability_tags":["web.chat"]},
+    {"domain":"chat.deepseek.com","name":"DeepSeek Chat","vendor":"DeepSeek","capability_tags":["web.chat"],"risk_weight":0.5},
+    {"domain":"perplexity.ai","name":"Perplexity","vendor":"Perplexity","capability_tags":["web.chat","rag.retrieval"]},
+    {"domain":"copilot.microsoft.com","name":"Copilot","vendor":"Microsoft","capability_tags":["web.chat"]},
+    {"domain":"grok.com","name":"Grok","vendor":"xAI","capability_tags":["web.chat"]},
+    {"domain":"poe.com","name":"Poe","vendor":"Quora","capability_tags":["web.chat"]}
+  ],
   "signatures": [
     {
       "id": "claude_desktop",

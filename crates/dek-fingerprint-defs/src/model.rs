@@ -14,7 +14,23 @@ pub struct FingerprintDefinition {
     pub catalog_hash: String,
     #[serde(default)]
     pub model_classifier: Option<ModelClassifierDef>,
+    #[serde(default)]
+    pub web_ai_signatures: Vec<WebAiSignatureDef>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebAiSignatureDef {
+    pub domain: String,
+    pub name: String,
+    pub vendor: String,
+    #[serde(default)] 
+    pub capability_tags: Vec<String>,
+    #[serde(default = "default_web_risk")] 
+    pub risk_weight: f64,
+}
+
+fn default_web_risk() -> f64 { 0.4 }
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelClassifierDef {

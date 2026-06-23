@@ -5,13 +5,15 @@ use tokio::time::{timeout, Duration};
 pub struct DiscoveryOrchestrator {
     tenant_id: String,
     sni_source: Option<std::sync::Arc<dyn crate::web_ai_scan::SniFlowSource>>,
+    definitions: std::sync::Arc<dek_fingerprint_defs::model::FingerprintDefinition>,
 }
 
 impl DiscoveryOrchestrator {
-    pub fn new(tenant_id: &str) -> Self {
+    pub fn new(tenant_id: &str, definitions: std::sync::Arc<dek_fingerprint_defs::model::FingerprintDefinition>) -> Self {
         Self {
             tenant_id: tenant_id.to_string(),
             sni_source: None,
+            definitions,
         }
     }
 
@@ -199,11 +201,12 @@ impl DiscoveryOrchestrator {
 
         if wants_source("web_ai") {
             let tx_cl = ev_tx.clone();
+            let defs = self.definitions.clone();
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
                 let config = crate::config::DiscoveryConfig::default();
                 if let Ok(mut x) = tokio::task::spawn_blocking(move || {
-                    crate::web_ai_scan::scan_web_ai(sni_src.as_deref(), &config)
+                    crate::web_ai_scan::scan_web_ai(sni_src.as_deref(), &config, &defs.web_ai_signatures)
                 })
                 .await
                 .unwrap_or(Ok(vec![]))

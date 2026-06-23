@@ -163,6 +163,8 @@ async fn simulate_deployment(
         preset_id: Some(req.preset_id),
         preset_version: Some(preset.version),
         control_mode: ControlMode::Observe,
+        target_device_groups: vec![],
+        target_rollout_ring: None,
         targets: serde_json::to_value(&req.targets).unwrap_or_default(),
         params: serde_json::to_value(&req.params).unwrap_or_default(),
         control_bindings,

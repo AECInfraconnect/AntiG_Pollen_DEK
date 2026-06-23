@@ -2127,14 +2127,18 @@ name = "dek-fingerprint-defs"
 version = "1.0.0-beta.10"
 dependencies = [
  "anyhow",
+ "arc-swap",
+ "base64 0.22.1",
  "chrono",
  "dek-bundle-sync",
+ "ed25519-dalek",
  "lazy_static",
  "regex",
  "semver",
  "serde",
  "serde_json",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -4353,6 +4357,7 @@ dependencies = [
  "dek-control-plane-api",
  "dek-domain-schema",
  "dek-errors",
+ "dek-fingerprint-defs",
  "dek-plugin-sdk",
  "dek-policy-compiler",
  "dek-policy-intent",

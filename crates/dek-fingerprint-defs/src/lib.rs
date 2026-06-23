@@ -1,3 +1,4 @@
+pub mod loader;
 pub mod merge;
 pub mod model;
 pub mod model_classifier;
@@ -19,5 +20,6 @@ pub fn embedded_baseline() -> FingerprintDefinition {
         removed_ids: vec![],
         catalog_hash: String::new(),
         model_classifier: None,
+        web_ai_signatures: vec![],
     })
 }

@@ -192,6 +192,7 @@ async fn start_scan(
             &req,
             Some(sni_source),
             Some(tx),
+            st2.def_store.get(),
         )
         .await
         {

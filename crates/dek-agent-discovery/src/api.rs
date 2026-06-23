@@ -135,8 +135,9 @@ pub async fn run_scan_v2(
     req: &serde_json::Value,
     sni_source: Option<std::sync::Arc<dyn crate::web_ai_scan::SniFlowSource>>,
     tx: Option<tokio::sync::mpsc::Sender<DiscoveredAgentCandidateV2>>,
+    definitions: std::sync::Arc<dek_fingerprint_defs::model::FingerprintDefinition>,
 ) -> Result<(DiscoveryScanJob, Vec<DiscoveredAgentCandidateV2>)> {
-    let mut orchestrator = crate::orchestrator::DiscoveryOrchestrator::new(tenant);
+    let mut orchestrator = crate::orchestrator::DiscoveryOrchestrator::new(tenant, definitions);
     if let Some(src) = sni_source {
         orchestrator = orchestrator.with_sni_source(src);
     }

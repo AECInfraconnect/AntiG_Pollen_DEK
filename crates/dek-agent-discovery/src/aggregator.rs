@@ -34,8 +34,15 @@ pub fn aggregate_evidence(
         let mut redacted_env_keys = Vec::new();
 
         let mut ctx = crate::identity::ResolutionContext::default();
+        let mut best_hint = crate::identity_hint::IdentityHint::default();
 
         for ev in &group {
+            if let Some(hint) = crate::identity_hint::extract_identity_hint(ev) {
+                if hint.confidence >= best_hint.confidence {
+                    best_hint = hint;
+                }
+            }
+
             if ev.confidence > max_confidence {
                 max_confidence = ev.confidence;
             }
@@ -50,8 +57,14 @@ pub fn aggregate_evidence(
                         ctx.exe_path_norm = p.exe_path_redacted.clone();
                         ctx.binary_hash = p.exe_path_hash.clone();
                         process_hash = p.exe_path_hash.clone();
+
+                        if let Some(exe) = &p.exe_path_redacted {
+                            ctx.cli_on_path.push(basename_no_ext(exe));
+                        }
+                        if let Some(pkg) = npm_pkg_from_argv(&p.cmd_template) {
+                            ctx.packages.push(("npm".into(), pkg));
+                        }
                     }
-                    name = ev.source_path_redacted.clone().unwrap_or(name);
                 }
                 EvidenceSource::McpConfig => {
                     if let Some(path) = &ev.source_path_redacted {
@@ -112,7 +125,11 @@ pub fn aggregate_evidence(
                             protocol: "http".into(),
                         });
                     }
-                    ctx.listening_ports.push(80);
+                    if let Some(port) = ev.data.get("port").and_then(|v| v.as_u64()) {
+                        ctx.listening_ports.push(port as u16);
+                    } else {
+                        ctx.listening_ports.push(80);
+                    }
 
                     if let Some(models_val) = ev.data.get("models") {
                         if let Some(arr) = models_val.as_array() {
@@ -160,7 +177,11 @@ pub fn aggregate_evidence(
                             command: None,
                         });
                     }
-                    ctx.listening_ports.push(80);
+                    if let Some(port) = ev.data.get("port").and_then(|v| v.as_u64()) {
+                        ctx.listening_ports.push(port as u16);
+                    } else {
+                        ctx.listening_ports.push(80);
+                    }
                 }
                 EvidenceSource::IdeExtension => {
                     // Not fully utilizing this signal yet in identity.rs
@@ -179,6 +200,8 @@ pub fn aggregate_evidence(
                 decision.needs_human = true;
             }
         }
+
+        let resolved_by_signature = decision.best.is_some();
 
         if let Some(best) = decision.best {
             name = best.display_name.clone();
@@ -200,6 +223,25 @@ pub fn aggregate_evidence(
                     capability_tags.push(cap);
                 }
             }
+        }
+
+        if !resolved_by_signature || best_hint.confidence >= 1.0 {
+            if let Some(n) = best_hint.name.filter(|n| !n.is_empty()) {
+                name = n;
+                if vendor.is_none() { vendor = best_hint.vendor; }
+                if product.is_none() { product = best_hint.product; }
+                if let Some(t) = best_hint.agent_type { agent_type = t; }
+                max_confidence = f64::max(max_confidence, best_hint.confidence);
+                for cap in best_hint.capability_tags {
+                    if !capability_tags.contains(&cap) {
+                        capability_tags.push(cap);
+                    }
+                }
+            }
+        }
+
+        if name == "Unknown Agent" {
+            status = DiscoveryStatus::PendingApproval;
         }
 
         if decision.needs_human {
@@ -304,3 +346,22 @@ pub fn aggregate_evidence(
 
     candidates
 }
+
+fn npm_pkg_from_argv(argv: &[String]) -> Option<String> {
+    argv.iter().find_map(|a| {
+        let a = a.replace('\\', "/");
+        a.split("node_modules/")
+            .nth(1)
+            .map(|rest| rest.split('/').next().unwrap_or("").to_string())
+            .filter(|p| !p.is_empty())
+    })
+}
+
+fn basename_no_ext(p: &str) -> String {
+    std::path::Path::new(p)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_string()
+}
+

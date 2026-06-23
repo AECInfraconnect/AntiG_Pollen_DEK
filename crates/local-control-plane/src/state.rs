@@ -21,4 +21,5 @@ pub struct AppState {
     pub auth_disabled: bool,
     pub bundle_tx: broadcast::Sender<String>,
     pub pdp_credentials: Arc<crate::pdp_credentials::PdpCredentialsStore>,
+    pub def_store: Arc<dek_fingerprint_defs::loader::DefinitionStore>,
 }
