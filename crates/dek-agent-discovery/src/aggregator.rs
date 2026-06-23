@@ -228,9 +228,15 @@ pub fn aggregate_evidence(
         if !resolved_by_signature || best_hint.confidence >= 1.0 {
             if let Some(n) = best_hint.name.filter(|n| !n.is_empty()) {
                 name = n;
-                if vendor.is_none() { vendor = best_hint.vendor; }
-                if product.is_none() { product = best_hint.product; }
-                if let Some(t) = best_hint.agent_type { agent_type = t; }
+                if vendor.is_none() {
+                    vendor = best_hint.vendor;
+                }
+                if product.is_none() {
+                    product = best_hint.product;
+                }
+                if let Some(t) = best_hint.agent_type {
+                    agent_type = t;
+                }
                 max_confidence = f64::max(max_confidence, best_hint.confidence);
                 for cap in best_hint.capability_tags {
                     if !capability_tags.contains(&cap) {
@@ -364,4 +370,3 @@ fn basename_no_ext(p: &str) -> String {
         .unwrap_or("")
         .to_string()
 }
-

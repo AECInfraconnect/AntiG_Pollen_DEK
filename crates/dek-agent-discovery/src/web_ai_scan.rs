@@ -44,8 +44,9 @@ pub fn scan_web_ai(
     Ok(evidence)
 }
 
-
-fn scan_history(catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef]) -> Result<Vec<DiscoveryEvidenceV2>> {
+fn scan_history(
+    catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef],
+) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
     let history_paths = get_browser_history_paths();
 
@@ -116,7 +117,9 @@ fn scan_history(catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef]) -> R
     Ok(evidence)
 }
 
-fn scan_sessions(catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef]) -> Result<Vec<DiscoveryEvidenceV2>> {
+fn scan_sessions(
+    catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef],
+) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
     let session_paths = get_browser_session_paths();
 
@@ -186,7 +189,10 @@ fn scan_sessions(catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef]) -> 
     Ok(evidence)
 }
 
-fn scan_network_sni(source: &dyn SniFlowSource, catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef]) -> Result<Vec<DiscoveryEvidenceV2>> {
+fn scan_network_sni(
+    source: &dyn SniFlowSource,
+    catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef],
+) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
 
     // Query recent flows from the injected source (e.g., from spool or eBPF directly)

@@ -57,7 +57,10 @@ async fn main() -> anyhow::Result<()> {
         auth_disabled: cfg.auth_disabled,
         bundle_tx,
         pdp_credentials: Arc::new(PdpCredentialsStore::new(&cfg.data_dir)),
-        def_store: Arc::new(dek_fingerprint_defs::loader::DefinitionStore::load(cfg.data_dir.join("defs/active.json"), None)),
+        def_store: Arc::new(dek_fingerprint_defs::loader::DefinitionStore::load(
+            cfg.data_dir.join("defs/active.json"),
+            None,
+        )),
     };
 
     // Spawn Anomaly Detector (P2)

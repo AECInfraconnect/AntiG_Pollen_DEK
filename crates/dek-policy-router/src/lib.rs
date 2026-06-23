@@ -749,10 +749,15 @@ impl PolicyRouter {
                     let payload_clone = payload.clone();
                     let shadow_id_clone = shadow_id.clone();
                     let timeout_ms = self.pdp_timeout_ms;
-                    
+
                     tokio::spawn(async move {
                         let timeout_dur = std::time::Duration::from_millis(timeout_ms);
-                        match tokio::time::timeout(timeout_dur, evaluator_clone.evaluate(payload_clone)).await {
+                        match tokio::time::timeout(
+                            timeout_dur,
+                            evaluator_clone.evaluate(payload_clone),
+                        )
+                        .await
+                        {
                             Ok(Ok(res)) => {
                                 tracing::info!(
                                     "SHADOW_EVAL_COMPLETE: evaluator={} decision={}",
@@ -761,10 +766,18 @@ impl PolicyRouter {
                                 );
                             }
                             Ok(Err(e)) => {
-                                tracing::error!("SHADOW_EVAL_ERROR: evaluator={} error={}", shadow_id_clone, e);
+                                tracing::error!(
+                                    "SHADOW_EVAL_ERROR: evaluator={} error={}",
+                                    shadow_id_clone,
+                                    e
+                                );
                             }
                             Err(_) => {
-                                tracing::error!("SHADOW_EVAL_TIMEOUT: evaluator={} timeout_ms={}", shadow_id_clone, timeout_ms);
+                                tracing::error!(
+                                    "SHADOW_EVAL_TIMEOUT: evaluator={} timeout_ms={}",
+                                    shadow_id_clone,
+                                    timeout_ms
+                                );
                             }
                         }
                     });

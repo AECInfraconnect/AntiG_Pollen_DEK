@@ -1,3 +1,4 @@
+pub mod anomaly_detector;
 pub mod app;
 pub mod auth;
 pub mod bundle;
@@ -14,7 +15,6 @@ pub mod signing;
 pub mod state;
 pub mod store;
 pub mod telemetry;
-pub mod anomaly_detector;
 
 pub mod agent_discovery_api;
 pub mod agent_inventory_api;
@@ -29,8 +29,8 @@ pub mod preset_deploy_wizard_api;
 pub mod pdp_cloud_api;
 pub mod pdp_credentials;
 pub mod pdp_models;
-pub mod pdp_routing_api;
 pub mod pdp_router;
+pub mod pdp_routing_api;
 pub mod pdp_runtime_api;
 
 pub mod cloud_sync;

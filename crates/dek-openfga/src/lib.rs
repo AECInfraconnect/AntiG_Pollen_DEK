@@ -140,11 +140,7 @@ impl PolicyEvaluator for OpenFgaAdapter {
         });
         debug!(%url, %principal, %action, %resource, "openfga check (cache miss)");
 
-        let req = self
-            .client
-            .post(&url)
-            .json(&payload)
-            .send();
+        let req = self.client.post(&url).json(&payload).send();
 
         // Check OpenFGA with a timeout (default to a reasonable remote PDP timeout like 500ms)
         let res = tokio::time::timeout(Duration::from_millis(500), req)

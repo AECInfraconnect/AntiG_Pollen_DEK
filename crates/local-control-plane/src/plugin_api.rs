@@ -11,8 +11,14 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/v1/tenants/:tenant/plugins", get(list_plugins))
         .route("/v1/tenants/:tenant/plugins/install", post(install_plugin))
-        .route("/v1/tenants/:tenant/plugins/:id/enable", post(enable_plugin))
-        .route("/v1/tenants/:tenant/plugins/:id/disable", post(disable_plugin))
+        .route(
+            "/v1/tenants/:tenant/plugins/:id/enable",
+            post(enable_plugin),
+        )
+        .route(
+            "/v1/tenants/:tenant/plugins/:id/disable",
+            post(disable_plugin),
+        )
         .route("/v1/tenants/:tenant/plugins/:id/test", post(test_plugin))
 }
 

@@ -231,8 +231,15 @@ pub struct PluginPolicy {
 }
 
 impl PluginPolicy {
-    pub fn ensure_allowed(&self, plugin_id: &str, _operation: &str, _permissions: &[String]) -> anyhow::Result<()> {
-        if !self.allowed_plugins.contains(&plugin_id.to_string()) && !self.allowed_plugins.contains(&"*".to_string()) {
+    pub fn ensure_allowed(
+        &self,
+        plugin_id: &str,
+        _operation: &str,
+        _permissions: &[String],
+    ) -> anyhow::Result<()> {
+        if !self.allowed_plugins.contains(&plugin_id.to_string())
+            && !self.allowed_plugins.contains(&"*".to_string())
+        {
             anyhow::bail!("Plugin {} is not allowed by policy", plugin_id);
         }
         Ok(())
@@ -242,8 +249,12 @@ impl PluginPolicy {
         150 // default timeout 150ms
     }
 
-    pub fn validate_output(&self, _plugin_id: &str, _operation: &str, _output: &serde_json::Value) -> anyhow::Result<()> {
+    pub fn validate_output(
+        &self,
+        _plugin_id: &str,
+        _operation: &str,
+        _output: &serde_json::Value,
+    ) -> anyhow::Result<()> {
         Ok(()) // naive validation
     }
 }
-

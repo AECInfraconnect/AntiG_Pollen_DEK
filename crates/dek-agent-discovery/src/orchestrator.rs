@@ -9,7 +9,10 @@ pub struct DiscoveryOrchestrator {
 }
 
 impl DiscoveryOrchestrator {
-    pub fn new(tenant_id: &str, definitions: std::sync::Arc<dek_fingerprint_defs::model::FingerprintDefinition>) -> Self {
+    pub fn new(
+        tenant_id: &str,
+        definitions: std::sync::Arc<dek_fingerprint_defs::model::FingerprintDefinition>,
+    ) -> Self {
         Self {
             tenant_id: tenant_id.to_string(),
             sni_source: None,
@@ -206,7 +209,11 @@ impl DiscoveryOrchestrator {
                 let mut ev = Vec::new();
                 let config = crate::config::DiscoveryConfig::default();
                 if let Ok(mut x) = tokio::task::spawn_blocking(move || {
-                    crate::web_ai_scan::scan_web_ai(sni_src.as_deref(), &config, &defs.web_ai_signatures)
+                    crate::web_ai_scan::scan_web_ai(
+                        sni_src.as_deref(),
+                        &config,
+                        &defs.web_ai_signatures,
+                    )
                 })
                 .await
                 .unwrap_or(Ok(vec![]))

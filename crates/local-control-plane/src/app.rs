@@ -9,8 +9,8 @@ use tower_http::services::{ServeDir, ServeFile};
 
 use crate::{
     agent_discovery_api, agent_inventory_api, auth, bundle, connectors, discovery, observation_api,
-    pdp_cloud_api, pdp_routing_api, pdp_runtime_api, pep_capabilities_api, plugin_api,
-    policy, policy_deploy_api, policy_presets_api, policy_suggestions_api, preset_deploy_api,
+    pdp_cloud_api, pdp_routing_api, pdp_runtime_api, pep_capabilities_api, plugin_api, policy,
+    policy_deploy_api, policy_presets_api, policy_suggestions_api, preset_deploy_api,
     preset_deploy_wizard_api, push, registry, state::AppState, telemetry,
 };
 

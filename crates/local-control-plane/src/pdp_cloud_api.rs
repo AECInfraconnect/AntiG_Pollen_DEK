@@ -84,17 +84,24 @@ async fn cloud_login(
 ) -> Json<CloudPdpProfile> {
     let mock_endpoint = "http://127.0.0.1:43891";
     let client = reqwest::Client::new();
-    
+
     // Attempt contract discovery
-    let contract_ver = match client.get(&format!("{}/.well-known/pollen-contract", mock_endpoint)).send().await {
+    let contract_ver = match client
+        .get(&format!("{}/.well-known/pollen-contract", mock_endpoint))
+        .send()
+        .await
+    {
         Ok(resp) if resp.status().is_success() => {
             if let Ok(json) = resp.json::<serde_json::Value>().await {
-                json.get("preferred").and_then(|v| v.as_str()).unwrap_or("1.0.0").to_string()
+                json.get("preferred")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("1.0.0")
+                    .to_string()
             } else {
                 "1.0.0".to_string()
             }
         }
-        _ => "1.0.0".to_string()
+        _ => "1.0.0".to_string(),
     };
 
     let profile = CloudPdpProfile {
@@ -109,7 +116,14 @@ async fn cloud_login(
     };
 
     // Store the cloud profile locally (stubbed persistence for now since pdp_store schema doesn't have an exact cloud profile column, we can store it as a runtime).
-    let _ = st.pdp_store.upsert_runtime("local", "pollen_cloud", &serde_json::to_value(&profile).unwrap()).await;
+    let _ = st
+        .pdp_store
+        .upsert_runtime(
+            "local",
+            "pollen_cloud",
+            &serde_json::to_value(&profile).unwrap(),
+        )
+        .await;
 
     Json(profile)
 }

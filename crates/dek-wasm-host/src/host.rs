@@ -84,7 +84,10 @@ impl WasmPluginHost {
         let acquire_timeout = Duration::from_millis(self.cfg.acquire_timeout_ms);
         let mut lease = pool.acquire(request_id, acquire_timeout).await?;
 
-        let result = lease.worker_mut()?.invoke_json(input, 1024 * 1024, fuel_limit).await;
+        let result = lease
+            .worker_mut()?
+            .invoke_json(input, 1024 * 1024, fuel_limit)
+            .await;
 
         // Release only if invocation succeeded. If failed, the worker may be dirty.
         match result {

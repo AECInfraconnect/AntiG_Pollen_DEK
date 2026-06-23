@@ -20,14 +20,8 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/pep-capabilities/check",
             post(check_capabilities),
         )
-        .route(
-            "/v1/tenants/:tenant/peps/:id/probe",
-            post(probe_pep),
-        )
-        .route(
-            "/v1/tenants/:tenant/peps/:id/bind",
-            post(bind_pep),
-        )
+        .route("/v1/tenants/:tenant/peps/:id/probe", post(probe_pep))
+        .route("/v1/tenants/:tenant/peps/:id/bind", post(bind_pep))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -204,8 +198,12 @@ async fn bind_pep(
     let mut binding = req.clone();
     binding["id"] = serde_json::Value::String(binding_id.clone());
     binding["status"] = serde_json::Value::String("active".to_string());
-    
-    state.registry_store.upsert_raw(&tenant, "pep_binding", &binding_id, &binding).await.map_err(crate::error::ApiError::Internal)?;
+
+    state
+        .registry_store
+        .upsert_raw(&tenant, "pep_binding", &binding_id, &binding)
+        .await
+        .map_err(crate::error::ApiError::Internal)?;
 
     Ok(Json(serde_json::json!({
         "binding_id": binding_id,

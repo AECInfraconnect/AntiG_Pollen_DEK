@@ -3,10 +3,10 @@
 
 pub mod factories;
 
-use std::sync::Arc;
 use dek_pdp_sdk::AdapterRegistry;
 use dek_policy_router::PolicyRouter;
 use serde_json::Value;
+use std::sync::Arc;
 use tracing::{error, warn};
 
 /// Returns a default registry with all compiled-in features enabled

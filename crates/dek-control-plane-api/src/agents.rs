@@ -1,4 +1,8 @@
-use axum::{extract::State, routing::{get, post}, Json, Router};
+use axum::{
+    extract::State,
+    routing::{get, post},
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -9,10 +13,10 @@ pub struct AgentAppState {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ControlLevel {
-    Observe,   // เก็บ telemetry อย่างเดียว ไม่บล็อก (default หลัง register)
-    Guard,     // observe + alert + obligation เบา (เช่น require_approval งานเสี่ยง)
-    Enforce,   // PEP บังคับ policy เต็ม (allow/deny/redact)
-    Block,     // deny ทั้งหมด (kill switch ต่อ agent)
+    Observe, // เก็บ telemetry อย่างเดียว ไม่บล็อก (default หลัง register)
+    Guard,   // observe + alert + obligation เบา (เช่น require_approval งานเสี่ยง)
+    Enforce, // PEP บังคับ policy เต็ม (allow/deny/redact)
+    Block,   // deny ทั้งหมด (kill switch ต่อ agent)
 }
 
 #[derive(Debug, Deserialize)]

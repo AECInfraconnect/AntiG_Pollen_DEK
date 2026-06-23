@@ -36,10 +36,7 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/pdp/runtimes/:id/load-bundle",
             post(load_bundle),
         )
-        .route(
-            "/v1/tenants/:tenant/pdp/evaluate",
-            post(evaluate),
-        )
+        .route("/v1/tenants/:tenant/pdp/evaluate", post(evaluate))
 }
 
 async fn load_bundle(

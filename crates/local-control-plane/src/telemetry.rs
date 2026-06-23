@@ -77,13 +77,19 @@ async fn export_telemetry(
 ) -> impl axum::response::IntoResponse {
     let format = params.format.unwrap_or_else(|| "json".into());
     let mut all_events = Vec::new();
-    
-    for kind in &["decision", "tool_invocation", "resource_access", "policy_deployment", "agent_telemetry"] {
+
+    for kind in &[
+        "decision",
+        "tool_invocation",
+        "resource_access",
+        "policy_deployment",
+        "agent_telemetry",
+    ] {
         if let Ok(mut evs) = st.telemetry_store.list_telemetry(&tenant, kind).await {
             all_events.append(&mut evs);
         }
     }
-    
+
     if format == "csv" {
         let mut csv = String::new();
         csv.push_str("timestamp,event_type,event_id,tenant_id,details\n");
@@ -92,12 +98,19 @@ async fn export_telemetry(
             let etype = ev.get("type").and_then(|v| v.as_str()).unwrap_or("");
             let eid = ev.get("id").and_then(|v| v.as_str()).unwrap_or("");
             let details = ev.to_string().replace("\"", "\"\"");
-            csv.push_str(&format!("{},{},{},{},\"{}\"\n", ts, etype, eid, tenant, details));
+            csv.push_str(&format!(
+                "{},{},{},{},\"{}\"\n",
+                ts, etype, eid, tenant, details
+            ));
         }
-        
+
         ([(axum::http::header::CONTENT_TYPE, "text/csv")], csv).into_response()
     } else {
-        ([(axum::http::header::CONTENT_TYPE, "application/json")], serde_json::to_string(&all_events).unwrap_or_else(|_| "[]".into())).into_response()
+        (
+            [(axum::http::header::CONTENT_TYPE, "application/json")],
+            serde_json::to_string(&all_events).unwrap_or_else(|_| "[]".into()),
+        )
+            .into_response()
     }
 }
 

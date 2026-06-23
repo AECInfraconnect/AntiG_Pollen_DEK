@@ -3,8 +3,8 @@ use dek_plugin_sdk::{
     DecisionEffect, DecisionStatus, EvalRequest, PluginError, PluginIdentity, PluginResult,
     PluginType, PolicyDecision, PolicyEvaluator, WasmLimits, DEK_PLUGIN_API_VERSION,
 };
-use wasmtime::*;
 use serde::{Deserialize, Serialize};
+use wasmtime::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WasmPolicyManifest {
@@ -24,7 +24,7 @@ pub fn validate_wasm_policy_artifact(
     if manifest.abi != "opa-wasm-abi-v1" {
         anyhow::bail!("unsupported wasm policy ABI: {}", manifest.abi);
     }
-    
+
     use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
     hasher.update(wasm_bytes);
@@ -309,20 +309,22 @@ impl PolicyEvaluator for OpaWasmAdapter {
 
             let eval_ctx_get_result = instance
                 .get_typed_func::<i32, i32>(&mut store, "opa_eval_ctx_get_result")
-                .map_err(|e| PluginError::Execution(format!("missing opa_eval_ctx_get_result: {e}")))?;
-            let result_addr = eval_ctx_get_result
-                .call(&mut store, ctx)
-                .map_err(|e| PluginError::Execution(format!("opa_eval_ctx_get_result failed: {e}")))?;
-            
+                .map_err(|e| {
+                    PluginError::Execution(format!("missing opa_eval_ctx_get_result: {e}"))
+                })?;
+            let result_addr = eval_ctx_get_result.call(&mut store, ctx).map_err(|e| {
+                PluginError::Execution(format!("opa_eval_ctx_get_result failed: {e}"))
+            })?;
+
             Ok::<_, PluginError>((store, result_addr))
         };
 
         // Wrap the execution in a timeout. NOTE: For Wasmtime, true interruption requires async yielding or epoch interruption.
         // We use a simple timeout for the host await, though Wasmtime's epoch or fuel limits are the true guards.
-        let (mut store, result_addr) = tokio::time::timeout(std::time::Duration::from_millis(150), eval_task)
-            .await
-            .map_err(|_| PluginError::Timeout("wasm policy evaluation timed out".into()))??;
-
+        let (mut store, result_addr) =
+            tokio::time::timeout(std::time::Duration::from_millis(150), eval_task)
+                .await
+                .map_err(|_| PluginError::Timeout("wasm policy evaluation timed out".into()))??;
 
         if result_addr != 0 {
             let res_json = self

@@ -9,9 +9,18 @@ use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/v1/tenants/:tenant/policies/deploy/preview", post(preview_deploy))
-        .route("/v1/tenants/:tenant/policies/deploy/commit", post(commit_deploy))
-        .route("/v1/tenants/:tenant/policies/deploy/rollback", post(rollback_deploy))
+        .route(
+            "/v1/tenants/:tenant/policies/deploy/preview",
+            post(preview_deploy),
+        )
+        .route(
+            "/v1/tenants/:tenant/policies/deploy/commit",
+            post(commit_deploy),
+        )
+        .route(
+            "/v1/tenants/:tenant/policies/deploy/rollback",
+            post(rollback_deploy),
+        )
 }
 
 async fn preview_deploy(
@@ -37,8 +46,10 @@ async fn commit_deploy(
 ) -> crate::error::ApiResult<Json<Value>> {
     let bundle: dek_bundle_format::PollenPolicyBundle = serde_json::from_value(payload.clone())
         .map_err(|e| crate::error::ApiError::BadRequest(format!("Invalid bundle: {}", e)))?;
-        
-    activate_bundle(bundle, &state).await.map_err(|e| crate::error::ApiError::Internal(anyhow::anyhow!(e)))?;
+
+    activate_bundle(bundle, &state)
+        .await
+        .map_err(|e| crate::error::ApiError::Internal(anyhow::anyhow!(e)))?;
 
     Ok(Json(json!({
         "status": "success",
@@ -47,19 +58,33 @@ async fn commit_deploy(
     })))
 }
 
-pub async fn activate_bundle(bundle: dek_bundle_format::PollenPolicyBundle, state: &AppState) -> anyhow::Result<()> {
+pub async fn activate_bundle(
+    bundle: dek_bundle_format::PollenPolicyBundle,
+    state: &AppState,
+) -> anyhow::Result<()> {
     // 1. Signature Verification
     crate::bundle::verify_bundle(&bundle, "");
 
     // 2. Compatibility Validation
     // (Stubbed: would query PEPs and PDPs and use `dek_capability_registry::is_compatible`)
-    
+
     // 3. Atomic Promotion
     let val = serde_json::to_value(&bundle)?;
-    state.policy_store.upsert_policy_raw(&bundle.metadata.tenant, "bundle:active", &val).await?;
-    
+    state
+        .policy_store
+        .upsert_policy_raw(&bundle.metadata.tenant, "bundle:active", &val)
+        .await?;
+
     // 4. Record Activation
-    state.registry_store.upsert_raw(&bundle.metadata.tenant, "bundle_activation", &bundle.metadata.bundle_id, &val).await?;
+    state
+        .registry_store
+        .upsert_raw(
+            &bundle.metadata.tenant,
+            "bundle_activation",
+            &bundle.metadata.bundle_id,
+            &val,
+        )
+        .await?;
 
     Ok(())
 }
@@ -69,11 +94,18 @@ async fn rollback_deploy(
     State(state): State<AppState>,
     Json(payload): Json<Value>,
 ) -> crate::error::ApiResult<Json<Value>> {
-    let version = payload.get("version").and_then(|v| v.as_str()).unwrap_or("v1.0.0");
+    let version = payload
+        .get("version")
+        .and_then(|v| v.as_str())
+        .unwrap_or("v1.0.0");
     // In a real rollback, we would fetch the old bundle by version and activate it.
     // For now, we just clear the active bundle or mock it.
-    state.policy_store.delete_policy(&tenant, "bundle:active").await.map_err(crate::error::ApiError::Internal)?;
-    
+    state
+        .policy_store
+        .delete_policy(&tenant, "bundle:active")
+        .await
+        .map_err(crate::error::ApiError::Internal)?;
+
     Ok(Json(json!({
         "status": "success",
         "message": "Deployment rolled back",
