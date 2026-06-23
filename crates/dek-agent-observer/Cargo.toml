@@ -13,6 +13,7 @@ chrono.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 dek-agent-binding = { path = "../dek-agent-binding" }
+opentelemetry = "0.21"
 
 [lints]
 workspace = true

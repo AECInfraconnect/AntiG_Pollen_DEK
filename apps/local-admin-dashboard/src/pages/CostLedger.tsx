@@ -1,16 +1,19 @@
 import { useState, useEffect } from "react";
 import { DollarSign, RefreshCw } from "lucide-react";
 import { ObservationApi } from "../services/api";
+import { RegisterControlBar } from "../components/RegisterControlBar";
 
 export function CostLedger() {
   const [loading, setLoading] = useState(false);
   const [totalCost, setTotalCost] = useState<number>(0);
+  const [breakdown, setBreakdown] = useState<Record<string, number>>({});
 
   const fetchCost = async () => {
     setLoading(true);
     try {
-      const data = await ObservationApi.getCostSummary();
-      setTotalCost((data as any).total_cost || 0);
+      const data: any = await ObservationApi.getCostSummary();
+      setTotalCost(data.total_estimated_cost_usd || 0);
+      setBreakdown(data.agent_breakdown || {});
     } catch (e) {
       console.error(e);
     } finally {
@@ -67,12 +70,26 @@ export function CostLedger() {
 
       <div className="glass rounded-xl p-6">
         <h3 className="font-semibold mb-4">Cost Breakdown by Agent</h3>
-        <div className="flex h-[200px] items-center justify-center rounded-md border border-dashed border-muted">
-          <p className="text-sm text-muted-foreground">
-            No detailed breakdowns yet. Configure dek-agent-observer to capture
-            provider usage.
-          </p>
-        </div>
+        {Object.keys(breakdown).length === 0 ? (
+          <div className="flex h-[200px] items-center justify-center rounded-md border border-dashed border-muted">
+            <p className="text-sm text-muted-foreground">
+              No detailed breakdowns yet. Configure dek-agent-observer to capture
+              provider usage.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {Object.entries(breakdown).map(([agentId, cost]) => (
+              <div key={agentId} className="flex justify-between items-center p-3 border rounded-lg">
+                <span className="font-medium">{agentId}</span>
+                <div className="flex items-center gap-4">
+                  <span className="text-muted-foreground">${cost.toFixed(2)}</span>
+                  <RegisterControlBar agentId={agentId} tenantId="local" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

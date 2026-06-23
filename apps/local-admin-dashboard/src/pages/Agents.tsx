@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Users, MoreVertical, Plus } from "lucide-react";
 import { RegistryApi } from "../services/api";
 import type { AiAgent } from "../services/api";
+import { RegisterControlBar } from "../components/RegisterControlBar";
 
 export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
   const [agents, setAgents] = useState<AiAgent[]>([]);
@@ -103,7 +104,8 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
                   <td className="px-6 py-4 text-muted-foreground">
                     {new Date(agent.meta.updated_at).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                    <RegisterControlBar agentId={agent.agent_id} tenantId="local" onSuccess={() => window.location.reload()} />
                     <button className="text-muted-foreground hover:text-foreground transition-colors p-1">
                       <MoreVertical className="h-4 w-4" />
                     </button>

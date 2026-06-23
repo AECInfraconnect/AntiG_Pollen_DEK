@@ -3,6 +3,7 @@ import { Wrench, MoreVertical, Plus } from "lucide-react";
 import { RegistryApi } from "../services/api";
 import type { Tool } from "../services/api";
 import { ToolDetailDrawer } from "../components/ToolDetailDrawer";
+import { RegisterControlBar } from "../components/RegisterControlBar";
 
 export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
   const [tools, setTools] = useState<Tool[]>([]);
@@ -112,7 +113,8 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
                       {tool.risk_level}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                    <RegisterControlBar agentId={(tool as any).agent_id || "unknown"} tenantId="local" />
                     <button className="text-muted-foreground hover:text-foreground transition-colors p-1">
                       <MoreVertical className="h-4 w-4" />
                     </button>

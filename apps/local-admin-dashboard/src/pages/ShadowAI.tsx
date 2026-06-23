@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ShieldAlert, AlertTriangle } from "lucide-react";
 import { RegistryApi } from "../services/api";
+import { RegisterControlBar } from "../components/RegisterControlBar";
 
 export function ShadowAI({ hideHeader = false }: { hideHeader?: boolean }) {
   const [candidates, setCandidates] = useState<any[]>([]);
@@ -63,6 +64,7 @@ export function ShadowAI({ hideHeader = false }: { hideHeader?: boolean }) {
                       )}
                     </h4>
                   </div>
+                  <RegisterControlBar agentId={c.candidate_id} tenantId="local" onSuccess={() => window.location.reload()} />
                 </div>
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-sm font-mono bg-muted/20 inline-block px-2 py-0.5 rounded border mb-2">

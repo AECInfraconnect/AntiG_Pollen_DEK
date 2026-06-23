@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Database, MoreVertical, Plus } from "lucide-react";
-import { RegistryApi } from "../services/api";
 import type { Resource } from "../services/api";
 import { ResourceDetailDrawer } from "../components/ResourceDetailDrawer";
 
@@ -12,7 +11,8 @@ export function Resources() {
   );
 
   useEffect(() => {
-    RegistryApi.listResources()
+    fetch("http://localhost:3000/v1/tenants/default/observations/resources")
+      .then(res => res.json())
       .then(setResources)
       .catch(console.error)
       .finally(() => setLoading(false));

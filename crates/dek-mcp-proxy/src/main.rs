@@ -792,34 +792,55 @@ async fn handle_mcp_request(
             compliance_tags.dedup();
 
             if let Some(telemetry) = &state.telemetry {
-                let event = json!({
-                    "schema_version": "1.0",
-                    "event_id": uuid::Uuid::new_v4().to_string(),
-                    "event_type": "decision_log",
-                    "timestamp": chrono::Utc::now().to_rfc3339(),
-                    "tenant_id": final_tenant_id.clone(),
-                    "workspace_id": "default",
-                    "environment_id": "local",
-                    "device_id": metadata.device_id.clone(),
-                    "redaction_applied": true,
-                    "compliance_tags": if compliance_tags.is_empty() { serde_json::Value::Null } else { json!(compliance_tags) },
-                    "payload": {
-                        "decision_id": decision_req.decision_id.clone(),
-                        "request_id": decision_req.request_id.clone(),
-                        "trace_id": decision_req.request_id.clone(),
-                        "decision": if decision.allow { "allow" } else { "deny" },
-                        "reason": decision.reason.clone(),
-                        "matched_policy_ids": [],
-                        "matched_route_id": serde_json::Value::Null,
-                        "adapter_results": [],
-                        "obligations": [],
-                        "latency_ms": 0,
-                        "principal": principal.clone(),
-                        "tool": normalized.tool_name.clone().unwrap_or_default(),
-                        "method": normalized.request_type.clone()
-                    }
-                });
-                telemetry.emit_async(event, dek_telemetry::spooler::Priority::Normal);
+                let action = if normalized.request_type.is_empty() { "tools/call".into() } else { normalized.request_type.clone() };
+                let is_resource = action == "resources/read" || action == "resources/list";
+
+                let obs = dek_agent_observer::model::AgentObservationEvent {
+                    event_id: uuid::Uuid::new_v4().to_string(),
+                    tenant_id: final_tenant_id.clone(),
+                    trace_id: decision_req.request_id.clone(),
+                    agent_id: normalized.agent_id.clone(),
+                    shadow_candidate_id: None,
+                    tool_id: if is_resource { None } else { normalized.tool_name.clone() },
+                    resource_id: None,
+                    surface: "mcp".into(),
+                    action: action.clone(),
+                    pep_type: Some("mcp_proxy".into()),
+                    risk_level: None,
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                    payload_json: "{}".into(),
+                    token_usage: None,
+                    event_kind: if is_resource { dek_agent_observer::model::EventKind::ResourceAccess } else { dek_agent_observer::model::EventKind::ToolCall },
+                    decision: Some(dek_agent_observer::model::DecisionInfo {
+                        allow: decision.allow,
+                        reason_code: if decision.allow { "OK".into() } else { "DENY".into() },
+                        obligations: decision.obligations.clone(),
+                        matched_policy_ids: vec![],
+                        compliance_tags: compliance_tags.clone(),
+                    }),
+                    tool_call: if is_resource { None } else {
+                        Some(dek_agent_observer::model::ToolCall {
+                            tool_name: normalized.tool_name.clone().unwrap_or_default(),
+                            server: None,
+                            args_summary: None,
+                            result_status: if decision.allow { "ok".into() } else { "denied".into() },
+                        })
+                    },
+                    resource_access: if is_resource {
+                        Some(dek_agent_observer::model::ResourceAccess {
+                            resource_type: "mcp_resource".into(),
+                            target_redacted: normalized.resource_uri.clone().unwrap_or_default(),
+                            bytes: None,
+                            verb: "read".into(),
+                        })
+                    } else { None },
+                    latency_ms: Some(start_time.elapsed().as_millis() as i64),
+                    provider: None,
+                };
+                let mut event_json = serde_json::to_value(&obs).unwrap_or(json!({}));
+                // ensure the spooler treats it correctly
+                event_json["event_type"] = json!("agent_observation");
+                telemetry.emit_async(event_json, dek_telemetry::spooler::Priority::Normal);
             }
 
             let has_mfa = identity

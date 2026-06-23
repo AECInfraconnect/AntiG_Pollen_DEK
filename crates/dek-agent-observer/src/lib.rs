@@ -5,6 +5,7 @@ pub mod binding_store;
 pub mod correlate;
 pub mod cost;
 pub mod coverage;
+pub mod egress_parser;
 pub mod error;
 pub mod ingest;
 pub mod model;

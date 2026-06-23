@@ -177,6 +177,10 @@ pub trait ObservabilityStore: Send + Sync {
     async fn list_cost_ledger(&self) -> Result<Vec<CostLedgerEntry>>;
     async fn upsert_policy_suggestion(&self, suggestion: &PolicySuggestion) -> Result<()>;
     async fn list_policy_suggestions(&self, tenant_id: &str) -> Result<Vec<PolicySuggestion>>;
+    
+    // Aggregation queries
+    async fn cost_breakdown_by_agent(&self, tenant: &str, since: &str) -> Result<Vec<AgentCostRow>>;
+    async fn tool_usage_by_agent(&self, tenant: &str, since: &str) -> Result<Vec<ToolUsageRow>>;
 }
 
 pub struct SqliteStore {
@@ -193,6 +197,7 @@ impl SqliteStore {
             include_str!("../migrations/20260621000000_pdp_runtimes_and_routes.sql"),
             include_str!("../migrations/20260622000000_policy_preset_deployments.sql"),
             include_str!("../migrations/20260622000001_agent_inventory.sql"),
+            include_str!("../migrations/20260623000000_observability_v2.sql"),
         ];
 
         let tx = conn.transaction()?;
@@ -1646,15 +1651,27 @@ impl ObservabilityStore for SqliteStore {
         let pep_type = event.pep_type.clone();
         let risk_level = event.risk_level.clone();
         let timestamp = event.timestamp.clone();
+        
+        // new fields
+        let event_kind = serde_json::to_string(&event.event_kind).unwrap_or_else(|_| "\"generic\"".into()).replace("\"", "");
+        let provider = event.provider.clone();
+        let input_tokens = event.token_usage.as_ref().and_then(|u| u.input_tokens);
+        let output_tokens = event.token_usage.as_ref().and_then(|u| u.output_tokens);
+        let total_tokens = event.token_usage.as_ref().and_then(|u| u.total_tokens);
+        let latency_ms = event.latency_ms;
 
         tokio::task::spawn_blocking(move || -> Result<()> {
             let conn = conn_arc.lock().unwrap();
             conn.execute(
                 r#"
-                INSERT INTO observation_events (id, tenant_id, trace_id, agent_id, shadow_candidate_id, tool_id, resource_id, surface, action, pep_type, risk_level, timestamp, payload_json)
-                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                INSERT INTO observation_events (
+                    id, tenant_id, trace_id, agent_id, shadow_candidate_id, tool_id, resource_id, 
+                    surface, action, pep_type, risk_level, timestamp, payload_json,
+                    event_kind, provider, input_tokens, output_tokens, total_tokens, latency_ms
+                )
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)
                 "#,
-                params![event_id, tenant_id, trace_id, agent_id, shadow_candidate_id, tool_id, resource_id, surface, action, pep_type, risk_level, timestamp, payload]
+                params![event_id, tenant_id, trace_id, agent_id, shadow_candidate_id, tool_id, resource_id, surface, action, pep_type, risk_level, timestamp, payload, event_kind, provider, input_tokens, output_tokens, total_tokens, latency_ms]
             )?;
             Ok(())
         }).await??;
@@ -1799,4 +1816,84 @@ impl ObservabilityStore for SqliteStore {
         }
         Ok(out)
     }
+
+    async fn cost_breakdown_by_agent(&self, tenant: &str, since: &str) -> Result<Vec<AgentCostRow>> {
+        let since_val = since.to_string();
+        let conn_arc = self.conn.clone();
+        
+        let rows = tokio::task::spawn_blocking(move || -> Result<Vec<AgentCostRow>> {
+            let conn = conn_arc.lock().unwrap();
+            let sql = r#"
+                SELECT agent_id,
+                       COALESCE(SUM(total_cost),0)   AS cost,
+                       COALESCE(SUM(total_tokens),0) AS tokens
+                FROM cost_ledger
+                WHERE timestamp >= ?1
+                GROUP BY agent_id
+                ORDER BY cost DESC
+            "#;
+            let mut stmt = conn.prepare(sql)?;
+            let mut rows = stmt.query(params![since_val])?;
+            let mut result = Vec::new();
+            while let Some(row) = rows.next()? {
+                result.push(AgentCostRow {
+                    agent_id: row.get(0)?,
+                    cost: row.get(1)?,
+                    tokens: row.get(2)?,
+                });
+            }
+            Ok(result)
+        }).await??;
+        Ok(rows)
+    }
+
+    async fn tool_usage_by_agent(&self, tenant: &str, since: &str) -> Result<Vec<ToolUsageRow>> {
+        let tenant_val = tenant.to_string();
+        let since_val = since.to_string();
+        let conn_arc = self.conn.clone();
+        
+        let rows = tokio::task::spawn_blocking(move || -> Result<Vec<ToolUsageRow>> {
+            let conn = conn_arc.lock().unwrap();
+            let sql = r#"
+                SELECT agent_id, tool_id,
+                       COUNT(*) AS calls,
+                       SUM(CASE WHEN json_extract(payload_json,'$.decision.allow')=0 THEN 1 ELSE 0 END) AS denied,
+                       AVG(latency_ms) AS avg_latency
+                FROM observation_events
+                WHERE tenant_id=?1 AND event_kind='tool_call' AND timestamp>=?2
+                GROUP BY agent_id, tool_id
+                ORDER BY calls DESC
+            "#;
+            let mut stmt = conn.prepare(sql)?;
+            let mut rows = stmt.query(params![tenant_val, since_val])?;
+            let mut result = Vec::new();
+            while let Some(row) = rows.next()? {
+                result.push(ToolUsageRow {
+                    agent_id: row.get::<_, Option<String>>(0)?.unwrap_or_default(),
+                    tool_id: row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                    calls: row.get(2)?,
+                    denied: row.get(3)?,
+                    avg_latency: row.get::<_, Option<f64>>(4)?.unwrap_or(0.0),
+                });
+            }
+            Ok(result)
+        }).await??;
+        Ok(rows)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AgentCostRow {
+    pub agent_id: String,
+    pub cost: f64,
+    pub tokens: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ToolUsageRow {
+    pub agent_id: String,
+    pub tool_id: String,
+    pub calls: i64,
+    pub denied: i64,
+    pub avg_latency: f64,
 }

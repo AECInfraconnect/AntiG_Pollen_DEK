@@ -7,7 +7,6 @@ import {
   ShieldAlert,
   Download,
 } from "lucide-react";
-import { TelemetryApi } from "../services/api";
 import type {
   TelemetryEventEnvelope,
   DecisionResult,
@@ -34,8 +33,23 @@ export function DecisionLogs() {
 
   const load = useCallback(() => {
     setLoading(true);
-    TelemetryApi.listDecisionLogs()
-      .then(setEvents)
+    fetch("http://localhost:3000/v1/tenants/default/observations?kind=decision")
+      .then(res => res.json())
+      .then((data: any[]) => {
+        // Map AgentObservationEvent to match UI expectation
+        const mapped = data.map(ev => ({
+          timestamp: ev.timestamp,
+          event_id: ev.event_id,
+          payload: {
+            decision: ev.decision?.allow ? "allow" : "deny",
+            reason: ev.decision?.reason_code,
+            request_id: ev.trace_id,
+            matched_policy_ids: ev.decision?.matched_policy_ids,
+            latency_ms: ev.latency_ms,
+          }
+        }));
+        setEvents(mapped as any);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);

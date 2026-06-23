@@ -16,6 +16,56 @@ pub struct AgentObservationEvent {
     pub timestamp: String,
     pub payload_json: String,
     pub token_usage: Option<TokenUsage>,
+    
+    // Unified Event fields
+    #[serde(default)]
+    pub event_kind: EventKind,
+    #[serde(default)]
+    pub decision: Option<DecisionInfo>,
+    #[serde(default)]
+    pub tool_call: Option<ToolCall>,
+    #[serde(default)]
+    pub resource_access: Option<ResourceAccess>,
+    #[serde(default)]
+    pub latency_ms: Option<i64>,
+    #[serde(default)]
+    pub provider: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum EventKind {
+    #[default]
+    Generic,
+    LlmCall,
+    ToolCall,
+    ResourceAccess,
+    Decision,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCall {
+    pub tool_name: String,
+    pub server: Option<String>,
+    pub args_summary: Option<String>,
+    pub result_status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceAccess {
+    pub resource_type: String,
+    pub target_redacted: String,
+    pub bytes: Option<i64>,
+    pub verb: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DecisionInfo {
+    pub allow: bool,
+    pub reason_code: String,
+    pub obligations: Vec<String>,
+    pub matched_policy_ids: Vec<String>,
+    pub compliance_tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
