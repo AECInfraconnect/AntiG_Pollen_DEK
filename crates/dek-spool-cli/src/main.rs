@@ -5,6 +5,7 @@ use dek_secure_spool::{
 };
 use uuid::Uuid;
 
+#[allow(clippy::print_stdout)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Initialize OS-specific KeyStore...");
 

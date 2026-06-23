@@ -14,6 +14,7 @@ pub struct DekConfig {
     pub policy_config: Option<PolicyConfig>,
 }
 
+#[allow(clippy::print_stdout)]
 fn main() -> anyhow::Result<()> {
     let json = serde_json::json!({
         "policy_config": {

@@ -12,6 +12,7 @@ use dek_domain_schema::{
     telemetry_event::TelemetryEvent, tenant::Tenant, tool::Tool,
 };
 
+#[allow(clippy::print_stdout)]
 fn main() {
     let schema_dir = Path::new("../../schemas");
     fs::create_dir_all(schema_dir).unwrap();

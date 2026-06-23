@@ -101,6 +101,7 @@ mod tests {
             signatures: vec![sig("ollama", 1)],
             removed_ids: vec![],
             catalog_hash: "".into(),
+            model_classifier: None,
         };
         let mut db = FingerprintDb::from_baseline(base);
         let delta = FingerprintDefinition {
@@ -113,6 +114,7 @@ mod tests {
             signatures: vec![sig("goose_cli", 1)],
             removed_ids: vec!["ollama".into()],
             catalog_hash: "".into(),
+            model_classifier: None,
         };
         db.apply(delta).unwrap();
         assert!(db.by_id.contains_key("goose_cli"));
@@ -136,6 +138,7 @@ mod tests {
             signatures: vec![],
             removed_ids: vec![],
             catalog_hash: "".into(),
+            model_classifier: None,
         };
         assert!(db.apply(bad).is_err());
     }

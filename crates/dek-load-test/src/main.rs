@@ -30,6 +30,7 @@ struct Args {
 }
 
 #[tokio::main]
+#[allow(clippy::print_stdout)]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     let args = Args::parse();

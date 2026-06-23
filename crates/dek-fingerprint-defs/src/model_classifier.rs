@@ -42,7 +42,9 @@ pub struct ModelClassifier {
     params_b_re: Option<Regex>,
     params_m_re: Option<Regex>,
     moe_active_b_re: Option<Regex>,
+    #[allow(dead_code)]
     moe_experts_re: Option<Regex>,
+    #[allow(dead_code)]
     context_hint_re: Option<Regex>,
     quant_re: Option<Regex>,
     variant_res: Vec<(String, Regex)>,

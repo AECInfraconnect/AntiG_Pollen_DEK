@@ -3,6 +3,7 @@
 
 use dek_config::DekConfig;
 
+#[allow(clippy::print_stdout)]
 fn main() -> anyhow::Result<()> {
     let json = serde_json::json!({
         "device_id": "device-001",

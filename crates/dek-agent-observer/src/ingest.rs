@@ -1,5 +1,6 @@
 use crate::model::AgentObservationEvent;
 
+#[allow(clippy::print_stdout)]
 pub fn ingest_event(event: AgentObservationEvent) -> Result<(), String> {
     // Basic validation
     if event.event_id.is_empty() {

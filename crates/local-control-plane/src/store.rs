@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::needless_borrow)]
 use anyhow::Result;
 use dek_agent_observer::model::{AgentObservationEvent, CostLedgerEntry};
 use dek_control_plane_api::registry::*;

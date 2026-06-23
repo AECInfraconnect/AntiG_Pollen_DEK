@@ -1,3 +1,4 @@
+#![allow(clippy::print_stdout)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
@@ -7,6 +8,7 @@ use wasmtime::*;
 use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
 use wasmtime_wasi::WasiCtxBuilder;
 
+// ...
 fn main() {
     let input_str = r#"{"allow": true}"#;
     let stdin = MemoryInputPipe::new(bytes::Bytes::from(input_str.to_string().into_bytes()));
