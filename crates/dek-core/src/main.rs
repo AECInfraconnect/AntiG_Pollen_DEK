@@ -4,6 +4,9 @@
 #![warn(clippy::print_stdout, clippy::print_stderr)]
 #![deny(clippy::unwrap_used, clippy::expect_used)]
 
+#[global_allocator]
+static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 mod api;
 
 pub mod capabilities;

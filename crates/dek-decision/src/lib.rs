@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use serde::{Deserialize, Serialize};
@@ -117,12 +117,26 @@ impl PolicyRouter {
         // Simple evaluation logic: AND across all required adapters in the first matched route.
         // For demonstration, we just evaluate all adapters.
         for adapter in self.adapters.values() {
-            if let Ok(res) = adapter.evaluate(request).await {
-                if matches!(res.decision, DecisionEffect::Deny) {
-                    final_decision = DecisionEffect::Deny;
-                    final_reason = res.reason.clone();
+            let eval_future = std::panic::AssertUnwindSafe(adapter.evaluate(request));
+            let result = futures::FutureExt::catch_unwind(eval_future).await;
+            
+            match result {
+                Ok(Ok(res)) => {
+                    if matches!(res.decision, DecisionEffect::Deny) {
+                        final_decision = DecisionEffect::Deny;
+                        final_reason = res.reason.clone();
+                    }
+                    adapter_results.push(res);
                 }
-                adapter_results.push(res);
+                Ok(Err(e)) => {
+                    tracing::error!(error = ?e, adapter = adapter.adapter_id(), "adapter evaluation failed");
+                }
+                Err(_) => {
+                    tracing::error!(adapter = adapter.adapter_id(), req_id = %request.request_id, "policy eval panicked; failing closed (DENY)");
+                    final_decision = DecisionEffect::Deny;
+                    final_reason = "internal_policy_error".to_string();
+                    break;
+                }
             }
         }
 

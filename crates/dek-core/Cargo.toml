@@ -58,6 +58,7 @@ chrono.workspace = true
 rcgen = "0.13"
 dek-secure-spool = { version = "0.1.0", path = "../dek-secure-spool" }
 dek-errors = { version = "0.1.0", path = "../dek-errors" }
+mimalloc = "0.1.52"
 
 [dev-dependencies]
 wiremock = "0.6"

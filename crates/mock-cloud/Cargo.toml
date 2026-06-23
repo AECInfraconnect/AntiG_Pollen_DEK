@@ -13,7 +13,7 @@ tokio = { workspace = true, features = ["signal"] }
 anyhow.workspace = true
 reqwest.workspace = true
 axum = "0.7"
-axum-server = { version = "0.7.1", features = ["tls-rustls"] }
+axum-server = { version = "0.7.1", default-features = false, features = ["tls-rustls-no-provider"] }
 base64 = "0.22.1"
 rcgen = { version = "0.13", features = ["x509-parser", "pem"] }
 rustls.workspace = true
