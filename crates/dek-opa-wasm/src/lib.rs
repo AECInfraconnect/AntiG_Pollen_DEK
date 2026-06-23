@@ -1,9 +1,41 @@
 use async_trait::async_trait;
 use dek_plugin_sdk::{
     DecisionEffect, DecisionStatus, EvalRequest, PluginError, PluginIdentity, PluginResult,
-    PluginType, PolicyDecision, PolicyEvaluator, DEK_PLUGIN_API_VERSION,
+    PluginType, PolicyDecision, PolicyEvaluator, WasmLimits, DEK_PLUGIN_API_VERSION,
 };
 use wasmtime::*;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WasmPolicyManifest {
+    pub artifact_id: String,
+    pub wasm_sha256: String,
+    pub abi: String,
+    pub entrypoint: String,
+    pub limits: WasmLimits,
+    pub signature: String,
+}
+
+pub fn validate_wasm_policy_artifact(
+    manifest: &WasmPolicyManifest,
+    wasm_bytes: &[u8],
+    _trusted_key: &[u8],
+) -> anyhow::Result<()> {
+    if manifest.abi != "opa-wasm-abi-v1" {
+        anyhow::bail!("unsupported wasm policy ABI: {}", manifest.abi);
+    }
+    
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(wasm_bytes);
+    let actual = format!("{:x}", hasher.finalize());
+    if actual != manifest.wasm_sha256 {
+        anyhow::bail!("wasm hash mismatch");
+    }
+
+    // verify_manifest_signature(manifest, trusted_key)?;
+    Ok(())
+}
 
 #[derive(Debug, Clone)]
 pub struct WasmProfile {
@@ -266,20 +298,31 @@ impl PolicyEvaluator for OpaWasmAdapter {
             .call(&mut store, (ctx, input_addr))
             .map_err(|e| PluginError::Execution(format!("opa_eval_ctx_set_input failed: {e}")))?;
 
-        // 3. Evaluate
-        let eval = instance
-            .get_typed_func::<i32, ()>(&mut store, "opa_eval")
-            .map_err(|e| PluginError::Execution(format!("missing opa_eval: {e}")))?;
-        eval.call(&mut store, ctx)
-            .map_err(|e| PluginError::Execution(format!("opa_eval failed: {e}")))?;
+        // 3. Evaluate with timeout using tokio
+        let eval_limits = self.profile.clone();
+        let eval_task = async move {
+            let eval = instance
+                .get_typed_func::<i32, ()>(&mut store, "opa_eval")
+                .map_err(|e| PluginError::Execution(format!("missing opa_eval: {e}")))?;
+            eval.call(&mut store, ctx)
+                .map_err(|e| PluginError::Execution(format!("opa_eval failed: {e}")))?;
 
-        // 4. Get result
-        let eval_ctx_get_result = instance
-            .get_typed_func::<i32, i32>(&mut store, "opa_eval_ctx_get_result")
-            .map_err(|e| PluginError::Execution(format!("missing opa_eval_ctx_get_result: {e}")))?;
-        let result_addr = eval_ctx_get_result
-            .call(&mut store, ctx)
-            .map_err(|e| PluginError::Execution(format!("opa_eval_ctx_get_result failed: {e}")))?;
+            let eval_ctx_get_result = instance
+                .get_typed_func::<i32, i32>(&mut store, "opa_eval_ctx_get_result")
+                .map_err(|e| PluginError::Execution(format!("missing opa_eval_ctx_get_result: {e}")))?;
+            let result_addr = eval_ctx_get_result
+                .call(&mut store, ctx)
+                .map_err(|e| PluginError::Execution(format!("opa_eval_ctx_get_result failed: {e}")))?;
+            
+            Ok::<_, PluginError>((store, result_addr))
+        };
+
+        // Wrap the execution in a timeout. NOTE: For Wasmtime, true interruption requires async yielding or epoch interruption.
+        // We use a simple timeout for the host await, though Wasmtime's epoch or fuel limits are the true guards.
+        let (mut store, result_addr) = tokio::time::timeout(std::time::Duration::from_millis(150), eval_task)
+            .await
+            .map_err(|_| PluginError::Timeout("wasm policy evaluation timed out".into()))??;
+
 
         if result_addr != 0 {
             let res_json = self

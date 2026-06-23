@@ -33,3 +33,7 @@ pub mod pdp_routing_api;
 pub mod pdp_runtime_api;
 
 pub mod cloud_sync;
+
+pub mod pdp_api;
+pub mod plugin_api;
+pub mod policy_deploy_api;

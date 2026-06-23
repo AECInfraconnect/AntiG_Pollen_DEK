@@ -106,7 +106,7 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
                   </td>
                   <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
                     <RegisterControlBar agentId={agent.agent_id} tenantId="local" onSuccess={() => window.location.reload()} />
-                    <button className="text-muted-foreground hover:text-foreground transition-colors p-1">
+                    <button onClick={() => alert('Agent options coming soon!')} className="text-muted-foreground hover:text-foreground transition-colors p-1">
                       <MoreVertical className="h-4 w-4" />
                     </button>
                   </td>

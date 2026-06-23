@@ -15,7 +15,7 @@ export const RegisterControlBar: React.FC<RegisterControlBarProps> = ({ agentId,
     setLoading(true);
     setResult(null);
     try {
-      const resp = await fetch(`/api/v1/tenants/${tenantId}/agents/${agentId}/register`, {
+      const resp = await fetch(`/v1/tenants/${tenantId}/agents/${agentId}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,7 +40,7 @@ export const RegisterControlBar: React.FC<RegisterControlBarProps> = ({ agentId,
       <select
         value={level}
         onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setLevel(e.target.value)}
-        className="h-8 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="h-8 rounded-md border border-input bg-background text-foreground px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&>option]:bg-background [&>option]:text-foreground"
       >
         <option value="Observe">Observe</option>
         <option value="Guard">Guard</option>

@@ -17,6 +17,7 @@ reqwest = { workspace = true, features = ["json"] }
 dek-config = { path = "../dek-config" }
 moka = { version = "0.12", features = ["future"] }
 thiserror.workspace = true
+tokio = { workspace = true, features = ["time"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros", "sync", "time", "test-util"] }

@@ -319,7 +319,7 @@ async fn validate_policy(
             if language == "cedar" {
                 match dek_cedar::CedarAdapter::new(text) {
                     Ok(adapter) => {
-                        if let Err(e) = adapter.validate() {
+                        if let Err(e) = adapter.validate(None) {
                             errors.push(format!("Cedar schema validation error: {}", e));
                         }
                     }
@@ -364,7 +364,7 @@ async fn validate_policy(
                             if rendered.language == "cedar" {
                                 match dek_cedar::CedarAdapter::new(&rendered.content) {
                                     Ok(adapter) => {
-                                        if let Err(e) = adapter.validate() {
+                                        if let Err(e) = adapter.validate(None) {
                                             errors.push(format!(
                                                 "Rendered Cedar schema validation error: {}",
                                                 e

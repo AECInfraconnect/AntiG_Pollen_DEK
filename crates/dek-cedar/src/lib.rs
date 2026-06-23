@@ -35,11 +35,10 @@ impl CedarAdapter {
         })
     }
 
-    pub fn validate(&self) -> Result<()> {
-        // Simple validation of syntax is already done in `new()`.
-        // To validate schema properly:
-        let schema_src =
-            r#"{"entityTypes": {"User": {}, "Action": {}, "Resource": {}}, "actions": {}}"#;
+    pub fn validate(&self, schema_src: Option<&str>) -> Result<()> {
+        let schema_src = schema_src.unwrap_or(
+            r#"{"entityTypes": {"User": {}, "Action": {}, "Resource": {}}, "actions": {}}"#
+        );
         let schema = match cedar_policy::Schema::from_str(schema_src) {
             Ok(s) => s,
             Err(_) => return Ok(()), // Ignore schema errors if incomplete
@@ -129,9 +128,13 @@ impl PolicyEvaluator for CedarAdapter {
             })
         };
 
-        let principal = get_field("principal").unwrap_or_else(|| "User::\"unknown\"".to_string());
-        let action = get_field("action").unwrap_or_else(|| "Action::\"unknown\"".to_string());
-        let resource = get_field("resource").unwrap_or_else(|| "Resource::\"unknown\"".to_string());
+        let payload_principal = get_field("principal");
+        let payload_action = get_field("action");
+        let payload_resource = get_field("resource");
+
+        let principal = input.subject.or(payload_principal).unwrap_or_else(|| "User::\"unknown\"".to_string());
+        let action = input.action.or(payload_action).unwrap_or_else(|| "Action::\"unknown\"".to_string());
+        let resource = input.resource.or(payload_resource).unwrap_or_else(|| "Resource::\"unknown\"".to_string());
 
         tracing::info!(
             "Evaluating Cedar Policy:\n{}\nInput: principal={}, action={}, resource={}",

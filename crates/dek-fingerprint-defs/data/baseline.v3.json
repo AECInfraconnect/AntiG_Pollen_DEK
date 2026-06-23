@@ -1441,6 +1441,228 @@
         "tool.use"
       ],
       "signal_weights": null
+    },
+    {
+      "id": "manus_ai",
+      "display_name": "Manus AI",
+      "agent_type": "desktop_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Manus AI Agent",
+        "references": [],
+        "added_in": "20260623000",
+        "tags": [
+          "desktop",
+          "agent"
+        ]
+      },
+      "process_names": [
+        "manus",
+        "manus-ai",
+        "Manus"
+      ],
+      "binary_hashes": [],
+      "config_paths": {
+        "all": [
+          "~/.manus/config.json"
+        ]
+      },
+      "config_parsers": [
+        "manus_json"
+      ],
+      "cmd_patterns": [
+        "(?i)\\\\bmanus\\\\b"
+      ],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [
+        "observe_only"
+      ],
+      "risk_weight": 0.8,
+      "capability_tags": [
+        "tool.use",
+        "code.agentic"
+      ]
+    },
+    {
+      "id": "claude_browser",
+      "display_name": "Claude in Browser",
+      "agent_type": "web_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Claude Web App",
+        "references": [
+          "https://claude.ai"
+        ],
+        "added_in": "20260623000",
+        "tags": [
+          "web",
+          "llm"
+        ]
+      },
+      "process_names": [
+        "chrome",
+        "msedge",
+        "brave",
+        "safari",
+        "firefox"
+      ],
+      "egress_hosts": [
+        "claude.ai",
+        "api.anthropic.com"
+      ],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "network_egress",
+      "control_strategies": [
+        "network_filter",
+        "observe_only"
+      ],
+      "risk_weight": 0.5,
+      "capability_tags": [
+        "text.generation",
+        "vision.input"
+      ]
+    },
+    {
+      "id": "chatgpt_browser",
+      "display_name": "ChatGPT in Browser",
+      "agent_type": "web_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "ChatGPT Web App",
+        "references": [
+          "https://chatgpt.com"
+        ],
+        "added_in": "20260623000",
+        "tags": [
+          "web",
+          "llm"
+        ]
+      },
+      "process_names": [
+        "chrome",
+        "msedge",
+        "brave",
+        "safari",
+        "firefox"
+      ],
+      "egress_hosts": [
+        "chatgpt.com",
+        "openai.com",
+        "chat.openai.com"
+      ],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "network_egress",
+      "control_strategies": [
+        "network_filter",
+        "observe_only"
+      ],
+      "risk_weight": 0.5,
+      "capability_tags": [
+        "text.generation",
+        "vision.input",
+        "tool.use"
+      ]
+    },
+    {
+      "id": "deepseek_browser",
+      "display_name": "Deepseek in Browser",
+      "agent_type": "web_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Deepseek Web App",
+        "references": [
+          "https://chat.deepseek.com"
+        ],
+        "added_in": "20260623000",
+        "tags": [
+          "web",
+          "llm"
+        ]
+      },
+      "process_names": [
+        "chrome",
+        "msedge",
+        "brave",
+        "safari",
+        "firefox"
+      ],
+      "egress_hosts": [
+        "chat.deepseek.com",
+        "api.deepseek.com",
+        "deepseek.com"
+      ],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "network_egress",
+      "control_strategies": [
+        "network_filter",
+        "observe_only"
+      ],
+      "risk_weight": 0.6,
+      "capability_tags": [
+        "text.generation",
+        "reasoning.cot"
+      ]
+    },
+    {
+      "id": "gemini_pro_antigravity",
+      "display_name": "Gemini Pro in Antigravity",
+      "agent_type": "desktop_agent",
+      "revision": 1,
+      "meta": {
+        "author": "pollen-threat-intel",
+        "description": "Antigravity App using Gemini Pro",
+        "references": [],
+        "added_in": "20260623000",
+        "tags": [
+          "desktop",
+          "agent"
+        ]
+      },
+      "process_names": [
+        "antigravity",
+        "Antigravity"
+      ],
+      "cmd_patterns": [
+        "(?i)gemini[_-]pro",
+        "(?i)antigravity"
+      ],
+      "binary_hashes": [],
+      "config_paths": {
+        "all": [
+          "~/.gemini/antigravity/brain"
+        ]
+      },
+      "config_parsers": [],
+      "ports": [],
+      "port_probe": null,
+      "detection_logic": "process_and_config",
+      "control_strategies": [
+        "observe_only"
+      ],
+      "risk_weight": 0.7,
+      "capability_tags": [
+        "code.agentic",
+        "tool.use",
+        "text.generation"
+      ]
     }
   ],
   "model_classifier": {

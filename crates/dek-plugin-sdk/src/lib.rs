@@ -27,6 +27,11 @@ pub enum PluginType {
     ModelProvider,
     EnforcementProvider,
     ControlPlane,
+    Detector,
+    ResourceClassifier,
+    TelemetryProcessor,
+    PepAdapter,
+    PdpConnector,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,3 +169,81 @@ pub trait TransformPlugin: Send + Sync {
     fn identity(&self) -> PluginIdentity;
     async fn transform(&self, request: TransformRequest) -> PluginResult<TransformResponse>;
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DecisionEnvelope {
+    pub decision_id: String,
+    pub allowed: bool,
+    pub mode: String,
+    pub reason: String,
+    pub principal: String,
+    pub action: String,
+    pub resource: String,
+    pub pep_type: String,
+    pub pdp_runtime_id: String,
+    pub route_id: String,
+    pub policy_bundle_id: String,
+    pub policy_version: String,
+    pub latency_ms: u64,
+    pub fallback_used: bool,
+    pub obligations: Vec<DecisionObligation>,
+    pub redactions: Vec<String>,
+    pub errors: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum DecisionObligation {
+    RedactField { path: String },
+    RequireApproval { approver_group: String },
+    LogOnly,
+    MaskOutput,
+    LimitTokens { max_tokens: u64 },
+    BlockNetwork { host: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WasmLimits {
+    pub memory_bytes: usize,
+    pub fuel: u64,
+    pub timeout_ms: u64,
+    pub max_output_bytes: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PluginManifest {
+    pub schema_version: String,
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    #[serde(rename = "type")]
+    pub plugin_type: PluginType,
+    pub runtime: String,
+    pub entrypoint: String,
+    pub permissions: Vec<String>,
+    pub limits: WasmLimits,
+    pub signing: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PluginPolicy {
+    pub allowed_plugins: Vec<String>,
+}
+
+impl PluginPolicy {
+    pub fn ensure_allowed(&self, plugin_id: &str, _operation: &str, _permissions: &[String]) -> anyhow::Result<()> {
+        if !self.allowed_plugins.contains(&plugin_id.to_string()) && !self.allowed_plugins.contains(&"*".to_string()) {
+            anyhow::bail!("Plugin {} is not allowed by policy", plugin_id);
+        }
+        Ok(())
+    }
+
+    pub fn timeout_ms(&self, _plugin_id: &str) -> u64 {
+        150 // default timeout 150ms
+    }
+
+    pub fn validate_output(&self, _plugin_id: &str, _operation: &str, _output: &serde_json::Value) -> anyhow::Result<()> {
+        Ok(()) // naive validation
+    }
+}
+

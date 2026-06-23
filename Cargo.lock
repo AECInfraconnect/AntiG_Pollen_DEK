@@ -2292,6 +2292,8 @@ dependencies = [
  "dek-plugin-sdk",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
+ "tokio",
  "tracing",
  "uuid",
  "wasmtime",
@@ -2345,6 +2347,7 @@ dependencies = [
 name = "dek-plugin-sdk"
 version = "1.0.0-beta.10"
 dependencies = [
+ "anyhow",
  "async-trait",
  "serde",
  "serde_json",

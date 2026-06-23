@@ -130,3 +130,33 @@ impl Default for PluginHost {
         Self::new()
     }
 }
+
+#[async_trait::async_trait]
+pub trait PollenPlugin: Send + Sync {
+    fn id(&self) -> &str;
+    fn permissions(&self) -> &[String];
+    async fn call(
+        &self,
+        operation: &str,
+        input: serde_json::Value,
+    ) -> anyhow::Result<serde_json::Value>;
+}
+
+pub async fn call_plugin_checked(
+    plugin: &dyn PollenPlugin,
+    operation: &str,
+    input: serde_json::Value,
+    policy: &dek_plugin_sdk::PluginPolicy,
+) -> anyhow::Result<serde_json::Value> {
+    policy.ensure_allowed(plugin.id(), operation, plugin.permissions())?;
+
+    let result = tokio::time::timeout(
+        std::time::Duration::from_millis(policy.timeout_ms(plugin.id())),
+        plugin.call(operation, input),
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("plugin call timeout"))??;
+
+    policy.validate_output(plugin.id(), operation, &result)?;
+    Ok(result)
+}
