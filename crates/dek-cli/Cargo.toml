@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 dek-ipc = { path = "../dek-ipc" }
 serde_json.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time", "macros", "signal", "net"] }
 anyhow.workspace = true
 clap = { version = "4.5.4", features = ["derive"] }
 dek-agent-connector = { path = "../dek-agent-connector" }

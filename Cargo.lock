@@ -4372,7 +4372,6 @@ dependencies = [
  "dek-agent-discovery",
  "dek-agent-observer",
  "dek-bundle-format",
- "dek-capability-registry",
  "dek-cedar",
  "dek-config",
  "dek-control-plane-api",
