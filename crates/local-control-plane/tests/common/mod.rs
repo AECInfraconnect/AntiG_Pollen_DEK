@@ -44,6 +44,10 @@ impl LocalControlPlaneHarness {
             pdp_credentials: Arc::new(
                 local_control_plane::pdp_credentials::PdpCredentialsStore::new(tempdir.path()),
             ),
+            def_store: Arc::new(dek_fingerprint_defs::loader::DefinitionStore::load(
+                tempdir.path().to_path_buf(),
+                None, // No verification needed in testing
+            )),
         };
 
         let app = app::create_app(state, "dummy_static_dir");

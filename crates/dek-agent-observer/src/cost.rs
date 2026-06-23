@@ -1,4 +1,4 @@
-use crate::model::{AgentObservationEvent, CostLedgerEntry};
+use crate::model::{AgentObservationEvent, CostLedgerEntry, EventKind};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
