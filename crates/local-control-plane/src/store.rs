@@ -207,6 +207,23 @@ impl SqliteStore {
             [],
         )?;
 
+        let legacy_table_exists: i64 = tx.query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='observation_events'",
+            [],
+            |row| row.get(0),
+        )?;
+
+        let migration_count: i64 = tx.query_row("SELECT count(*) FROM _migrations", [], |row| row.get(0))?;
+        if legacy_table_exists > 0 && migration_count == 0 {
+            // Existing DB without _migrations table, assume migrations 0 to 6 are already applied.
+            for i in 0..7 {
+                tx.execute(
+                    "INSERT INTO _migrations (id, name) VALUES (?1, ?2)",
+                    rusqlite::params![i as i64, format!("mig_{}", i)],
+                )?;
+            }
+        }
+
         for (i, sql) in migrations.iter().enumerate() {
             let id = i as i64;
             let count: i64 = tx.query_row(
