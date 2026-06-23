@@ -75,7 +75,13 @@ async fn get_tuf_metadata(
             "root",
         ),
         "targets.json" => {
-            let cedar_src = state.rollout.lock().unwrap().latest_bundle.cedar_src.clone();
+            let cedar_src = state
+                .rollout
+                .lock()
+                .unwrap()
+                .latest_bundle
+                .cedar_src
+                .clone();
             let policies_payload = crate::payloads::mock_policies_payload(&cedar_src);
             let policies_hash = crate::payloads::hash_payload(&policies_payload);
             let registry_payload = crate::payloads::mock_registry_payload();
@@ -217,7 +223,13 @@ async fn get_tuf_artifact(
     let routes_json = json!([
         { "id": "route_tools_call", "priority": 100, "match_rule": { "method": "tools/call", "tool_category": null }, "pdp_required": ["cedar"] }
     ]);
-    let cedar_src = _state.rollout.lock().unwrap().latest_bundle.cedar_src.clone();
+    let cedar_src = _state
+        .rollout
+        .lock()
+        .unwrap()
+        .latest_bundle
+        .cedar_src
+        .clone();
     let policies_payload = crate::payloads::mock_policies_payload(&cedar_src);
     let policies_hash = crate::payloads::hash_payload(&policies_payload);
     let registry_payload = crate::payloads::mock_registry_payload();

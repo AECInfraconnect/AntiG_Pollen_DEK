@@ -12,6 +12,7 @@ pub mod fixtures;
 pub mod jwt_svid_endpoint;
 pub mod keys;
 pub mod mtls;
+pub mod payloads;
 pub mod pdp;
 pub mod policy_intents;
 pub mod registry;
@@ -24,7 +25,6 @@ pub mod threats;
 pub mod tuf;
 pub mod ui;
 pub mod update_server;
-pub mod payloads;
 
 #[cfg(test)]
 mod contract_test;

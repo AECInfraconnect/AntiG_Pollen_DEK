@@ -56,7 +56,12 @@ pub fn router() -> Router<AppState> {
         )
 }
 
-fn generate_bundle(tenant_id: &str, generation: u64, is_canary: bool, state: &AppState) -> BundleManifest {
+fn generate_bundle(
+    tenant_id: &str,
+    generation: u64,
+    is_canary: bool,
+    state: &AppState,
+) -> BundleManifest {
     let now = Utc::now();
     let expires = now + Duration::days(1);
     let mode = if is_canary {
@@ -65,10 +70,18 @@ fn generate_bundle(tenant_id: &str, generation: u64, is_canary: bool, state: &Ap
         ActivationMode::Full
     };
 
-    let cedar_src = state.rollout.lock().unwrap().latest_bundle.cedar_src.clone();
-    let policies_hash = crate::payloads::hash_payload(&crate::payloads::mock_policies_payload(&cedar_src));
+    let cedar_src = state
+        .rollout
+        .lock()
+        .unwrap()
+        .latest_bundle
+        .cedar_src
+        .clone();
+    let policies_hash =
+        crate::payloads::hash_payload(&crate::payloads::mock_policies_payload(&cedar_src));
     let registry_hash = crate::payloads::hash_payload(&crate::payloads::mock_registry_payload());
-    let network_guardrails_hash = crate::payloads::hash_payload(&crate::payloads::mock_network_guardrails_payload());
+    let network_guardrails_hash =
+        crate::payloads::hash_payload(&crate::payloads::mock_network_guardrails_payload());
 
     BundleManifest {
         schema_version: "1.0.0".to_string(),
