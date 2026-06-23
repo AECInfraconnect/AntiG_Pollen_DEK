@@ -119,7 +119,10 @@ impl ActivationCoordinator {
         {
             *state = ActivationState::Failed;
             if let Err(rollback_err) = crate::lkg::rollback_lkg() {
-                warn!("Rollback failed after mode activation error: {}", rollback_err);
+                warn!(
+                    "Rollback failed after mode activation error: {}",
+                    rollback_err
+                );
             }
             return Ok(ActivationDecision::Rejected(e));
         }

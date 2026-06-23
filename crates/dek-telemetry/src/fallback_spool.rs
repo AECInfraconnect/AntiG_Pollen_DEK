@@ -55,7 +55,10 @@ impl SecureFallback {
                     // For now we just log success.
                 }
                 Ok(res) if res.status().is_client_error() => {
-                    tracing::warn!("[SecureFallback] Cloud rejected secure spool replay (4xx). Status: {}", res.status());
+                    tracing::warn!(
+                        "[SecureFallback] Cloud rejected secure spool replay (4xx). Status: {}",
+                        res.status()
+                    );
                 }
                 Ok(res) => {
                     tracing::warn!(

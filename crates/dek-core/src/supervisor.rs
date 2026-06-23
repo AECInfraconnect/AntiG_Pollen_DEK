@@ -161,7 +161,10 @@ impl Supervisor {
             secure_spool_dir,
             100 * 1024 * 1024, // 100MB max
             Some(key_mgr),
-            bootstrap.tenant_id.clone().unwrap_or_else(|| "default".into()),
+            bootstrap
+                .tenant_id
+                .clone()
+                .unwrap_or_else(|| "default".into()),
             bootstrap.device_id.clone(),
         ));
 

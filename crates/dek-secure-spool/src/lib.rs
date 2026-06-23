@@ -35,16 +35,16 @@ pub struct SpoolState {
     seq: u64,
 }
 
-pub struct Spool {
+pub struct Spool<K: key_manager::OsKeyStore = os::DefaultOsKeyStore> {
     dir: PathBuf,
     max_bytes: u64,
-    key_manager: Option<key_manager::SpoolKeyManager<os::DefaultOsKeyStore>>,
+    key_manager: Option<key_manager::SpoolKeyManager<K>>,
     tenant_id: String,
     device_id: String,
     state: Mutex<SpoolState>,
 }
 
-impl Default for Spool {
+impl Default for Spool<os::DefaultOsKeyStore> {
     fn default() -> Self {
         Self::new(
             std::env::temp_dir().join("pollek-spool"),
@@ -56,11 +56,11 @@ impl Default for Spool {
     }
 }
 
-impl Spool {
+impl<K: key_manager::OsKeyStore> Spool<K> {
     pub fn new(
         dir: PathBuf,
         max_bytes: u64,
-        key_manager: Option<key_manager::SpoolKeyManager<os::DefaultOsKeyStore>>,
+        key_manager: Option<key_manager::SpoolKeyManager<K>>,
         tenant_id: String,
         device_id: String,
     ) -> Self {
@@ -88,9 +88,12 @@ impl Spool {
         self.ensure_capacity().await?;
 
         let key = if let Some(km) = &self.key_manager {
-            km.active_aead_key().map_err(|e| SpoolError::KeyManager(e.to_string()))?
+            km.active_aead_key()
+                .map_err(|e| SpoolError::KeyManager(e.to_string()))?
         } else {
-            return Err(SpoolError::KeyManager("No key manager provided".to_string()));
+            return Err(SpoolError::KeyManager(
+                "No key manager provided".to_string(),
+            ));
         };
 
         let (prev_hash, seq) = {
@@ -137,9 +140,13 @@ impl Spool {
             state.current_segment_id = segment_id;
         }
 
-        let writer = state.writer.as_mut().unwrap();
-        writer
-            .append_event(&key, &event)?;
+        let writer = state.writer.as_mut().ok_or_else(|| {
+            SpoolError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Writer failed to initialize",
+            ))
+        })?;
+        writer.append_event(&key, &event)?;
 
         state.last_hash = audit_entry.entry_hash;
         state.current_size += data.len() as u64;
@@ -177,7 +184,9 @@ impl Spool {
             km.active_aead_key()
                 .map_err(|e| SpoolError::KeyManager(e.to_string()))?
         } else {
-            return Err(SpoolError::KeyManager("No key manager provided".to_string()));
+            return Err(SpoolError::KeyManager(
+                "No key manager provided".to_string(),
+            ));
         };
 
         let mut results = Vec::new();

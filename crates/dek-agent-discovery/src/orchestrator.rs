@@ -133,7 +133,7 @@ impl DiscoveryOrchestrator {
                 let mut ev = Vec::new();
                 if let Ok(Ok(mut x)) = tokio::time::timeout(
                     std::time::Duration::from_secs(config.source_timeout_secs),
-                    tokio::task::spawn_blocking(crate::mcp_scan::scan_mcp_configs)
+                    tokio::task::spawn_blocking(crate::mcp_scan::scan_mcp_configs),
                 )
                 .await
                 .unwrap_or(Ok(Ok(vec![])))
@@ -151,8 +151,10 @@ impl DiscoveryOrchestrator {
                 let mut ev = Vec::new();
                 if let Ok(Ok(mut x)) = tokio::time::timeout(
                     std::time::Duration::from_secs(config.source_timeout_secs),
-                    crate::local_model_probe::probe_local_models()
-                ).await {
+                    crate::local_model_probe::probe_local_models(),
+                )
+                .await
+                {
                     ev.append(&mut x);
                 }
                 let _ = tx_cl.send(ev).await;
@@ -166,7 +168,7 @@ impl DiscoveryOrchestrator {
                 let mut ev = Vec::new();
                 if let Ok(Ok(mut x)) = tokio::time::timeout(
                     std::time::Duration::from_secs(config.source_timeout_secs),
-                    tokio::task::spawn_blocking(crate::ide_extension_scan::scan_ide_extensions)
+                    tokio::task::spawn_blocking(crate::ide_extension_scan::scan_ide_extensions),
                 )
                 .await
                 .unwrap_or(Ok(Ok(vec![])))
@@ -184,7 +186,7 @@ impl DiscoveryOrchestrator {
                 let mut ev = Vec::new();
                 if let Ok(Ok(mut x)) = tokio::time::timeout(
                     std::time::Duration::from_secs(config.source_timeout_secs),
-                    tokio::task::spawn_blocking(crate::cli_agent_scan::scan_cli_agents)
+                    tokio::task::spawn_blocking(crate::cli_agent_scan::scan_cli_agents),
                 )
                 .await
                 .unwrap_or(Ok(Ok(vec![])))
@@ -202,7 +204,7 @@ impl DiscoveryOrchestrator {
                 let mut ev = Vec::new();
                 if let Ok(Ok(mut x)) = tokio::time::timeout(
                     std::time::Duration::from_secs(config.source_timeout_secs),
-                    tokio::task::spawn_blocking(crate::container_scan::scan_containers)
+                    tokio::task::spawn_blocking(crate::container_scan::scan_containers),
                 )
                 .await
                 .unwrap_or(Ok(Ok(vec![])))
@@ -220,7 +222,7 @@ impl DiscoveryOrchestrator {
                 let mut ev = Vec::new();
                 if let Ok(Ok(mut x)) = tokio::time::timeout(
                     std::time::Duration::from_secs(config.source_timeout_secs),
-                    tokio::task::spawn_blocking(crate::browser_scan::scan_browsers)
+                    tokio::task::spawn_blocking(crate::browser_scan::scan_browsers),
                 )
                 .await
                 .unwrap_or(Ok(Ok(vec![])))
@@ -246,7 +248,7 @@ impl DiscoveryOrchestrator {
                             &config,
                             &defs.web_ai_signatures,
                         )
-                    })
+                    }),
                 )
                 .await
                 .unwrap_or(Ok(Ok(vec![])))
@@ -266,8 +268,10 @@ impl DiscoveryOrchestrator {
                 if let Ok(Ok(mut x)) = tokio::time::timeout(
                     std::time::Duration::from_secs(config.source_timeout_secs),
                     tokio::task::spawn_blocking(move || {
-                        crate::installed_app_scan::scan_installed_apps(&defs.installed_app_signatures)
-                    })
+                        crate::installed_app_scan::scan_installed_apps(
+                            &defs.installed_app_signatures,
+                        )
+                    }),
                 )
                 .await
                 .unwrap_or(Ok(Ok(vec![])))
@@ -287,7 +291,7 @@ impl DiscoveryOrchestrator {
                     std::time::Duration::from_secs(config.source_timeout_secs),
                     tokio::task::spawn_blocking(
                         crate::python_framework_scan::scan_python_frameworks,
-                    )
+                    ),
                 )
                 .await
                 {

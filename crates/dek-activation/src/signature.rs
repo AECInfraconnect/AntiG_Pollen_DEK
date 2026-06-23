@@ -55,9 +55,9 @@ pub fn verify_bundle_signature(
         return Ok(payload);
     }
 
-    let pub_key_arr: [u8; 32] = pub_key_bytes.try_into().map_err(|_| {
-        ActivationError::SchemaFailed("Public key has incorrect length".into())
-    })?;
+    let pub_key_arr: [u8; 32] = pub_key_bytes
+        .try_into()
+        .map_err(|_| ActivationError::SchemaFailed("Public key has incorrect length".into()))?;
 
     let public_key = VerifyingKey::from_bytes(&pub_key_arr)
         .map_err(|_| ActivationError::SchemaFailed("Invalid public key format".into()))?;

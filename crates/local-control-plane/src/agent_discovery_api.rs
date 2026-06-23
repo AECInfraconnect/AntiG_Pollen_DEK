@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     routing::{get, post},
     Json, Router,
 };
@@ -249,13 +249,13 @@ async fn list_candidates(
         .list_raw(&tenant, "discovery_candidate")
         .await
         .map_err(ApiError::Internal)?;
-        
+
     let limit = query.limit.unwrap_or(100);
     let cursor = query.cursor.unwrap_or(0);
-    
+
     let total = items.len();
     items = items.into_iter().skip(cursor).take(limit).collect();
-    
+
     Ok(Json(serde_json::json!({
         "schema_version": "agent-discovery-candidate-list.v1",
         "candidates": items,
@@ -372,13 +372,13 @@ async fn list_scans(
         .list_raw(&tenant, "discovery_scan")
         .await
         .map_err(ApiError::Internal)?;
-        
+
     let limit = query.limit.unwrap_or(100);
     let cursor = query.cursor.unwrap_or(0);
-    
+
     let total = items.len();
     items = items.into_iter().skip(cursor).take(limit).collect();
-    
+
     Ok(Json(serde_json::json!({
         "schema_version": "agent-discovery-scan-list.v1",
         "scans": items,

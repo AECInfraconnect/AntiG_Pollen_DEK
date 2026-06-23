@@ -161,7 +161,9 @@ async fn main() -> Result<()> {
         }
     }
 
-    let plugin_host = match dek_wasm_host::WasmPluginHost::new(dek_wasm_host::WasmHostConfig::default()) {
+    let plugin_host = match dek_wasm_host::WasmPluginHost::new(
+        dek_wasm_host::WasmHostConfig::default(),
+    ) {
         Ok(h) => Some(Arc::new(h)),
         Err(e) => {
             tracing::error!(error = %e, "plugin host init failed; running WITHOUT transforms (deny/allow still enforced)");
@@ -197,7 +199,7 @@ async fn main() -> Result<()> {
                 // In a full impl, we'd check `decision.obligations`. We will just run it if loaded.
                 let pool_key = "system:pii-redactor:1.0.0:dummy";
                 let input_bytes = serde_json::to_vec(&payload).unwrap_or_default();
-                
+
                 if let Some(host) = &plugin_host_clone {
                     if let Ok(redacted_bytes) = host
                         .invoke(pool_key, "auto".into(), &input_bytes, 100_000_000)

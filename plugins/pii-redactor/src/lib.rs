@@ -117,9 +117,13 @@ impl DeterministicDetector {
             passport_re: Regex::new(r"\b[A-Z0-9]{8,9}\b")?,
             bank_re: Regex::new(r"\b\d{3}-?\d{1}-?\d{5}-?\d{1}\b")?,
             ip_re: Regex::new(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")?,
-            uuid_re: Regex::new(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b")?,
+            uuid_re: Regex::new(
+                r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
+            )?,
             jwt_re: Regex::new(r"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+")?,
-            api_key_re: Regex::new(r"(?i)(?:api_key|access_token|secret)[=:\s]+['\x22]?([a-zA-Z0-9_\-\.]{16,})['\x22]?")?,
+            api_key_re: Regex::new(
+                r"(?i)(?:api_key|access_token|secret)[=:\s]+['\x22]?([a-zA-Z0-9_\-\.]{16,})['\x22]?",
+            )?,
         })
     }
 
