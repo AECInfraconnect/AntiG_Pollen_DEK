@@ -14,7 +14,7 @@ impl FingerprintService {
         engine_version: semver::Version,
         keys: dek_bundle_sync::keys::TrustedKeySet,
     ) -> Self {
-        let baseline = crate::embedded_baseline();
+        let baseline = crate::load_latest_baseline();
         Self {
             db: Arc::new(RwLock::new(FingerprintDb::from_baseline(baseline))),
             prev_db: Arc::new(RwLock::new(None)),

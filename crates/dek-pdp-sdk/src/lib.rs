@@ -137,6 +137,8 @@ mod tests {
                 obligations: vec![],
                 metadata: json!({}),
                 explanation: None,
+                user_action_required: false,
+                user_action_th: None,
             })
         }
 

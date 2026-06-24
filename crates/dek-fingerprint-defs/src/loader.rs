@@ -14,7 +14,7 @@ pub struct DefinitionStore {
 
 impl DefinitionStore {
     pub fn load(on_disk_path: PathBuf, pubkey: Option<&VerifyingKey>) -> Self {
-        let mut def = crate::embedded_baseline();
+        let mut def = crate::load_latest_baseline();
         if let Ok(raw) = std::fs::read(&on_disk_path) {
             // First try parsing as SignedDefinition
             if let Ok(signed) = serde_json::from_slice::<SignedDefinition>(&raw) {

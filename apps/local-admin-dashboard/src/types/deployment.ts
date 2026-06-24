@@ -4,19 +4,18 @@ export type LocalizedText = {
 };
 
 export type DeploymentPhase =
-  | 'agent_discovery'
-  | 'route_planning'
-  | 'pep_deploy'
-  | 'enforcement'
-  | 'rollback';
+  | "agent_discovery"
+  | "route_planning"
+  | "pep_deploy"
+  | "enforcement"
+  | "rollback";
 
-export type EventStatus =
-  | 'info'
-  | 'success'
-  | 'warning'
-  | 'error';
+export type EventStatus = "info" | "success" | "warning" | "error";
 
-export type UserActionKind = 'RequireAuth' | 'RequireApproval' | 'RequireConfig';
+export type UserActionKind =
+  | "RequireAuth"
+  | "RequireApproval"
+  | "RequireConfig";
 
 export type UserAction = {
   kind: UserActionKind;
@@ -41,27 +40,27 @@ export type DeploymentEvent = {
 };
 
 export type DeploymentSessionStatus =
-  | 'draft'
-  | 'planning'
-  | 'deploying'
-  | 'waiting_for_user_action'
-  | 'active'
-  | 'partially_active'
-  | 'active_observe_only'
-  | 'failed'
-  | 'rolled_back';
+  | "draft"
+  | "planning"
+  | "deploying"
+  | "waiting_for_user_action"
+  | "active"
+  | "partially_active"
+  | "active_observe_only"
+  | "failed"
+  | "rolled_back";
 
 export type EnforcementLayer =
-  | 'browser_extension'
-  | 'macos_network_extension'
-  | 'windows_wfp'
-  | 'ebpf_network'
-  | 'mcp_proxy'
-  | 'mcp_stdio_wrapper'
-  | 'http_proxy'
-  | 'observe_only';
+  | "browser_extension"
+  | "macos_network_extension"
+  | "windows_wfp"
+  | "ebpf_network"
+  | "mcp_proxy"
+  | "mcp_stdio_wrapper"
+  | "http_proxy"
+  | "observe_only";
 
-export type PdpEngine = 'OpenFga' | 'Cedar' | 'CloudAuthz';
+export type PdpEngine = "OpenFga" | "Cedar" | "CloudAuthz";
 
 export type RoutingPlan = {
   selected_pep: {

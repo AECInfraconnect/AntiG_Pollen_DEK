@@ -260,7 +260,7 @@ export function AutoDiscovery() {
 
       <div className="border-b border-border">
         <nav className="-mb-px flex space-x-6">
-          {["candidates", "control_plans", "sources", "history"].map((tab) => (
+          {["candidates", "control_plans", "evidence", "history"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -271,7 +271,15 @@ export function AutoDiscovery() {
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-border")
               }
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1).replace("_", " ")}
+              {tab === "candidates"
+                ? "Agents"
+                : tab === "control_plans"
+                  ? "Control Plans"
+                  : tab === "evidence"
+                    ? "Advanced / Evidence"
+                    : tab === "history"
+                      ? "History"
+                      : tab}
             </button>
           ))}
         </nav>
@@ -340,12 +348,17 @@ export function AutoDiscovery() {
                                   Registered
                                 </span>
                               ) : (
-                                <button
-                                  onClick={() => openRegisterModal(c)}
-                                  className="text-xs border px-3 py-1.5 rounded hover:bg-primary hover:text-primary-foreground font-medium transition-colors"
-                                >
-                                  Register & Enforce
-                                </button>
+                                <div className="flex flex-col items-end">
+                                  <button
+                                    onClick={() => openRegisterModal(c)}
+                                    className="text-xs border px-3 py-1.5 rounded bg-primary text-primary-foreground font-medium transition-colors"
+                                  >
+                                    ปกป้อง Agent นี้
+                                  </button>
+                                  <span className="text-[10px] text-muted-foreground mt-1">
+                                    ระบบจะเลือกวิธีบังคับใช้ที่ดีที่สุดให้อัตโนมัติ
+                                  </span>
+                                </div>
                               )}
                               <button
                                 onClick={() => deleteCandidate(c.candidate_id)}
@@ -491,9 +504,11 @@ export function AutoDiscovery() {
           </div>
         )}
 
-        {activeTab === "sources" && (
+        {activeTab === "evidence" && (
           <div>
-            <h3 className="font-semibold mb-4">Discovery Evidence (Sources)</h3>
+            <h3 className="font-semibold mb-4">
+              Advanced / Discovery Evidence
+            </h3>
             <p className="text-sm text-muted-foreground mb-4">
               Raw telemetry collected by scanners.
             </p>
@@ -694,7 +709,7 @@ export function AutoDiscovery() {
                 className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
               >
                 <ShieldAlert className="w-4 h-4" />
-                {isRegistering ? "Registering..." : "Register & Enforce"}
+                {isRegistering ? "กำลังบันทึก..." : "ปกป้อง Agent นี้"}
               </button>
             </div>
           </div>

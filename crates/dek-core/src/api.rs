@@ -138,6 +138,8 @@ async fn check(
                 obligations: vec![],
                 metadata: serde_json::json!({}),
                 explanation: None,
+                user_action_required: false,
+                user_action_th: None,
             });
 
     let latency = start.elapsed().as_millis() as i64;
@@ -279,6 +281,8 @@ async fn batch_check(
                 obligations: vec![],
                 metadata: serde_json::json!({}),
                 explanation: None,
+                user_action_required: false,
+                user_action_th: None,
             }
         });
         let latency = start.elapsed().as_millis() as i64;

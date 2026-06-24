@@ -847,6 +847,8 @@ mod tests {
                     obligations: vec![],
                     metadata: serde_json::json!({ "mock": true }),
                     explanation: None,
+                    user_action_required: false,
+                    user_action_th: None,
                 })
             }
             fn version(&self) -> String {

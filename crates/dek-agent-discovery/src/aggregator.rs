@@ -214,7 +214,7 @@ fn aggregate_by_merge_key(
                     if let Some(models_val) = ev.data.get("models") {
                         if let Some(arr) = models_val.as_array() {
                             if let Some(clf_def) =
-                                &dek_fingerprint_defs::embedded_baseline().model_classifier
+                                &dek_fingerprint_defs::load_latest_baseline().model_classifier
                             {
                                 let clf =
                                     dek_fingerprint_defs::model_classifier::ModelClassifier::new(
@@ -269,7 +269,7 @@ fn aggregate_by_merge_key(
                 EvidenceSource::InstalledAppScan => {
                     if let Some(path) = ev.data.get("path").and_then(|v| v.as_str()) {
                         let sigs =
-                            &dek_fingerprint_defs::embedded_baseline().installed_app_signatures;
+                            &dek_fingerprint_defs::load_latest_baseline().installed_app_signatures;
                         if let Some(am) = crate::identity::resolve_installed_app(path, sigs) {
                             name = am.display_name.clone();
                             vendor = am.vendor.clone();
@@ -299,7 +299,7 @@ fn aggregate_by_merge_key(
                         .and_then(|v| v.as_str())
                         .or_else(|| ev.data.get("sni").and_then(|v| v.as_str()))
                     {
-                        let sigs = &dek_fingerprint_defs::embedded_baseline().web_ai_signatures;
+                        let sigs = &dek_fingerprint_defs::load_latest_baseline().web_ai_signatures;
                         let mut found = false;
                         for w_sig in sigs {
                             if url.contains(&w_sig.domain) {
@@ -325,7 +325,7 @@ fn aggregate_by_merge_key(
             }
         }
 
-        let signatures = dek_fingerprint_defs::embedded_baseline().signatures;
+        let signatures = dek_fingerprint_defs::load_latest_baseline().signatures;
         let mut decision = crate::identity::resolve(&ctx, &signatures);
 
         // If unknown, run claw family heuristic
@@ -381,6 +381,29 @@ fn aggregate_by_merge_key(
                     }
                 }
             }
+        }
+
+        let mut computed_risk = 0;
+        for cap in &capability_tags {
+            let cap_score = match cap.as_str() {
+                "browser.control" => 60,
+                "automation" => 40,
+                "fs.write" => 50,
+                "code.exec" => 80,
+                "llm.call" => 20,
+                "web.search" => 10,
+                "net.egress" => 30,
+                "net.egress.llm" => 30,
+                "tool.use" => 30,
+                "model.server" => 40,
+                "code.agentic" => 70,
+                "web.chat" => 20,
+                _ => 10,
+            };
+            computed_risk += cap_score;
+        }
+        if computed_risk > risk_score {
+            risk_score = std::cmp::min(100, computed_risk);
         }
 
         if name == "Unknown Agent" {

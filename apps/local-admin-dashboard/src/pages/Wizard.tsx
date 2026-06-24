@@ -75,11 +75,23 @@ export function Wizard() {
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center text-blue-400">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
                     </svg>
                   </div>
-                  <h3 className="font-semibold text-lg group-hover:text-blue-400 transition-colors">Sovereign Mode</h3>
+                  <h3 className="font-semibold text-lg group-hover:text-blue-400 transition-colors">
+                    Sovereign Mode
+                  </h3>
                 </div>
                 <p className="text-xs text-gray-400 leading-relaxed">
                   Fully air-gapped. 100% local enforcement. No telemetry or
@@ -94,11 +106,23 @@ export function Wizard() {
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-8 h-8 rounded bg-purple-500/20 flex items-center justify-center text-purple-400">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
+                      />
                     </svg>
                   </div>
-                  <h3 className="font-semibold text-lg group-hover:text-purple-400 transition-colors">Cloud Managed</h3>
+                  <h3 className="font-semibold text-lg group-hover:text-purple-400 transition-colors">
+                    Cloud Managed
+                  </h3>
                 </div>
                 <p className="text-xs text-gray-400 leading-relaxed">
                   Connect to Pollen Cloud. Receive real-time policy updates,
@@ -112,8 +136,18 @@ export function Wizard() {
         {step === 3 && (
           <div className="space-y-6 text-center animate-in fade-in slide-in-from-bottom-4 py-8">
             <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.3)]">
-              <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-10 h-10"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
             <h2 className="text-2xl font-bold">You're all set!</h2>

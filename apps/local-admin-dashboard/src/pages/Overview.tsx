@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { Activity, ShieldAlert, Server, Users, AlertTriangle } from "lucide-react";
+import {
+  Activity,
+  ShieldAlert,
+  Server,
+  Users,
+  AlertTriangle,
+} from "lucide-react";
 import { RegistryApi, PolicyApi, ActivityApi } from "../services/api";
 
 export function Overview() {
@@ -83,7 +89,9 @@ export function Overview() {
         </div>
         <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-500 border border-green-500/20 rounded-full">
           <ShieldAlert className="w-4 h-4" />
-          <span className="text-xs font-semibold uppercase tracking-wider">Air-Gap Ready / Sovereign Mode</span>
+          <span className="text-xs font-semibold uppercase tracking-wider">
+            Air-Gap Ready / Sovereign Mode
+          </span>
         </div>
       </div>
 
@@ -116,22 +124,35 @@ export function Overview() {
         <div className="glass col-span-3 rounded-xl p-6 overflow-hidden">
           <h3 className="font-semibold mb-4 flex items-center justify-between">
             <span>System Capabilities</span>
-            {!capabilities && <span className="text-muted-foreground text-sm">Loading...</span>}
+            {!capabilities && (
+              <span className="text-muted-foreground text-sm">Loading...</span>
+            )}
           </h3>
           {capabilities && (
             <div className="space-y-4">
               <div className="flex flex-col gap-2 p-3 bg-secondary/20 rounded-lg">
-                <span className="text-sm font-semibold">Local OS: {capabilities.os.type}</span>
-                <span className="text-xs text-muted-foreground">Version: {capabilities.os.version}</span>
+                <span className="text-sm font-semibold">
+                  Local OS: {capabilities.os.type}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Version: {capabilities.os.version}
+                </span>
               </div>
               <div className="flex flex-col gap-2">
                 <h4 className="text-sm font-semibold">Active PEPs</h4>
                 {capabilities.pep.map((pep: any, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between p-2 text-sm border-b border-muted/20">
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2 text-sm border-b border-muted/20"
+                  >
                     <span>{pep.type}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${
-                      pep.status === 'Available' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                    }`}>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs ${
+                        pep.status === "Available"
+                          ? "bg-green-500/20 text-green-400"
+                          : "bg-red-500/20 text-red-400"
+                      }`}
+                    >
                       {pep.status}
                     </span>
                   </div>
@@ -140,7 +161,9 @@ export function Overview() {
               <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-blue-400 mt-0.5" />
                 <p className="text-xs text-blue-300">
-                  These capabilities reflect what the local system can actually enforce. Policies deployed that require missing capabilities will fallback to Observe Only mode.
+                  These capabilities reflect what the local system can actually
+                  enforce. Policies deployed that require missing capabilities
+                  will fallback to Observe Only mode.
                 </p>
               </div>
             </div>
@@ -149,23 +172,32 @@ export function Overview() {
         <div className="glass col-span-4 rounded-xl p-6">
           <h3 className="font-semibold mb-4">Recent Audit Activity</h3>
           <div className="space-y-4">
-            {activities.length > 0 ? activities.flatMap((set: any) => set.items).slice(0, 5).map((item: any, i: number) => (
-              <div key={i} className="flex items-center gap-4">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Activity className="h-4 w-4 text-primary" />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    {item.event_type} - {item.decision}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Target: {item.resource} | Reason: {item.reason}
-                  </p>
-                </div>
-                <div className="text-xs text-muted-foreground">{new Date(item.timestamp).toLocaleTimeString()}</div>
-              </div>
-            )) : (
-              <p className="text-sm text-muted-foreground">No recent activity.</p>
+            {activities.length > 0 ? (
+              activities
+                .flatMap((set: any) => set.items)
+                .slice(0, 5)
+                .map((item: any, i: number) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Activity className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {item.event_type} - {item.decision}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Target: {item.resource} | Reason: {item.reason}
+                      </p>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(item.timestamp).toLocaleTimeString()}
+                    </div>
+                  </div>
+                ))
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No recent activity.
+              </p>
             )}
           </div>
         </div>
