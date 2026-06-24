@@ -20,6 +20,7 @@ pub mod activity_api;
 pub mod agent_discovery_api;
 pub mod agent_inventory_api;
 pub mod control_binding;
+pub mod enforcement_plan_api;
 pub mod observation_api;
 pub mod pep_capabilities_api;
 pub mod policy_presets_api;

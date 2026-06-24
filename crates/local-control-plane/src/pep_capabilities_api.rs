@@ -38,49 +38,42 @@ async fn get_global_capabilities() -> ApiResult<Json<serde_json::Value>> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PepCapabilityCheckRequest {
     pub preset_id: String,
-    pub target_os: String,
     pub requested_pep_types: Vec<String>,
 }
 
 async fn list_capabilities(
-    Path(tenant): Path<String>,
-    State(state): State<AppState>,
+    Path(_tenant): Path<String>,
+    State(_state): State<AppState>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let active_runtimes = state
-        .pdp_store
-        .list_runtimes(&tenant)
-        .await
-        .unwrap_or_default();
-    let has_linux_ebpf = active_runtimes
-        .iter()
-        .any(|r| r.get("id").and_then(|v| v.as_str()) == Some("linux_ebpf_pep"));
+    let host = crate::enforcement_plan_api::detect_host();
 
     Ok(Json(serde_json::json!({
         "schema_version": "pep-capabilities-list.v2",
         "capabilities": [
             {
                 "pep_type": "linux_ebpf",
-                "status": if has_linux_ebpf { "available" } else { "not_installed" },
-                "mode": "enforce",
-                "maturity": "enforce_beta"
+                "status": if host.os == "linux" && host.linux_ebpf { "available" } else { "not_installed" },
+                "mode": if host.linux_ebpf { "enforce" } else { "observe_only" },
+                "maturity": "enforce_beta",
+                "reason": if host.os != "linux" { "not running on linux" } else if !host.linux_ebpf { "eBPF requires BTF" } else { "" }
             },
             {
                 "pep_type": "windows_wfp",
-                "status": "not_available",
-                "mode": "observe_only",
+                "status": if host.os == "windows" && host.windows_wfp { "available" } else if host.os == "windows" { "not_active" } else { "not_available" },
+                "mode": if host.windows_wfp { "enforce" } else { "observe_only" },
                 "maturity": "stub",
-                "reason": "not running on windows"
+                "reason": if host.os != "windows" { "not running on windows" } else if !host.windows_wfp { "WFP driver not active" } else { "" }
             },
             {
                 "pep_type": "macos_nefilter",
-                "status": "not_available",
-                "mode": "observe_only",
+                "status": if host.os == "macos" && host.macos_nefilter { "available" } else if host.os == "macos" { "not_active" } else { "not_available" },
+                "mode": if host.macos_nefilter { "enforce" } else { "observe_only" },
                 "maturity": "stub",
-                "reason": "not running on macOS"
+                "reason": if host.os != "macos" { "not running on macOS" } else if !host.macos_nefilter { "NEFilter extension missing" } else { "" }
             },
             {
                 "pep_type": "http_gateway",
-                "status": "available", // Mock true if empty for backward compat locally
+                "status": "available",
                 "mode": "enforce",
                 "maturity": "production"
             },
@@ -95,92 +88,67 @@ async fn list_capabilities(
                 "status": "available",
                 "mode": "enforce",
                 "maturity": "production"
-            },
-            {
-                "pep_type": "execution_sandbox",
-                "status": "available",
-                "mode": "observe_only",
-                "maturity": "stub",
-                "reason": "Currently mocks success without actual isolation"
-            },
-            {
-                "pep_type": "a2a_mediator",
-                "status": "available",
-                "mode": "observe_only",
-                "maturity": "stub",
-                "reason": "Cryptographic signature validation is mocked"
             }
         ]
     })))
 }
 
 async fn check_capabilities(
-    Path(tenant): Path<String>,
-    State(state): State<AppState>,
+    Path(_tenant): Path<String>,
+    State(_state): State<AppState>,
     Json(req): Json<PepCapabilityCheckRequest>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let active_runtimes = state
-        .pdp_store
-        .list_runtimes(&tenant)
-        .await
-        .unwrap_or_default();
-    let has_linux_ebpf = active_runtimes
-        .iter()
-        .any(|r| r.get("id").and_then(|v| v.as_str()) == Some("linux_ebpf_pep"));
+    // DEPRECATED: Please use /v1/host/capabilities and /v1/enforcement/auto-plan instead
+    let host = crate::enforcement_plan_api::detect_host();
 
     let mut recommended = "".to_string();
     if req.requested_pep_types.contains(&"linux_ebpf".to_string())
-        && req.target_os == "linux"
-        && has_linux_ebpf
+        && host.os == "linux"
+        && host.linux_ebpf
     {
         recommended = "linux_ebpf".to_string();
-    } else if req.requested_pep_types.contains(&"mcp_proxy".to_string()) {
-        recommended = "mcp_proxy".to_string();
+    } else if req.requested_pep_types.contains(&"windows_wfp".to_string())
+        && host.os == "windows"
+        && host.windows_wfp
+    {
+        recommended = "windows_wfp".to_string();
     } else if req
         .requested_pep_types
-        .contains(&"http_gateway".to_string())
+        .contains(&"macos_nefilter".to_string())
+        && host.os == "macos"
+        && host.macos_nefilter
     {
-        recommended = "http_gateway".to_string();
+        recommended = "macos_nefilter".to_string();
+    } else if req.requested_pep_types.contains(&"mcp_proxy".to_string()) {
+        recommended = "mcp_proxy".to_string();
     } else if let Some(first) = req.requested_pep_types.first() {
         recommended = first.clone();
     }
 
     Ok(Json(serde_json::json!({
+        "deprecated": true,
+        "warning": "This endpoint is deprecated. Use GET /v1/host/capabilities and POST /v1/enforcement/auto-plan.",
         "recommended": recommended,
         "capabilities": [
             {
                 "pep_type": "linux_ebpf",
-                "status": if req.target_os == "linux" && has_linux_ebpf { "available" } else { "not_installed" },
-                "mode": if req.target_os == "linux" && has_linux_ebpf { "enforce" } else { "observe_only" },
-                "maturity": "enforce_beta",
-                "reason": if req.target_os != "linux" { "not running on linux" } else if !has_linux_ebpf { "PEP is not installed or active" } else { "" }
+                "status": if host.os == "linux" && host.linux_ebpf { "available" } else { "not_installed" },
+                "mode": if host.linux_ebpf { "enforce" } else { "observe_only" },
             },
             {
                 "pep_type": "windows_wfp",
-                "status": if req.target_os == "windows" { "available" } else { "not_available" },
-                "mode": if req.target_os == "windows" { "enforce" } else { "observe_only" },
-                "maturity": "stub",
-                "reason": if req.target_os != "windows" { "not running on windows" } else { "" }
+                "status": if host.os == "windows" && host.windows_wfp { "available" } else { "not_available" },
+                "mode": if host.windows_wfp { "enforce" } else { "observe_only" },
+            },
+            {
+                "pep_type": "macos_nefilter",
+                "status": if host.os == "macos" && host.macos_nefilter { "available" } else { "not_available" },
+                "mode": if host.macos_nefilter { "enforce" } else { "observe_only" },
             },
             {
                 "pep_type": "mcp_proxy",
                 "status": "available",
                 "mode": "enforce",
-                "maturity": "production"
-            },
-            {
-                "pep_type": "execution_sandbox",
-                "status": "available",
-                "mode": "observe_only",
-                "maturity": "stub",
-                "reason": "Currently mocks success without actual isolation"
-            },
-            {
-                "pep_type": "a2a_mediator",
-                "status": "available",
-                "mode": "observe_only",
-                "maturity": "stub",
-                "reason": "Cryptographic signature validation is mocked"
             }
         ]
     })))

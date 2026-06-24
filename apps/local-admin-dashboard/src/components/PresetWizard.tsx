@@ -29,7 +29,6 @@ export function PresetWizard({
     // Check capabilities
     PolicyApi.checkPepCapabilities({
       preset_id: preset.preset_id,
-      target_os: "linux",
       requested_pep_types: preset.recommended_pep_types,
     })
       .then((res: any) => {

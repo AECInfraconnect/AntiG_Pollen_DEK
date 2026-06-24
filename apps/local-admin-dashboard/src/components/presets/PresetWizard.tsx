@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { X, Shield, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+import {
+  X,
+  Shield,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
 import { DeploymentApi, PolicyApi } from "../../services/api";
 import type { PolicyPresetV2, ControlMode } from "../../types/policy-presets";
 import { PolicyPreview } from "./PolicyPreview";
@@ -10,7 +17,6 @@ import { PepCapabilityMatrix } from "../policy-deployment/PepCapabilityMatrix";
 import { SimulationResults } from "../policy-deployment/SimulationResults";
 
 export type WizardStep =
-  | "scan"
   | "agents"
   | "goal"
   | "parameters"
@@ -21,8 +27,7 @@ export type WizardStep =
   | "deploy"
   | "logs";
 
-const STEP_ORDER: WizardStep[] = [
-  "scan",
+const SERVER_STEP_ORDER: WizardStep[] = [
   "agents",
   "goal",
   "parameters",
@@ -34,12 +39,16 @@ const STEP_ORDER: WizardStep[] = [
   "logs",
 ];
 
+const DESKTOP_STEP_ORDER: WizardStep[] = ["agents", "goal", "preview", "logs"];
+
 export function PresetWizard({
   preset,
   onClose,
+  mode = "desktop",
 }: {
   preset: PolicyPresetV2;
   onClose: () => void;
+  mode?: "desktop" | "server";
 }) {
   const [step, setStep] = useState<WizardStep>("agents");
   const [controlMode, setControlMode] = useState<ControlMode>(
@@ -55,6 +64,8 @@ export function PresetWizard({
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   const [hasAgents, setHasAgents] = useState(true);
+  const [enforcementPlan, setEnforcementPlan] = useState<any>(null);
+
   useEffect(() => {
     const defaultParams: Record<string, any> = {};
     if (preset.parameters) {
@@ -70,19 +81,31 @@ export function PresetWizard({
     PolicyApi.getCapabilities()
       .then((res: any) => setCapabilities(res.capabilities || []))
       .catch(console.error);
+
+    // Fetch enforcement auto-plan
+    DeploymentApi.autoPlan("limit_network") // Using a generic intent or could map preset.category
+      .then((res: any) => setEnforcementPlan(res))
+      .catch(console.error);
   }, []);
 
+  const stepOrder = mode === "desktop" ? DESKTOP_STEP_ORDER : SERVER_STEP_ORDER;
+
   const nextStep = () => {
-    const idx = STEP_ORDER.indexOf(step);
-    if (idx < STEP_ORDER.length - 1) {
-      setStep(STEP_ORDER[idx + 1]);
+    const idx = stepOrder.indexOf(step);
+    if (idx < stepOrder.length - 1) {
+      if (step === "goal" && mode === "desktop") {
+        // Automatically fetch capabilities/preview before moving to preview
+        generatePreview();
+        return;
+      }
+      setStep(stepOrder[idx + 1]);
     }
   };
 
   const prevStep = () => {
-    const idx = STEP_ORDER.indexOf(step);
+    const idx = stepOrder.indexOf(step);
     if (idx > 0) {
-      setStep(STEP_ORDER[idx - 1]);
+      setStep(stepOrder[idx - 1]);
     }
   };
 
@@ -102,7 +125,10 @@ export function PresetWizard({
       };
       const res = await DeploymentApi.preview(req);
       setPreview(res);
-      nextStep();
+      const idx = stepOrder.indexOf(step);
+      if (idx < stepOrder.length - 1) {
+        setStep(stepOrder[idx + 1]);
+      }
     } catch (e: any) {
       console.error(e);
       alert("Failed to generate preview: " + (e.message || String(e)));
@@ -149,7 +175,10 @@ export function PresetWizard({
         params,
       };
       await DeploymentApi.deploy(req);
-      nextStep();
+      const idx = stepOrder.indexOf(step);
+      if (idx < stepOrder.length - 1) {
+        setStep(stepOrder[idx + 1]);
+      }
     } catch (e: any) {
       console.error(e);
       alert("Failed to deploy: " + (e.message || String(e)));
@@ -223,12 +252,14 @@ export function PresetWizard({
       case "preview":
         return (
           <div className="space-y-4">
-            <h4 className="font-medium">Deployment Preview</h4>
+            <h4 className="font-medium">
+              {mode === "desktop" ? "Review & Protect" : "Deployment Preview"}
+            </h4>
             {preview ? (
               <PolicyPreview preview={preview} />
             ) : (
               <div className="text-sm text-muted-foreground p-4 bg-muted/30 rounded border text-center">
-                Click Next to generate a deployment preview.
+                Generating preview...
               </div>
             )}
           </div>
@@ -252,6 +283,29 @@ export function PresetWizard({
             <p className="text-muted-foreground">
               The policy bindings have been applied.
             </p>
+            {enforcementPlan && enforcementPlan.mode === "Observing" && (
+              <div className="mt-6 max-w-lg mx-auto bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-left">
+                <h5 className="font-semibold text-yellow-600 mb-2 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  {enforcementPlan.friendly_th || "โหมดสังเกตการณ์"}
+                </h5>
+                <p className="text-sm text-yellow-700/80 mb-2">
+                  ระบบไม่สามารถบังคับใช้แบบเต็มรูปแบบได้เนื่องจาก:
+                  <ul className="list-disc pl-5 mt-1">
+                    {enforcementPlan.fallbacks_applied?.map(
+                      (f: string, i: number) => (
+                        <li key={i}>{f}</li>
+                      ),
+                    )}
+                  </ul>
+                </p>
+                {enforcementPlan.user_action_th && (
+                  <div className="mt-3 p-3 bg-yellow-500/20 rounded text-sm font-medium text-yellow-800">
+                    💡 ข้อแนะนำ: {enforcementPlan.user_action_th}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
       default:
@@ -270,7 +324,7 @@ export function PresetWizard({
         return;
       }
       nextStep();
-    } else if (step === "pdp") {
+    } else if (step === "pdp" || (step === "goal" && mode === "desktop")) {
       if (controlMode === "enforce") {
         const unsupported = selectedPeps.filter((pepId) => {
           const cap = capabilities.find((c) => c.pep_type === pepId);
@@ -288,7 +342,11 @@ export function PresetWizard({
       }
       generatePreview();
     } else if (step === "preview") {
-      runSimulation();
+      if (mode === "desktop") {
+        executeDeploy();
+      } else {
+        runSimulation();
+      }
     } else if (step === "simulate") {
       executeDeploy();
     } else if (step === "logs") {
@@ -316,7 +374,7 @@ export function PresetWizard({
 
         <div className="flex bg-muted/10 border-b">
           <div className="flex-1 overflow-x-auto p-2 flex items-center gap-1 text-xs">
-            {STEP_ORDER.filter((s) => s !== "scan").map((s, i) => (
+            {stepOrder.map((s: WizardStep, i: number) => (
               <div
                 key={s}
                 className={`px-3 py-1.5 rounded-full capitalize whitespace-nowrap font-medium ${
@@ -353,7 +411,9 @@ export function PresetWizard({
                 ? "Finish"
                 : step === "simulate"
                   ? "Deploy Policy"
-                  : "Next Step"}
+                  : step === "preview" && mode === "desktop"
+                    ? "Protect"
+                    : "Next Step"}
             {!loading && step !== "logs" && <ArrowRight className="h-4 w-4" />}
           </button>
         </div>

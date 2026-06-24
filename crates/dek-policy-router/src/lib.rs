@@ -400,6 +400,8 @@ impl PolicyRouter {
                     obligations: vec![],
                     metadata: serde_json::json!({ "warning": "no engine explicitly assigned, and selector found no match" }),
                     explanation: None,
+                    user_action_required: false,
+                    user_action_th: None,
                 });
             }
         };
@@ -514,6 +516,8 @@ impl PolicyRouter {
                             combined_decision.decision = "allow".into();
                             combined_decision.reason =
                                 format!("PDP unavailable but Allow/ObserveOnly: {}", msg);
+                            combined_decision.user_action_required = true;
+                            combined_decision.user_action_th = Some("ระบบอนุญาตชั่วคราวเนื่องจากนโยบายเป็น ObserveOnly หรือตั้งค่าให้ Allow เมื่อ PDP ไม่พร้อมทำงาน".to_string());
                         } else {
                             combined_decision.allow = false;
                             combined_decision.decision = "deny".into();
@@ -559,6 +563,8 @@ impl PolicyRouter {
                             combined_decision.decision = "allow".into();
                             combined_decision.reason =
                                 format!("PDP error but Allow/ObserveOnly: {}", e);
+                            combined_decision.user_action_required = true;
+                            combined_decision.user_action_th = Some("ระบบอนุญาตชั่วคราวเนื่องจากเกิดข้อผิดพลาดในการประเมินผลนโยบายและตั้งค่าเป็น ObserveOnly".to_string());
                         } else {
                             combined_decision.allow = false;
                             combined_decision.decision = "deny".into();
@@ -605,6 +611,8 @@ impl PolicyRouter {
                             combined_decision.decision = "allow".into();
                             combined_decision.reason =
                                 "PDP timeout but Allow/ObserveOnly".to_string();
+                            combined_decision.user_action_required = true;
+                            combined_decision.user_action_th = Some("ระบบอนุญาตชั่วคราวเนื่องจาก PDP ตอบสนองช้าเกินไป (Timeout) และตั้งค่าเป็น ObserveOnly".to_string());
                         } else {
                             combined_decision.allow = false;
                             combined_decision.decision = "deny".into();
@@ -628,6 +636,11 @@ impl PolicyRouter {
                     combined_decision.decision = "allow".into();
                     combined_decision.reason =
                         format!("Evaluator not found but ObserveOnly for {}", ev_id);
+                    combined_decision.user_action_required = true;
+                    combined_decision.user_action_th = Some(format!(
+                        "ไม่พบ Evaluator {} แต่ระบบอนุญาตชั่วคราวเนื่องจากอยู่ในโหมด ObserveOnly",
+                        ev_id
+                    ));
                 } else {
                     combined_decision.allow = false;
                     combined_decision.decision = "deny".into();

@@ -316,3 +316,47 @@ fn glob_match(pat: &str, haystack: &str) -> bool {
         false
     }
 }
+
+pub fn resolve_installed_app(
+    path: &str,
+    sigs: &[dek_fingerprint_defs::model::InstalledAppSignatureDef],
+) -> Option<AgentMatch> {
+    for sig in sigs {
+        for marker in &sig.markers {
+            for mp in &marker.paths {
+                let mut expanded = expand_path(mp);
+                if expanded.contains("%LOCALAPPDATA%") {
+                    if let Ok(val) = std::env::var("LOCALAPPDATA") {
+                        expanded = expanded.replace("%LOCALAPPDATA%", &val);
+                    }
+                }
+                if expanded.contains("%APPDATA%") {
+                    if let Ok(val) = std::env::var("APPDATA") {
+                        expanded = expanded.replace("%APPDATA%", &val);
+                    }
+                }
+
+                let norm_path = path.replace("\\", "/").to_lowercase();
+                let norm_expanded = expanded.replace("\\", "/").to_lowercase();
+
+                if norm_path.starts_with(&norm_expanded) {
+                    return Some(AgentMatch {
+                        signature_id: sig.id.clone(),
+                        display_name: sig.name.clone(),
+                        vendor: Some(sig.vendor.clone()),
+                        product: Some(sig.product.clone()),
+                        agent_type: sig.agent_type.clone(),
+                        confidence: 1.0,
+                        matched_signals: vec![MatchedSignal {
+                            kind: "installed_app".into(),
+                            detail: format!("matched path: {}", mp),
+                            weight: 1.0,
+                        }],
+                        capability_tags: sig.capability_tags.clone(),
+                    });
+                }
+            }
+        }
+    }
+    None
+}

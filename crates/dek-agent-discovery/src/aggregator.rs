@@ -266,6 +266,61 @@ fn aggregate_by_merge_key(
                 EvidenceSource::IdeExtension => {
                     // Not fully utilizing this signal yet in identity.rs
                 }
+                EvidenceSource::InstalledAppScan => {
+                    if let Some(path) = ev.data.get("path").and_then(|v| v.as_str()) {
+                        let sigs =
+                            &dek_fingerprint_defs::embedded_baseline().installed_app_signatures;
+                        if let Some(am) = crate::identity::resolve_installed_app(path, sigs) {
+                            name = am.display_name.clone();
+                            vendor = am.vendor.clone();
+                            product = am.product.clone();
+                            agent_type = match am.agent_type.as_str() {
+                                "desktop_agent" => InferredAgentType::DesktopAgent,
+                                "ide_agent" => InferredAgentType::IdeAgent,
+                                _ => InferredAgentType::DesktopAgent,
+                            };
+                            for cap in &am.capability_tags {
+                                if !capability_tags.contains(cap) {
+                                    capability_tags.push(cap.clone());
+                                }
+                            }
+                        } else {
+                            name = path.to_string();
+                            agent_type = InferredAgentType::DesktopAgent;
+                        }
+                    }
+                }
+                EvidenceSource::BrowserSession
+                | EvidenceSource::BrowserHistory
+                | EvidenceSource::NetworkSni => {
+                    if let Some(url) = ev
+                        .data
+                        .get("url")
+                        .and_then(|v| v.as_str())
+                        .or_else(|| ev.data.get("sni").and_then(|v| v.as_str()))
+                    {
+                        let sigs = &dek_fingerprint_defs::embedded_baseline().web_ai_signatures;
+                        let mut found = false;
+                        for w_sig in sigs {
+                            if url.contains(&w_sig.domain) {
+                                name = w_sig.name.clone();
+                                vendor = Some(w_sig.vendor.clone());
+                                for cap in &w_sig.capability_tags {
+                                    if !capability_tags.contains(cap) {
+                                        capability_tags.push(cap.clone());
+                                    }
+                                }
+                                agent_type = InferredAgentType::WebAIApp;
+                                found = true;
+                                break;
+                            }
+                        }
+                        if !found {
+                            name = url.to_string();
+                            agent_type = InferredAgentType::WebAIApp;
+                        }
+                    }
+                }
                 _ => {}
             }
         }

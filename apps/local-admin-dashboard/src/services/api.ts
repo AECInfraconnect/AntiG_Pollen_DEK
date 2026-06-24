@@ -465,6 +465,11 @@ export const DeploymentApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  autoPlan: (intent: string) =>
+    defaultClient.fetchApi("/enforcement/auto-plan", {
+      method: "POST",
+      body: JSON.stringify({ intent }),
+    }),
   rollback: (deploymentId: string) =>
     defaultClient.fetchApi(`/policy-deployment/${deploymentId}/rollback`, {
       method: "POST",
@@ -547,7 +552,7 @@ export const PolicyApi = {
     defaultClient.simulatePreset(id, payload),
   checkPepCapabilities: (req: unknown) =>
     defaultClient.checkPepCapabilities(req),
-  getCapabilities: () => fetch("/v1/capabilities").then(res => res.json()),
+  getCapabilities: () => defaultClient.fetchApi("/host/capabilities"),
 };
 
 export const ActivityApi = {

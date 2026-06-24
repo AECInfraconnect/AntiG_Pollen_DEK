@@ -47,7 +47,10 @@ impl AgentBindingStore {
     }
 
     pub fn save(&self, binding: AgentBinding) -> Result<()> {
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?;
         let data = serde_json::to_string(&binding)?;
         conn.execute(
             "INSERT INTO bindings (binding_id, signature_id, data) VALUES (?1, ?2, ?3)
@@ -58,7 +61,10 @@ impl AgentBindingStore {
     }
 
     pub fn get(&self, id: &str) -> Result<Option<AgentBinding>> {
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?;
         let mut stmt = conn.prepare("SELECT data FROM bindings WHERE binding_id = ?1")?;
         let mut rows = stmt.query([id])?;
         if let Some(row) = rows.next()? {
@@ -71,7 +77,10 @@ impl AgentBindingStore {
     }
 
     pub fn list_all(&self) -> Result<Vec<AgentBinding>> {
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?;
         let mut stmt = conn.prepare("SELECT data FROM bindings")?;
         let rows = stmt.query_map([], |row| {
             let data: String = row.get(0)?;
@@ -89,7 +98,10 @@ impl AgentBindingStore {
     }
 
     pub fn get_by_signature(&self, signature_id: &str) -> Result<Vec<AgentBinding>> {
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?;
         let mut stmt = conn.prepare("SELECT data FROM bindings WHERE signature_id = ?1")?;
         let rows = stmt.query_map([signature_id], |row| {
             let data: String = row.get(0)?;

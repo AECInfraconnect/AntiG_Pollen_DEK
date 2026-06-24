@@ -37,7 +37,16 @@ pub struct InstalledAppSignatureDef {
     #[serde(default)]
     pub capability_tags: Vec<String>,
     #[serde(default)]
-    pub markers: Vec<InstallMarker>,
+    pub markers: Vec<InstalledAppMarker>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstalledAppMarker {
+    pub os: Option<String>,
+    #[serde(default)]
+    pub paths: Vec<String>,
+    #[serde(default)]
+    pub process_names: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

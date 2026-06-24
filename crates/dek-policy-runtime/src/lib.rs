@@ -38,6 +38,10 @@ pub struct PolicyDecision {
     pub metadata: serde_json::Value,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub explanation: Option<explanation::DecisionExplanation>,
+    #[serde(default)]
+    pub user_action_required: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_action_th: Option<String>,
 }
 
 use async_trait::async_trait;
@@ -90,6 +94,8 @@ impl PolicyRuntime for MockPolicyRuntime {
             obligations: vec!["write_decision_log".to_string()],
             metadata: serde_json::json!({ "version": "mock-v0.1.0" }),
             explanation: None,
+            user_action_required: false,
+            user_action_th: None,
         })
     }
 
@@ -268,6 +274,8 @@ impl PolicyRuntime for WasmtimePolicyRuntime {
             obligations: vec![],
             metadata: serde_json::json!({ "wasm_path": self.wasm_path }),
             explanation: None,
+            user_action_required: false,
+            user_action_th: None,
         })
     }
 

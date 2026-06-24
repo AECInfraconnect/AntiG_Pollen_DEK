@@ -16,25 +16,43 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "Anthropic Claude Desktop app with MCP support",
-        "references": ["https://anthropic.com/claude"],
+        "references": [
+          "https://anthropic.com/claude"
+        ],
         "added_in": "20260621000",
-        "tags": ["desktop", "mcp-client"]
+        "tags": [
+          "desktop",
+          "mcp-client"
+        ]
       },
-      "process_names": ["Claude", "claude-desktop"],
+      "process_names": [
+        "Claude",
+        "claude-desktop"
+      ],
       "binary_hashes": [],
       "config_paths": {
         "macos": [
           "~/Library/Application Support/Claude/claude_desktop_config.json"
         ],
-        "windows": ["%APPDATA%\\Claude\\claude_desktop_config.json"]
+        "windows": [
+          "%APPDATA%\\Claude\\claude_desktop_config.json"
+        ]
       },
-      "config_parsers": ["claude_desktop_json"],
+      "config_parsers": [
+        "claude_desktop_json"
+      ],
       "ports": [],
       "port_probe": null,
       "detection_logic": "process_and_config",
-      "control_strategies": ["mcp_stdio_wrapper", "observe_only"],
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
       "risk_weight": 0.8,
-      "capability_tags": ["mcp.client", "tool.use"]
+      "capability_tags": [
+        "mcp.client",
+        "tool.use"
+      ]
     },
     {
       "id": "cursor",
@@ -44,22 +62,40 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "Cursor AI Code Editor",
-        "references": ["https://cursor.sh"],
+        "references": [
+          "https://cursor.sh"
+        ],
         "added_in": "20260621000",
-        "tags": ["ide", "mcp-client"]
+        "tags": [
+          "ide",
+          "mcp-client"
+        ]
       },
-      "process_names": ["Cursor", "cursor"],
+      "process_names": [
+        "Cursor",
+        "cursor"
+      ],
       "binary_hashes": [],
       "config_paths": {
-        "all": [".cursor/mcp.json"]
+        "all": [
+          ".cursor/mcp.json"
+        ]
       },
-      "config_parsers": ["cursor_json"],
+      "config_parsers": [
+        "cursor_json"
+      ],
       "ports": [],
       "port_probe": null,
       "detection_logic": "process_and_config",
-      "control_strategies": ["mcp_stdio_wrapper", "observe_only"],
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
       "risk_weight": 0.7,
-      "capability_tags": ["code.agentic", "ide"]
+      "capability_tags": [
+        "code.agentic",
+        "ide"
+      ]
     },
     {
       "id": "vscode",
@@ -69,20 +105,35 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "Visual Studio Code",
-        "references": ["https://code.visualstudio.com"],
+        "references": [
+          "https://code.visualstudio.com"
+        ],
         "added_in": "20260621000",
-        "tags": ["ide", "mcp-client"]
+        "tags": [
+          "ide",
+          "mcp-client"
+        ]
       },
-      "process_names": ["Code", "code"],
+      "process_names": [
+        "Code",
+        "code"
+      ],
       "binary_hashes": [],
       "config_paths": {
-        "all": [".vscode/settings.json"]
+        "all": [
+          ".vscode/settings.json"
+        ]
       },
-      "config_parsers": ["vscode_json"],
+      "config_parsers": [
+        "vscode_json"
+      ],
       "ports": [],
       "port_probe": null,
       "detection_logic": "process_and_config",
-      "control_strategies": ["mcp_stdio_wrapper", "observe_only"],
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
       "risk_weight": 0.6
     },
     {
@@ -93,22 +144,40 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "Codeium Windsurf IDE",
-        "references": ["https://codeium.com/windsurf"],
+        "references": [
+          "https://codeium.com/windsurf"
+        ],
         "added_in": "20260621000",
-        "tags": ["ide", "mcp-client"]
+        "tags": [
+          "ide",
+          "mcp-client"
+        ]
       },
-      "process_names": ["Windsurf", "windsurf"],
+      "process_names": [
+        "Windsurf",
+        "windsurf"
+      ],
       "binary_hashes": [],
       "config_paths": {
-        "all": ["~/.windsurf/config.json"]
+        "all": [
+          "~/.windsurf/config.json"
+        ]
       },
-      "config_parsers": ["windsurf_json"],
+      "config_parsers": [
+        "windsurf_json"
+      ],
       "ports": [],
       "port_probe": null,
       "detection_logic": "process_and_config",
-      "control_strategies": ["mcp_stdio_wrapper", "observe_only"],
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
       "risk_weight": 0.7,
-      "capability_tags": ["code.agentic", "ide"]
+      "capability_tags": [
+        "code.agentic",
+        "ide"
+      ]
     },
     {
       "id": "cline",
@@ -118,22 +187,40 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "Cline CLI Agent",
-        "references": ["https://github.com/cline/cline"],
+        "references": [
+          "https://github.com/cline/cline"
+        ],
         "added_in": "20260621000",
-        "tags": ["cli", "mcp-client"]
+        "tags": [
+          "cli",
+          "mcp-client"
+        ]
       },
-      "process_names": ["cline", "node"],
+      "process_names": [
+        "cline",
+        "node"
+      ],
       "binary_hashes": [],
       "config_paths": {
-        "all": ["~/.cline/config.json"]
+        "all": [
+          "~/.cline/config.json"
+        ]
       },
-      "config_parsers": ["cline_json"],
+      "config_parsers": [
+        "cline_json"
+      ],
       "ports": [],
       "port_probe": null,
       "detection_logic": "process_and_config",
-      "control_strategies": ["mcp_stdio_wrapper", "observe_only"],
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
       "risk_weight": 0.7,
-      "capability_tags": ["code.agentic", "mcp.client"]
+      "capability_tags": [
+        "code.agentic",
+        "mcp.client"
+      ]
     },
     {
       "id": "claude_code",
@@ -143,22 +230,41 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "Anthropic Claude Code CLI tool",
-        "references": ["https://anthropic.com"],
+        "references": [
+          "https://anthropic.com"
+        ],
         "added_in": "20260621000",
-        "tags": ["cli", "mcp-client"]
+        "tags": [
+          "cli",
+          "mcp-client"
+        ]
       },
-      "process_names": ["claude", "node"],
+      "process_names": [
+        "claude",
+        "node"
+      ],
       "binary_hashes": [],
       "config_paths": {
-        "all": ["~/.claude.json"]
+        "all": [
+          "~/.claude.json"
+        ]
       },
-      "config_parsers": ["claude_json"],
+      "config_parsers": [
+        "claude_json"
+      ],
       "ports": [],
       "port_probe": null,
       "detection_logic": "process_and_config",
-      "control_strategies": ["mcp_stdio_wrapper", "observe_only"],
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
       "risk_weight": 0.7,
-      "capability_tags": ["code.agentic", "mcp.client", "tool.use"]
+      "capability_tags": [
+        "code.agentic",
+        "mcp.client",
+        "tool.use"
+      ]
     },
     {
       "id": "ollama",
@@ -168,23 +274,37 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "Ollama local LLM runner",
-        "references": ["https://ollama.com"],
+        "references": [
+          "https://ollama.com"
+        ],
         "added_in": "20260621000",
-        "tags": ["local_model", "server"]
+        "tags": [
+          "local_model",
+          "server"
+        ]
       },
-      "process_names": ["ollama"],
+      "process_names": [
+        "ollama"
+      ],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
-      "ports": [11434],
+      "ports": [
+        11434
+      ],
       "port_probe": {
         "kind": "openai_compat",
         "path": "/api/tags"
       },
       "detection_logic": "process_or_config_with_port",
-      "control_strategies": ["network_egress_pep", "observe_only"],
+      "control_strategies": [
+        "network_egress_pep",
+        "observe_only"
+      ],
       "risk_weight": 0.5,
-      "capability_tags": ["model.server"]
+      "capability_tags": [
+        "model.server"
+      ]
     },
     {
       "id": "lmstudio",
@@ -194,23 +314,38 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "LM Studio local LLM runner",
-        "references": ["https://lmstudio.ai"],
+        "references": [
+          "https://lmstudio.ai"
+        ],
         "added_in": "20260621000",
-        "tags": ["local_model", "server"]
+        "tags": [
+          "local_model",
+          "server"
+        ]
       },
-      "process_names": ["lmstudio", "LM Studio"],
+      "process_names": [
+        "lmstudio",
+        "LM Studio"
+      ],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
-      "ports": [1234],
+      "ports": [
+        1234
+      ],
       "port_probe": {
         "kind": "openai_compat",
         "path": "/v1/models"
       },
       "detection_logic": "process_or_config_with_port",
-      "control_strategies": ["network_egress_pep", "observe_only"],
+      "control_strategies": [
+        "network_egress_pep",
+        "observe_only"
+      ],
       "risk_weight": 0.5,
-      "capability_tags": ["model.server"]
+      "capability_tags": [
+        "model.server"
+      ]
     },
     {
       "id": "openclaw",
@@ -227,14 +362,27 @@
           "https://docs.openclaw.ai/"
         ],
         "added_in": "20260622000",
-        "tags": ["claw-family", "shadow-ai", "node", "gateway", "mcp-client"]
+        "tags": [
+          "claw-family",
+          "shadow-ai",
+          "node",
+          "gateway",
+          "mcp-client"
+        ]
       },
-      "process_names": ["node", "node.exe"],
+      "process_names": [
+        "node",
+        "node.exe"
+      ],
       "binary_hashes": [],
       "config_paths": {
-        "all": ["~/.openclaw/openclaw.json"]
+        "all": [
+          "~/.openclaw/openclaw.json"
+        ]
       },
-      "config_parsers": ["openclaw_json"],
+      "config_parsers": [
+        "openclaw_json"
+      ],
       "ports": [],
       "port_probe": null,
       "detection_logic": "any_of",
@@ -242,7 +390,10 @@
         "(?i)\\bopenclaw\\b",
         "node_modules[\\\\/]openclaw[\\\\/]"
       ],
-      "exe_path_patterns": ["**/node_modules/openclaw/**", "**/.openclaw/**"],
+      "exe_path_patterns": [
+        "**/node_modules/openclaw/**",
+        "**/.openclaw/**"
+      ],
       "install_markers": [
         {
           "path": "~/.openclaw/openclaw.json",
@@ -255,7 +406,9 @@
           "weight": 0.4
         }
       ],
-      "cli_binaries": ["openclaw"],
+      "cli_binaries": [
+        "openclaw"
+      ],
       "package_markers": [
         {
           "ecosystem": "npm",
@@ -263,9 +416,20 @@
           "global": true
         }
       ],
-      "env_markers": ["OPENCLAW_HOME", "OPENCLAW_PROFILE"],
-      "egress_hosts": ["api.anthropic.com", "api.openai.com", "api.z.ai"],
-      "capability_tags": ["claw-family", "channel.messaging", "cred.provision"],
+      "env_markers": [
+        "OPENCLAW_HOME",
+        "OPENCLAW_PROFILE"
+      ],
+      "egress_hosts": [
+        "api.anthropic.com",
+        "api.openai.com",
+        "api.z.ai"
+      ],
+      "capability_tags": [
+        "claw-family",
+        "channel.messaging",
+        "cred.provision"
+      ],
       "control_strategies": [
         "mcp_stdio_wrapper",
         "network_egress_pep",
@@ -283,14 +447,28 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "Kubernetes-native multi-agent orchestrator; manages OpenClaw/QwenPaw/Hermes workers via Matrix",
-        "references": ["https://github.com/agentscope-ai/hiclaw"],
+        "references": [
+          "https://github.com/agentscope-ai/hiclaw"
+        ],
         "added_in": "20260622000",
-        "tags": ["claw-family", "shadow-ai", "orchestrator", "kubernetes"]
+        "tags": [
+          "claw-family",
+          "shadow-ai",
+          "orchestrator",
+          "kubernetes"
+        ]
       },
-      "process_names": ["node", "node.exe", "python", "python.exe"],
+      "process_names": [
+        "node",
+        "node.exe",
+        "python",
+        "python.exe"
+      ],
       "binary_hashes": [],
       "config_paths": {
-        "all": ["~/.hiclaw"]
+        "all": [
+          "~/.hiclaw"
+        ]
       },
       "config_parsers": [],
       "ports": [],
@@ -300,7 +478,9 @@
         "(?i)\\bhiclaw\\b",
         "(?i)hiclaw-(controller|manager|worker)"
       ],
-      "exe_path_patterns": ["**/hiclaw/**"],
+      "exe_path_patterns": [
+        "**/hiclaw/**"
+      ],
       "install_markers": [
         {
           "path": "~/.hiclaw",
@@ -308,12 +488,22 @@
           "weight": 0.55
         }
       ],
-      "cli_binaries": ["hiclaw"],
+      "cli_binaries": [
+        "hiclaw"
+      ],
       "package_markers": [],
-      "env_markers": ["HICLAW_HOME"],
+      "env_markers": [
+        "HICLAW_HOME"
+      ],
       "egress_hosts": [],
-      "capability_tags": ["claw-family", "code.exec"],
-      "control_strategies": ["network_egress_pep", "observe_only"],
+      "capability_tags": [
+        "claw-family",
+        "code.exec"
+      ],
+      "control_strategies": [
+        "network_egress_pep",
+        "observe_only"
+      ],
       "risk_weight": 0.95
     },
     {
@@ -326,21 +516,39 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "Wraps Claude Code/Codex/Gemini/Cursor as one MCP runtime (65 tools); registers in ~/.openclaw/openclaw.json",
-        "references": ["https://github.com/Enderfga/claw-orchestrator"],
+        "references": [
+          "https://github.com/Enderfga/claw-orchestrator"
+        ],
         "added_in": "20260622000",
-        "tags": ["claw-family", "shadow-ai", "mcp-server", "code"]
+        "tags": [
+          "claw-family",
+          "shadow-ai",
+          "mcp-server",
+          "code"
+        ]
       },
-      "process_names": ["node", "node.exe"],
+      "process_names": [
+        "node",
+        "node.exe"
+      ],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
       "ports": [],
       "port_probe": null,
       "detection_logic": "any_of",
-      "cmd_patterns": ["(?i)clawo-mcp", "@enderfga[\\\\/]claw-orchestrator"],
-      "exe_path_patterns": ["**/claw-orchestrator/**", "**/clawo-mcp*"],
+      "cmd_patterns": [
+        "(?i)clawo-mcp",
+        "@enderfga[\\\\/]claw-orchestrator"
+      ],
+      "exe_path_patterns": [
+        "**/claw-orchestrator/**",
+        "**/clawo-mcp*"
+      ],
       "install_markers": [],
-      "cli_binaries": ["clawo-mcp"],
+      "cli_binaries": [
+        "clawo-mcp"
+      ],
       "package_markers": [
         {
           "ecosystem": "npm",
@@ -348,10 +556,19 @@
           "global": true
         }
       ],
-      "env_markers": ["CLAWO_MCP_TOOLS"],
+      "env_markers": [
+        "CLAWO_MCP_TOOLS"
+      ],
       "egress_hosts": [],
-      "capability_tags": ["mcp.server", "code.exec", "fs.write"],
-      "control_strategies": ["mcp_stdio_wrapper", "observe_only"],
+      "capability_tags": [
+        "mcp.server",
+        "code.exec",
+        "fs.write"
+      ],
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "observe_only"
+      ],
       "risk_weight": 0.9
     },
     {
@@ -364,12 +581,18 @@
         "description": "Signature for OpenAI Codex CLI",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["code.agentic", "mcp.server"]
+        "tags": [
+          "code.agentic",
+          "mcp.server"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {
-        "any": ["~/.codex/config.toml", "~/.codex/AGENTS.md"]
+        "any": [
+          "~/.codex/config.toml",
+          "~/.codex/AGENTS.md"
+        ]
       },
       "config_parsers": [],
       "ports": [],
@@ -380,13 +603,18 @@
       "cmd_patterns": [],
       "exe_path_patterns": [],
       "install_markers": [],
-      "cli_binaries": ["codex"],
+      "cli_binaries": [
+        "codex"
+      ],
       "package_markers": [],
       "env_markers": [],
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["code.agentic", "mcp.server"],
+      "capability_tags": [
+        "code.agentic",
+        "mcp.server"
+      ],
       "signal_weights": null
     },
     {
@@ -399,12 +627,17 @@
         "description": "Signature for Gemini CLI",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["code.agentic"]
+        "tags": [
+          "code.agentic"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {
-        "any": ["~/.gemini/settings.json", "GEMINI.md"]
+        "any": [
+          "~/.gemini/settings.json",
+          "GEMINI.md"
+        ]
       },
       "config_parsers": [],
       "ports": [],
@@ -415,13 +648,17 @@
       "cmd_patterns": [],
       "exe_path_patterns": [],
       "install_markers": [],
-      "cli_binaries": ["gemini"],
+      "cli_binaries": [
+        "gemini"
+      ],
       "package_markers": [],
       "env_markers": [],
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["code.agentic"],
+      "capability_tags": [
+        "code.agentic"
+      ],
       "signal_weights": null
     },
     {
@@ -434,12 +671,16 @@
         "description": "Signature for Antigravity CLI",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["code.agentic"]
+        "tags": [
+          "code.agentic"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {
-        "any": [".agents/"]
+        "any": [
+          ".agents/"
+        ]
       },
       "config_parsers": [],
       "ports": [],
@@ -450,13 +691,17 @@
       "cmd_patterns": [],
       "exe_path_patterns": [],
       "install_markers": [],
-      "cli_binaries": ["antigravity"],
+      "cli_binaries": [
+        "antigravity"
+      ],
       "package_markers": [],
       "env_markers": [],
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["code.agentic"],
+      "capability_tags": [
+        "code.agentic"
+      ],
       "signal_weights": null
     },
     {
@@ -469,7 +714,9 @@
         "description": "Signature for OpenCode",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["code.agentic"]
+        "tags": [
+          "code.agentic"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
@@ -483,13 +730,18 @@
       "cmd_patterns": [],
       "exe_path_patterns": [],
       "install_markers": [],
-      "cli_binaries": ["opencode", "opencode-ai"],
+      "cli_binaries": [
+        "opencode",
+        "opencode-ai"
+      ],
       "package_markers": [],
       "env_markers": [],
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["code.agentic"],
+      "capability_tags": [
+        "code.agentic"
+      ],
       "signal_weights": null
     },
     {
@@ -502,12 +754,17 @@
         "description": "Signature for Aider",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["code.agentic", "code.generation"]
+        "tags": [
+          "code.agentic",
+          "code.generation"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {
-        "any": ["~/.aider.conf.yml"]
+        "any": [
+          "~/.aider.conf.yml"
+        ]
       },
       "config_parsers": [],
       "ports": [],
@@ -518,7 +775,9 @@
       "cmd_patterns": [],
       "exe_path_patterns": [],
       "install_markers": [],
-      "cli_binaries": ["aider"],
+      "cli_binaries": [
+        "aider"
+      ],
       "package_markers": [
         {
           "ecosystem": "pip",
@@ -530,7 +789,10 @@
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["code.agentic", "code.generation"],
+      "capability_tags": [
+        "code.agentic",
+        "code.generation"
+      ],
       "signal_weights": null
     },
     {
@@ -543,12 +805,17 @@
         "description": "Signature for Goose",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["code.agentic", "mcp.client"]
+        "tags": [
+          "code.agentic",
+          "mcp.client"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {
-        "any": ["~/.config/goose/config.toml"]
+        "any": [
+          "~/.config/goose/config.toml"
+        ]
       },
       "config_parsers": [],
       "ports": [],
@@ -559,13 +826,18 @@
       "cmd_patterns": [],
       "exe_path_patterns": [],
       "install_markers": [],
-      "cli_binaries": ["goose"],
+      "cli_binaries": [
+        "goose"
+      ],
       "package_markers": [],
       "env_markers": [],
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["code.agentic", "mcp.client"],
+      "capability_tags": [
+        "code.agentic",
+        "mcp.client"
+      ],
       "signal_weights": null
     },
     {
@@ -578,12 +850,17 @@
         "description": "Signature for Open Interpreter",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["code.exec", "tool.use"]
+        "tags": [
+          "code.exec",
+          "tool.use"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {
-        "any": ["~/.config/open-interpreter/"]
+        "any": [
+          "~/.config/open-interpreter/"
+        ]
       },
       "config_parsers": [],
       "ports": [],
@@ -594,13 +871,18 @@
       "cmd_patterns": [],
       "exe_path_patterns": [],
       "install_markers": [],
-      "cli_binaries": ["interpreter"],
+      "cli_binaries": [
+        "interpreter"
+      ],
       "package_markers": [],
       "env_markers": [],
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["code.exec", "tool.use"],
+      "capability_tags": [
+        "code.exec",
+        "tool.use"
+      ],
       "signal_weights": null
     },
     {
@@ -613,12 +895,16 @@
         "description": "Signature for GitHub Copilot CLI",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["code.agentic"]
+        "tags": [
+          "code.agentic"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {
-        "any": [".github/copilot-instructions.md"]
+        "any": [
+          ".github/copilot-instructions.md"
+        ]
       },
       "config_parsers": [],
       "ports": [],
@@ -629,13 +915,17 @@
       "cmd_patterns": [],
       "exe_path_patterns": [],
       "install_markers": [],
-      "cli_binaries": ["gh copilot"],
+      "cli_binaries": [
+        "gh copilot"
+      ],
       "package_markers": [],
       "env_markers": [],
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["code.agentic"],
+      "capability_tags": [
+        "code.agentic"
+      ],
       "signal_weights": null
     },
     {
@@ -648,18 +938,24 @@
         "description": "Signature for vLLM",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["model.server"]
+        "tags": [
+          "model.server"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
-      "ports": [8000],
+      "ports": [
+        8000
+      ],
       "port_probe": null,
       "detection_logic": "process_and_config",
       "control_strategies": [],
       "risk_weight": 0.5,
-      "cmd_patterns": ["python -m vllm"],
+      "cmd_patterns": [
+        "python -m vllm"
+      ],
       "exe_path_patterns": [],
       "install_markers": [],
       "cli_binaries": [],
@@ -674,7 +970,9 @@
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["model.server"],
+      "capability_tags": [
+        "model.server"
+      ],
       "signal_weights": null
     },
     {
@@ -687,13 +985,17 @@
         "description": "Signature for llama.cpp server",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["model.server"]
+        "tags": [
+          "model.server"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
-      "ports": [8080],
+      "ports": [
+        8080
+      ],
       "port_probe": null,
       "detection_logic": "process_and_config",
       "control_strategies": [],
@@ -701,13 +1003,17 @@
       "cmd_patterns": [],
       "exe_path_patterns": [],
       "install_markers": [],
-      "cli_binaries": ["llama-server"],
+      "cli_binaries": [
+        "llama-server"
+      ],
       "package_markers": [],
       "env_markers": [],
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["model.server"],
+      "capability_tags": [
+        "model.server"
+      ],
       "signal_weights": null
     },
     {
@@ -720,20 +1026,28 @@
         "description": "Signature for NVIDIA NIM",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["model.server"]
+        "tags": [
+          "model.server"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {
-        "any": ["~/.cache/nim"]
+        "any": [
+          "~/.cache/nim"
+        ]
       },
       "config_parsers": [],
-      "ports": [8000],
+      "ports": [
+        8000
+      ],
       "port_probe": null,
       "detection_logic": "process_and_config",
       "control_strategies": [],
       "risk_weight": 0.5,
-      "cmd_patterns": ["nvcr.io/nim/"],
+      "cmd_patterns": [
+        "nvcr.io/nim/"
+      ],
       "exe_path_patterns": [],
       "install_markers": [],
       "cli_binaries": [],
@@ -742,7 +1056,9 @@
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["model.server"],
+      "capability_tags": [
+        "model.server"
+      ],
       "signal_weights": null
     },
     {
@@ -755,13 +1071,18 @@
         "description": "Signature for Jan",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["model.server", "desktop"]
+        "tags": [
+          "model.server",
+          "desktop"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
-      "ports": [1337],
+      "ports": [
+        1337
+      ],
       "port_probe": null,
       "detection_logic": "process_and_config",
       "control_strategies": [],
@@ -775,7 +1096,10 @@
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["model.server", "desktop"],
+      "capability_tags": [
+        "model.server",
+        "desktop"
+      ],
       "signal_weights": null
     },
     {
@@ -788,13 +1112,17 @@
         "description": "Signature for LocalAI",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["model.server"]
+        "tags": [
+          "model.server"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
-      "ports": [8080],
+      "ports": [
+        8080
+      ],
       "port_probe": null,
       "detection_logic": "process_and_config",
       "control_strategies": [],
@@ -808,7 +1136,9 @@
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["model.server"],
+      "capability_tags": [
+        "model.server"
+      ],
       "signal_weights": null
     },
     {
@@ -821,13 +1151,18 @@
         "description": "Signature for GPT4All",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["model.server", "rag.retrieval"]
+        "tags": [
+          "model.server",
+          "rag.retrieval"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
-      "ports": [4891],
+      "ports": [
+        4891
+      ],
       "port_probe": null,
       "detection_logic": "process_and_config",
       "control_strategies": [],
@@ -841,7 +1176,10 @@
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["model.server", "rag.retrieval"],
+      "capability_tags": [
+        "model.server",
+        "rag.retrieval"
+      ],
       "signal_weights": null
     },
     {
@@ -854,13 +1192,17 @@
         "description": "Signature for KoboldCpp",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["model.server"]
+        "tags": [
+          "model.server"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
-      "ports": [5001],
+      "ports": [
+        5001
+      ],
       "port_probe": null,
       "detection_logic": "process_and_config",
       "control_strategies": [],
@@ -874,7 +1216,9 @@
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["model.server"],
+      "capability_tags": [
+        "model.server"
+      ],
       "signal_weights": null
     },
     {
@@ -887,15 +1231,22 @@
         "description": "Signature for text-generation-webui",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["model.server"]
+        "tags": [
+          "model.server"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {
-        "any": ["~/.cache/oobabooga"]
+        "any": [
+          "~/.cache/oobabooga"
+        ]
       },
       "config_parsers": [],
-      "ports": [5000, 7860],
+      "ports": [
+        5000,
+        7860
+      ],
       "port_probe": null,
       "detection_logic": "process_and_config",
       "control_strategies": [],
@@ -909,7 +1260,9 @@
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["model.server"],
+      "capability_tags": [
+        "model.server"
+      ],
       "signal_weights": null
     },
     {
@@ -922,13 +1275,18 @@
         "description": "Signature for Open WebUI",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["chat.ui"]
+        "tags": [
+          "chat.ui"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
-      "ports": [3000, 8080],
+      "ports": [
+        3000,
+        8080
+      ],
       "port_probe": null,
       "detection_logic": "process_and_config",
       "control_strategies": [],
@@ -948,7 +1306,9 @@
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["chat.ui"],
+      "capability_tags": [
+        "chat.ui"
+      ],
       "signal_weights": null
     },
     {
@@ -961,7 +1321,11 @@
         "description": "Signature for Claw Orchestrator",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["claw-family", "mcp.server", "code.exec"]
+        "tags": [
+          "claw-family",
+          "mcp.server",
+          "code.exec"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
@@ -975,7 +1339,9 @@
       "cmd_patterns": [],
       "exe_path_patterns": [],
       "install_markers": [],
-      "cli_binaries": ["clawo-mcp"],
+      "cli_binaries": [
+        "clawo-mcp"
+      ],
       "package_markers": [
         {
           "ecosystem": "npm",
@@ -987,7 +1353,11 @@
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["claw-family", "mcp.server", "code.exec"],
+      "capability_tags": [
+        "claw-family",
+        "mcp.server",
+        "code.exec"
+      ],
       "signal_weights": null
     },
     {
@@ -1000,13 +1370,18 @@
         "description": "Signature for n8n",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["automation", "tool.use"]
+        "tags": [
+          "automation",
+          "tool.use"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
-      "ports": [5678],
+      "ports": [
+        5678
+      ],
       "port_probe": null,
       "detection_logic": "process_and_config",
       "control_strategies": [],
@@ -1020,7 +1395,10 @@
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["automation", "tool.use"],
+      "capability_tags": [
+        "automation",
+        "tool.use"
+      ],
       "signal_weights": null
     },
     {
@@ -1033,13 +1411,18 @@
         "description": "Signature for Flowise",
         "references": [],
         "added_in": "20260622000",
-        "tags": ["automation", "tool.use"]
+        "tags": [
+          "automation",
+          "tool.use"
+        ]
       },
       "process_names": [],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
-      "ports": [3000],
+      "ports": [
+        3000
+      ],
       "port_probe": null,
       "detection_logic": "process_and_config",
       "control_strategies": [],
@@ -1053,7 +1436,10 @@
       "egress_hosts": [],
       "vendor": null,
       "product": null,
-      "capability_tags": ["automation", "tool.use"],
+      "capability_tags": [
+        "automation",
+        "tool.use"
+      ],
       "signal_weights": null
     },
     {
@@ -1066,21 +1452,39 @@
         "description": "Manus AI Agent",
         "references": [],
         "added_in": "20260623000",
-        "tags": ["desktop", "agent"]
+        "tags": [
+          "desktop",
+          "agent"
+        ]
       },
-      "process_names": ["manus", "manus-ai", "Manus"],
+      "process_names": [
+        "manus",
+        "manus-ai",
+        "Manus"
+      ],
       "binary_hashes": [],
       "config_paths": {
-        "all": ["~/.manus/config.json"]
+        "all": [
+          "~/.manus/config.json"
+        ]
       },
-      "config_parsers": ["manus_json"],
-      "cmd_patterns": ["(?i)\\\\bmanus\\\\b"],
+      "config_parsers": [
+        "manus_json"
+      ],
+      "cmd_patterns": [
+        "(?i)\\\\bmanus\\\\b"
+      ],
       "ports": [],
       "port_probe": null,
       "detection_logic": "process_and_config",
-      "control_strategies": ["observe_only"],
+      "control_strategies": [
+        "observe_only"
+      ],
       "risk_weight": 0.8,
-      "capability_tags": ["tool.use", "code.agentic"]
+      "capability_tags": [
+        "tool.use",
+        "code.agentic"
+      ]
     },
     {
       "id": "claude_browser",
@@ -1090,21 +1494,41 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "Claude Web App",
-        "references": ["https://claude.ai"],
+        "references": [
+          "https://claude.ai"
+        ],
         "added_in": "20260623000",
-        "tags": ["web", "llm"]
+        "tags": [
+          "web",
+          "llm"
+        ]
       },
-      "process_names": ["chrome", "msedge", "brave", "safari", "firefox"],
-      "egress_hosts": ["claude.ai", "api.anthropic.com"],
+      "process_names": [
+        "chrome",
+        "msedge",
+        "brave",
+        "safari",
+        "firefox"
+      ],
+      "egress_hosts": [
+        "claude.ai",
+        "api.anthropic.com"
+      ],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
       "ports": [],
       "port_probe": null,
       "detection_logic": "network_egress",
-      "control_strategies": ["network_filter", "observe_only"],
+      "control_strategies": [
+        "network_filter",
+        "observe_only"
+      ],
       "risk_weight": 0.5,
-      "capability_tags": ["text.generation", "vision.input"]
+      "capability_tags": [
+        "text.generation",
+        "vision.input"
+      ]
     },
     {
       "id": "chatgpt_browser",
@@ -1114,21 +1538,43 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "ChatGPT Web App",
-        "references": ["https://chatgpt.com"],
+        "references": [
+          "https://chatgpt.com"
+        ],
         "added_in": "20260623000",
-        "tags": ["web", "llm"]
+        "tags": [
+          "web",
+          "llm"
+        ]
       },
-      "process_names": ["chrome", "msedge", "brave", "safari", "firefox"],
-      "egress_hosts": ["chatgpt.com", "openai.com", "chat.openai.com"],
+      "process_names": [
+        "chrome",
+        "msedge",
+        "brave",
+        "safari",
+        "firefox"
+      ],
+      "egress_hosts": [
+        "chatgpt.com",
+        "openai.com",
+        "chat.openai.com"
+      ],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
       "ports": [],
       "port_probe": null,
       "detection_logic": "network_egress",
-      "control_strategies": ["network_filter", "observe_only"],
+      "control_strategies": [
+        "network_filter",
+        "observe_only"
+      ],
       "risk_weight": 0.5,
-      "capability_tags": ["text.generation", "vision.input", "tool.use"]
+      "capability_tags": [
+        "text.generation",
+        "vision.input",
+        "tool.use"
+      ]
     },
     {
       "id": "deepseek_browser",
@@ -1138,21 +1584,42 @@
       "meta": {
         "author": "pollen-threat-intel",
         "description": "Deepseek Web App",
-        "references": ["https://chat.deepseek.com"],
+        "references": [
+          "https://chat.deepseek.com"
+        ],
         "added_in": "20260623000",
-        "tags": ["web", "llm"]
+        "tags": [
+          "web",
+          "llm"
+        ]
       },
-      "process_names": ["chrome", "msedge", "brave", "safari", "firefox"],
-      "egress_hosts": ["chat.deepseek.com", "api.deepseek.com", "deepseek.com"],
+      "process_names": [
+        "chrome",
+        "msedge",
+        "brave",
+        "safari",
+        "firefox"
+      ],
+      "egress_hosts": [
+        "chat.deepseek.com",
+        "api.deepseek.com",
+        "deepseek.com"
+      ],
       "binary_hashes": [],
       "config_paths": {},
       "config_parsers": [],
       "ports": [],
       "port_probe": null,
       "detection_logic": "network_egress",
-      "control_strategies": ["network_filter", "observe_only"],
+      "control_strategies": [
+        "network_filter",
+        "observe_only"
+      ],
       "risk_weight": 0.6,
-      "capability_tags": ["text.generation", "reasoning.cot"]
+      "capability_tags": [
+        "text.generation",
+        "reasoning.cot"
+      ]
     },
     {
       "id": "gemini_pro_antigravity",
@@ -1164,108 +1631,191 @@
         "description": "Antigravity App using Gemini Pro",
         "references": [],
         "added_in": "20260623000",
-        "tags": ["desktop", "agent"]
+        "tags": [
+          "desktop",
+          "agent"
+        ]
       },
-      "process_names": ["antigravity", "Antigravity"],
-      "cmd_patterns": ["(?i)gemini[_-]pro", "(?i)antigravity"],
+      "process_names": [
+        "antigravity",
+        "Antigravity"
+      ],
+      "cmd_patterns": [
+        "(?i)gemini[_-]pro",
+        "(?i)antigravity"
+      ],
       "binary_hashes": [],
       "config_paths": {
-        "all": ["~/.gemini/antigravity/brain"]
+        "all": [
+          "~/.gemini/antigravity/brain"
+        ]
       },
       "config_parsers": [],
       "ports": [],
       "port_probe": null,
       "detection_logic": "process_and_config",
-      "control_strategies": ["observe_only"],
+      "control_strategies": [
+        "observe_only"
+      ],
       "risk_weight": 0.7,
-      "capability_tags": ["code.agentic", "tool.use", "text.generation"]
+      "capability_tags": [
+        "code.agentic",
+        "tool.use",
+        "text.generation"
+      ]
+    },
+    {
+      "id": "codex_desktop",
+      "display_name": "OpenAI Codex (Desktop)",
+      "agent_type": "desktop_agent",
+      "vendor": "OpenAI",
+      "detection_logic": "any_of",
+      "process_names": [
+        "Codex.exe",
+        "codex.exe"
+      ],
+      "exe_path_patterns": [
+        "**/WindowsApps/OpenAI.Codex_*/**/Codex.exe",
+        "**/WindowsApps/OpenAI.Codex_*/**/resources/codex.exe",
+        "**/OpenAI*Codex*/**"
+      ],
+      "capability_tags": [
+        "code.exec",
+        "fs.write",
+        "llm.call"
+      ]
     }
   ],
   "model_classifier": {
     "vendors": [
       {
-        "ns": ["meta-llama"],
+        "ns": [
+          "meta-llama"
+        ],
         "vendor": "Meta",
         "license_class": "llama",
         "flags": []
       },
       {
-        "ns": ["qwen", "huihui_ai"],
+        "ns": [
+          "qwen",
+          "huihui_ai"
+        ],
         "vendor": "Alibaba",
-        "flags": ["data.egress.cn"]
+        "flags": [
+          "data.egress.cn"
+        ]
       },
       {
-        "ns": ["deepseek-ai", "deepseek"],
+        "ns": [
+          "deepseek-ai",
+          "deepseek"
+        ],
         "vendor": "DeepSeek",
-        "flags": ["data.egress.cn"]
+        "flags": [
+          "data.egress.cn"
+        ]
       },
       {
-        "ns": ["google"],
+        "ns": [
+          "google"
+        ],
         "vendor": "Google",
         "flags": []
       },
       {
-        "ns": ["mistralai", "mistral"],
+        "ns": [
+          "mistralai",
+          "mistral"
+        ],
         "vendor": "Mistral",
         "flags": []
       },
       {
-        "ns": ["microsoft"],
+        "ns": [
+          "microsoft"
+        ],
         "vendor": "Microsoft",
         "flags": []
       },
       {
-        "ns": ["openai"],
+        "ns": [
+          "openai"
+        ],
         "vendor": "OpenAI",
         "flags": []
       },
       {
-        "ns": ["nvidia"],
+        "ns": [
+          "nvidia"
+        ],
         "vendor": "NVIDIA",
         "flags": []
       },
       {
-        "ns": ["01-ai"],
+        "ns": [
+          "01-ai"
+        ],
         "vendor": "01.AI",
-        "flags": ["data.egress.cn"]
+        "flags": [
+          "data.egress.cn"
+        ]
       },
       {
-        "ns": ["cohere"],
+        "ns": [
+          "cohere"
+        ],
         "vendor": "Cohere",
         "flags": []
       },
       {
-        "ns": ["tiiuae"],
+        "ns": [
+          "tiiuae"
+        ],
         "vendor": "TII",
         "flags": []
       },
       {
-        "ns": ["ibm"],
+        "ns": [
+          "ibm"
+        ],
         "vendor": "IBM",
         "flags": []
       },
       {
-        "ns": ["bigcode"],
+        "ns": [
+          "bigcode"
+        ],
         "vendor": "BigCode",
         "flags": []
       },
       {
-        "ns": ["allenai"],
+        "ns": [
+          "allenai"
+        ],
         "vendor": "AllenAI",
         "flags": []
       },
       {
-        "ns": ["huggingface"],
+        "ns": [
+          "huggingface"
+        ],
         "vendor": "HuggingFace",
         "flags": []
       },
       {
-        "ns": ["internlm"],
+        "ns": [
+          "internlm"
+        ],
         "vendor": "Shanghai AI Lab",
-        "flags": ["data.egress.cn"]
+        "flags": [
+          "data.egress.cn"
+        ]
       },
       {
-        "ns": ["ai21"],
+        "ns": [
+          "ai21"
+        ],
         "vendor": "AI21 Labs",
         "flags": []
       }
@@ -1416,7 +1966,9 @@
         "pattern": "(?i)\\\\b(llava-?(v1\\\\.5|v1\\\\.6|next)?)\\\\b",
         "family": "LLaVA",
         "vendor": "Haotian Liu",
-        "tags": ["vision.input"],
+        "tags": [
+          "vision.input"
+        ],
         "risk_base": 0.2
       },
       {
@@ -1424,7 +1976,9 @@
         "pattern": "(?i)\\\\b(whisper-?(large|medium|small|base|tiny)?)\\\\b",
         "family": "Whisper",
         "vendor": "OpenAI",
-        "tags": ["audio.input"],
+        "tags": [
+          "audio.input"
+        ],
         "risk_base": 0.1
       },
       {
@@ -1432,7 +1986,9 @@
         "pattern": "(?i)\\\\b(parakeet)\\\\b",
         "family": "Parakeet",
         "vendor": "NVIDIA",
-        "tags": ["audio.input"],
+        "tags": [
+          "audio.input"
+        ],
         "risk_base": 0.1
       },
       {
@@ -1440,21 +1996,27 @@
         "pattern": "(?i)\\\\b(canary)\\\\b",
         "family": "Canary",
         "vendor": "NVIDIA",
-        "tags": ["audio.input"],
+        "tags": [
+          "audio.input"
+        ],
         "risk_base": 0.1
       },
       {
         "id": "embedding",
         "pattern": "(?i)(embed|bge|e5|nomic)",
         "family": "Embedding",
-        "tags": ["embedding"],
+        "tags": [
+          "embedding"
+        ],
         "risk_base": 0.1
       },
       {
         "id": "sd",
         "pattern": "(?i)\\\\b(stable-?diffusion|sdxl|flux)\\\\b",
         "family": "ImageGen",
-        "tags": ["image.generation"],
+        "tags": [
+          "image.generation"
+        ],
         "risk_base": 0.3
       }
     ],
@@ -1478,7 +2040,9 @@
         "pattern": "(?i)(abliterated|uncensored|dolphin|nsfw)",
         "flag": "safety_bypassed",
         "risk_add": 0.5,
-        "tags": ["safety_bypassed"],
+        "tags": [
+          "safety_bypassed"
+        ],
         "note": "jailbreak"
       },
       {
@@ -1502,9 +2066,13 @@
         "license": "MIT",
         "arch": "moe",
         "params_total_b": 32,
-        "modality": ["text"],
+        "modality": [
+          "text"
+        ],
         "popularity": "high",
-        "tags": ["reasoning.cot"],
+        "tags": [
+          "reasoning.cot"
+        ],
         "risk_base": 0.3
       },
       {
@@ -1514,9 +2082,13 @@
         "family": "Embedding",
         "license": "Apache-2.0",
         "params_total_b": 0.137,
-        "modality": ["text"],
+        "modality": [
+          "text"
+        ],
         "popularity": "high",
-        "tags": ["embedding"],
+        "tags": [
+          "embedding"
+        ],
         "risk_base": 0.1
       },
       {
@@ -1526,9 +2098,13 @@
         "family": "Nemotron",
         "license": "Llama 3.1",
         "params_total_b": 70,
-        "modality": ["text"],
+        "modality": [
+          "text"
+        ],
         "popularity": "high",
-        "tags": ["tool.use"],
+        "tags": [
+          "tool.use"
+        ],
         "risk_base": 0.2
       },
       {
@@ -1538,8 +2114,12 @@
         "family": "Llama",
         "license": "Llama 3.2",
         "params_total_b": 1.2,
-        "modality": ["text"],
-        "tags": ["tool.use"],
+        "modality": [
+          "text"
+        ],
+        "tags": [
+          "tool.use"
+        ],
         "risk_base": 0.2
       },
       {
@@ -1549,8 +2129,12 @@
         "family": "Qwen",
         "license": "Apache-2.0",
         "params_total_b": 32,
-        "modality": ["text"],
-        "tags": ["code.generation"],
+        "modality": [
+          "text"
+        ],
+        "tags": [
+          "code.generation"
+        ],
         "risk_base": 0.3
       }
     ]
@@ -1564,7 +2148,9 @@
       "markers": [
         {
           "os": "windows",
-          "paths": ["%LOCALAPPDATA%\\Programs\\Antigravity"],
+          "paths": [
+            "%LOCALAPPDATA%\\Programs\\Antigravity"
+          ],
           "process_names": []
         },
         {
@@ -1579,11 +2165,17 @@
         },
         {
           "os": "macos",
-          "paths": ["~/Library/Application Support/Antigravity"],
+          "paths": [
+            "~/Library/Application Support/Antigravity"
+          ],
           "process_names": []
         }
       ],
-      "capability_tags": ["code.agentic", "tool.use", "net.egress.llm"]
+      "capability_tags": [
+        "code.agentic",
+        "tool.use",
+        "net.egress.llm"
+      ]
     },
     {
       "name": "Claude Desktop",
@@ -1596,15 +2188,28 @@
           "paths": [
             "~/Library/Application Support/Claude/claude_desktop_config.json"
           ],
-          "process_names": []
+          "process_names": [
+            "Claude.exe",
+            "claude.exe",
+            "Claude"
+          ]
         },
         {
           "os": "windows",
-          "paths": ["%APPDATA%\\Claude\\claude_desktop_config.json"],
-          "process_names": []
+          "paths": [
+            "%APPDATA%\\Claude\\claude_desktop_config.json"
+          ],
+          "process_names": [
+            "Claude.exe",
+            "claude.exe",
+            "Claude"
+          ]
         }
       ],
-      "capability_tags": ["mcp.client", "tool.use"]
+      "capability_tags": [
+        "mcp.client",
+        "tool.use"
+      ]
     },
     {
       "name": "ChatGPT Desktop",
@@ -1614,16 +2219,30 @@
       "markers": [
         {
           "os": "windows",
-          "paths": ["%LOCALAPPDATA%\\Programs\\ChatGPT"],
-          "process_names": []
+          "paths": [
+            "%LOCALAPPDATA%\\Programs\\ChatGPT"
+          ],
+          "process_names": [
+            "ChatGPT.exe",
+            "chatgpt.exe",
+            "ChatGPT"
+          ]
         },
         {
           "os": "macos",
-          "paths": ["~/Applications/ChatGPT.app"],
-          "process_names": []
+          "paths": [
+            "~/Applications/ChatGPT.app"
+          ],
+          "process_names": [
+            "ChatGPT.exe",
+            "chatgpt.exe",
+            "ChatGPT"
+          ]
         }
       ],
-      "capability_tags": ["web.chat"]
+      "capability_tags": [
+        "web.chat"
+      ]
     }
   ],
   "web_ai_signatures": [
@@ -1631,15 +2250,85 @@
       "domain": "manus.im",
       "name": "Manus AI",
       "vendor": "Manus",
-      "capability_tags": ["browser.control", "automation"],
+      "capability_tags": [
+        "browser.control",
+        "automation"
+      ],
       "risk_weight": 0.6
     },
     {
       "domain": "manus.ai",
       "name": "Manus AI",
       "vendor": "Manus",
-      "capability_tags": ["browser.control", "automation"],
+      "capability_tags": [
+        "browser.control",
+        "automation"
+      ],
       "risk_weight": 0.6
+    },
+    {
+      "domain": "chatgpt.com",
+      "name": "ChatGPT (Web)",
+      "vendor": "OpenAI",
+      "capability_tags": [
+        "llm.call"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "domain": "chat.openai.com",
+      "name": "ChatGPT (Web)",
+      "vendor": "OpenAI",
+      "capability_tags": [
+        "llm.call"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "domain": "claude.ai",
+      "name": "Claude (Web)",
+      "vendor": "Anthropic",
+      "capability_tags": [
+        "llm.call"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "domain": "gemini.google.com",
+      "name": "Gemini (Web)",
+      "vendor": "Google",
+      "capability_tags": [
+        "llm.call"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "domain": "chat.deepseek.com",
+      "name": "DeepSeek (Web)",
+      "vendor": "DeepSeek",
+      "capability_tags": [
+        "llm.call"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "domain": "copilot.microsoft.com",
+      "name": "Copilot (Web)",
+      "vendor": "Microsoft",
+      "capability_tags": [
+        "llm.call"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "domain": "perplexity.ai",
+      "name": "Perplexity (Web)",
+      "vendor": "Perplexity",
+      "capability_tags": [
+        "llm.call",
+        "web.search"
+      ],
+      "risk_weight": 0.5
     }
   ]
 }
