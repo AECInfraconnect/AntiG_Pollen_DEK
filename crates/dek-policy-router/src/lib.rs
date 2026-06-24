@@ -370,8 +370,10 @@ impl PolicyRouter {
                 reason: "Break-glass mode activated".into(),
                 effects: serde_json::json!({}),
                 obligations: vec![],
-                metadata: serde_json::json!({}),
+                metadata: serde_json::json!({ "mode": "breakglass" }),
                 explanation: None,
+                user_action_required: false,
+                user_action_th: None,
             });
         }
 
@@ -743,6 +745,8 @@ mod tests {
                 obligations: vec![],
                 metadata: serde_json::json!({ "auto_select": "fallback_unavailable" }),
                 explanation: None,
+                user_action_required: false,
+                user_action_th: None,
             })
         }
         fn version(&self) -> String {

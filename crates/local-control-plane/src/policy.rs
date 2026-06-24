@@ -517,6 +517,8 @@ async fn simulate_policy(
                     obligations: res.obligations,
                     metadata: res.metadata,
                     explanation: None,
+                    user_action_required: false,
+                    user_action_th: None,
                 }),
                 Err(e) => Err(dek_policy_runtime::PolicyError::Eval(e.to_string())),
             }

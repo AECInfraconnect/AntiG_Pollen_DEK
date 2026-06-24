@@ -48,5 +48,7 @@ pub fn match_route<'a>(
         obligations: vec![],
         metadata: serde_json::json!({ "reason": "no route matched" }),
         explanation: None,
+        user_action_required: false,
+        user_action_th: None,
     })
 }

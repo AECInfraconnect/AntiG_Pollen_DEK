@@ -13,11 +13,15 @@ pub fn initial_decision() -> PolicyDecision {
         obligations: vec![],
         metadata: serde_json::json!({}),
         explanation: None,
+        user_action_required: false,
+        user_action_th: None,
     }
 }
 
 pub fn merge_decision(combined: &mut PolicyDecision, res: PolicyDecision, strategy: &str) {
     combined.obligations.extend(res.obligations.clone());
+    combined.user_action_required = combined.user_action_required || res.user_action_required;
+    combined.user_action_th = combined.user_action_th.clone().or(res.user_action_th);
 
     if let serde_json::Value::Object(mut combined_map) = combined.effects.clone() {
         if let serde_json::Value::Object(res_map) = res.effects.clone() {

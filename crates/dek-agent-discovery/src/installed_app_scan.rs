@@ -22,10 +22,13 @@ pub fn scan_installed_apps(
             let mut matched_path = String::new();
 
             // Check if path exists
-            let expanded = expand_path(&marker.path);
-            if std::path::Path::new(&expanded).exists() {
-                found = true;
-                matched_path = expanded;
+            for p in &marker.paths {
+                let expanded = expand_path(p);
+                if std::path::Path::new(&expanded).exists() {
+                    found = true;
+                    matched_path = expanded;
+                    break;
+                }
             }
 
             if found {
