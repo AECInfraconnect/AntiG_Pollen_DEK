@@ -148,6 +148,30 @@ pub async fn run_scan_v2(
     orchestrator.run_scan(scan_id, req, tx).await
 }
 
+pub fn stable_agent_key(candidate: &DiscoveredAgentCandidateV2) -> String {
+    use sha2::{Digest, Sha256};
+    let mut parts = vec![
+        candidate.tenant_id.clone(),
+        candidate.device_id.clone(),
+        format!("{:?}", candidate.inferred_agent_type),
+        candidate.display_name.to_ascii_lowercase(),
+    ];
+
+    if let Some(hash) = candidate
+        .evidence
+        .iter()
+        .find_map(|e| e.source_path_hash.clone())
+    {
+        parts.push(hash);
+    }
+
+    let joined = parts.join("|");
+    let mut hasher = Sha256::new();
+    hasher.update(joined.as_bytes());
+    let result = hasher.finalize();
+    format!("agent_{}", hex::encode(&result[..8]))
+}
+
 pub fn to_registry_agent_v2(
     tenant: &str,
     candidate: &DiscoveredAgentCandidateV2,
@@ -157,6 +181,8 @@ pub fn to_registry_agent_v2(
         .get("agent_name")
         .and_then(|v| v.as_str())
         .unwrap_or(&candidate.suggested_registration.name);
+
+    let agent_id = stable_agent_key(candidate);
 
     let mut entrypoints = Vec::new();
     for mcp in &candidate.discovered_mcp_servers {
@@ -201,7 +227,7 @@ pub fn to_registry_agent_v2(
             status: dek_control_plane_api::registry::RegistryStatus::Registered,
             tags: vec!["auto-discovered".into()],
         },
-        agent_id: candidate.suggested_registration.agent_id.clone(),
+        agent_id,
         name: name.to_string(),
         agent_type: dek_control_plane_api::registry::AgentType::Unknown,
         vendor: candidate.vendor.clone(),

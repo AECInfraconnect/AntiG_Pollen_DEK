@@ -17,5 +17,6 @@ opentelemetry = "0.21"
 rusqlite = { version = "0.32", features = ["bundled"] }
 async-trait = "0.1"
 tokio = { workspace = true, features = ["sync"] }
+dirs = "6.0.0"
 [lints]
 workspace = true

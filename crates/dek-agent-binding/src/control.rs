@@ -18,36 +18,88 @@ pub enum ControlStrategy {
     ObserveOnly,
 }
 
-pub fn derive_control(cap: &CapabilityDescriptor) -> Vec<ControlBindingSpec> {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ControlLevel {
+    Observe,
+    Enforce,
+}
+
+pub fn plan_control_binding(
+    cap: &CapabilityDescriptor,
+    device_peps: &[String],
+    requested_level: ControlLevel,
+) -> Vec<ControlBindingSpec> {
     cap.interaction_surfaces
         .iter()
         .map(|s| match s {
-            Surface::McpStdio { command, args } => ControlBindingSpec {
-                surface_selector: "mcp_stdio".into(),
-                strategy: ControlStrategy::StdioWrapperInjection {
-                    wrapper_path: format!(
-                        "dek-mcp-stdio-wrapper --target {} {}",
-                        command,
-                        args.join(" ")
-                    ),
-                },
-                reversible: true,
-                requires_approval: false,
-            },
-            Surface::McpHttp { url } | Surface::McpSse { url } => ControlBindingSpec {
-                surface_selector: "mcp_http".into(),
-                strategy: ControlStrategy::HttpProxyRedirect {
-                    local_proxy: format!("http://127.0.0.1:8787/proxy?upstream={url}"),
-                },
-                reversible: true,
-                requires_approval: false,
-            },
-            Surface::OpenAiCompatApi { .. } => ControlBindingSpec {
-                surface_selector: "openai_api".into(),
-                strategy: ControlStrategy::NetworkEgressInterception,
-                reversible: true,
-                requires_approval: true,
-            },
+            Surface::McpStdio { command, args } => {
+                if requested_level == ControlLevel::Enforce
+                    && device_peps.contains(&"mcp-stdio".to_string())
+                {
+                    ControlBindingSpec {
+                        surface_selector: "mcp_stdio".into(),
+                        strategy: ControlStrategy::StdioWrapperInjection {
+                            wrapper_path: format!(
+                                "dek-mcp-stdio-wrapper --target {} {}",
+                                command,
+                                args.join(" ")
+                            ),
+                        },
+                        reversible: true,
+                        requires_approval: false,
+                    }
+                } else {
+                    ControlBindingSpec {
+                        surface_selector: "mcp_stdio".into(),
+                        strategy: ControlStrategy::ObserveOnly,
+                        reversible: true,
+                        requires_approval: false,
+                    }
+                }
+            }
+            Surface::McpHttp { url } | Surface::McpSse { url } => {
+                if requested_level == ControlLevel::Enforce
+                    && device_peps.contains(&"mcp-http".to_string())
+                {
+                    ControlBindingSpec {
+                        surface_selector: "mcp_http".into(),
+                        strategy: ControlStrategy::HttpProxyRedirect {
+                            local_proxy: format!("http://127.0.0.1:8787/proxy?upstream={url}"),
+                        },
+                        reversible: true,
+                        requires_approval: false,
+                    }
+                } else {
+                    ControlBindingSpec {
+                        surface_selector: "mcp_http".into(),
+                        strategy: ControlStrategy::ObserveOnly,
+                        reversible: true,
+                        requires_approval: false,
+                    }
+                }
+            }
+            Surface::OpenAiCompatApi { .. } => {
+                if requested_level == ControlLevel::Enforce
+                    && (device_peps.contains(&"linux-ebpf".to_string())
+                        || device_peps.contains(&"windows-wfp".to_string())
+                        || device_peps.contains(&"macos-nefilter".to_string()))
+                {
+                    ControlBindingSpec {
+                        surface_selector: "openai_api".into(),
+                        strategy: ControlStrategy::NetworkEgressInterception,
+                        reversible: true,
+                        requires_approval: true,
+                    }
+                } else {
+                    ControlBindingSpec {
+                        surface_selector: "openai_api".into(),
+                        strategy: ControlStrategy::ObserveOnly,
+                        reversible: true,
+                        requires_approval: false,
+                    }
+                }
+            }
             _ => ControlBindingSpec {
                 surface_selector: "native".into(),
                 strategy: ControlStrategy::ObserveOnly,

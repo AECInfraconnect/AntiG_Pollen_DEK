@@ -59,9 +59,10 @@ pub struct KernelCapabilities {
 
 impl DeviceCapabilities {
     pub fn has_os_l4_ready(&self) -> bool {
-        self.kernel.linux_ebpf.is_some()
-            || self.kernel.windows_wfp.is_some()
-            || self.kernel.macos_nefilter.is_some()
+        self.pep.iter().any(|p| {
+            (p.r#type == "linux-ebpf" || p.r#type == "windows-wfp" || p.r#type == "macos-nefilter")
+                && p.status == CapabilityStatus::Ready
+        })
     }
 }
 
@@ -107,23 +108,22 @@ impl CapabilityRegistry {
             arch: std::env::consts::ARCH.to_string(),
         };
 
-        let linux_ebpf = if std::env::consts::OS == "linux" {
-            Some(serde_json::json!({ "bpf_jit_enable": 1 }))
-        } else {
-            None
-        };
+        let pep = detect::detect_pep_capabilities();
 
-        let windows_wfp = if std::env::consts::OS == "windows" {
-            Some(serde_json::json!({ "ale_auth_connect": true }))
-        } else {
-            None
-        };
+        let linux_ebpf = pep
+            .iter()
+            .find(|p| p.r#type == "linux-ebpf")
+            .map(|p| serde_json::to_value(p).unwrap_or(serde_json::json!({})));
 
-        let macos_nefilter = if std::env::consts::OS == "macos" {
-            Some(serde_json::json!({ "network_extension": true }))
-        } else {
-            None
-        };
+        let windows_wfp = pep
+            .iter()
+            .find(|p| p.r#type == "windows-wfp")
+            .map(|p| serde_json::to_value(p).unwrap_or(serde_json::json!({})));
+
+        let macos_nefilter = pep
+            .iter()
+            .find(|p| p.r#type == "macos-nefilter")
+            .map(|p| serde_json::to_value(p).unwrap_or(serde_json::json!({})));
 
         DeviceCapabilities {
             device_id: self.device_id.clone(),
@@ -143,7 +143,7 @@ impl CapabilityRegistry {
                     control_level: ControlLevel::Enforce,
                 },
             ],
-            pep: detect::detect_pep_capabilities(),
+            pep,
             plugins: vec![],
             kernel: KernelCapabilities {
                 linux_ebpf,

@@ -42,7 +42,17 @@ impl AgentBinding {
         discovered_surfaces: Vec<crate::capability::Surface>,
     ) -> Self {
         let capabilities = crate::capability::capabilities_from_discovery(sig, discovered_surfaces);
-        let control = crate::control::derive_control(&capabilities);
+        let control = crate::control::plan_control_binding(
+            &capabilities,
+            &[
+                "mcp-stdio".to_string(),
+                "mcp-http".to_string(),
+                "linux-ebpf".to_string(),
+                "windows-wfp".to_string(),
+                "macos-nefilter".to_string(),
+            ],
+            crate::control::ControlLevel::Enforce,
+        );
         let enforcement = crate::enforce::derive_enforcement(&capabilities);
         let telemetry = crate::telemetry::derive_telemetry(&capabilities);
         let now = chrono::Utc::now().to_rfc3339();

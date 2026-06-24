@@ -107,6 +107,7 @@ pub async fn probe_mcp_tools(surface: &Surface) -> anyhow::Result<Vec<ToolCapabi
             use std::process::Stdio;
             use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
             use tokio::process::Command;
+            use tokio::time::{timeout, Duration};
 
             let mut child = Command::new(command)
                 .args(args)
@@ -114,8 +115,59 @@ pub async fn probe_mcp_tools(surface: &Surface) -> anyhow::Result<Vec<ToolCapabi
                 .stdout(Stdio::piped())
                 .spawn()?;
 
-            let mut stdin = child.stdin.take().expect("Failed to open stdin"); //
-            let stdout = child.stdout.take().expect("Failed to open stdout"); //
+            let mut stdin = child.stdin.take().expect("Failed to open stdin");
+            let stdout = child.stdout.take().expect("Failed to open stdout");
+
+            // Send initialize request
+            let init_req = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "id": 0,
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "PollenDEK",
+                        "version": "1.0.0"
+                    }
+                }
+            });
+            let init_msg = format!("{}\n", serde_json::to_string(&init_req)?);
+            stdin.write_all(init_msg.as_bytes()).await?;
+            stdin.flush().await?;
+
+            let mut reader = BufReader::new(stdout);
+            let mut line = String::new();
+
+            // Wait for initialize response
+            let mut init_received = false;
+            let _ = timeout(Duration::from_secs(5), async {
+                loop {
+                    line.clear();
+                    if reader.read_line(&mut line).await.unwrap_or(0) == 0 {
+                        break;
+                    }
+                    if line.contains("\"jsonrpc\"") && line.contains("\"id\":0") {
+                        init_received = true;
+                        break;
+                    }
+                }
+            })
+            .await;
+
+            if !init_received {
+                let _ = child.kill().await;
+                anyhow::bail!("Timeout waiting for initialize response");
+            }
+
+            // Send initialized notification
+            let initialized_notify = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized"
+            });
+            let notif_msg = format!("{}\n", serde_json::to_string(&initialized_notify)?);
+            stdin.write_all(notif_msg.as_bytes()).await?;
+            stdin.flush().await?;
 
             // Send tools/list request
             let msg = format!("{}\n", serde_json::to_string(&req_body)?);
@@ -123,18 +175,33 @@ pub async fn probe_mcp_tools(surface: &Surface) -> anyhow::Result<Vec<ToolCapabi
             stdin.flush().await?;
 
             // Read response
-            let mut reader = BufReader::new(stdout);
-            let mut line = String::new();
-            reader.read_line(&mut line).await?;
+            let mut tools_received = false;
+            let mut parsed_response = serde_json::json!({});
+            let _ = timeout(Duration::from_secs(5), async {
+                loop {
+                    line.clear();
+                    if reader.read_line(&mut line).await.unwrap_or(0) == 0 {
+                        break;
+                    }
+                    if line.contains("\"jsonrpc\"") && line.contains("\"id\":1") {
+                        if let Ok(json) = serde_json::from_str(&line) {
+                            parsed_response = json;
+                            tools_received = true;
+                        }
+                        break;
+                    }
+                }
+            })
+            .await;
 
             // Kill child so it doesn't hang around
             let _ = child.kill().await;
 
-            if line.is_empty() {
-                anyhow::bail!("No response from stdio");
+            if !tools_received {
+                anyhow::bail!("No valid tools/list response from stdio");
             }
 
-            serde_json::from_str(&line)?
+            parsed_response
         }
         _ => return Ok(vec![]),
     };

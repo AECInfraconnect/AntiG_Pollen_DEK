@@ -620,7 +620,7 @@ async fn handle_mcp_request(
         context: policy_input.clone(),
         input_hash: {
             use sha2::Digest;
-            let bytes = serde_json::to_vec(&policy_input).unwrap_or_default();
+            let bytes = serde_jcs::to_vec(&policy_input).unwrap_or_default();
             hex::encode(sha2::Sha256::digest(&bytes))
         },
     };
@@ -632,6 +632,8 @@ async fn handle_mcp_request(
         normalized.agent_id.as_deref().unwrap_or("unknown"),
         normalized.tool_name.as_deref().unwrap_or("unknown")
     );
+
+    let mut extra_obligations = Vec::new();
 
     // Compute real trust score via observer baseline
     let agent_id_str = normalized
@@ -660,8 +662,8 @@ async fn handle_mcp_request(
             return (axum::http::StatusCode::FORBIDDEN, axum::Json(body)).into_response();
         }
         dek_agent_observer::trust::TrustAction::RequireApproval => {
-            // จะถูกแปลงเป็น obligation ในขั้นตอน response
             tracing::info!(agent = %trust_score.agent_id, "agent requires human approval");
+            extra_obligations.push("require_approval".to_string());
         }
         dek_agent_observer::trust::TrustAction::Normal => {}
     }
@@ -705,7 +707,6 @@ async fn handle_mcp_request(
         .unwrap_or(&serde_json::Value::Null)
         .to_string();
     let guard = content_guard::scan(&content_guard::GuardInput { text: scan_target });
-    let mut extra_obligations = Vec::new();
     if guard.injection_detected {
         match guard.recommended.as_str() {
             "deny" => {

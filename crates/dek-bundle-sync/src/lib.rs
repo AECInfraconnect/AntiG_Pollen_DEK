@@ -293,16 +293,25 @@ impl BundleSyncAgent {
             root_version, snapshot_version, timestamp_version
         );
         let bundle_dir = target_dir.join(format!("bundle_{}", bundle_version));
-        fs::create_dir_all(&bundle_dir)?;
+        let staging_dir = target_dir.join(format!("staging_bundle_{}", bundle_version));
+
+        fs::create_dir_all(&staging_dir)?;
 
         let payload_string = serde_json::to_string_pretty(&final_merged)?;
-        let bundle_path = bundle_dir.join("manifest.json");
-        fs::write(&bundle_path, &payload_string)?;
+        let staging_bundle_path = staging_dir.join("manifest.json");
+        fs::write(&staging_bundle_path, &payload_string)?;
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let _ = fs::set_permissions(&bundle_path, fs::Permissions::from_mode(0o600));
+            let _ = fs::set_permissions(&staging_bundle_path, fs::Permissions::from_mode(0o600));
         }
+
+        if bundle_dir.exists() {
+            let _ = fs::remove_dir_all(&bundle_dir);
+        }
+        fs::rename(&staging_dir, &bundle_dir)?;
+
+        let bundle_path = bundle_dir.join("manifest.json");
 
         final_state = ArtifactState::Staged;
         info!(
@@ -355,7 +364,7 @@ impl BundleSyncAgent {
                 .collect();
         tracing::info!("Found {} signatures in manifest", sigs_for_verify.len());
 
-        let signed_bytes = serde_json::to_vec(&manifest)?;
+        let signed_bytes = serde_jcs::to_vec(&manifest)?;
         use sha2::Digest;
         let sha = hex::encode(sha2::Sha256::digest(&signed_bytes));
         tracing::info!("SYNC signed bytes SHA256: {}", sha);

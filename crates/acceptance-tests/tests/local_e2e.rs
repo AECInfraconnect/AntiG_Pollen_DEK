@@ -249,6 +249,10 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
     std::fs::create_dir_all(&cfg)?;
     std::fs::create_dir_all(&data)?;
     std::fs::create_dir_all(&logs)?;
+    std::fs::write(
+        cfg.join("consent.json"),
+        r#"{"records":{"Eula":{"agreement_type":"Eula","version":"1.0","timestamp":"2026-06-24T00:00:00Z","user_identifier":"test"},"PrivacyNotice":{"agreement_type":"PrivacyNotice","version":"1.0","timestamp":"2026-06-24T00:00:00Z","user_identifier":"test"}}}"#,
+    ).unwrap();
 
     // profile -> local (writes bootstrap.json: cloud_url=LCP, tenant_id=local, trust=local key)
     let st = Command::new(bin("dek-cli"))
