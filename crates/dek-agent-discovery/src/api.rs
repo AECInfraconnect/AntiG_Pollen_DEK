@@ -220,6 +220,20 @@ pub fn to_registry_agent_v2(
         },
         trust_level: dek_control_plane_api::registry::TrustLevel::Medium,
         capabilities,
-        labels: std::collections::HashMap::new(),
+        labels: {
+            let mut l = std::collections::HashMap::new();
+            for (i, c) in candidate.discovered_configs.iter().enumerate() {
+                l.insert(format!("config_{}_{}", i, c.config_type), c.path_hash.clone());
+            }
+            for (i, ep) in candidate.discovered_endpoints.iter().enumerate() {
+                l.insert(format!("endpoint_{}_{}", i, ep.protocol), ep.url.clone());
+            }
+            for (i, mcp) in candidate.discovered_mcp_servers.iter().enumerate() {
+                l.insert(format!("mcp_{}_{}", i, mcp.server_name), mcp.transport.clone());
+            }
+            l.insert("confidence".into(), candidate.confidence.to_string());
+            l.insert("suggested_pep".into(), format!("{:?}", candidate.suggested_observation_profile));
+            l
+        },
     })
 }

@@ -312,4 +312,23 @@ mod tests {
         assert_eq!(result.status, CheckStatus::Ok);
         assert!(result.blocking);
     }
+
+    #[test]
+    fn test_check_optional_tool_missing() {
+        // Assume 'non_existent_tool_12345' is not installed
+        let result = check_optional_tool("non_existent_tool_12345", "test description", "http://example.com");
+        assert_eq!(result.id, "optional_tool");
+        assert_eq!(result.status, CheckStatus::Warn);
+        assert!(!result.blocking);
+        assert!(result.remediation.is_some());
+        assert_eq!(result.remediation.unwrap().url.unwrap(), "http://example.com");
+    }
+
+    #[test]
+    fn test_check_ports_available() {
+        // Check random high ports which should be available
+        let result = check_ports(&[55555, 55556]);
+        assert_eq!(result.id, "ports");
+        assert!(result.blocking);
+    }
 }

@@ -54,6 +54,7 @@ dek-telemetry = { version = "0.1.0", path = "../dek-telemetry" }
 dek-errors = { version = "0.1.0", path = "../dek-errors" }
 dek-metrics = { path = "../dek-metrics" }
 metrics-exporter-prometheus = "0.13"
+dek-agent-binding = { version = "1.0.0-beta.10", path = "../dek-agent-binding" }
 
 [dev-dependencies]
 tempfile = "3.27.0"

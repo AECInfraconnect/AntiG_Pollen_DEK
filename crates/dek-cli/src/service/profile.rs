@@ -14,6 +14,7 @@ use dek_config::{paths, BootstrapConfig};
 pub enum ProfileMode {
     Local,
     Cloud,
+    Sovereign,
 }
 
 impl std::str::FromStr for ProfileMode {
@@ -22,7 +23,8 @@ impl std::str::FromStr for ProfileMode {
         match s.to_lowercase().as_str() {
             "local" => Ok(ProfileMode::Local),
             "cloud" => Ok(ProfileMode::Cloud),
-            other => anyhow::bail!("unknown profile mode '{other}' (expected 'local' or 'cloud')"),
+            "sovereign" => Ok(ProfileMode::Sovereign),
+            other => anyhow::bail!("unknown profile mode '{other}' (expected 'local', 'cloud', or 'sovereign')"),
         }
     }
 }
@@ -57,6 +59,14 @@ pub fn set_profile(
                     cfg.cloud_url
                 );
             }
+        }
+        ProfileMode::Sovereign => {
+            cfg.cloud_url = "http://127.0.0.1:0".to_string(); // disable network
+            cfg.tenant_id = Some("sovereign".to_string());
+            if let Some(key) = trusted_key_b64 {
+                cfg.pinned_bundle_public_key = key;
+            }
+            eprintln!("info: Running in sovereign mode. Cloud egress is completely blocked.");
         }
         ProfileMode::Cloud => {
             let cloud_url = url.context("--url is required for cloud profile")?;
@@ -109,6 +119,7 @@ pub fn show_profile() -> Result<()> {
     let path_str = paths::get_bootstrap_path().to_string_lossy().into_owned();
     let cfg = BootstrapConfig::load_or_default(&path_str)?;
     let mode = match cfg.tenant_id.as_deref() {
+        Some("sovereign") => "sovereign",
         Some("local") => "local",
         _ if cfg.cloud_url.contains("127.0.0.1") || cfg.cloud_url.contains("localhost") => "local",
         _ => "cloud",

@@ -82,20 +82,11 @@ pub fn export_diagnostics(redact: bool) -> Result<()> {
 pub fn export_compliance(redact: bool) -> Result<()> {
     println!("Exporting Compliance Evidence Pack (redact={})...", redact);
     let log_dir = dek_config::paths::get_log_dir();
-    let dest = std::env::current_dir()?.join("dek-compliance-evidence.zip");
+    let dest = std::env::current_dir()?.join("dek-compliance-evidence.md");
 
-    // Mock bundle step
-    println!(
-        "✓ Extracted tamper-evident audit logs from {}",
-        log_dir.display()
-    );
-    if redact {
-        println!("✓ Redacted sensitive parameters (Prompt injection vectors, PII).");
-    }
-    println!("✓ Generated Compliance Mappings:");
-    println!("  - EU AI Act: Article 14 (Human Oversight) logging mapped.");
-    println!("  - NIST AI RMF: Measure 2.1 (Traceability) logs included.");
-    println!("  - ISO 42001: Annex A.6.3 (Audit trails) documented.");
-    println!("✓ Compliance Pack exported to {}", dest.display());
+    let packager = dek_compliance_evidence::EvidencePackager::new(log_dir);
+    packager.export_to_file(&dest, redact)?;
+
+    println!("✓ Compliance evidence exported to {}", dest.display());
     Ok(())
 }

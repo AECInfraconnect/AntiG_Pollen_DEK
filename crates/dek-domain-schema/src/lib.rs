@@ -25,6 +25,7 @@ pub mod spiffe;
 pub mod telemetry_event;
 pub mod tenant;
 pub mod tool;
+pub mod deployment_session;
 
 pub use agent::*;
 pub use bundle::*;
@@ -49,3 +50,4 @@ pub use spiffe::*;
 pub use telemetry_event::*;
 pub use tenant::*;
 pub use tool::*;
+pub use deployment_session::*;

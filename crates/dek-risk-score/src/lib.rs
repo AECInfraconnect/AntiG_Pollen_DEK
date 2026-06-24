@@ -25,6 +25,9 @@ pub struct RiskScore {
 pub fn calculate_risk_score(profile: &AgentProfile) -> RiskScore {
     let mut score = 0;
     let mut factors = Vec::new();
+    
+    let mut registry = dek_mcp_reputation::ReputationRegistry::new();
+    let _ = registry.load_local();
 
     // Shadow AI Check
     if profile.shadow_ai_status {
@@ -46,20 +49,23 @@ pub fn calculate_risk_score(profile: &AgentProfile) -> RiskScore {
         factors.push(format!("Has {} sensitive permissions", sensitive_count));
     }
 
-    // MCP Reputation Check
+    // MCP Reputation Check using Registry
     for mcp in &profile.associated_mcps {
-        if mcp.reputation_score < 50 {
-            score += 20;
-            factors.push(format!(
-                "Associated with low reputation MCP: {}",
-                mcp.mcp_id
-            ));
-        } else if mcp.reputation_score < 80 {
-            score += 5;
-            factors.push(format!(
-                "Associated with medium reputation MCP: {}",
-                mcp.mcp_id
-            ));
+        if let Some(entry) = registry.lookup(&mcp.mcp_id) {
+            if !entry.is_allowed {
+                score += 50;
+                factors.push(format!("Associated with explicitly denied MCP: {}", mcp.mcp_id));
+            } else if entry.score < 50 {
+                score += 20;
+                factors.push(format!("Associated with low reputation MCP: {}", mcp.mcp_id));
+            } else if entry.score < 80 {
+                score += 5;
+                factors.push(format!("Associated with medium reputation MCP: {}", mcp.mcp_id));
+            }
+        } else {
+            // Unknown MCP
+            score += 10;
+            factors.push(format!("Associated with unknown MCP (not in registry): {}", mcp.mcp_id));
         }
     }
 

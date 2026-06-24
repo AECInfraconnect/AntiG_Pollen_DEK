@@ -40,3 +40,7 @@ pub mod cloud_sync;
 pub mod consent_api;
 pub mod plugin_api;
 pub mod policy_deploy_api;
+
+pub mod deployment_orchestrator;
+
+pub mod deployment_api;

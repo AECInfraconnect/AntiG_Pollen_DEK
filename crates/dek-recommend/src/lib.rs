@@ -44,7 +44,7 @@ impl Recommender {
             let has_mcp_pep = caps
                 .pep
                 .iter()
-                .any(|p| p.r#type.contains("mcp") && p.status == CapabilityStatus::Available);
+                .any(|p| p.r#type.contains("mcp") && p.status == CapabilityStatus::Ready);
             if !has_mcp_pep {
                 recs.push(RecommendedAction {
                     severity: Severity::Warning,

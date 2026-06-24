@@ -17,6 +17,7 @@ pub mod engine;
 pub mod engine_plan;
 pub mod merge;
 pub mod route_matcher;
+pub mod message_catalog;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -943,3 +944,5 @@ mod tests {
         assert_eq!(res2.decision, "allow");
     }
 }
+
+pub mod route_planner;

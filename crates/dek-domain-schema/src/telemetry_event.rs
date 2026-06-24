@@ -12,6 +12,49 @@ pub struct TraceSpan {
     pub duration_ms: u64,
 }
 
+use crate::deployment_session::EnforcementLayer;
+use chrono::{DateTime, Utc};
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TelemetryEventKind {
+    AgentDiscovered,
+    PolicyRouteSelected,
+    PolicyDecision,
+    ToolCallObserved,
+    ToolCallBlocked,
+    NetworkEgressObserved,
+    NetworkEgressBlocked,
+    PdpUnavailable,
+    PepUnhealthy,
+    UserActionRequired,
+    UserActionCompleted,
+    TelemetrySynced,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RedactionState {
+    Unredacted,
+    PartiallyRedacted,
+    FullyRedacted,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct GovernanceTelemetryEnvelope {
+    pub event_id: String,
+    pub correlation_id: String,
+    pub deployment_id: Option<String>,
+    pub policy_id: Option<String>,
+    pub agent_id: Option<String>,
+    pub entity_id: Option<String>,
+    pub source_layer: EnforcementLayer,
+    pub event_kind: TelemetryEventKind,
+    pub occurred_at: DateTime<Utc>,
+    pub redaction_state: RedactionState,
+    pub payload: serde_json::Value,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "event_type")]
 #[allow(clippy::large_enum_variant)]

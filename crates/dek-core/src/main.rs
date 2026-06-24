@@ -23,6 +23,8 @@ mod supervisor;
 mod svid_renewal;
 mod svid_renewal_failclosed;
 
+pub mod pep_warm_check;
+
 pub mod crypto_init;
 pub mod panic_guard;
 pub mod watchdog;

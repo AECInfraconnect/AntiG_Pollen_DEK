@@ -95,7 +95,7 @@ fn route_mcp(caps: &DeviceCapabilities, over_http: bool) -> PepRoute {
     let want = if over_http { "http" } else { "stdio" };
     let pep = caps.pep.iter().find(|p| {
         p.transports.iter().any(|t| t == want)
-            && p.status == dek_capability_registry::CapabilityStatus::Available
+            && p.status == dek_capability_registry::CapabilityStatus::Ready
     });
 
     match pep {
@@ -178,7 +178,7 @@ mod tests {
             r#type: "mcp-proxy".into(),
             transports: vec!["stdio".into()],
             control_level: dek_domain_schema::control_level::ControlLevel::Enforce,
-            status: CapabilityStatus::Available,
+            status: CapabilityStatus::Ready,
             status_reason: None,
         });
         let route = route_pep(PepIntent::McpToolCall { over_http: false }, &caps);

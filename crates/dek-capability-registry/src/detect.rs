@@ -7,14 +7,14 @@ pub fn detect_pep_capabilities() -> Vec<PepCapability> {
             r#type: "mcp-stdio".into(),
             transports: vec!["stdio".into()],
             control_level: ControlLevel::Enforce,
-            status: CapabilityStatus::Available,
+            status: CapabilityStatus::Ready,
             status_reason: None,
         },
         PepCapability {
             r#type: "mcp-http".into(),
             transports: vec!["http".into()],
             control_level: ControlLevel::Enforce,
-            status: CapabilityStatus::Available,
+            status: CapabilityStatus::Ready,
             status_reason: None,
         },
     ];
@@ -38,18 +38,24 @@ fn detect_ebpf() -> PepCapability {
 
     let (status, reason, level) = if !has_bpf {
         (
-            CapabilityStatus::MissingDependencies,
-            Some("BPF filesystem not mounted".to_string()),
+            CapabilityStatus::MissingBinary,
+            Some(dek_domain_schema::deployment_session::LocalizedText {
+                en: "BPF filesystem not mounted".to_string(),
+                th: "ไม่ได้เมานต์ BPF filesystem บนเครื่องนี้".to_string(),
+            }),
             ControlLevel::Observe,
         )
     } else if !has_root {
         (
-            CapabilityStatus::PermissionDenied,
-            Some("Root privileges required for eBPF".to_string()),
+            CapabilityStatus::MissingPermission,
+            Some(dek_domain_schema::deployment_session::LocalizedText {
+                en: "Root privileges required for eBPF".to_string(),
+                th: "ต้องการสิทธิ์ Root เพื่อรัน eBPF".to_string(),
+            }),
             ControlLevel::Observe,
         )
     } else {
-        (CapabilityStatus::Available, None, ControlLevel::Enforce)
+        (CapabilityStatus::Ready, None, ControlLevel::Enforce)
     };
 
     PepCapability {
@@ -70,15 +76,21 @@ fn detect_windows_wfp() -> PepCapability {
         .output();
     let (status, reason) = match output {
         Ok(out) if String::from_utf8_lossy(&out.stdout).contains("RUNNING") => {
-            (CapabilityStatus::Available, None)
+            (CapabilityStatus::Ready, None)
         }
         Ok(_) => (
-            CapabilityStatus::MissingDependencies,
-            Some("BFE service not running".to_string()),
+            CapabilityStatus::MissingDriver,
+            Some(dek_domain_schema::deployment_session::LocalizedText {
+                en: "BFE service not running".to_string(),
+                th: "ไม่ได้เปิดใช้งานบริการ BFE".to_string(),
+            }),
         ),
         Err(e) => (
-            CapabilityStatus::NotSupported,
-            Some(format!("Could not query BFE: {}", e)),
+            CapabilityStatus::UnsupportedOs,
+            Some(dek_domain_schema::deployment_session::LocalizedText {
+                en: format!("Could not query BFE: {}", e),
+                th: format!("ไม่สามารถตรวจสอบบริการ BFE: {}", e),
+            }),
         ),
     };
 
@@ -99,11 +111,14 @@ fn detect_macos_nefilter() -> PepCapability {
         .output();
     let (status, reason) = match output {
         Ok(out) if String::from_utf8_lossy(&out.stdout).contains("com.pollen.nefilter") => {
-            (CapabilityStatus::Available, None)
+            (CapabilityStatus::Ready, None)
         }
         _ => (
-            CapabilityStatus::MissingDependencies,
-            Some("Network Extension not installed or active".to_string()),
+            CapabilityStatus::MissingDriver,
+            Some(dek_domain_schema::deployment_session::LocalizedText {
+                en: "Network Extension not installed or active".to_string(),
+                th: "ไม่ได้ติดตั้งหรือไม่ได้เปิดใช้งาน Network Extension".to_string(),
+            }),
         ),
     };
 

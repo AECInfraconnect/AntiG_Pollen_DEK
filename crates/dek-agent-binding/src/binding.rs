@@ -39,8 +39,9 @@ impl AgentBinding {
         candidate_id: &str,
         tenant: &str,
         device: &str,
+        discovered_surfaces: Vec<crate::capability::Surface>,
     ) -> Self {
-        let capabilities = crate::capability::capabilities_from_signature(sig);
+        let capabilities = crate::capability::capabilities_from_discovery(sig, discovered_surfaces);
         let control = crate::control::derive_control(&capabilities);
         let enforcement = crate::enforce::derive_enforcement(&capabilities);
         let telemetry = crate::telemetry::derive_telemetry(&capabilities);
@@ -144,7 +145,7 @@ mod tests {
     #[test]
     fn binding_wires_all_layers() {
         let sig = test_signature("ollama");
-        let b = AgentBinding::from_discovery(&sig, "cand-1", "local", "dev-1");
+        let b = AgentBinding::from_discovery(&sig, "cand-1", "local", "dev-1", vec![]);
         assert_eq!(b.lifecycle, BindingLifecycle::Discovered);
         assert_eq!(b.signature_id, "ollama");
         assert!(!b.telemetry.otel_attributes.is_empty());
@@ -153,7 +154,7 @@ mod tests {
     #[test]
     fn reevaluate_detects_drift() {
         let sig = test_signature("cursor");
-        let b = AgentBinding::from_discovery(&sig, "c", "t", "d");
+        let b = AgentBinding::from_discovery(&sig, "c", "t", "d", vec![]);
         let drift = {
             let mut bb = b.clone();
             bb.reevaluate(&["unknown_tool".into()])

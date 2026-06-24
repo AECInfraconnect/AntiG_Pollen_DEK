@@ -29,15 +29,9 @@ pub struct PdpCapability {
     pub control_level: ControlLevel,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum CapabilityStatus {
-    Active,
-    Available,
-    MissingDependencies,
-    PermissionDenied,
-    NotSupported,
-}
+pub use dek_domain_schema::capabilities::CapabilityStatus;
+
+use dek_domain_schema::deployment_session::LocalizedText;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PepCapability {
@@ -46,7 +40,7 @@ pub struct PepCapability {
     pub transports: Vec<String>,
     pub control_level: ControlLevel,
     pub status: CapabilityStatus,
-    pub status_reason: Option<String>,
+    pub status_reason: Option<LocalizedText>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

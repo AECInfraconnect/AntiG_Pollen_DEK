@@ -13,7 +13,7 @@ use crate::{
     discovery, observation_api, pdp_cloud_api, pdp_routing_api, pdp_runtime_api,
     pep_capabilities_api, plugin_api, policy, policy_deploy_api, policy_presets_api,
     policy_suggestions_api, preset_deploy_api, preset_deploy_wizard_api, push, recommendation_api,
-    registry, state::AppState, telemetry,
+    registry, state::AppState, telemetry, deployment_api,
 };
 
 pub async fn local_tenant_guard(
@@ -71,6 +71,7 @@ pub fn create_app(state: AppState, static_dir: &str, metrics_handle: PrometheusH
         .merge(pdp_cloud_api::router())
         .merge(plugin_api::router())
         .merge(policy_deploy_api::router())
+        .merge(deployment_api::router())
         .merge(consent_api::router())
         .route(
             "/v1/tenants/:tenant/devices/:device/events",

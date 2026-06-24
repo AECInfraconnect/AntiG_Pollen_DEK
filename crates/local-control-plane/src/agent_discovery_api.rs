@@ -357,6 +357,41 @@ async fn register_candidate(
         .await
         .map_err(ApiError::Internal)?;
 
+    // Create AgentBinding preserving discovered capabilities
+    if let Some(sig_id) = &candidate.matched_signature_id {
+        if let Some(sig) = st.def_store.get().signatures.iter().find(|s| s.id == *sig_id).cloned() {
+            let mut surfaces = Vec::new();
+            for mcp in &candidate.discovered_mcp_servers {
+                let s = match mcp.transport.as_str() {
+                    "stdio" => dek_agent_binding::capability::Surface::McpStdio {
+                        command: mcp.command.clone().unwrap_or_default(),
+                        args: vec![],
+                    },
+                    "http" => dek_agent_binding::capability::Surface::McpHttp {
+                        url: mcp.command.clone().unwrap_or_default(),
+                    },
+                    "sse" => dek_agent_binding::capability::Surface::McpSse {
+                        url: mcp.command.clone().unwrap_or_default(),
+                    },
+                    _ => continue,
+                };
+                surfaces.push(s);
+            }
+            let binding = dek_agent_binding::binding::AgentBinding::from_discovery(
+                &sig,
+                &candidate.candidate_id,
+                &tenant,
+                &candidate.device_id,
+                surfaces,
+            );
+            
+            let binding_val = serde_json::to_value(&binding).map_err(|e| ApiError::Internal(e.into()))?;
+            let _ = st.registry_store
+                .upsert_raw(&tenant, "agent_binding", &binding.binding_id, &binding_val)
+                .await;
+        }
+    }
+
     candidate.status = dek_agent_discovery::model::DiscoveryStatus::Registered;
     let updated_candidate_value =
         serde_json::to_value(&candidate).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;

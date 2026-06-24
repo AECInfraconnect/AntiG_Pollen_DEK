@@ -13,6 +13,7 @@ tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time", "macr
 anyhow.workspace = true
 dek-errors = { path = "../dek-errors" }
 dek-consent = { path = "../dek-consent" }
+dek-compliance-evidence = { path = "../dek-compliance-evidence" }
 clap = { version = "4.5.4", features = ["derive"] }
 dek-agent-connector = { path = "../dek-agent-connector" }
 tracing.workspace = true
@@ -39,4 +40,3 @@ tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time", "macr
 
 [lints]
 workspace = true
-

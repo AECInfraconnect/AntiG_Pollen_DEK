@@ -1,7 +1,63 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc};
+use crate::deployment_session::{LocalizedText, UserActionKind, EnforcementLayer, PdpEngine, RoutingPlan};
+
+pub trait PepWarmCheck {
+    async fn warm_check(&self, plan: &RoutingPlan) -> Result<(), String>;
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CapabilityStatus {
+    Ready,
+    ReadyRequiresApproval,
+    InstalledInactive,
+    MissingPermission,
+    MissingDriver,
+    MissingBinary,
+    UnsupportedOs,
+    Unhealthy,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DeviceCapabilityReport {
+    pub device_id: String,
+    pub os: OsProfile,
+    pub peps: Vec<PepCapabilityStatus>,
+    pub pdps: Vec<PdpCapabilityStatus>,
+    pub scanned_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct OsProfile {
+    pub r#type: String,
+    pub version: String,
+    pub arch: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PepCapabilityStatus {
+    pub layer: EnforcementLayer,
+    pub status: CapabilityStatus,
+    pub confidence: f32,
+    pub detected_version: Option<String>,
+    pub reason_code: String,
+    pub user_message: LocalizedText,
+    pub next_action: Option<UserActionKind>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PdpCapabilityStatus {
+    pub engine: PdpEngine,
+    pub status: CapabilityStatus,
+    pub reason_code: String,
+    pub user_message: LocalizedText,
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]

@@ -1,4 +1,4 @@
-﻿use dek_fingerprint_defs::model::AgentSignatureV2;
+use dek_fingerprint_defs::model::AgentSignatureV2;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,8 +43,8 @@ pub struct EgressTarget {
     pub purpose: String,
 }
 
-pub fn capabilities_from_signature(sig: &AgentSignatureV2) -> CapabilityDescriptor {
-    let surfaces: Vec<Surface> = sig
+pub fn capabilities_from_discovery(sig: &AgentSignatureV2, discovered_surfaces: Vec<Surface>) -> CapabilityDescriptor {
+    let mut surfaces: Vec<Surface> = sig
         .control_strategies
         .iter()
         .filter_map(|s| match s.as_str() {
@@ -58,6 +58,11 @@ pub fn capabilities_from_signature(sig: &AgentSignatureV2) -> CapabilityDescript
             _ => None,
         })
         .collect();
+
+    // Preserve discovered capabilities over the generic signature defaults
+    if !discovered_surfaces.is_empty() {
+        surfaces = discovered_surfaces;
+    }
 
     CapabilityDescriptor {
         agent_signature_id: sig.id.clone(),

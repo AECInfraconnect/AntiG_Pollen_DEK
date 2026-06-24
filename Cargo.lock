@@ -1908,6 +1908,7 @@ dependencies = [
  "axum 0.7.9",
  "clap",
  "dek-agent-connector",
+ "dek-compliance-evidence",
  "dek-config",
  "dek-consent",
  "dek-enroll",
@@ -1927,6 +1928,17 @@ dependencies = [
  "tracing-subscriber",
  "webbrowser",
  "x509-parser",
+]
+
+[[package]]
+name = "dek-compliance-evidence"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "dek-config",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2297,6 +2309,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-mcp-reputation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dek-config",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "dek-mcp-stdio-wrapper"
 version = "0.1.0"
 dependencies = [
@@ -2461,6 +2483,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "chrono",
  "criterion",
  "dek-agent-binding",
  "dek-capability-registry",
@@ -2562,6 +2585,7 @@ dependencies = [
 name = "dek-risk-score"
 version = "0.1.0"
 dependencies = [
+ "dek-mcp-reputation",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -4524,6 +4548,7 @@ dependencies = [
  "axum 0.7.9",
  "base64 0.22.1",
  "chrono",
+ "dek-agent-binding",
  "dek-agent-discovery",
  "dek-agent-observer",
  "dek-bundle-format",
