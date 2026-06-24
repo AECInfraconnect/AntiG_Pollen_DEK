@@ -854,8 +854,16 @@ async fn handle_mcp_request(
                     compliance_tags: compliance_tags.clone(),
                     pep_plane: Some("McpProxy".into()),
                     enforced_for_real: Some(true),
-                    status_badge: Some(if decision.allow { "Ok".into() } else { "Denied".into() }),
-                    message_th: Some(if decision.allow { "อนุญาต".into() } else { "ปฏิเสธ".into() }),
+                    status_badge: Some(if decision.allow {
+                        "Ok".into()
+                    } else {
+                        "Denied".into()
+                    }),
+                    message_th: Some(if decision.allow {
+                        "อนุญาต".into()
+                    } else {
+                        "ปฏิเสธ".into()
+                    }),
                 }),
                 tool_call: if is_resource {
                     None

@@ -63,10 +63,7 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/telemetry/export",
             get(export_telemetry),
         )
-        .route(
-            "/v1/decisions/:id/explain",
-            get(explain_decision),
-        )
+        .route("/v1/decisions/:id/explain", get(explain_decision))
 }
 
 async fn explain_decision(

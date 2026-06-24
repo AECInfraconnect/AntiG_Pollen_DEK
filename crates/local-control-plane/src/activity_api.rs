@@ -71,7 +71,7 @@ async fn stream_activity(
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
         loop {
             interval.tick().await;
-            
+
             let mock_item = dek_agent_observer::activity::ActivityItem {
                 timestamp: chrono::Utc::now().to_rfc3339(),
                 event_type: "mcp_tool_call".into(),
@@ -84,7 +84,10 @@ async fn stream_activity(
                 message_th: Some("✅ อนุญาต (mock live event)".into()),
             };
 
-            let data = serde_json::to_string(&mock_item).unwrap();
+            let data = match serde_json::to_string(&mock_item) {
+                Ok(d) => d,
+                Err(_) => "{}".to_string(),
+            };
             yield Ok(Event::default().data(data));
         }
     };
