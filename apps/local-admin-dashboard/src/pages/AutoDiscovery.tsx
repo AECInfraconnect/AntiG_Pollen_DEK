@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { RefreshCw, Search, ShieldAlert, CheckCircle } from "lucide-react";
-import { RegistryApi } from "../services/api";
+import {
+  RegistryApi,
+  PolicyFirstApi,
+} from "../services/api";
 import type {
   DiscoveredAgentCandidateV2,
   DiscoveryScanJob,
@@ -20,7 +23,10 @@ export function AutoDiscovery() {
   const [scanHistory, setScanHistory] = useState<DiscoveryScanJob[]>([]);
   const [snapshot, setSnapshot] = useState<any>(null);
   const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [deployModal, setDeployModal] = useState<{show: boolean, policy: any | null}>({show: false, policy: null});
+  const [deployModal, setDeployModal] = useState<{
+    show: boolean;
+    policy: any | null;
+  }>({ show: false, policy: null });
   const [deploying, setDeploying] = useState(false);
 
   const fetchCapabilities = async () => {
@@ -302,7 +308,13 @@ export function AutoDiscovery() {
 
       <div className="border-b border-border">
         <nav className="-mb-px flex space-x-6">
-          {["candidates", "capabilities", "policies", "timeline", "evidence"].map((tab) => (
+          {[
+            "candidates",
+            "capabilities",
+            "policies",
+            "timeline",
+            "evidence",
+          ].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -484,9 +496,12 @@ export function AutoDiscovery() {
 
         {activeTab === "capabilities" && (
           <div>
-            <h3 className="font-semibold mb-4">What POLLEK can do on this device</h3>
+            <h3 className="font-semibold mb-4">
+              What POLLEK can do on this device
+            </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Overview of local control capabilities automatically detected by the Policy Enforcement Point (PEP).
+              Overview of local control capabilities automatically detected by
+              the Policy Enforcement Point (PEP).
             </p>
 
             {!snapshot ? (
@@ -499,28 +514,44 @@ export function AutoDiscovery() {
               <div className="space-y-4">
                 <div className="border rounded-lg p-4 bg-muted/10">
                   <h4 className="font-medium text-primary mb-2">Device Info</h4>
-                  <p className="text-sm">OS: {snapshot.os?.type} {snapshot.os?.version} ({snapshot.os?.arch})</p>
+                  <p className="text-sm">
+                    OS: {snapshot.os?.type} {snapshot.os?.version} (
+                    {snapshot.os?.arch})
+                  </p>
                   <p className="text-sm">Device ID: {snapshot.device_id}</p>
                 </div>
-                
+
                 <h4 className="font-medium mt-4">Detected Control Methods</h4>
                 {snapshot.methods && snapshot.methods.length > 0 ? (
                   snapshot.methods.map((m: any, idx: number) => (
-                    <div key={idx} className="border rounded-lg p-4 bg-muted/10 flex justify-between items-center">
+                    <div
+                      key={idx}
+                      className="border rounded-lg p-4 bg-muted/10 flex justify-between items-center"
+                    >
                       <div>
                         <p className="font-medium">{m.method}</p>
-                        <p className="text-xs text-muted-foreground">Status: {m.status}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Status: {m.status}
+                        </p>
                       </div>
                       <div className="flex gap-2">
-                         {m.can_observe && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-1 rounded">Can Observe</span>}
-                         {m.can_enforce && <span className="text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded">Can Enforce</span>}
+                        {m.can_observe && (
+                          <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-1 rounded">
+                            Can Observe
+                          </span>
+                        )}
+                        {m.can_enforce && (
+                          <span className="text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded">
+                            Can Enforce
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))
                 ) : (
-                   <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-muted/10 text-center">
-                     No capabilities found yet.
-                   </div>
+                  <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-muted/10 text-center">
+                    No capabilities found yet.
+                  </div>
                 )}
               </div>
             )}
@@ -531,7 +562,8 @@ export function AutoDiscovery() {
           <div>
             <h3 className="font-semibold mb-4">Recommended Policies</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              These policies are suggested based on the discovered agents and local capabilities.
+              These policies are suggested based on the discovered agents and
+              local capabilities.
             </p>
 
             {suggestions.length === 0 ? (
@@ -543,31 +575,34 @@ export function AutoDiscovery() {
             ) : (
               <div className="space-y-4">
                 {suggestions.map((sugg, idx) => (
-                    <div
-                      key={idx}
-                      className="border rounded-lg overflow-hidden"
-                    >
-                      <div className="bg-muted/30 p-3 border-b flex justify-between items-center">
-                        <h4 className="font-medium">{sugg.display_name?.en || sugg.suggestion_id}</h4>
-                        <span className="text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-0.5 rounded border">
-                          Feasibility: {sugg.feasibility}
-                        </span>
-                      </div>
-                      <div className="p-4 space-y-3">
-                         <p className="text-sm">{sugg.description?.en || ""}</p>
-                         <p className="text-xs text-muted-foreground">Target Agents: {sugg.target_agent_ids.join(", ")}</p>
-                         
-                         <div className="flex justify-end pt-2">
-                           <button 
-                             onClick={() => setDeployModal({ show: true, policy: sugg })}
-                             className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded font-medium shadow-sm hover:opacity-90"
-                           >
-                             Deploy Preview
-                           </button>
-                         </div>
+                  <div key={idx} className="border rounded-lg overflow-hidden">
+                    <div className="bg-muted/30 p-3 border-b flex justify-between items-center">
+                      <h4 className="font-medium">
+                        {sugg.display_name?.en || sugg.suggestion_id}
+                      </h4>
+                      <span className="text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-0.5 rounded border">
+                        Feasibility: {sugg.feasibility}
+                      </span>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      <p className="text-sm">{sugg.description?.en || ""}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Target Agents: {sugg.target_agent_ids.join(", ")}
+                      </p>
+
+                      <div className="flex justify-end pt-2">
+                        <button
+                          onClick={() =>
+                            setDeployModal({ show: true, policy: sugg })
+                          }
+                          className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded font-medium shadow-sm hover:opacity-90"
+                        >
+                          Deploy Preview
+                        </button>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -791,28 +826,58 @@ export function AutoDiscovery() {
             <h3 className="text-xl font-bold mb-4">Deploy Policy Preview</h3>
             <div className="space-y-4">
               <div className="p-3 bg-muted/10 rounded-md border">
-                 <p className="font-medium text-sm">{deployModal.policy.display_name?.en}</p>
-                 <p className="text-xs text-muted-foreground mt-1">{deployModal.policy.description?.en}</p>
+                <p className="font-medium text-sm">
+                  {deployModal.policy.display_name?.en}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {deployModal.policy.description?.en}
+                </p>
               </div>
               <div className="p-3 bg-primary/10 rounded-md border border-primary/20">
-                 <p className="font-medium text-sm text-primary mb-1">Control Level Options</p>
-                 <p className="text-xs text-primary/80">
-                   The system will automatically configure the required PEP mechanisms. 
-                 </p>
-                 <div className="mt-3 space-y-2">
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                       <input type="radio" name="controlLevel" value="warn" defaultChecked={deployModal.policy.recommended_control_level === 'Warn'} />
-                       <span>Warn Only</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                       <input type="radio" name="controlLevel" value="approval" defaultChecked={deployModal.policy.recommended_control_level === 'Approval'} />
-                       <span>Require Approval</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                       <input type="radio" name="controlLevel" value="enforce" defaultChecked={deployModal.policy.recommended_control_level === 'Enforce'} />
-                       <span>Strict Enforce</span>
-                    </label>
-                 </div>
+                <p className="font-medium text-sm text-primary mb-1">
+                  Control Level Options
+                </p>
+                <p className="text-xs text-primary/80">
+                  The system will automatically configure the required PEP
+                  mechanisms.
+                </p>
+                <div className="mt-3 space-y-2">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="radio"
+                      name="controlLevel"
+                      value="warn"
+                      defaultChecked={
+                        deployModal.policy.recommended_control_level === "Warn"
+                      }
+                    />
+                    <span>Warn Only</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="radio"
+                      name="controlLevel"
+                      value="approval"
+                      defaultChecked={
+                        deployModal.policy.recommended_control_level ===
+                        "Approval"
+                      }
+                    />
+                    <span>Require Approval</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="radio"
+                      name="controlLevel"
+                      value="enforce"
+                      defaultChecked={
+                        deployModal.policy.recommended_control_level ===
+                        "Enforce"
+                      }
+                    />
+                    <span>Strict Enforce</span>
+                  </label>
+                </div>
               </div>
             </div>
             <div className="mt-6 flex justify-end gap-3">

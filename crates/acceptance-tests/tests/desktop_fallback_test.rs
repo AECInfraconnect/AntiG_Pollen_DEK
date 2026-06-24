@@ -184,3 +184,38 @@ fn test_windows_no_wfp() {
         dek_domain_schema::feasibility::PolicyFeasibilityStatus::NeedsSetup
     );
 }
+
+#[test]
+fn test_macos_network_extension_inactive() {
+    let snapshot = create_mock_snapshot();
+    let req = PolicyFeasibilityRequest {
+        policy_id: None,
+        policy_intent: PolicyIntent::BlockUnknownNetworkDestinations,
+        requested_control_level: ControlLevel::Enforce,
+        targets: vec![create_mock_target("macos_network_extension")],
+        mode: ProductMode::DesktopSimple,
+    };
+    let results = evaluate_policy_feasibility(req, &snapshot);
+    assert_eq!(
+        results[0].status,
+        dek_domain_schema::feasibility::PolicyFeasibilityStatus::NeedsSetup
+    );
+}
+
+#[test]
+fn test_linux_ebpf_permission_denied() {
+    let snapshot = create_mock_snapshot();
+    let req = PolicyFeasibilityRequest {
+        policy_id: None,
+        policy_intent: PolicyIntent::BlockUnknownNetworkDestinations,
+        requested_control_level: ControlLevel::Enforce,
+        targets: vec![create_mock_target("linux_ebpf")],
+        mode: ProductMode::DesktopSimple,
+    };
+    let results = evaluate_policy_feasibility(req, &snapshot);
+    assert_eq!(
+        results[0].status,
+        dek_domain_schema::feasibility::PolicyFeasibilityStatus::CanObserveOnly
+    );
+    assert_eq!(results[0].effective_control_level, ControlLevel::Observe);
+}

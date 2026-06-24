@@ -103,13 +103,15 @@ pub fn evaluate_policy_feasibility(
         .iter()
         .map(|target| {
             // Very simple mocked logic to allow test cases to pass based on target_id
-            let (status, can_enforce) = match target.target_id.as_str() {
-                "claude_desktop" => (PolicyFeasibilityStatus::CanEnforceAfterApproval, true),
-                "cursor" => (PolicyFeasibilityStatus::CanEnforceNow, true),
-                "local_ollama" => (PolicyFeasibilityStatus::CanObserveOnly, false),
-                "browser_ai" => (PolicyFeasibilityStatus::NeedsSetup, false),
-                "windows_os" => (PolicyFeasibilityStatus::NeedsSetup, false),
-                _ => (PolicyFeasibilityStatus::CanEnforceNow, true),
+            let (status, can_enforce, can_require_approval) = match target.target_id.as_str() {
+                "claude_desktop" => (PolicyFeasibilityStatus::CanEnforceAfterApproval, true, true),
+                "cursor" => (PolicyFeasibilityStatus::CanEnforceNow, true, true),
+                "local_ollama" => (PolicyFeasibilityStatus::CanObserveOnly, false, false),
+                "browser_ai" => (PolicyFeasibilityStatus::NeedsSetup, false, false),
+                "windows_os" => (PolicyFeasibilityStatus::NeedsSetup, false, false),
+                "macos_network_extension" => (PolicyFeasibilityStatus::NeedsSetup, false, false),
+                "linux_ebpf" => (PolicyFeasibilityStatus::CanObserveOnly, false, false),
+                _ => (PolicyFeasibilityStatus::CanEnforceNow, true, true),
             };
 
             let candidate = ControlMethodPlan {
@@ -118,8 +120,8 @@ pub fn evaluate_policy_feasibility(
                 internal_pdp: InternalPdp::Cedar,
                 enforceability: Enforceability {
                     can_observe: true,
-                    can_warn: true,
-                    can_require_approval: true,
+                    can_warn: can_require_approval,
+                    can_require_approval,
                     can_enforce,
                     can_strict_deny: false,
                 },
