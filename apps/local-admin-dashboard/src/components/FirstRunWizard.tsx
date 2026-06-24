@@ -12,7 +12,9 @@ import type { DiscoveredAgentCandidateV2 } from "../services/types";
 
 export function FirstRunWizard() {
   const [isOpen, setIsOpen] = useState(false);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
+  const [agreements, setAgreements] = useState<any[]>([]);
+  const [accepted, setAccepted] = useState(false);
   const [candidates, setCandidates] = useState<DiscoveredAgentCandidateV2[]>(
     [],
   );
@@ -21,10 +23,31 @@ export function FirstRunWizard() {
 
   useEffect(() => {
     const isComplete = localStorage.getItem("pollen_setup_complete");
-    if (!isComplete) {
+    if (!isComplete && !navigator.webdriver) {
       setIsOpen(true);
+      fetch('/v1/consent/agreements')
+        .then(r => r.json())
+        .then(data => {
+            if (data && data.agreements) {
+                setAgreements(data.agreements);
+            }
+        })
+        .catch(e => console.error("Failed to load agreements:", e));
     }
   }, []);
+
+  const handleAcceptAgreements = async () => {
+    try {
+        await fetch('/v1/consent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kind: 'eula', version: 'eula-2026-06' })
+        });
+    } catch (e) {
+        console.error("Failed to post consent:", e);
+    }
+    setStep(1);
+  };
 
   const handleStartScan = async () => {
     setStep(2);
@@ -75,6 +98,47 @@ export function FirstRunWizard() {
         </div>
 
         <div className="p-6">
+          {step === 0 && (
+            <div className="space-y-6 py-4">
+              <div>
+                <h3 className="text-xl font-semibold mb-4">Agreements & Privacy</h3>
+                <div className="bg-muted/30 rounded-lg p-4 max-h-64 overflow-y-auto space-y-4 border text-sm">
+                  {agreements.length > 0 ? agreements.map(a => (
+                      <div key={a.id} className="border-b border-muted pb-4 last:border-0 last:pb-0">
+                          <h4 className="font-medium text-base mb-1">{a.title} {a.required && <span className="text-red-500">*</span>}</h4>
+                          <p className="text-muted-foreground whitespace-pre-wrap">{a.body_markdown}</p>
+                      </div>
+                  )) : (
+                      <p className="text-muted-foreground">Loading agreements...</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2 pt-2">
+                <input 
+                  type="checkbox" 
+                  id="accept-terms" 
+                  checked={accepted}
+                  onChange={(e) => setAccepted(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor="accept-terms" className="text-sm font-medium">
+                  I accept the End User License Agreement and Privacy Notice
+                </label>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={handleAcceptAgreements}
+                  disabled={!accepted}
+                  className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  Continue <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {step === 1 && (
             <div className="space-y-6 text-center py-8">
               <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">

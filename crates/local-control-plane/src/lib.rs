@@ -35,5 +35,6 @@ pub mod pdp_runtime_api;
 
 pub mod cloud_sync;
 
+pub mod consent_api;
 pub mod plugin_api;
 pub mod policy_deploy_api;

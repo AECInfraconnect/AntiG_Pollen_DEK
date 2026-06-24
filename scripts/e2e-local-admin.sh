@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+rm -rf ./target/e2e
 mkdir -p ./target/e2e
 export DEK_LCP_AUTH_DISABLE=1
 export DEK_LCP_BIND="${DEK_LCP_BIND:-127.0.0.1:5174}"
 export DEK_LCP_DB='sqlite://./target/e2e/pollen-local.db?mode=rwc'
 export DEK_LCP_DATA='./target/e2e/pollen-local-data'
+mkdir -p ./target/e2e
 export DEK_DASHBOARD_DIR="$(pwd)/apps/local-admin-dashboard/dist"
 export PLAYWRIGHT_BASE_URL="http://${DEK_LCP_BIND}"
 
@@ -31,6 +33,9 @@ cargo test -p local-control-plane --test e2e_registry
 cargo test -p local-control-plane --test e2e_policy_publish
 
 pushd apps/local-admin-dashboard
-npx playwright install --with-deps
-DEK_PLAYWRIGHT_EXTERNAL_SERVER=1 PLAYWRIGHT_BASE_URL="${PLAYWRIGHT_BASE_URL}" npx playwright test
+npm ci
+npx playwright install
+npm run build
+export DEK_PLAYWRIGHT_EXTERNAL_SERVER="1"
+PLAYWRIGHT_BASE_URL="${PLAYWRIGHT_BASE_URL}" npx playwright test
 popd

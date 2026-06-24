@@ -9,6 +9,10 @@ $env:DEK_LCP_AUTH_DISABLE="1"
 $env:DEK_LCP_BIND = if ($env:DEK_LCP_BIND) { $env:DEK_LCP_BIND } else { "127.0.0.1:5174" }
 $env:DEK_LCP_DB="sqlite://./target/e2e/pollen-local.db?mode=rwc"
 $env:DEK_LCP_DATA="./target/e2e/pollen-local-data"
+if (Test-Path "./target/e2e") {
+    Remove-Item -Recurse -Force -Path "./target/e2e" | Out-Null
+}
+New-Item -ItemType Directory -Force -Path "./target/e2e" | Out-Null
 $env:DEK_DASHBOARD_DIR=(Resolve-Path "apps/local-admin-dashboard/dist").Path
 $env:PLAYWRIGHT_BASE_URL="http://$env:DEK_LCP_BIND"
 
@@ -35,6 +39,7 @@ try {
 
   Push-Location apps/local-admin-dashboard
   npm ci
+  npx playwright install
   npm run build
   $env:DEK_PLAYWRIGHT_EXTERNAL_SERVER="1"
   npx playwright test
