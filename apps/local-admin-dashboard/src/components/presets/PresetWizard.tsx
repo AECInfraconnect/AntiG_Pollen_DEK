@@ -50,6 +50,9 @@ export function PresetWizard({
   onClose: () => void;
   mode?: "desktop" | "server";
 }) {
+  const [viewMode, setViewMode] = useState<"desktop" | "server">(
+    mode || "desktop",
+  );
   const [step, setStep] = useState<WizardStep>("agents");
   const [controlMode, setControlMode] = useState<ControlMode>(
     preset.default_control_mode || "observe",
@@ -88,12 +91,13 @@ export function PresetWizard({
       .catch(console.error);
   }, []);
 
-  const stepOrder = mode === "desktop" ? DESKTOP_STEP_ORDER : SERVER_STEP_ORDER;
+  const stepOrder =
+    viewMode === "desktop" ? DESKTOP_STEP_ORDER : SERVER_STEP_ORDER;
 
   const nextStep = () => {
     const idx = stepOrder.indexOf(step);
     if (idx < stepOrder.length - 1) {
-      if (step === "goal" && mode === "desktop") {
+      if (step === "goal" && viewMode === "desktop") {
         // Automatically fetch capabilities/preview before moving to preview
         generatePreview();
         return;
@@ -253,7 +257,9 @@ export function PresetWizard({
         return (
           <div className="space-y-4">
             <h4 className="font-medium">
-              {mode === "desktop" ? "Review & Protect" : "Deployment Preview"}
+              {viewMode === "desktop"
+                ? "Review & Protect"
+                : "Deployment Preview"}
             </h4>
             {preview ? (
               <PolicyPreview preview={preview} />
@@ -342,7 +348,7 @@ export function PresetWizard({
       }
       generatePreview();
     } else if (step === "preview") {
-      if (mode === "desktop") {
+      if (viewMode === "desktop") {
         executeDeploy();
       } else {
         runSimulation();
@@ -364,12 +370,33 @@ export function PresetWizard({
             <Shield className="h-5 w-5 text-primary" />
             Wizard: {preset.title}
           </h3>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-muted rounded text-muted-foreground"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <span className="text-muted-foreground">Advanced</span>
+              <input
+                type="checkbox"
+                className="toggle toggle-primary toggle-sm"
+                checked={viewMode === "server"}
+                onChange={(e) => {
+                  const newMode = e.target.checked ? "server" : "desktop";
+                  setViewMode(newMode);
+                  const newOrder =
+                    newMode === "desktop"
+                      ? DESKTOP_STEP_ORDER
+                      : SERVER_STEP_ORDER;
+                  if (!newOrder.includes(step)) {
+                    setStep("agents");
+                  }
+                }}
+              />
+            </label>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-muted rounded text-muted-foreground"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex bg-muted/10 border-b">

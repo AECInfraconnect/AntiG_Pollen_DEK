@@ -88,6 +88,7 @@ impl DiscoveryOrchestrator {
         if wants_source("process") {
             let tx_cl = ev_tx.clone();
             let config = self.config.clone();
+            let defs = self.definitions.clone();
             tasks.push(tokio::spawn(async move {
                 let mut ev = Vec::new();
                 if let Ok(Ok(processes)) = tokio::time::timeout(
@@ -98,7 +99,7 @@ impl DiscoveryOrchestrator {
                 .unwrap_or(Ok(Ok(vec![])))
                 {
                     for p in processes {
-                        let conf = crate::fingerprint::fingerprint_process(&p.process_name);
+                        let conf = crate::fingerprint::fingerprint_process(&p, &defs.signatures);
                         if conf > config.min_fingerprint_confidence {
                             ev.push(DiscoveryEvidenceV2 {
                                 evidence_id: uuid::Uuid::new_v4().to_string(),

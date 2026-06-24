@@ -16,7 +16,6 @@ import {
   Lightbulb,
   ShieldCheck,
   Zap,
-  Globe,
   Puzzle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -74,24 +73,18 @@ export function Sidebar() {
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-card/50 backdrop-blur-xl">
-      <div className="flex h-16 items-center border-b px-6 pt-4 pb-2">
-        <div className="flex items-center gap-2 w-full">
-          <Globe className="h-6 w-6 text-primary flex-shrink-0" />
-          <h1 className="flex flex-col leading-none">
-            <span className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent tracking-wide">
-              POLLEK
-            </span>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground/80 mt-0.5">
-              Admin Dashboard
-            </span>
-          </h1>
-          <span className="ml-auto rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary self-start mt-1">
-            v2
-          </span>
-        </div>
+      <div className="flex h-20 items-center justify-center border-b px-6 py-4">
+        <img
+          src="/POLLEK_LOGO.png"
+          alt="Pollek Local Enforcement Kit"
+          className="h-full w-auto object-contain mix-blend-multiply dark:mix-blend-screen dark:brightness-200 dark:contrast-200"
+        />
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div
+        className="flex-1 overflow-y-auto py-4 no-scrollbar"
+        style={{ msOverflowStyle: "none", scrollbarWidth: "none" }}
+      >
         <nav className="space-y-6 px-3">
           {groups.map((group) => (
             <div key={group.title}>

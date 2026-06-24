@@ -121,7 +121,7 @@ async fn confirm_candidate(
         ));
     }
 
-    let _learned_signature =
+    let learned_signature =
         dek_agent_discovery::human_loop::apply_confirmation(&mut candidate, &req);
 
     // Map capabilities to preset
@@ -141,6 +141,15 @@ async fn confirm_candidate(
         )
         .await
         .map_err(ApiError::Internal)?;
+
+    if let Some(sig) = learned_signature {
+        let sig_value =
+            serde_json::to_value(&sig).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+        st.registry_store
+            .upsert_raw(&tenant, "learned_signature", &sig.id, &sig_value)
+            .await
+            .map_err(ApiError::Internal)?;
+    }
 
     Ok(Json(serde_json::json!({
         "schema_version": "confirm-agent-candidate-response.v1",

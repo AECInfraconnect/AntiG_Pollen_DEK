@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 import { RefreshCw, Search, ShieldAlert, CheckCircle } from "lucide-react";
-import {
-  RegistryApi,
-  PolicyFirstApi,
-} from "../services/api";
+import { RegistryApi, PolicyFirstApi } from "../services/api";
 import type {
   DiscoveredAgentCandidateV2,
   DiscoveryScanJob,
@@ -195,66 +192,41 @@ export function AutoDiscovery() {
     );
   };
 
-  const [registerModal, setRegisterModal] = useState<{
+  const [identifyModal, setIdentifyModal] = useState<{
     show: boolean;
     candidate: DiscoveredAgentCandidateV2 | null;
-    name: string;
-  }>({ show: false, candidate: null, name: "" });
+    customName: string;
+    learnSignature: boolean;
+  }>({ show: false, candidate: null, customName: "", learnSignature: true });
 
-  const openRegisterModal = (candidate: DiscoveredAgentCandidateV2) => {
-    if (candidate.status === "registered") {
-      alert("This agent is already registered!");
-      return;
-    }
-    setRegisterModal({
-      show: true,
-      candidate,
-      name:
-        candidate.suggested_registration?.name ||
-        candidate.display_name ||
-        "Unknown Agent",
-    });
-  };
+  const [isIdentifying, setIsIdentifying] = useState(false);
 
-  const [isRegistering, setIsRegistering] = useState(false);
-
-  const handleConfirmRegister = async () => {
-    const candidate = registerModal.candidate;
-    if (!candidate || isRegistering) return;
-    setIsRegistering(true);
+  const handleConfirmIdentity = async () => {
+    const candidate = identifyModal.candidate;
+    if (!candidate || isIdentifying) return;
+    setIsIdentifying(true);
     try {
-      // 1. Register the agent
-      await RegistryApi.registerDiscoveryCandidate(candidate.candidate_id, {
-        agent_name: registerModal.name,
+      await RegistryApi.confirmCandidate(candidate.candidate_id, {
+        candidate_id: candidate.candidate_id,
+        custom_display_name: identifyModal.customName || undefined,
+        confirmed_agent_type: candidate.inferred_agent_type,
+        confirmed_capability_tags: candidate.capability_tags || [],
+        make_local_signature: identifyModal.learnSignature,
+        confirmed_by: "admin",
       });
-
-      // 2. Apply all suggested control bindings automatically (Enforce)
-      if (
-        candidate.suggested_control_bindings &&
-        candidate.suggested_control_bindings.length > 0
-      ) {
-        for (const binding of candidate.suggested_control_bindings) {
-          try {
-            await RegistryApi.applyControlBinding(binding.binding_id);
-          } catch (bindErr) {
-            console.error(
-              `Failed to apply binding ${binding.binding_id}:`,
-              bindErr,
-            );
-          }
-        }
-      }
-
-      alert(
-        `Successfully registered and enforced bindings for ${registerModal.name}`,
-      );
+      alert(`Successfully confirmed identity for ${candidate.candidate_id}`);
+      setIdentifyModal({
+        show: false,
+        candidate: null,
+        customName: "",
+        learnSignature: true,
+      });
       fetchCandidates();
-      setRegisterModal({ show: false, candidate: null, name: "" });
-    } catch (err) {
-      console.error(err);
-      alert("Failed to register: " + err);
+    } catch (e: any) {
+      console.error("Failed to confirm identity:", e);
+      alert(`Failed to confirm identity: ${e.message}`);
     } finally {
-      setIsRegistering(false);
+      setIsIdentifying(false);
     }
   };
 
@@ -403,16 +375,35 @@ export function AutoDiscovery() {
                                   <CheckCircle className="w-3.5 h-3.5" />{" "}
                                   Registered
                                 </span>
-                              ) : (
+                              ) : c.status === "pending_approval" ? (
                                 <div className="flex flex-col items-end">
                                   <button
-                                    onClick={() => openRegisterModal(c)}
-                                    className="text-xs border px-3 py-1.5 rounded bg-primary text-primary-foreground font-medium transition-colors"
+                                    onClick={() =>
+                                      setIdentifyModal({
+                                        show: true,
+                                        candidate: c,
+                                        customName: c.display_name,
+                                        learnSignature: true,
+                                      })
+                                    }
+                                    className="text-xs border border-orange-500/50 px-3 py-1.5 rounded bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 font-medium transition-colors"
                                   >
-                                    ปกป้อง Agent นี้
+                                    Identify this Agent
                                   </button>
                                   <span className="text-[10px] text-muted-foreground mt-1">
-                                    ระบบจะเลือกวิธีบังคับใช้ที่ดีที่สุดให้อัตโนมัติ
+                                    Low confidence or unverified
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-end">
+                                  <a
+                                    href={`/wizard?target=${c.candidate_id}`}
+                                    className="text-xs border px-3 py-1.5 rounded bg-primary text-primary-foreground font-medium transition-colors"
+                                  >
+                                    Apply Policy
+                                  </a>
+                                  <span className="text-[10px] text-muted-foreground mt-1">
+                                    System will select best control method
                                   </span>
                                 </div>
                               )}
@@ -774,46 +765,112 @@ export function AutoDiscovery() {
         </div>
       )}
 
-      {registerModal.show && (
+      {identifyModal.show && identifyModal.candidate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-xl font-bold mb-4">Register Agent</h3>
+          <div className="bg-background border rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h3 className="text-xl font-bold mb-2">Identify Agent</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Please confirm or update the name for this agent before
-              registering.
+              The system found an agent but needs your confirmation due to low
+              confidence or ambiguity.
             </p>
+
+            <div className="p-4 border rounded-lg bg-muted/20 space-y-3 mb-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase font-semibold">
+                    Top Guess
+                  </p>
+                  <p className="text-lg font-medium">
+                    {identifyModal.candidate.display_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Type: {identifyModal.candidate.inferred_agent_type}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground uppercase font-semibold">
+                    Confidence
+                  </p>
+                  <p className="text-lg font-mono text-orange-500">
+                    {(identifyModal.candidate.confidence * 100).toFixed(0)}%
+                  </p>
+                </div>
+              </div>
+
+              {identifyModal.candidate.matched_signals &&
+                identifyModal.candidate.matched_signals.length > 0 && (
+                  <div className="pt-2 border-t border-dashed border-muted-foreground/30">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Match Evidence (Redacted):
+                    </p>
+                    <ul className="text-xs space-y-1 font-mono text-muted-foreground">
+                      {identifyModal.candidate.matched_signals.map((sig, i) => (
+                        <li key={i} className="flex gap-2">
+                          <span className="text-foreground/70 w-24 shrink-0 truncate">
+                            {sig.kind}:
+                          </span>
+                          <span className="truncate" title={sig.detail}>
+                            {sig.detail}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+            </div>
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Agent Name
+                  Confirm Name (or provide custom name)
                 </label>
                 <input
                   type="text"
-                  value={registerModal.name}
+                  value={identifyModal.customName}
                   onChange={(e) =>
-                    setRegisterModal({ ...registerModal, name: e.target.value })
+                    setIdentifyModal({
+                      ...identifyModal,
+                      customName: e.target.value,
+                    })
                   }
                   className="w-full border rounded px-3 py-2 text-sm bg-background focus:ring-2 focus:ring-primary focus:outline-none"
-                  placeholder="e.g. Claude Desktop"
                 />
               </div>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={identifyModal.learnSignature}
+                  onChange={(e) =>
+                    setIdentifyModal({
+                      ...identifyModal,
+                      learnSignature: e.target.checked,
+                    })
+                  }
+                />
+                <span>Learn this signature (auto-identify next time)</span>
+              </label>
             </div>
+
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() =>
-                  setRegisterModal({ show: false, candidate: null, name: "" })
+                  setIdentifyModal({
+                    show: false,
+                    candidate: null,
+                    customName: "",
+                    learnSignature: true,
+                  })
                 }
                 className="px-4 py-2 text-sm border rounded hover:bg-muted"
               >
                 Cancel
               </button>
               <button
-                onClick={handleConfirmRegister}
-                disabled={!registerModal.name.trim() || isRegistering}
-                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+                onClick={handleConfirmIdentity}
+                disabled={!identifyModal.customName.trim() || isIdentifying}
+                className="px-4 py-2 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2 font-medium"
               >
-                <ShieldAlert className="w-4 h-4" />
-                {isRegistering ? "กำลังบันทึก..." : "ปกป้อง Agent นี้"}
+                {isIdentifying ? "Confirming..." : "Identify & Confirm"}
               </button>
             </div>
           </div>

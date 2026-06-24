@@ -17,8 +17,9 @@ pub async fn run_scan(
     // 1. Process Scan
     match scan_processes() {
         Ok(processes) => {
+            let sigs = dek_fingerprint_defs::load_latest_baseline().signatures;
             for p in processes {
-                let conf = crate::fingerprint::fingerprint_process(&p.process_name);
+                let conf = crate::fingerprint::fingerprint_process(&p, &sigs);
                 if conf > config.min_fingerprint_confidence {
                     let evidence = DiscoveryEvidence {
                         evidence_id: uuid::Uuid::new_v4().to_string(),
@@ -34,8 +35,7 @@ pub async fn run_scan(
                         }),
                     };
 
-                    let agent_type =
-                        crate::fingerprint::infer_agent_type_from_name(&p.process_name);
+                    let agent_type = InferredAgentType::UnknownAiProcess;
 
                     candidates.push(DiscoveredAgentCandidate {
                         schema_version: "pollen.agent_discovery_candidate.v1".into(),

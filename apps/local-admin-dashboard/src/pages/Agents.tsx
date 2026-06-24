@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Users, Plus } from "lucide-react";
 import { RegistryApi } from "../services/api";
 import type { AiAgent } from "../services/api";
-import { RegisterControlBar } from "../components/RegisterControlBar";
 
 export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
   const [agents, setAgents] = useState<AiAgent[]>([]);
@@ -139,11 +138,12 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
-                      <RegisterControlBar
-                        agentId={agent.agent_id}
-                        tenantId="local"
-                        onSuccess={() => window.location.reload()}
-                      />
+                      <a
+                        href="/wizard"
+                        className="px-3 py-1 text-xs text-primary bg-primary/10 hover:bg-primary/20 rounded border border-primary/20 transition-colors inline-flex items-center"
+                      >
+                        Apply Policy
+                      </a>
                       <button
                         onClick={() => deleteAgent(agent.agent_id)}
                         className="px-3 py-1 text-xs text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded border border-red-500/20 transition-colors"

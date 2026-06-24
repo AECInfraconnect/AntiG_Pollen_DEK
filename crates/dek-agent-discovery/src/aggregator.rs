@@ -325,8 +325,18 @@ fn aggregate_by_merge_key(
             }
         }
 
-        let signatures = dek_fingerprint_defs::load_latest_baseline().signatures;
+        let baseline = dek_fingerprint_defs::load_latest_baseline();
+        let signatures = baseline.signatures.clone();
         let mut decision = crate::identity::resolve(&ctx, &signatures);
+
+        if decision.best.is_none() {
+            if let Some(ref exe) = ctx.exe_path_norm {
+                if let Some(id) = crate::fingerprint::resolve_by_install_path(exe, &baseline) {
+                    decision.best = Some(id);
+                    decision.needs_human = false;
+                }
+            }
+        }
 
         // If unknown, run claw family heuristic
         if decision.best.is_none() {
@@ -363,21 +373,66 @@ fn aggregate_by_merge_key(
         }
 
         if !resolved_by_signature || best_hint.confidence >= 1.0 {
-            if let Some(n) = best_hint.name.filter(|n| !n.is_empty()) {
-                name = n;
-                if vendor.is_none() {
-                    vendor = best_hint.vendor;
-                }
-                if product.is_none() {
-                    product = best_hint.product;
-                }
-                if let Some(t) = best_hint.agent_type {
-                    agent_type = t;
-                }
-                max_confidence = f64::max(max_confidence, best_hint.confidence);
-                for cap in best_hint.capability_tags {
-                    if !capability_tags.contains(&cap) {
-                        capability_tags.push(cap);
+            if let Some(n) = best_hint
+                .name
+                .filter(|n| !n.is_empty() && n != "Unknown Agent")
+            {
+                let n_lower = n.to_lowercase();
+                if let Some(sig) = signatures.iter().find(|s| {
+                    s.display_name.to_lowercase() == n_lower
+                        || s.process_names.iter().any(|pn| {
+                            let pn_lower = pn.to_lowercase();
+                            let generic = [
+                                "node",
+                                "node.exe",
+                                "python",
+                                "python.exe",
+                                "chrome",
+                                "msedge",
+                                "firefox",
+                                "safari",
+                                "brave",
+                                "code",
+                            ];
+                            !generic.contains(&pn_lower.as_str()) && n_lower.contains(&pn_lower)
+                        })
+                        || s.id.to_lowercase().replace("_", " ") == n_lower
+                }) {
+                    name = sig.display_name.clone();
+                    vendor = sig.vendor.clone();
+                    product = sig.product.clone();
+                    agent_type = match sig.agent_type.as_str() {
+                        "desktop_agent" => InferredAgentType::DesktopAgent,
+                        "ide_agent" => InferredAgentType::IdeAgent,
+                        "cli_agent" => InferredAgentType::CliAgent,
+                        "browser_agent" => InferredAgentType::BrowserAgent,
+                        "mcp_server" => InferredAgentType::McpServer,
+                        "mcp_client" => InferredAgentType::McpClient,
+                        _ => InferredAgentType::AutomationAgent,
+                    };
+                    max_confidence = f64::max(max_confidence, f64::max(0.8, best_hint.confidence));
+                    for cap in &sig.capability_tags {
+                        if !capability_tags.contains(cap) {
+                            capability_tags.push(cap.clone());
+                        }
+                    }
+                    matched_signature_id = Some(sig.id.clone());
+                } else {
+                    name = n;
+                    if vendor.is_none() {
+                        vendor = best_hint.vendor;
+                    }
+                    if product.is_none() {
+                        product = best_hint.product;
+                    }
+                    if let Some(t) = best_hint.agent_type {
+                        agent_type = t;
+                    }
+                    max_confidence = f64::max(max_confidence, best_hint.confidence);
+                    for cap in best_hint.capability_tags {
+                        if !capability_tags.contains(&cap) {
+                            capability_tags.push(cap);
+                        }
                     }
                 }
             }

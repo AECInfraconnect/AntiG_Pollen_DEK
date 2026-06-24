@@ -53,7 +53,10 @@ pub struct DeploymentOrchestrator<T: DeploymentEventSink> {
 }
 
 impl<T: DeploymentEventSink> DeploymentOrchestrator<T> {
-    pub fn new(event_sink: std::sync::Arc<T>, store: std::sync::Arc<dyn crate::store::DeploymentStore>) -> Self {
+    pub fn new(
+        event_sink: std::sync::Arc<T>,
+        store: std::sync::Arc<dyn crate::store::DeploymentStore>,
+    ) -> Self {
         Self { event_sink, store }
     }
 
@@ -107,7 +110,9 @@ impl<T: DeploymentEventSink> DeploymentOrchestrator<T> {
         };
 
         self.event_sink.emit(event).await?;
-        self.store.upsert_deployment_session(session.clone()).await?;
+        self.store
+            .upsert_deployment_session(session.clone())
+            .await?;
         Ok(())
     }
 }

@@ -1,4 +1,4 @@
-﻿#![allow(clippy::unwrap_used, clippy::needless_borrow)]
+#![allow(clippy::unwrap_used, clippy::needless_borrow)]
 use anyhow::Result;
 use dek_agent_observer::model::{AgentObservationEvent, CostLedgerEntry};
 use dek_control_plane_api::registry::*;
@@ -6,7 +6,6 @@ use dek_policy_suggester::model::PolicySuggestion;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
-
 
 #[async_trait::async_trait]
 pub trait DeploymentStore: Send + Sync {
@@ -1767,7 +1766,7 @@ impl ObservabilityStore for SqliteStore {
             conn.execute(
                 r#"
                 INSERT INTO observation_events (
-                    id, tenant_id, trace_id, agent_id, shadow_candidate_id, tool_id, resource_id, 
+                    id, tenant_id, trace_id, agent_id, shadow_candidate_id, tool_id, resource_id,
                     surface, action, pep_type, risk_level, timestamp, payload_json,
                     event_kind, provider, input_tokens, output_tokens, total_tokens, latency_ms
                 )
@@ -2005,7 +2004,6 @@ pub struct ToolUsageRow {
     pub avg_latency: f64,
 }
 
-
 #[async_trait::async_trait]
 impl DeploymentStore for SqliteStore {
     async fn upsert_deployment_session(
@@ -2014,42 +2012,50 @@ impl DeploymentStore for SqliteStore {
     ) -> Result<dek_domain_schema::deployment_session::DeploymentSession> {
         let conn = self.conn.clone();
         let session_clone = session.clone();
-        tokio::task::spawn_blocking(move || -> Result<dek_domain_schema::deployment_session::DeploymentSession> {
-            let mut conn = conn.lock().unwrap();
-            let tx = conn.transaction()?;
-            
-            let status_str = serde_json::to_string(&session_clone.status)?.trim_matches('"').to_string();
-            let target_scope_json = serde_json::to_string(&session_clone.target_scope)?;
+        tokio::task::spawn_blocking(
+            move || -> Result<dek_domain_schema::deployment_session::DeploymentSession> {
+                let mut conn = conn.lock().unwrap();
+                let tx = conn.transaction()?;
 
-            let mut stmt = tx.prepare(
-                "INSERT INTO deployment_sessions (
-                    deployment_id, policy_id, policy_version, requested_control_level, 
+                let status_str = serde_json::to_string(&session_clone.status)?
+                    .trim_matches('"')
+                    .to_string();
+                let target_scope_json = serde_json::to_string(&session_clone.target_scope)?;
+
+                let mut stmt = tx.prepare(
+                    "INSERT INTO deployment_sessions (
+                    deployment_id, policy_id, policy_version, requested_control_level,
                     target_scope_json, status, created_by, created_at, updated_at
                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
                 ON CONFLICT(deployment_id) DO UPDATE SET
                     status=excluded.status,
                     target_scope_json=excluded.target_scope_json,
-                    updated_at=excluded.updated_at"
-            )?;
-            
-            let requested_control_level_str = serde_json::to_string(&session_clone.requested_control_level)?.trim_matches('"').to_string();
+                    updated_at=excluded.updated_at",
+                )?;
 
-            stmt.execute(params![
-                session_clone.deployment_id,
-                session_clone.policy_id,
-                session_clone.policy_version,
-                requested_control_level_str,
-                target_scope_json,
-                status_str,
-                session_clone.created_by,
-                session_clone.created_at.to_rfc3339(),
-                session_clone.updated_at.to_rfc3339()
-            ])?;
-            drop(stmt);
-            
-            tx.commit()?;
-            Ok(session_clone)
-        }).await?
+                let requested_control_level_str =
+                    serde_json::to_string(&session_clone.requested_control_level)?
+                        .trim_matches('"')
+                        .to_string();
+
+                stmt.execute(params![
+                    session_clone.deployment_id,
+                    session_clone.policy_id,
+                    session_clone.policy_version,
+                    requested_control_level_str,
+                    target_scope_json,
+                    status_str,
+                    session_clone.created_by,
+                    session_clone.created_at.to_rfc3339(),
+                    session_clone.updated_at.to_rfc3339()
+                ])?;
+                drop(stmt);
+
+                tx.commit()?;
+                Ok(session_clone)
+            },
+        )
+        .await?
     }
 
     async fn get_deployment_session(
@@ -2058,32 +2064,48 @@ impl DeploymentStore for SqliteStore {
     ) -> Result<Option<dek_domain_schema::deployment_session::DeploymentSession>> {
         let conn = self.conn.clone();
         let deployment_id = deployment_id.to_string();
-        
-        tokio::task::spawn_blocking(move || -> Result<Option<dek_domain_schema::deployment_session::DeploymentSession>> {
-            let conn = conn.lock().unwrap();
-            let mut stmt = conn.prepare("SELECT * FROM deployment_sessions WHERE deployment_id = ?1")?;
-            let mut rows = stmt.query(params![deployment_id])?;
-            
-            if let Some(r) = rows.next()? {
-                let status_str: String = r.get("status")?;
-                let req_level_str: String = r.get("requested_control_level")?;
-                
-                let session = dek_domain_schema::deployment_session::DeploymentSession {
-                    deployment_id: r.get("deployment_id")?,
-                    policy_id: r.get("policy_id")?,
-                    policy_version: r.get("policy_version")?,
-                    requested_control_level: serde_json::from_str(&format!("\"{}\"", req_level_str)).unwrap_or(dek_domain_schema::control_level::ControlLevel::Observe),
-                    target_scope: serde_json::from_str(&r.get::<_, String>("target_scope_json")?)?,
-                    status: serde_json::from_str(&format!("\"{}\"", status_str))?,
-                    created_at: chrono::DateTime::parse_from_rfc3339(&r.get::<_, String>("created_at")?)?.with_timezone(&chrono::Utc),
-                    updated_at: chrono::DateTime::parse_from_rfc3339(&r.get::<_, String>("updated_at")?)?.with_timezone(&chrono::Utc),
-                    created_by: r.get("created_by")?,
-                };
-                Ok(Some(session))
-            } else {
-                Ok(None)
-            }
-        }).await?
+
+        tokio::task::spawn_blocking(
+            move || -> Result<Option<dek_domain_schema::deployment_session::DeploymentSession>> {
+                let conn = conn.lock().unwrap();
+                let mut stmt =
+                    conn.prepare("SELECT * FROM deployment_sessions WHERE deployment_id = ?1")?;
+                let mut rows = stmt.query(params![deployment_id])?;
+
+                if let Some(r) = rows.next()? {
+                    let status_str: String = r.get("status")?;
+                    let req_level_str: String = r.get("requested_control_level")?;
+
+                    let session = dek_domain_schema::deployment_session::DeploymentSession {
+                        deployment_id: r.get("deployment_id")?,
+                        policy_id: r.get("policy_id")?,
+                        policy_version: r.get("policy_version")?,
+                        requested_control_level: serde_json::from_str(&format!(
+                            "\"{}\"",
+                            req_level_str
+                        ))
+                        .unwrap_or(dek_domain_schema::control_level::ControlLevel::Observe),
+                        target_scope: serde_json::from_str(
+                            &r.get::<_, String>("target_scope_json")?,
+                        )?,
+                        status: serde_json::from_str(&format!("\"{}\"", status_str))?,
+                        created_at: chrono::DateTime::parse_from_rfc3339(
+                            &r.get::<_, String>("created_at")?,
+                        )?
+                        .with_timezone(&chrono::Utc),
+                        updated_at: chrono::DateTime::parse_from_rfc3339(
+                            &r.get::<_, String>("updated_at")?,
+                        )?
+                        .with_timezone(&chrono::Utc),
+                        created_by: r.get("created_by")?,
+                    };
+                    Ok(Some(session))
+                } else {
+                    Ok(None)
+                }
+            },
+        )
+        .await?
     }
 
     async fn insert_deployment_event(
@@ -2094,7 +2116,7 @@ impl DeploymentStore for SqliteStore {
         tokio::task::spawn_blocking(move || -> Result<()> {
             let mut conn = conn.lock().unwrap();
             let tx = conn.transaction()?;
-            
+
             let phase_str = serde_json::to_string(&event.phase)?.trim_matches('"').to_string();
             let status_str = serde_json::to_string(&event.status)?.trim_matches('"').to_string();
             let title_json = serde_json::to_string(&event.title)?;
@@ -2104,7 +2126,7 @@ impl DeploymentStore for SqliteStore {
 
             let mut stmt = tx.prepare(
                 "INSERT INTO deployment_events (
-                    event_id, deployment_id, agent_id, entity_id, policy_id, phase, status, 
+                    event_id, deployment_id, agent_id, entity_id, policy_id, phase, status,
                     title_json, detail_json, technical_detail_json, user_action_json, created_at, correlation_id
                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)"
             )?;
@@ -2125,7 +2147,7 @@ impl DeploymentStore for SqliteStore {
                 event.correlation_id
             ])?;
             drop(stmt);
-            
+
             tx.commit()?;
             Ok(())
         }).await?
@@ -2137,17 +2159,17 @@ impl DeploymentStore for SqliteStore {
     ) -> Result<Vec<dek_domain_schema::deployment_session::DeploymentEvent>> {
         let conn = self.conn.clone();
         let deployment_id = deployment_id.to_string();
-        
+
         tokio::task::spawn_blocking(move || -> Result<Vec<dek_domain_schema::deployment_session::DeploymentEvent>> {
             let conn = conn.lock().unwrap();
             let mut stmt = conn.prepare("SELECT * FROM deployment_events WHERE deployment_id = ?1 ORDER BY created_at ASC")?;
             let mut rows = stmt.query(params![deployment_id])?;
-            
+
             let mut events = Vec::new();
             while let Some(r) = rows.next()? {
                 let phase_str: String = r.get("phase")?;
                 let status_str: String = r.get("status")?;
-                
+
                 let title: dek_domain_schema::deployment_session::LocalizedText = serde_json::from_str(&r.get::<_, String>("title_json")?)?;
                 let detail: dek_domain_schema::deployment_session::LocalizedText = serde_json::from_str(&r.get::<_, String>("detail_json")?)?;
                 let tech_detail = r.get::<_, Option<String>>("technical_detail_json")?.map(|s| serde_json::from_str(&s).unwrap());

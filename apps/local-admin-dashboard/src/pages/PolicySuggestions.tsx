@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Lightbulb, RefreshCw, AlertTriangle, ShieldCheck } from "lucide-react";
-import { PolicySuggestionApi } from "../services/api";
+import { Lightbulb, RefreshCw, AlertTriangle } from "lucide-react";
+import { PolicyFirstApi } from "../services/api";
+import type { SuggestedPolicy } from "../services/types";
 
 export function PolicySuggestions() {
   const [loading, setLoading] = useState(false);
@@ -8,10 +9,13 @@ export function PolicySuggestions() {
 
   const fetchSuggestions = async () => {
     try {
-      const data = await PolicySuggestionApi.list();
+      setLoading(true);
+      const data = await PolicyFirstApi.getPolicySuggestions();
       setSuggestions(data);
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -20,15 +24,8 @@ export function PolicySuggestions() {
   }, []);
 
   const generateSuggestions = async () => {
-    setLoading(true);
-    try {
-      await PolicySuggestionApi.generate();
-      await fetchSuggestions();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+    // This could call a trigger endpoint, for now just fetch
+    await fetchSuggestions();
   };
 
   return (
@@ -89,72 +86,78 @@ export function PolicySuggestions() {
 
               const renderSuggestionList = (list: any[]) => (
                 <div className="space-y-4">
-                  {list.map((s, idx) => (
+                  {list.map((s: SuggestedPolicy, idx) => (
                     <div
                       key={`${s.suggestion_id}-${idx}`}
                       className="border rounded-lg p-4 bg-muted/20 hover:bg-muted/40 transition-colors"
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
-                          {s.severity === "high" ||
-                          s.severity === "critical" ? (
-                            <AlertTriangle className="h-5 w-5 text-destructive" />
-                          ) : (
-                            <ShieldCheck className="h-5 w-5 text-emerald-500" />
-                          )}
-                          <h4 className="font-medium text-lg">{s.title}</h4>
+                          <Lightbulb className="h-5 w-5 text-amber-500" />
+                          <h4 className="font-medium text-lg">
+                            {s.display_name?.en || s.suggestion_id}
+                          </h4>
                         </div>
                         <span
-                          className={`px-2 py-1 text-xs rounded-full ${s.severity === "high" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-500"}`}
+                          className={`px-2 py-1 text-xs rounded-full ${s.feasibility === "can_enforce_now" ? "bg-emerald-500/10 text-emerald-500" : s.feasibility === "needs_setup" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"}`}
                         >
-                          {s.severity} severity
+                          {s.feasibility.replace(/_/g, " ")}
                         </span>
                       </div>
                       <div className="space-y-1 mb-4">
                         <p className="text-muted-foreground text-sm">
-                          {s.summary}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          <span className="font-medium">Generated at:</span>{" "}
-                          {new Date(s.created_at).toLocaleString()}
+                          {s.description?.en || ""}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 mb-4">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Recommended PEP:
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-muted text-foreground">
-                          {s.recommended_pep_type || "Unknown"}
-                        </span>
+                      <div className="flex flex-wrap items-center gap-4 mb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Recommended Level:
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-muted text-foreground capitalize">
+                            {s.recommended_control_level}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Confidence:
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-muted text-foreground">
+                            {(s.confidence * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Targets:
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-muted text-foreground">
+                            {s.target_agent_ids.join(", ") || "None"}
+                          </span>
+                        </div>
                       </div>
 
-                      {s.artifacts && s.artifacts.length > 0 && (
-                        <div className="mt-4 space-y-4">
-                          <h5 className="text-sm font-medium">
-                            Policy Artifacts:
+                      {s.setup_required && s.setup_required.length > 0 && (
+                        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-md space-y-2">
+                          <h5 className="text-xs font-semibold text-red-500 flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4" />
+                            Setup Required
                           </h5>
-                          <div className="grid grid-cols-1 gap-4">
-                            {s.artifacts.map((art: any, i: number) => (
-                              <div
-                                key={i}
-                                className="bg-background rounded-md border overflow-hidden"
-                              >
-                                <div className="bg-muted px-4 py-2 border-b flex justify-between items-center">
-                                  <span className="text-xs font-medium uppercase">
-                                    {art.language}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground font-mono">
-                                    {art.name}
-                                  </span>
-                                </div>
-                                <pre className="p-4 text-xs font-mono overflow-x-auto whitespace-pre">
-                                  {art.content}
-                                </pre>
-                              </div>
+                          <ul className="text-xs text-red-400 list-disc list-inside">
+                            {s.setup_required.map((req, i) => (
+                              <li key={i}>{req.label.en}</li>
                             ))}
-                          </div>
+                          </ul>
                         </div>
                       )}
+
+                      <div className="mt-4 flex justify-end">
+                        <a
+                          href={`/wizard?policy=${s.policy_template_id}&targets=${s.target_agent_ids.join(",")}`}
+                          className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 font-medium transition-colors"
+                        >
+                          Deploy Policy
+                        </a>
+                      </div>
                     </div>
                   ))}
                 </div>

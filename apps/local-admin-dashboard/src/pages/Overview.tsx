@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
-import {
-  Activity,
-  ShieldAlert,
-  Server,
-  Users,
-  AlertTriangle,
-} from "lucide-react";
-import { RegistryApi, PolicyApi, ActivityApi } from "../services/api";
+import { Activity, ShieldAlert, Server, Users, Info } from "lucide-react";
+import { RegistryApi, ActivityApi, PolicyFirstApi } from "../services/api";
+import type { LocalCapabilitySnapshot } from "../services/types";
 
 export function Overview() {
   const [metrics, setMetrics] = useState({
@@ -15,7 +10,10 @@ export function Overview() {
     tools: 0,
     resources: 0,
   });
-  const [capabilities, setCapabilities] = useState<any>(null);
+  const [snapshot, setSnapshot] = useState<LocalCapabilitySnapshot | null>(
+    null,
+  );
+  const [snapshotLoading, setSnapshotLoading] = useState(true);
   const [activities, setActivities] = useState<any[]>([]);
 
   useEffect(() => {
@@ -35,9 +33,20 @@ export function Overview() {
       })
       .catch(console.error);
 
-    PolicyApi.getCapabilities()
-      .then((res: any) => setCapabilities(res.capabilities))
-      .catch(console.error);
+    const fetchSnapshot = async () => {
+      try {
+        setSnapshotLoading(true);
+        await PolicyFirstApi.scan();
+        const res = await PolicyFirstApi.getLatestSnapshot();
+        setSnapshot(res);
+      } catch (err) {
+        console.error("Failed to load snapshot:", err);
+      } finally {
+        setSnapshotLoading(false);
+      }
+    };
+
+    fetchSnapshot();
 
     ActivityApi.getActivity()
       .then((res: any) => setActivities(res.activity_sets || []))
@@ -123,47 +132,58 @@ export function Overview() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <div className="glass col-span-3 rounded-xl p-6 overflow-hidden">
           <h3 className="font-semibold mb-4 flex items-center justify-between">
-            <span>System Capabilities</span>
-            {!capabilities && (
-              <span className="text-muted-foreground text-sm">Loading...</span>
+            <span>What POLLEK can do</span>
+            {snapshotLoading && (
+              <span className="text-muted-foreground text-sm">Scanning...</span>
             )}
           </h3>
-          {capabilities && (
+          {snapshot && !snapshotLoading && (
             <div className="space-y-4">
               <div className="flex flex-col gap-2 p-3 bg-secondary/20 rounded-lg">
                 <span className="text-sm font-semibold">
-                  Local OS: {capabilities.os.type}
+                  Local Device: {snapshot.device_id}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  Version: {capabilities.os.version}
+                  Agents Found: {snapshot.agents?.length || 0}
                 </span>
               </div>
               <div className="flex flex-col gap-2">
-                <h4 className="text-sm font-semibold">Active PEPs</h4>
-                {capabilities.pep.map((pep: any, idx: number) => (
+                <h4 className="text-sm font-semibold mt-2">Control Methods</h4>
+                {snapshot.methods?.map((m, idx) => (
                   <div
                     key={idx}
                     className="flex items-center justify-between p-2 text-sm border-b border-muted/20"
                   >
-                    <span>{pep.type}</span>
+                    <div className="flex flex-col">
+                      <span className="font-medium capitalize">
+                        {m.method.replace(/_/g, " ")}
+                      </span>
+                      {m.next_action && (
+                        <span className="text-xs text-muted-foreground">
+                          {m.next_action.label.en}
+                        </span>
+                      )}
+                    </div>
                     <span
-                      className={`px-2 py-0.5 rounded-full text-xs ${
-                        pep.status === "Available"
+                      className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        m.status === "ready" ||
+                        m.status === "ready_after_approval"
                           ? "bg-green-500/20 text-green-400"
-                          : "bg-red-500/20 text-red-400"
+                          : m.status === "installed_inactive"
+                            ? "bg-yellow-500/20 text-yellow-400"
+                            : "bg-red-500/20 text-red-400"
                       }`}
                     >
-                      {pep.status}
+                      {m.status.replace(/_/g, " ")}
                     </span>
                   </div>
                 ))}
               </div>
               <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-blue-400 mt-0.5" />
+                <Info className="w-4 h-4 text-blue-400 mt-0.5" />
                 <p className="text-xs text-blue-300">
-                  These capabilities reflect what the local system can actually
-                  enforce. Policies deployed that require missing capabilities
-                  will fallback to Observe Only mode.
+                  POLLEK dynamically selects the best control method for each
+                  policy. Setup may be required for advanced network controls.
                 </p>
               </div>
             </div>

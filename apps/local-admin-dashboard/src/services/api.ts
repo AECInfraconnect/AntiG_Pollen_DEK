@@ -16,6 +16,7 @@ import type {
   CloudPdpProfile,
   DiscoveryScanJob,
   DiscoveredAgentCandidateV2,
+  IdentityConfirmation,
 } from "./types";
 export type * from "./types";
 import type { components } from "../../../../contracts/generated/typescript/api";
@@ -60,6 +61,33 @@ export class ControlPlaneClient {
     const res = await fetch(`${this.rootUrl}/.well-known/pollen-contract`);
     if (!res.ok) {
       throw new Error(await res.text());
+    }
+    return res.json();
+  }
+
+  public async fetchRootApi(path: string, options?: RequestInit) {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (this.mockRole) {
+      headers["x-mock-role"] = this.mockRole;
+    }
+
+    const res = await fetch(`${this.rootUrl}${path}`, {
+      ...options,
+      headers: {
+        ...headers,
+        ...options?.headers,
+      },
+    });
+    if (!res.ok) {
+      let errText = await res.text();
+      try {
+        const json = JSON.parse(errText);
+        if (json.message) errText = json.message;
+        else if (json.error) errText = json.error;
+      } catch (e) {}
+      throw new Error(errText || `HTTP Error ${res.status}: ${res.statusText}`);
     }
     return res.json();
   }
@@ -333,6 +361,16 @@ export class ControlPlaneClient {
     return this.fetchApi(`/discovery/candidates/${id}`, { method: "DELETE" });
   }
 
+  async confirmCandidate(
+    candidateId: string,
+    payload: IdentityConfirmation,
+  ): Promise<any> {
+    return this.fetchApi(`/discovery/candidates/${candidateId}/confirm`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
   async triggerDiscoveryScan(
     req: any = {},
   ): Promise<{ scan_id: string; status: string }> {
@@ -509,6 +547,8 @@ export const RegistryApi = {
   clearDiscoveryCandidates: () => defaultClient.clearDiscoveryCandidates(),
   deleteDiscoveryCandidate: (id: string) =>
     defaultClient.deleteDiscoveryCandidate(id),
+  confirmCandidate: (candidateId: string, payload: IdentityConfirmation) =>
+    defaultClient.confirmCandidate(candidateId, payload),
   triggerDiscoveryScan: (req?: any) => defaultClient.triggerDiscoveryScan(req),
   listDiscoveryScans: () => defaultClient.listDiscoveryScans(),
   getDiscoveryScanStatus: (scanId: string) =>
@@ -551,8 +591,11 @@ export const PolicyApi = {
   simulatePreset: (id: string, payload: unknown) =>
     defaultClient.simulatePreset(id, payload),
   checkPepCapabilities: (req: unknown) =>
-    defaultClient.checkPepCapabilities(req),
-  getCapabilities: () => defaultClient.fetchApi("/host/capabilities"),
+    defaultClient.fetchRootApi("/v1/tenants/default/pep-capabilities/check", {
+      method: "POST",
+      body: JSON.stringify(req),
+    }),
+  getCapabilities: () => defaultClient.fetchRootApi("/v1/host/capabilities"),
 };
 
 export const ActivityApi = {
@@ -605,6 +648,7 @@ export const PdpRoutingApi = {
 };
 
 export const PolicyFirstApi = {
+  scan: () => defaultClient.fetchApi("/local/scan", { method: "POST" }),
   getLatestSnapshot: () =>
     defaultClient.fetchApi("/local/capability-snapshot/latest"),
   getPolicySuggestions: () => defaultClient.fetchApi("/policy-suggestions"),

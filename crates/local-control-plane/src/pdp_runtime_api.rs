@@ -157,7 +157,9 @@ async fn list_runtimes(
     let mut runtimes = seeded_local_runtimes(&chrono::Utc::now().to_rfc3339());
     for val in list {
         if let Ok(c) = serde_json::from_value::<PdpRuntime>(val) {
-            runtimes.push(c);
+            if !runtimes.iter().any(|r| r.id == c.id) {
+                runtimes.push(c);
+            }
         }
     }
     Ok(Json(runtimes))

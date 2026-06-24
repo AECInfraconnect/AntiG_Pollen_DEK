@@ -36,7 +36,10 @@ pub fn router() -> Router<AppState> {
         .route("/v1/policies/feasibility", post(evaluate_feasibility))
         .route("/v1/deployment-sessions", post(create_deployment_session))
         .route("/v1/deployment-sessions/:id", get(get_deployment_session))
-        .route("/v1/deployment-sessions/:id/events", get(get_deployment_events))
+        .route(
+            "/v1/deployment-sessions/:id/events",
+            get(get_deployment_events),
+        )
         .route(
             "/v1/deployment-sessions/:id/actions/:action_id/approve",
             post(approve_action),
@@ -221,17 +224,28 @@ async fn approve_action(
     Path((session_id, _action_id)): Path<(String, String)>,
     State(st): State<AppState>,
 ) -> ApiResult<(StatusCode, Json<serde_json::Value>)> {
-    if let Some(mut session) = st.deployment_store.get_deployment_session(&session_id).await? {
+    if let Some(mut session) = st
+        .deployment_store
+        .get_deployment_session(&session_id)
+        .await?
+    {
         let sink = std::sync::Arc::new(StoreEventSink::new(st.deployment_store.clone()));
         let orchestrator = DeploymentOrchestrator::new(sink, st.deployment_store.clone());
-        let _ = orchestrator.transition(&mut session, DeploymentSessionStatus::BundleCreated).await;
-        let _ = orchestrator.transition(&mut session, DeploymentSessionStatus::BundleActivated).await;
+        let _ = orchestrator
+            .transition(&mut session, DeploymentSessionStatus::BundleCreated)
+            .await;
+        let _ = orchestrator
+            .transition(&mut session, DeploymentSessionStatus::BundleActivated)
+            .await;
         Ok((
             StatusCode::OK,
             Json(serde_json::json!({"status": "approved", "session": session})),
         ))
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"status": "not_found"}))))
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"status": "not_found"})),
+        ))
     }
 }
 
@@ -239,10 +253,16 @@ async fn retry_deployment(
     Path(session_id): Path<String>,
     State(st): State<AppState>,
 ) -> ApiResult<(StatusCode, Json<serde_json::Value>)> {
-    if let Some(mut session) = st.deployment_store.get_deployment_session(&session_id).await? {
+    if let Some(mut session) = st
+        .deployment_store
+        .get_deployment_session(&session_id)
+        .await?
+    {
         let sink = std::sync::Arc::new(StoreEventSink::new(st.deployment_store.clone()));
         let orchestrator = DeploymentOrchestrator::new(sink, st.deployment_store.clone());
-        let _ = orchestrator.transition(&mut session, DeploymentSessionStatus::ScanStarted).await;
+        let _ = orchestrator
+            .transition(&mut session, DeploymentSessionStatus::ScanStarted)
+            .await;
         Ok((
             StatusCode::OK,
             Json(serde_json::json!({
@@ -251,7 +271,10 @@ async fn retry_deployment(
             })),
         ))
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"status": "not_found"}))))
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"status": "not_found"})),
+        ))
     }
 }
 
@@ -259,10 +282,16 @@ async fn rollback_deployment(
     Path(session_id): Path<String>,
     State(st): State<AppState>,
 ) -> ApiResult<(StatusCode, Json<serde_json::Value>)> {
-    if let Some(mut session) = st.deployment_store.get_deployment_session(&session_id).await? {
+    if let Some(mut session) = st
+        .deployment_store
+        .get_deployment_session(&session_id)
+        .await?
+    {
         let sink = std::sync::Arc::new(StoreEventSink::new(st.deployment_store.clone()));
         let orchestrator = DeploymentOrchestrator::new(sink, st.deployment_store.clone());
-        let _ = orchestrator.transition(&mut session, DeploymentSessionStatus::RolledBack).await;
+        let _ = orchestrator
+            .transition(&mut session, DeploymentSessionStatus::RolledBack)
+            .await;
         Ok((
             StatusCode::OK,
             Json(serde_json::json!({
@@ -271,37 +300,53 @@ async fn rollback_deployment(
             })),
         ))
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"status": "not_found"}))))
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"status": "not_found"})),
+        ))
     }
 }
-
 
 async fn get_deployment_session(
     Path(session_id): Path<String>,
     State(st): State<AppState>,
 ) -> ApiResult<(StatusCode, Json<DeploymentSession>)> {
-    let session = st.deployment_store.get_deployment_session(&session_id).await?;
+    let session = st
+        .deployment_store
+        .get_deployment_session(&session_id)
+        .await?;
     if let Some(session) = session {
         Ok((StatusCode::OK, Json(session)))
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(DeploymentSession {
-            deployment_id: session_id,
-            policy_id: "".into(),
-            policy_version: "".into(),
-            requested_control_level: ControlLevel::Observe,
-            target_scope: DeploymentScope::Device { device_id: "".into() },
-            status: DeploymentSessionStatus::Failed,
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            created_by: "".into(),
-        }))) // Return 404 in real world, but type needs to match
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(DeploymentSession {
+                deployment_id: session_id,
+                policy_id: "".into(),
+                policy_version: "".into(),
+                requested_control_level: ControlLevel::Observe,
+                target_scope: DeploymentScope::Device {
+                    device_id: "".into(),
+                },
+                status: DeploymentSessionStatus::Failed,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+                created_by: "".into(),
+            }),
+        )) // Return 404 in real world, but type needs to match
     }
 }
 
 async fn get_deployment_events(
     Path(session_id): Path<String>,
     State(st): State<AppState>,
-) -> ApiResult<(StatusCode, Json<Vec<dek_domain_schema::deployment_session::DeploymentEvent>>)> {
-    let events = st.deployment_store.list_deployment_events(&session_id).await?;
+) -> ApiResult<(
+    StatusCode,
+    Json<Vec<dek_domain_schema::deployment_session::DeploymentEvent>>,
+)> {
+    let events = st
+        .deployment_store
+        .list_deployment_events(&session_id)
+        .await?;
     Ok((StatusCode::OK, Json(events)))
 }

@@ -5,6 +5,7 @@ import type { PdpRuntime } from "../../services/api";
 export function LocalEnginesTab() {
   const [items, setItems] = useState<PdpRuntime[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInternal, setShowInternal] = useState(false);
   const [actionStates, setActionStates] = useState<Record<string, string>>({});
 
   const reload = async () => {
@@ -46,12 +47,23 @@ export function LocalEnginesTab() {
           Built-in PDP engines managed by Local Enforcement Kit. Local engines
           do not require endpoints.
         </p>
-        <button
-          onClick={reload}
-          className="px-3 py-1 bg-secondary text-secondary-foreground rounded text-xs hover:opacity-80"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 cursor-pointer text-sm">
+            <span className="text-muted-foreground">Show Internal Engines</span>
+            <input
+              type="checkbox"
+              className="toggle toggle-primary toggle-sm"
+              checked={showInternal}
+              onChange={(e) => setShowInternal(e.target.checked)}
+            />
+          </label>
+          <button
+            onClick={reload}
+            className="px-3 py-1 bg-secondary text-secondary-foreground rounded text-xs hover:opacity-80"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="rounded-md border">
@@ -67,97 +79,101 @@ export function LocalEnginesTab() {
             </tr>
           </thead>
           <tbody>
-            {items.map((r) => (
-              <tr
-                key={r.id}
-                className="border-b last:border-0 hover:bg-muted/30"
-              >
-                <td className="px-4 py-3 font-medium">{r.name}</td>
-                <td className="px-4 py-3">
-                  <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs">
-                    {r.kind}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      r.status === "ready"
-                        ? "bg-green-500/10 text-green-500"
-                        : r.status === "error"
-                          ? "bg-red-500/10 text-red-500"
-                          : r.status === "degraded"
-                            ? "bg-yellow-500/10 text-yellow-500"
-                            : "bg-secondary text-secondary-foreground"
-                    }`}
-                  >
-                    {r.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                  {r.active_bundle_id ?? "none"}
-                </td>
-                <td className="px-4 py-3">
-                  {r.last_probe ? (
-                    <div
-                      className={`text-xs ${r.last_probe.ok ? "text-green-500" : "text-red-500"}`}
+            {items
+              .filter((r) => showInternal || !r.system_managed)
+              .map((r) => (
+                <tr
+                  key={r.id}
+                  className="border-b last:border-0 hover:bg-muted/30"
+                >
+                  <td className="px-4 py-3 font-medium">{r.name}</td>
+                  <td className="px-4 py-3">
+                    <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs">
+                      {r.kind}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        r.status === "ready"
+                          ? "bg-green-500/10 text-green-500"
+                          : r.status === "error"
+                            ? "bg-red-500/10 text-red-500"
+                            : r.status === "degraded"
+                              ? "bg-yellow-500/10 text-yellow-500"
+                              : "bg-secondary text-secondary-foreground"
+                      }`}
                     >
-                      {r.last_probe.effect} ({r.last_probe.latency_ms}ms)
-                      {r.last_probe.reason && (
-                        <div className="text-muted-foreground opacity-80">
-                          {r.last_probe.reason}
+                      {r.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                    {r.active_bundle_id ?? "none"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {r.last_probe ? (
+                      <div
+                        className={`text-xs ${r.last_probe.ok ? "text-green-500" : "text-red-500"}`}
+                      >
+                        {r.last_probe.effect} ({r.last_probe.latency_ms}ms)
+                        {r.last_probe.reason && (
+                          <div className="text-muted-foreground opacity-80">
+                            {r.last_probe.reason}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        never
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() =>
+                            handleAction(r.id, "Validate", () =>
+                              PdpRuntimeApi.validate(r.id),
+                            )
+                          }
+                          className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs hover:opacity-80"
+                        >
+                          Validate
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleAction(r.id, "Probe", () =>
+                              PdpRuntimeApi.probe(r.id),
+                            )
+                          }
+                          className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs hover:opacity-80"
+                        >
+                          Probe
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleAction(r.id, "Clear Cache", () =>
+                              PdpRuntimeApi.clearCache(r.id),
+                            )
+                          }
+                          className="px-2 py-1 bg-red-500/10 text-red-500 rounded text-xs hover:opacity-80"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                      {actionStates[r.id] && (
+                        <div
+                          className="text-[10px] text-muted-foreground max-w-[150px] truncate"
+                          title={actionStates[r.id]}
+                        >
+                          {actionStates[r.id]}
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">never</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          handleAction(r.id, "Validate", () =>
-                            PdpRuntimeApi.validate(r.id),
-                          )
-                        }
-                        className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs hover:opacity-80"
-                      >
-                        Validate
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleAction(r.id, "Probe", () =>
-                            PdpRuntimeApi.probe(r.id),
-                          )
-                        }
-                        className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs hover:opacity-80"
-                      >
-                        Probe
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleAction(r.id, "Clear Cache", () =>
-                            PdpRuntimeApi.clearCache(r.id),
-                          )
-                        }
-                        className="px-2 py-1 bg-red-500/10 text-red-500 rounded text-xs hover:opacity-80"
-                      >
-                        Clear
-                      </button>
-                    </div>
-                    {actionStates[r.id] && (
-                      <div
-                        className="text-[10px] text-muted-foreground max-w-[150px] truncate"
-                        title={actionStates[r.id]}
-                      >
-                        {actionStates[r.id]}
-                      </div>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              ))}
             {!loading && items.length === 0 && (
               <tr>
                 <td

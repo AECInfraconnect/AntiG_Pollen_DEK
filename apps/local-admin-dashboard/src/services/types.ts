@@ -394,12 +394,18 @@ export interface ControlBindingPlan {
   summary: string;
 }
 
+export interface MatchedSignal {
+  kind: string;
+  detail: string;
+  weight: number;
+}
+
 export interface DiscoveredAgentCandidateV2 {
   schema_version: string;
   candidate_id: string;
   tenant_id: string;
   device_id: string;
-  status: string;
+  status: string; // 'pending_approval' | 'registered' | etc
   display_name: string;
   vendor?: string;
   product?: string;
@@ -409,6 +415,8 @@ export interface DiscoveredAgentCandidateV2 {
   first_seen: string;
   last_seen: string;
   evidence: DiscoveryEvidenceV2[];
+  matched_signals?: MatchedSignal[];
+  capability_tags?: string[];
   discovered_configs: any[];
   discovered_endpoints: any[];
   discovered_mcp_servers: any[];
@@ -417,6 +425,18 @@ export interface DiscoveredAgentCandidateV2 {
   suggested_control_bindings: ControlBindingPlan[];
   telemetry_plan: any;
   labels: Record<string, string>;
+}
+
+export interface IdentityConfirmation {
+  candidate_id: string;
+  confirmed_signature_id?: string;
+  custom_display_name?: string;
+  custom_vendor?: string;
+  custom_product?: string;
+  confirmed_agent_type: string;
+  confirmed_capability_tags: string[];
+  make_local_signature: boolean;
+  confirmed_by: string;
 }
 
 export interface DiscoveryScanJob {
@@ -434,4 +454,160 @@ export interface DiscoveryScanJob {
   sources: string[];
   error?: string;
   candidates_found: number;
+}
+
+export type PolicyFeasibilityStatus =
+  | "can_enforce_now"
+  | "can_enforce_after_approval"
+  | "can_partially_enforce"
+  | "can_observe_only"
+  | "needs_setup"
+  | "unsupported"
+  | "unknown";
+
+export type ProductMode =
+  | "desktop_simple"
+  | "desktop_advanced"
+  | "enterprise_server";
+
+export type PolicyIntent =
+  | "observe_agent_activity"
+  | "approve_risky_tool_calls"
+  | "block_specific_tools"
+  | "redact_sensitive_parameters"
+  | "block_sensitive_file_upload"
+  | "block_unknown_network_destinations"
+  | "restrict_local_model_usage"
+  | "limit_token_or_cost_usage"
+  | "require_entity_relationship"
+  | "detect_prompt_injection"
+  | "kill_switch_on_anomaly";
+
+export type ControlMethod =
+  | "agent_tool_control"
+  | "agent_config_wrapper"
+  | "local_api_control"
+  | "browser_activity_monitor"
+  | "network_control"
+  | "process_observation"
+  | "observe_only";
+
+export type InternalPep =
+  | "mcp_proxy"
+  | "mcp_stdio_wrapper"
+  | "http_proxy"
+  | "browser_extension"
+  | "linux_ebpf"
+  | "windows_wfp"
+  | "macos_network_extension"
+  | "secure_spool_observer"
+  | "none";
+
+export type InternalPdp =
+  | "cedar"
+  | "opa_wasm"
+  | "open_fga"
+  | "cloud"
+  | "router_only";
+
+export interface LocalizedText {
+  en: string;
+  th: string;
+}
+
+export interface RequiredUserAction {
+  kind: string;
+  label: LocalizedText;
+}
+
+export interface DiagnosticFinding {
+  code: string;
+  message: string;
+}
+
+export interface Enforceability {
+  can_observe: boolean;
+  can_warn: boolean;
+  can_require_approval: boolean;
+  can_enforce: boolean;
+  can_strict_deny: boolean;
+}
+
+export interface ControlMethodPlan {
+  method: ControlMethod;
+  internal_pep: InternalPep;
+  internal_pdp: InternalPdp;
+  enforceability: Enforceability;
+  reason_code: string;
+  explanation: LocalizedText;
+  diagnostics: DiagnosticFinding[];
+}
+
+export interface PolicyFeasibilityRequest {
+  policy_id?: string;
+  policy_intent: PolicyIntent;
+  requested_control_level: string;
+  targets: any[];
+  mode: ProductMode;
+}
+
+export interface PolicyFeasibilityResult {
+  target: any;
+  policy_intent: PolicyIntent;
+  requested_control_level: string;
+  effective_control_level: string;
+  status: PolicyFeasibilityStatus;
+  user_summary: LocalizedText;
+  user_detail: LocalizedText;
+  required_actions: RequiredUserAction[];
+  technical_plan?: ControlMethodPlan;
+  confidence: number;
+}
+
+export interface ControlMethodCapability {
+  method: ControlMethod;
+  internal_pep: InternalPep;
+  status: string;
+  can_observe: boolean;
+  can_enforce: boolean;
+  requires_admin: boolean;
+  requires_user_approval: boolean;
+  confidence: number;
+  evidence: any[];
+  user_message: LocalizedText;
+  next_action?: RequiredUserAction;
+}
+
+export interface LocalCapabilitySnapshot {
+  snapshot_id: string;
+  device_id: string;
+  os: any;
+  agents: any[];
+  methods: ControlMethodCapability[];
+  generated_at: string;
+}
+
+export interface SuggestedPolicy {
+  suggestion_id: string;
+  policy_template_id: string;
+  display_name: LocalizedText;
+  description: LocalizedText;
+  target_agent_ids: string[];
+  recommended_control_level: string;
+  feasibility: PolicyFeasibilityStatus;
+  confidence: number;
+  reason_codes: string[];
+  setup_required: RequiredUserAction[];
+}
+
+export interface DeploymentSession {
+  deployment_id: string;
+  policy_id: string;
+  policy_version: string;
+  requested_control_level: string;
+  target_scope: any;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
 }
