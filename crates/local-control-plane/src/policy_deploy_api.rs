@@ -3,6 +3,7 @@ use axum::{
     routing::post,
     Json, Router,
 };
+use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::state::AppState;
@@ -39,6 +40,20 @@ async fn preview_deploy(
     }))
 }
 
+#[derive(Debug, Serialize, serde::Deserialize)]
+pub struct DeployReport {
+    pub deploy_status: String,
+    pub targets: std::collections::HashMap<String, DeployTarget>,
+}
+
+#[derive(Debug, Serialize, serde::Deserialize)]
+pub struct DeployTarget {
+    pub os: String,
+    pub target_pep: String,
+    pub capability: String,
+    pub fallback_pdp: Option<String>,
+}
+
 async fn commit_deploy(
     Path(_tenant): Path<String>,
     State(state): State<AppState>,
@@ -55,10 +70,32 @@ async fn commit_deploy(
         .await
         .map_err(|e| crate::error::ApiError::Internal(anyhow::anyhow!(e)))?;
 
+    let mut targets = std::collections::HashMap::new();
+    let local_caps = dek_capability_registry::detect::detect_pep_capabilities();
+    let has_enforce = local_caps.iter().any(|c| c.control_level.may_block());
+
+    targets.insert(
+        "localhost".into(),
+        DeployTarget {
+            os: std::env::consts::OS.into(),
+            target_pep: "auto".into(),
+            capability: if has_enforce {
+                "enforce".into()
+            } else {
+                "observe".into()
+            },
+            fallback_pdp: None,
+        },
+    );
+
     Ok(Json(json!({
         "status": "success",
         "message": "Deployment committed and activated successfully",
-        "bundle_version": "v1.0.1"
+        "bundle_version": "v1.0.1",
+        "report": DeployReport {
+            deploy_status: "active".into(),
+            targets,
+        }
     })))
 }
 

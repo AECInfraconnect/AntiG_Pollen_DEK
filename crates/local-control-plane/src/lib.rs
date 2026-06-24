@@ -16,6 +16,7 @@ pub mod state;
 pub mod store;
 pub mod telemetry;
 
+pub mod activity_api;
 pub mod agent_discovery_api;
 pub mod agent_inventory_api;
 pub mod control_binding;

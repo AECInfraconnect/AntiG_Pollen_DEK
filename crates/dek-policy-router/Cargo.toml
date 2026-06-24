@@ -21,6 +21,7 @@ tracing.workspace = true
 async-trait = "0.1.89"
 metrics = "0.24"
 tokio = { workspace = true, features = ["time"] }
+dek-capability-registry = { version = "1.0.0-beta.10", path = "../dek-capability-registry" }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros", "sync", "time", "test-util"] }

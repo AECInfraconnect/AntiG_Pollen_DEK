@@ -12,6 +12,7 @@ pub fn initial_decision() -> PolicyDecision {
         effects: serde_json::json!({}),
         obligations: vec![],
         metadata: serde_json::json!({}),
+        explanation: None,
     }
 }
 

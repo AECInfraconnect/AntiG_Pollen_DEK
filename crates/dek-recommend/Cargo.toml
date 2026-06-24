@@ -1,0 +1,16 @@
+[package]
+name = "dek-recommend"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+dek-agent-observer = { version = "1.0.0-beta.10", path = "../dek-agent-observer" }
+dek-capability-registry = { version = "1.0.0-beta.10", path = "../dek-capability-registry" }
+serde = { workspace = true, features = ["derive"] }
+
+[lints]
+workspace = true

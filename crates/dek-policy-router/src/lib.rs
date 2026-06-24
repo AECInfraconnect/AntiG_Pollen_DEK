@@ -370,6 +370,7 @@ impl PolicyRouter {
                 effects: serde_json::json!({}),
                 obligations: vec![],
                 metadata: serde_json::json!({}),
+                explanation: None,
             });
         }
 
@@ -396,7 +397,8 @@ impl PolicyRouter {
                     reason: "no suitable policy engine available for request".into(),
                     effects: serde_json::json!({}),
                     obligations: vec![],
-                    metadata: serde_json::json!({ "auto_select": "none_available" }),
+                    metadata: serde_json::json!({ "warning": "no engine explicitly assigned, and selector found no match" }),
+                    explanation: None,
                 });
             }
         };
@@ -725,7 +727,8 @@ mod tests {
                 reason: "mocked".into(),
                 effects: serde_json::json!({}),
                 obligations: vec![],
-                metadata: serde_json::json!({}),
+                metadata: serde_json::json!({ "auto_select": "fallback_unavailable" }),
+                explanation: None,
             })
         }
         fn version(&self) -> String {
@@ -824,7 +827,8 @@ mod tests {
                     reason: "denied by policy".into(),
                     effects: serde_json::json!({}),
                     obligations: vec![],
-                    metadata: serde_json::json!({}),
+                    metadata: serde_json::json!({ "mock": true }),
+                    explanation: None,
                 })
             }
             fn version(&self) -> String {

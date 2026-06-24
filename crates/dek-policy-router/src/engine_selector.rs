@@ -26,6 +26,15 @@ pub enum DecisionKind {
     NetworkEgress,
 }
 
+#[derive(Debug, Clone)]
+pub struct PdpChoice {
+    pub engine_id: Option<String>,
+    pub kind: DecisionKind,
+    pub considered: Vec<String>,
+    pub reason_code: &'static str,
+    pub friendly_th: String,
+}
+
 pub struct EngineSelector;
 
 impl EngineSelector {
@@ -83,6 +92,43 @@ impl EngineSelector {
         available: &[String],
     ) -> Option<String> {
         Self::select(Self::infer_kind(method, payload), available)
+    }
+
+    pub fn resolve_explained(
+        method: &str,
+        payload: &serde_json::Value,
+        caps: &dek_capability_registry::DeviceCapabilities,
+    ) -> PdpChoice {
+        let kind = Self::infer_kind(method, payload);
+        let available: Vec<String> = caps.pdp.iter().map(|p| p.r#type.clone()).collect();
+        let pref = Self::preference(kind);
+        let chosen = pref
+            .iter()
+            .find(|e| available.iter().any(|a| a == *e))
+            .map(|s| s.to_string());
+
+        let (reason_code, friendly_th) = match &chosen {
+            Some(e) if pref.first().map(|p| p == e).unwrap_or(false) => (
+                "selected",
+                format!("เลือกใช้ PDP `{e}` สำหรับงานแบบ {kind:?} (เหมาะที่สุดและพร้อมใช้บนเครื่องนี้)"),
+            ),
+            Some(e) => (
+                "fallback",
+                format!("PDP ที่เหมาะที่สุดยังไม่พร้อม จึงใช้ `{e}` แทนสำหรับงานแบบ {kind:?}"),
+            ),
+            None => (
+                "none_available",
+                "ยังไม่มี PDP ที่ประเมินงานนี้ได้บนเครื่องนี้ — ระบบจะ fail-closed (ปฏิเสธไว้ก่อนเพื่อความปลอดภัย)"
+                    .into(),
+            ),
+        };
+        PdpChoice {
+            engine_id: chosen,
+            kind,
+            considered: pref.iter().map(|s| s.to_string()).collect(),
+            reason_code,
+            friendly_th,
+        }
     }
 }
 

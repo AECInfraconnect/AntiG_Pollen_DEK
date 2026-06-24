@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Activity, ShieldAlert, Server, Users } from "lucide-react";
-import { RegistryApi } from "../services/api";
+import { Activity, ShieldAlert, Server, Users, AlertTriangle } from "lucide-react";
+import { RegistryApi, PolicyApi, ActivityApi } from "../services/api";
 
 export function Overview() {
   const [metrics, setMetrics] = useState({
@@ -9,6 +9,8 @@ export function Overview() {
     tools: 0,
     resources: 0,
   });
+  const [capabilities, setCapabilities] = useState<any>(null);
+  const [activities, setActivities] = useState<any[]>([]);
 
   useEffect(() => {
     Promise.all([
@@ -25,6 +27,14 @@ export function Overview() {
           resources: resources.length,
         });
       })
+      .catch(console.error);
+
+    PolicyApi.getCapabilities()
+      .then((res: any) => setCapabilities(res.capabilities))
+      .catch(console.error);
+
+    ActivityApi.getActivity()
+      .then((res: any) => setActivities(res.activity_sets || []))
       .catch(console.error);
   }, []);
 
@@ -103,33 +113,60 @@ export function Overview() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <div className="glass col-span-4 rounded-xl p-6">
-          <h3 className="font-semibold mb-4">Traffic Overview</h3>
-          <div className="h-[300px] flex items-center justify-center border-2 border-dashed border-muted rounded-lg">
-            <span className="text-muted-foreground">
-              Chart placeholder (Recharts to be added)
-            </span>
-          </div>
+        <div className="glass col-span-3 rounded-xl p-6 overflow-hidden">
+          <h3 className="font-semibold mb-4 flex items-center justify-between">
+            <span>System Capabilities</span>
+            {!capabilities && <span className="text-muted-foreground text-sm">Loading...</span>}
+          </h3>
+          {capabilities && (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-2 p-3 bg-secondary/20 rounded-lg">
+                <span className="text-sm font-semibold">Local OS: {capabilities.os.type}</span>
+                <span className="text-xs text-muted-foreground">Version: {capabilities.os.version}</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <h4 className="text-sm font-semibold">Active PEPs</h4>
+                {capabilities.pep.map((pep: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-2 text-sm border-b border-muted/20">
+                    <span>{pep.type}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${
+                      pep.status === 'Available' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      {pep.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-blue-400 mt-0.5" />
+                <p className="text-xs text-blue-300">
+                  These capabilities reflect what the local system can actually enforce. Policies deployed that require missing capabilities will fallback to Observe Only mode.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
-        <div className="glass col-span-3 rounded-xl p-6">
-          <h3 className="font-semibold mb-4">Recent Audit Events</h3>
+        <div className="glass col-span-4 rounded-xl p-6">
+          <h3 className="font-semibold mb-4">Recent Audit Activity</h3>
           <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
+            {activities.length > 0 ? activities.flatMap((set: any) => set.items).slice(0, 5).map((item: any, i: number) => (
               <div key={i} className="flex items-center gap-4">
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                   <Activity className="h-4 w-4 text-primary" />
                 </div>
                 <div className="flex-1 space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    Decision Denied
+                    {item.event_type} - {item.decision}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Agent &apos;dev-bot&apos; accessed restricted resource.
+                    Target: {item.resource} | Reason: {item.reason}
                   </p>
                 </div>
-                <div className="text-xs text-muted-foreground">2m ago</div>
+                <div className="text-xs text-muted-foreground">{new Date(item.timestamp).toLocaleTimeString()}</div>
               </div>
-            ))}
+            )) : (
+              <p className="text-sm text-muted-foreground">No recent activity.</p>
+            )}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 #![deny(clippy::unwrap_used)]
 
+pub mod activity;
 pub mod aggregate;
 pub mod binding_store;
 pub mod correlate;

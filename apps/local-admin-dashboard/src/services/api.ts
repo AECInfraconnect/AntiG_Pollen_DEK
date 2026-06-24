@@ -547,7 +547,11 @@ export const PolicyApi = {
     defaultClient.simulatePreset(id, payload),
   checkPepCapabilities: (req: unknown) =>
     defaultClient.checkPepCapabilities(req),
-  getCapabilities: () => defaultClient.fetchApi("/pep-capabilities"),
+  getCapabilities: () => fetch("/v1/capabilities").then(res => res.json()),
+};
+
+export const ActivityApi = {
+  getActivity: () => defaultClient.fetchApi("/activity"),
 };
 
 export const BundleApi = {

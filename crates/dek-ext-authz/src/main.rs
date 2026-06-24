@@ -156,6 +156,7 @@ impl Authorization for ExtAuthzService {
                     effects: json!({}),
                     obligations: vec![],
                     metadata: json!({}),
+                    explanation: None,
                 }
             });
 

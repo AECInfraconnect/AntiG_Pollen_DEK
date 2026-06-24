@@ -46,6 +46,7 @@ pub fn match_route<'a>(
         reason: "no matching route".into(),
         effects: serde_json::json!({}),
         obligations: vec![],
-        metadata: serde_json::json!({}),
+        metadata: serde_json::json!({ "reason": "no route matched" }),
+        explanation: None,
     })
 }

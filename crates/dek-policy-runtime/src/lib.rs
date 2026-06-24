@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 #![warn(clippy::print_stdout, clippy::print_stderr)]
@@ -6,6 +6,8 @@
 #![forbid(unsafe_code)]
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+pub mod explanation;
 
 #[derive(Debug, Error)]
 pub enum PolicyError {
@@ -34,6 +36,8 @@ pub struct PolicyDecision {
     pub effects: serde_json::Value,
     pub obligations: Vec<String>,
     pub metadata: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub explanation: Option<explanation::DecisionExplanation>,
 }
 
 use async_trait::async_trait;
@@ -85,6 +89,7 @@ impl PolicyRuntime for MockPolicyRuntime {
             effects: serde_json::json!({ "audit": true }),
             obligations: vec!["write_decision_log".to_string()],
             metadata: serde_json::json!({ "version": "mock-v0.1.0" }),
+            explanation: None,
         })
     }
 
@@ -262,6 +267,7 @@ impl PolicyRuntime for WasmtimePolicyRuntime {
             effects: serde_json::json!({}),
             obligations: vec![],
             metadata: serde_json::json!({ "wasm_path": self.wasm_path }),
+            explanation: None,
         })
     }
 

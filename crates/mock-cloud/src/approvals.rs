@@ -94,13 +94,17 @@ pub async fn admin_approve_deny(
             "DENIED".to_string()
         };
 
-        state.audit_logs.lock().unwrap_or_else(|e| e.into_inner()).push(AuditLog {
-            //
-            timestamp: Utc::now().to_rfc3339(),
-            actor: "admin".to_string(),
-            action: format!("APPROVAL_{}", action.to_uppercase()),
-            details: format!("{} request {} for {}", action, ref_id, approval.principal),
-        });
+        state
+            .audit_logs
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(AuditLog {
+                //
+                timestamp: Utc::now().to_rfc3339(),
+                actor: "admin".to_string(),
+                action: format!("APPROVAL_{}", action.to_uppercase()),
+                details: format!("{} request {} for {}", action, ref_id, approval.principal),
+            });
 
         // Bump revision so DEK syncs again
         if action == "approve" {

@@ -86,6 +86,7 @@ impl PolicyRuntime for EvaluatorAdapter {
                     effects: decision.effects,
                     obligations: decision.obligations,
                     metadata: decision.metadata,
+                    explanation: None,
                 })
             }
             Err(PluginError::Unavailable(msg)) => Err(PolicyError::Unavailable(msg)),

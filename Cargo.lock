@@ -2384,6 +2384,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-pep-router"
+version = "1.0.0-beta.10"
+dependencies = [
+ "dek-capability-registry",
+ "dek-domain-schema",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "dek-plugin-host"
 version = "1.0.0-beta.10"
 dependencies = [
@@ -2453,6 +2463,7 @@ dependencies = [
  "async-trait",
  "criterion",
  "dek-agent-binding",
+ "dek-capability-registry",
  "dek-cedar",
  "dek-domain-schema",
  "dek-errors",
@@ -2527,6 +2538,15 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+]
+
+[[package]]
+name = "dek-recommend"
+version = "1.0.0-beta.10"
+dependencies = [
+ "dek-agent-observer",
+ "dek-capability-registry",
+ "serde",
 ]
 
 [[package]]

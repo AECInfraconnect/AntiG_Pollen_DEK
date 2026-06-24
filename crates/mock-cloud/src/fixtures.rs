@@ -126,7 +126,10 @@ mod tests {
 
             let compiled = jsonschema::validator_for(&schema_json).expect("Invalid JSON schema"); //
             if !compiled.is_valid(&fixture_json) {
-                panic!("Fixture {} failed validation against {}", fixture_name, schema_name); // test
+                panic!(
+                    "Fixture {} failed validation against {}",
+                    fixture_name, schema_name
+                ); // test
             }
         }
     }

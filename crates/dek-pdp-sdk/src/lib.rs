@@ -136,6 +136,7 @@ mod tests {
                 effects: json!({}),
                 obligations: vec![],
                 metadata: json!({}),
+                explanation: None,
             })
         }
 

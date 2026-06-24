@@ -309,6 +309,7 @@ async fn main() -> Result<()> {
                         effects: json!({}),
                         obligations: vec![],
                         metadata: json!({}),
+                        explanation: None,
                     });
 
                 if let Some(telemetry) = &telemetry_sink {

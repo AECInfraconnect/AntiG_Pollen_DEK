@@ -12,6 +12,7 @@ use crate::{error::ApiResult, state::AppState};
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/v1/capabilities", get(get_global_capabilities))
         .route(
             "/v1/tenants/:tenant/pep-capabilities",
             get(list_capabilities),
@@ -22,6 +23,16 @@ pub fn router() -> Router<AppState> {
         )
         .route("/v1/tenants/:tenant/peps/:id/probe", post(probe_pep))
         .route("/v1/tenants/:tenant/peps/:id/bind", post(bind_pep))
+}
+
+async fn get_global_capabilities() -> ApiResult<Json<serde_json::Value>> {
+    let _local_caps = dek_capability_registry::detect::detect_pep_capabilities();
+    let reg = dek_capability_registry::CapabilityRegistry::new("local".into(), "1.0.0".into());
+    let full_caps = reg.gather();
+    Ok(Json(serde_json::json!({
+        "status": "success",
+        "capabilities": full_caps,
+    })))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
