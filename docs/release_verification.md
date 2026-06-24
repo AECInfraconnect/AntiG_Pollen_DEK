@@ -27,7 +27,7 @@ The release artifacts are signed using Sigstore Cosign via keyless OIDC signatur
 
 To verify the signature of a release artifact:
 
-1. Install `cosign` (<https://docs.sigstore.dev/system_config/installation/>)
+1. Install `cosign` (<https://github.com/sigstore/cosign#installation>)
 2. Run the verification command against the downloaded artifact, its signature, and its certificate:
 
 ```bash

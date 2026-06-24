@@ -64,7 +64,7 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          git show origin/${BASE_REF}:contracts/generated/openapi/pollen.v1.yaml > /tmp/base.yaml || true
+          git show "origin/$BASE_REF:contracts/generated/openapi/pollen.v1.yaml" > /tmp/base.yaml || true
 
       - name: Breaking change check
         if: hashFiles('/tmp/base.yaml') != ''
@@ -84,7 +84,7 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          CHANGED=$(git diff --name-only origin/${BASE_REF}...HEAD)
+          CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD")
           echo "$CHANGED"
           if echo "$CHANGED" | grep -E '^contracts/(spec|schemas|catalog)/' >/dev/null; then
             if ! echo "$CHANGED" | grep -E '^contracts/(CHANGELOG.md|COMPATIBILITY.md|docs/)' >/dev/null; then

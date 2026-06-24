@@ -326,7 +326,12 @@ mod tests {
         assert!(!result.blocking);
         assert!(result.remediation.is_some());
         assert_eq!(
-            result.remediation.as_ref().and_then(|r| r.url.as_ref()).expect("Failed to get url").to_string(),
+            result
+                .remediation
+                .as_ref()
+                .and_then(|r| r.url.as_ref())
+                .cloned()
+                .unwrap_or_default(),
             "http://example.com"
         );
     }
