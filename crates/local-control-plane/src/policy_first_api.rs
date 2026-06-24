@@ -37,6 +37,11 @@ pub fn router() -> Router<AppState> {
             "/v1/deployment-sessions/:id/actions/:action_id/approve",
             post(approve_action),
         )
+        .route("/v1/deployment-sessions/:id/retry", post(retry_deployment))
+        .route(
+            "/v1/deployment-sessions/:id/rollback",
+            post(rollback_deployment),
+        )
 }
 
 async fn scan(State(_st): State<AppState>) -> ApiResult<(StatusCode, Json<serde_json::Value>)> {
@@ -175,5 +180,31 @@ async fn approve_action(
     Ok((
         StatusCode::OK,
         Json(serde_json::json!({"status": "approved"})),
+    ))
+}
+
+async fn retry_deployment(
+    Path(session_id): Path<String>,
+    State(_st): State<AppState>,
+) -> ApiResult<(StatusCode, Json<serde_json::Value>)> {
+    Ok((
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "status": "retrying",
+            "deployment_id": session_id
+        })),
+    ))
+}
+
+async fn rollback_deployment(
+    Path(session_id): Path<String>,
+    State(_st): State<AppState>,
+) -> ApiResult<(StatusCode, Json<serde_json::Value>)> {
+    Ok((
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "status": "rolled_back",
+            "deployment_id": session_id
+        })),
     ))
 }
