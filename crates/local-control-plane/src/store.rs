@@ -2125,8 +2125,8 @@ impl DeploymentStore for SqliteStore {
             let status_str = serde_json::to_string(&event.status)?.trim_matches('"').to_string();
             let title_json = serde_json::to_string(&event.title)?;
             let detail_json = serde_json::to_string(&event.detail)?;
-            let tech_detail_json = event.technical_detail.as_ref().map(|x| serde_json::to_string(x)).transpose()?;
-            let user_action_json = event.user_action.as_ref().map(|x| serde_json::to_string(x)).transpose()?;
+            let tech_detail_json = event.technical_detail.as_ref().map(serde_json::to_string).transpose()?;
+            let user_action_json = event.user_action.as_ref().map(serde_json::to_string).transpose()?;
 
             let mut stmt = tx.prepare(
                 "INSERT INTO deployment_events (
