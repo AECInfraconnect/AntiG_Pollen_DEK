@@ -39,3 +39,6 @@ pollen-local.db-wal
 **/temp_*.rs
 /query/
 /test_*.rs
+ 
+# Ignored Design Files
+POLLEK_*
