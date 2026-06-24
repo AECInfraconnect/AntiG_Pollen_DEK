@@ -129,6 +129,10 @@ async fn enroll_and_start_core() -> Result<Proc> {
     std::fs::create_dir_all(&tmp_config).unwrap();
     std::fs::create_dir_all(&tmp_data).unwrap();
     std::fs::create_dir_all(&tmp_logs).unwrap();
+    std::fs::write(
+        tmp_config.join("consent.json"),
+        r#"{"records":{"Eula":{"agreement_type":"Eula","version":"1.0","timestamp":"2026-06-24T00:00:00Z","user_identifier":"test"},"PrivacyNotice":{"agreement_type":"PrivacyNotice","version":"1.0","timestamp":"2026-06-24T00:00:00Z","user_identifier":"test"}}}"#,
+    ).unwrap();
 
     let status = Command::new(bin("dek-cli"))
         .args(["enroll", "--cloud-url", "https://127.0.0.1:43892"])

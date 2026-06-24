@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
-
 use crate::deployment_session::{
     EnforcementLayer, LocalizedText, PdpEngine, RoutingPlan, UserActionKind,
 };
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-
-
 pub trait PepWarmCheck {
     #[allow(async_fn_in_trait)]
     async fn warm_check(&self, plan: &RoutingPlan) -> Result<(), String>;
