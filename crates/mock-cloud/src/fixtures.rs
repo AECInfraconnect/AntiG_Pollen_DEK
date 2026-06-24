@@ -85,7 +85,7 @@ mod tests {
     use std::fs;
 
     #[test]
-    fn validate_all_fixtures() {
+    fn validate_all_fixtures() -> Result<(), Box<dyn std::error::Error>> {
         let schemas_dir = Path::new("../../docs/contracts/schemas");
         let fixtures_dir = Path::new("./fixtures");
 
@@ -118,19 +118,20 @@ mod tests {
                 fixture_path.display()
             );
 
-            let schema_str = fs::read_to_string(&schema_path).unwrap(); //
-            let fixture_str = fs::read_to_string(&fixture_path).unwrap(); //
+            let schema_str = fs::read_to_string(&schema_path)?;
+            let fixture_str = fs::read_to_string(&fixture_path)?;
 
-            let schema_json: Value = serde_json::from_str(&schema_str).unwrap(); //
-            let fixture_json: Value = serde_json::from_str(&fixture_str).unwrap(); //
+            let schema_json: Value = serde_json::from_str(&schema_str)?;
+            let fixture_json: Value = serde_json::from_str(&fixture_str)?;
 
-            let compiled = jsonschema::validator_for(&schema_json).expect("Invalid JSON schema"); //
-            if !compiled.is_valid(&fixture_json) {
-                panic!(
-                    "Fixture {} failed validation against {}",
-                    fixture_name, schema_name
-                ); // test
-            }
+            let compiled = jsonschema::validator_for(&schema_json).map_err(|_| "Invalid JSON schema")?;
+            assert!(
+                compiled.is_valid(&fixture_json),
+                "Fixture {} failed validation against {}",
+                fixture_name, schema_name
+            );
         }
+        
+        Ok(())
     }
 }
