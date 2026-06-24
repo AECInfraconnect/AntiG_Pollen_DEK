@@ -37,7 +37,15 @@ pub struct InstalledAppSignatureDef {
     #[serde(default)]
     pub capability_tags: Vec<String>,
     #[serde(default)]
+    pub process_names: Vec<String>,
+    #[serde(default)]
     pub markers: Vec<InstalledAppMarker>,
+}
+
+impl InstalledAppSignatureDef {
+    pub fn process_names(&self) -> &[String] {
+        &self.process_names
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

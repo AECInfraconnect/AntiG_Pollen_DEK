@@ -130,7 +130,8 @@ fn scan_sessions(
     catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef],
 ) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
-    let session_paths = get_browser_session_paths();
+    let mut session_paths = get_browser_session_paths();
+    session_paths.extend(crate::browser_session_reader::firefox_session_paths());
 
     for path in session_paths {
         if !path.exists() {
@@ -164,32 +165,38 @@ fn scan_sessions(
         }
 
         for file_path in files_to_scan {
-            if let Ok(content) = std::fs::read(&file_path) {
-                let content_str = String::from_utf8_lossy(&content);
-                for sig in catalog {
-                    if content_str.contains(&sig.domain) {
-                        evidence.push(DiscoveryEvidenceV2 {
-                            evidence_id: uuid::Uuid::new_v4().to_string(),
-                            source: EvidenceSource::BrowserSession,
-                            confidence: 0.8,
-                            observed_at: chrono::Utc::now().to_rfc3339(),
-                            privacy_class: PrivacyClass::InternalMetadata,
-                            redacted: true,
-                            data: serde_json::json!({
-                                "origin": format!("https://{}", sig.domain),
-                                "name": sig.name.clone(),
-                                "vendor": sig.vendor.clone(),
-                                "capability_tags": sig.capability_tags.clone(),
-                            }),
-                            merge_key: Some(sig.domain.to_string()),
-                            source_path_hash: Some(crate::redaction::sha256_string(
-                                &file_path.to_string_lossy(),
-                            )),
-                            source_path_redacted: Some(crate::redaction::redact_path_for_ui(
-                                &file_path.to_string_lossy(),
-                            )),
-                        });
-                    }
+            let bytes = match crate::browser_session_reader::read_session_bytes(&file_path) {
+                Ok(b) => b,
+                Err(e) => {
+                    tracing::debug!(?file_path, %e, "skip session file");
+                    continue;
+                }
+            };
+            for sig in catalog {
+                if crate::browser_session_reader::bytes_contain_domain(&bytes, &sig.domain) {
+                    evidence.push(DiscoveryEvidenceV2 {
+                        evidence_id: uuid::Uuid::new_v4().to_string(),
+                        source: EvidenceSource::BrowserSession,
+                        confidence: 0.85,
+                        observed_at: chrono::Utc::now().to_rfc3339(),
+                        privacy_class: PrivacyClass::InternalMetadata,
+                        redacted: true,
+                        data: serde_json::json!({
+                            "origin": format!("https://{}", sig.domain),
+                            "name": sig.name.clone(),
+                            "vendor": sig.vendor.clone(),
+                            "capability_tags": sig.capability_tags.clone(),
+                            "detected_via": "browser_session_open_tab",
+                        }),
+                        merge_key: Some(format!("webai:{}", sig.domain)),
+                        source_path_hash: Some(crate::redaction::sha256_string(
+                            &file_path.to_string_lossy(),
+                        )),
+                        source_path_redacted: Some(crate::redaction::redact_path_for_ui(
+                            &file_path.to_string_lossy(),
+                        )),
+                    });
+                    break;
                 }
             }
         }

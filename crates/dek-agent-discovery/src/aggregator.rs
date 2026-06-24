@@ -338,6 +338,28 @@ fn aggregate_by_merge_key(
             }
         }
 
+        // New signature match logic using process_names, cmd_patterns, etc.
+        if decision.best.is_none() {
+            let facts = crate::signature_match::ProcessFacts {
+                name: ctx.process_name.clone(),
+                exe_path: ctx.exe_path_norm.clone(),
+                cmdline: Some(ctx.cmd_redacted.clone()),
+            };
+            if let Some(am) = crate::signature_match::match_process(&facts, &signatures) {
+                decision.best = Some(crate::identity::AgentMatch {
+                    signature_id: am.agent_id,
+                    display_name: am.display_name,
+                    vendor: am.vendor,
+                    product: None,
+                    agent_type: am.agent_type,
+                    confidence: am.confidence,
+                    capability_tags: am.capability_tags,
+                    matched_signals: vec![],
+                });
+                decision.needs_human = false;
+            }
+        }
+
         // If unknown, run claw family heuristic
         if decision.best.is_none() {
             if let Some(claw_match) = crate::identity::claw_family_heuristic(&ctx) {

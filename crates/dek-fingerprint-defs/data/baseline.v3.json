@@ -923,71 +923,95 @@
   "web_ai_signatures": [
     {
       "domain": "chatgpt.com",
-      "name": "ChatGPT",
+      "name": "ChatGPT (Web)",
       "vendor": "OpenAI",
       "capability_tags": [
-        "web.chat",
-        "net.egress.llm"
-      ]
+        "llm.chat"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "domain": "chat.openai.com",
+      "name": "ChatGPT (Web)",
+      "vendor": "OpenAI",
+      "capability_tags": [
+        "llm.chat"
+      ],
+      "risk_weight": 0.5
     },
     {
       "domain": "claude.ai",
-      "name": "Claude",
+      "name": "Claude (Web)",
       "vendor": "Anthropic",
       "capability_tags": [
-        "web.chat",
-        "net.egress.llm"
-      ]
+        "llm.chat"
+      ],
+      "risk_weight": 0.5
     },
     {
       "domain": "gemini.google.com",
-      "name": "Gemini",
+      "name": "Gemini (Web)",
       "vendor": "Google",
       "capability_tags": [
-        "web.chat"
-      ]
+        "llm.chat"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "domain": "aistudio.google.com",
+      "name": "Google AI Studio",
+      "vendor": "Google",
+      "capability_tags": [
+        "llm.chat",
+        "llm.api"
+      ],
+      "risk_weight": 0.5
     },
     {
       "domain": "chat.deepseek.com",
-      "name": "DeepSeek Chat",
+      "name": "DeepSeek (Web)",
       "vendor": "DeepSeek",
       "capability_tags": [
-        "web.chat"
+        "llm.chat"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "domain": "copilot.microsoft.com",
+      "name": "Copilot (Web)",
+      "vendor": "Microsoft",
+      "capability_tags": [
+        "llm.chat"
       ],
       "risk_weight": 0.5
     },
     {
       "domain": "perplexity.ai",
-      "name": "Perplexity",
+      "name": "Perplexity (Web)",
       "vendor": "Perplexity",
       "capability_tags": [
-        "web.chat",
-        "rag.retrieval"
-      ]
+        "llm.chat",
+        "web.search"
+      ],
+      "risk_weight": 0.5
     },
     {
-      "domain": "copilot.microsoft.com",
-      "name": "Copilot",
-      "vendor": "Microsoft",
+      "domain": "manus.im",
+      "name": "Manus AI",
+      "vendor": "Manus",
       "capability_tags": [
-        "web.chat"
-      ]
+        "browser.control"
+      ],
+      "risk_weight": 0.6
     },
     {
-      "domain": "grok.com",
-      "name": "Grok",
-      "vendor": "xAI",
+      "domain": "manus.ai",
+      "name": "Manus AI",
+      "vendor": "Manus",
       "capability_tags": [
-        "web.chat"
-      ]
-    },
-    {
-      "domain": "poe.com",
-      "name": "Poe",
-      "vendor": "Quora",
-      "capability_tags": [
-        "web.chat"
-      ]
+        "browser.control"
+      ],
+      "risk_weight": 0.6
     }
   ],
   "signatures": [
@@ -2544,6 +2568,212 @@
         "llm.call",
         "shell.exec"
       ]
+    },
+    {
+      "id": "codex_desktop",
+      "display_name": "OpenAI Codex (Desktop)",
+      "agent_type": "desktop_agent",
+      "revision": 1,
+      "vendor": "OpenAI",
+      "product": "Codex",
+      "detection_logic": "any_of",
+      "meta": {
+        "author": "system",
+        "description": "",
+        "added_in": "20260624000",
+        "tags": []
+      },
+      "process_names": [
+        "Codex.exe",
+        "codex.exe"
+      ],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [],
+      "control_strategies": [],
+      "exe_path_patterns": [
+        "**/WindowsApps/OpenAI.Codex_*/**",
+        "**/OpenAI*Codex*/**",
+        "**/Codex.app/**"
+      ],
+      "capability_tags": [
+        "code.exec",
+        "fs.write",
+        "llm.call"
+      ],
+      "risk_weight": 0.6
+    },
+    {
+      "id": "cursor_desktop",
+      "display_name": "Cursor",
+      "agent_type": "ide_agent",
+      "revision": 1,
+      "vendor": "Anysphere",
+      "product": "Cursor",
+      "detection_logic": "any_of",
+      "meta": {
+        "author": "system",
+        "description": "",
+        "added_in": "20260624000",
+        "tags": []
+      },
+      "process_names": [
+        "Cursor.exe",
+        "Cursor",
+        "cursor"
+      ],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [],
+      "control_strategies": [],
+      "exe_path_patterns": [
+        "**/Cursor/**",
+        "**/cursor/**",
+        "**/Cursor.app/**",
+        "**/Programs/cursor/**"
+      ],
+      "capability_tags": [
+        "code.edit",
+        "llm.call"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "id": "antigravity_desktop",
+      "display_name": "Antigravity",
+      "agent_type": "ide_agent",
+      "revision": 1,
+      "vendor": "Google",
+      "product": "Antigravity",
+      "detection_logic": "any_of",
+      "meta": {
+        "author": "system",
+        "description": "",
+        "added_in": "20260624000",
+        "tags": []
+      },
+      "process_names": [
+        "Antigravity.exe",
+        "Antigravity",
+        "antigravity"
+      ],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [],
+      "control_strategies": [],
+      "exe_path_patterns": [
+        "**/Antigravity/**",
+        "**/Antigravity.app/**",
+        "**/Programs/Antigravity/**"
+      ],
+      "capability_tags": [
+        "code.edit",
+        "llm.call"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "id": "openclaw_agent",
+      "display_name": "OpenClaw",
+      "agent_type": "automation_agent",
+      "revision": 1,
+      "vendor": "Claw",
+      "product": "OpenClaw",
+      "detection_logic": "any_of",
+      "meta": {
+        "author": "system",
+        "description": "",
+        "added_in": "20260624000",
+        "tags": []
+      },
+      "process_names": [
+        "openclaw",
+        "OpenClaw",
+        "openclaw.exe",
+        "open-claw"
+      ],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [],
+      "control_strategies": [],
+      "exe_path_patterns": [
+        "**/openclaw/**",
+        "**/OpenClaw/**"
+      ],
+      "cmd_patterns": [
+        "*openclaw*",
+        "*open-claw*"
+      ],
+      "cli_binaries": [
+        "openclaw",
+        "open-claw"
+      ],
+      "package_markers": [
+        {
+          "ecosystem": "npm",
+          "name": "openclaw",
+          "global": true
+        }
+      ],
+      "capability_tags": [
+        "browser.control",
+        "automation"
+      ],
+      "risk_weight": 0.7
+    },
+    {
+      "id": "hiclaw_agent",
+      "display_name": "HiClaw",
+      "agent_type": "automation_agent",
+      "revision": 1,
+      "vendor": "Claw",
+      "product": "HiClaw",
+      "detection_logic": "any_of",
+      "meta": {
+        "author": "system",
+        "description": "",
+        "added_in": "20260624000",
+        "tags": []
+      },
+      "process_names": [
+        "hiclaw",
+        "HiClaw",
+        "hiclaw.exe",
+        "hi-claw"
+      ],
+      "binary_hashes": [],
+      "config_paths": {},
+      "config_parsers": [],
+      "ports": [],
+      "control_strategies": [],
+      "exe_path_patterns": [
+        "**/hiclaw/**",
+        "**/HiClaw/**"
+      ],
+      "cmd_patterns": [
+        "*hiclaw*",
+        "*hi-claw*"
+      ],
+      "cli_binaries": [
+        "hiclaw",
+        "hi-claw"
+      ],
+      "package_markers": [
+        {
+          "ecosystem": "npm",
+          "name": "hiclaw",
+          "global": true
+        }
+      ],
+      "capability_tags": [
+        "browser.control",
+        "automation"
+      ],
+      "risk_weight": 0.7
     }
   ],
   "installed_app_signatures": [
@@ -2606,6 +2836,11 @@
             "ChatGPT"
           ]
         }
+      ],
+      "process_names": [
+        "ChatGPT.exe",
+        "ChatGPT",
+        "chatgpt"
       ]
     },
     {
@@ -2675,6 +2910,368 @@
           ]
         }
       ]
+    },
+    {
+      "id": "codex_cli",
+      "display_name": "Codex CLI",
+      "vendor": "OpenAI",
+      "agent_type": "cli_agent",
+      "process_names": [
+        "codex",
+        "codex-cli"
+      ],
+      "capability_tags": [
+        "cli.agent",
+        "code.generation"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "gemini_cli",
+      "display_name": "Gemini CLI",
+      "vendor": "Google",
+      "agent_type": "cli_agent",
+      "process_names": [
+        "gemini",
+        "gemini-cli"
+      ],
+      "capability_tags": [
+        "cli.agent",
+        "llm.generation"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "antigravity_cli",
+      "display_name": "AntiGravity CLI",
+      "vendor": "AntiGravity",
+      "agent_type": "cli_agent",
+      "process_names": [
+        "antigravity"
+      ],
+      "capability_tags": [
+        "cli.agent",
+        "system.automation"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "opencode",
+      "display_name": "OpenCode",
+      "vendor": "OpenCode",
+      "agent_type": "cli_agent",
+      "process_names": [
+        "opencode"
+      ],
+      "capability_tags": [
+        "cli.agent",
+        "code.generation"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "aider",
+      "display_name": "Aider",
+      "vendor": "Aider",
+      "agent_type": "cli_agent",
+      "process_names": [
+        "aider"
+      ],
+      "capability_tags": [
+        "cli.agent",
+        "code.edit",
+        "fs.write",
+        "code.generation"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "goose",
+      "display_name": "Goose AI",
+      "vendor": "Block",
+      "agent_type": "cli_agent",
+      "process_names": [
+        "goose"
+      ],
+      "capability_tags": [
+        "cli.agent",
+        "fs.read",
+        "fs.write",
+        "code.exec"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "open_interpreter",
+      "display_name": "Open Interpreter",
+      "vendor": "Open Interpreter",
+      "agent_type": "cli_agent",
+      "process_names": [
+        "interpreter"
+      ],
+      "capability_tags": [
+        "cli.agent",
+        "code.exec",
+        "fs.write",
+        "system.control"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "copilot_cli",
+      "display_name": "GitHub Copilot CLI",
+      "vendor": "GitHub",
+      "agent_type": "cli_agent",
+      "process_names": [
+        "github-copilot-cli"
+      ],
+      "capability_tags": [
+        "cli.agent",
+        "code.generation"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "vllm",
+      "display_name": "vLLM Server",
+      "vendor": "vLLM",
+      "agent_type": "model_server",
+      "process_names": [
+        "vllm"
+      ],
+      "capability_tags": [
+        "llm.server"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "llamacpp",
+      "display_name": "llama.cpp Server",
+      "vendor": "llama.cpp",
+      "agent_type": "model_server",
+      "process_names": [
+        "llama-server",
+        "server.exe"
+      ],
+      "capability_tags": [
+        "llm.server"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "nim",
+      "display_name": "NVIDIA NIM",
+      "vendor": "NVIDIA",
+      "agent_type": "model_server",
+      "process_names": [
+        "nim"
+      ],
+      "capability_tags": [
+        "llm.server"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "jan",
+      "display_name": "Jan AI",
+      "vendor": "Jan",
+      "agent_type": "model_server",
+      "process_names": [
+        "jan"
+      ],
+      "capability_tags": [
+        "llm.server",
+        "desktop_agent"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "localai",
+      "display_name": "LocalAI",
+      "vendor": "LocalAI",
+      "agent_type": "model_server",
+      "process_names": [
+        "localai"
+      ],
+      "capability_tags": [
+        "llm.server"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "gpt4all",
+      "display_name": "GPT4All",
+      "vendor": "Nomic",
+      "agent_type": "model_server",
+      "process_names": [
+        "gpt4all",
+        "chat"
+      ],
+      "capability_tags": [
+        "llm.server",
+        "desktop_agent"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "koboldcpp",
+      "display_name": "KoboldCPP",
+      "vendor": "KoboldAI",
+      "agent_type": "model_server",
+      "process_names": [
+        "koboldcpp"
+      ],
+      "capability_tags": [
+        "llm.server"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "text_gen_webui",
+      "display_name": "Text Generation WebUI",
+      "vendor": "Oobabooga",
+      "agent_type": "model_server",
+      "process_names": [
+        "python",
+        "server.py"
+      ],
+      "capability_tags": [
+        "llm.server"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
+    },
+    {
+      "id": "open_webui",
+      "display_name": "Open WebUI",
+      "vendor": "Open WebUI",
+      "agent_type": "model_server",
+      "process_names": [
+        "open-webui"
+      ],
+      "capability_tags": [
+        "llm.server",
+        "web.app"
+      ],
+      "cmd_patterns": [],
+      "paths": [],
+      "signal_weights": {
+        "name_match": 1,
+        "cmd_match": 1,
+        "path_match": 0.9,
+        "port_match": 0.8
+      }
     }
   ],
   "model_server_signatures": [
