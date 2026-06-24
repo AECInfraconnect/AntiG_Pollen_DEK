@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 //! supervisor.rs (v2) โ€” aligned to the REAL dek-core structure.
@@ -67,6 +67,19 @@ impl Supervisor {
 
         let config_dir = dek_config::paths::get_config_dir();
         let pending_update = crate::probation::detect(&config_dir);
+
+        let consent_store_path = config_dir.join("consent.json");
+        let consent_store = dek_consent::ConsentStore::new(consent_store_path);
+        if !consent_store
+            .has_consented(&dek_consent::AgreementType::Eula)
+            .unwrap_or(false)
+            || !consent_store
+                .has_consented(&dek_consent::AgreementType::PrivacyNotice)
+                .unwrap_or(false)
+        {
+            error!("Fatal: Required agreements (EULA and/or Privacy Notice) have not been accepted. Run 'pollen-dek agree' or the wizard.");
+            std::process::exit(1);
+        }
 
         let bootstrap_path = env_var(
             "DEK_BOOTSTRAP_PATH",

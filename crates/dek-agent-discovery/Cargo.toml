@@ -22,6 +22,8 @@ dek-control-plane-api = { path = "../dek-control-plane-api" }
 dek-domain-schema = { path = "../dek-domain-schema" }
 dek-fingerprint-defs = { path = "../dek-fingerprint-defs" }
 dek-policy-presets = { path = "../dek-policy-presets" }
+dek-consent = { path = "../dek-consent" }
+dek-config = { path = "../dek-config" }
 thiserror.workspace = true
 reqwest.workspace = true
 rusqlite = { version = "0.32", features = ["bundled"] }

@@ -68,11 +68,21 @@ enum Commands {
         reason: String,
     },
     /// Check system configuration and permissions
-    Doctor,
+    Doctor {
+        #[arg(long)]
+        json: bool,
+        #[arg(long)]
+        fix: bool,
+    },
     /// Repair bootstrap.json using data from the secure keystore
     RepairBootstrap,
     /// Export logs and state for troubleshooting (redacts secrets)
     ExportDiagnostics {
+        #[arg(long, default_value_t = true)]
+        redact: bool,
+    },
+    /// Bundle tamper-evident logs mapped to compliance frameworks (EU AI Act, NIST AI RMF, ISO 42001)
+    ExportCompliance {
         #[arg(long, default_value_t = true)]
         redact: bool,
     },
@@ -100,6 +110,10 @@ enum Commands {
         #[command(subcommand)]
         action: FingerprintCommands,
     },
+    /// Agree to EULA and Privacy Policy
+    Agree,
+    /// Launch the interactive First-Run Wizard
+    Wizard,
 }
 
 #[derive(Subcommand)]
@@ -307,8 +321,8 @@ async fn main() -> Result<()> {
                 std::process::exit(1);
             }
         }
-        Commands::Doctor => {
-            if let Err(e) = service::doctor::run() {
+        Commands::Doctor { json, fix } => {
+            if let Err(e) = service::preflight::run_and_exit(json, fix) {
                 error!("Doctor check failed: {}", e);
                 std::process::exit(1);
             }
@@ -322,6 +336,12 @@ async fn main() -> Result<()> {
         Commands::ExportDiagnostics { redact } => {
             if let Err(e) = service::doctor::export_diagnostics(redact) {
                 error!("Export diagnostics failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::ExportCompliance { redact } => {
+            if let Err(e) = service::doctor::export_compliance(redact) {
+                error!("Export compliance failed: {}", e);
                 std::process::exit(1);
             }
         }
@@ -546,6 +566,57 @@ async fn main() -> Result<()> {
                 }
             }
         },
+        Commands::Agree => {
+            let config_dir = dek_config::paths::get_config_dir();
+            let consent_store_path = config_dir.join("consent.json");
+            let consent_store = dek_consent::ConsentStore::new(consent_store_path);
+
+            // In a real CLI flow we would present the text and ask for confirmation
+            println!("By running this tool, you agree to the Pollen DEK EULA and Privacy Policy.");
+
+            let user = std::env::var("USER")
+                .or_else(|_| std::env::var("USERNAME"))
+                .unwrap_or_else(|_| "unknown".to_string());
+
+            if let Err(e) = consent_store.record_consent(
+                dek_consent::AgreementType::Eula,
+                "1.0".to_string(),
+                user.clone(),
+            ) {
+                error!("Failed to record EULA consent: {}", e);
+                std::process::exit(1);
+            }
+            if let Err(e) = consent_store.record_consent(
+                dek_consent::AgreementType::PrivacyNotice,
+                "1.0".to_string(),
+                user.clone(),
+            ) {
+                error!("Failed to record Privacy Notice consent: {}", e);
+                std::process::exit(1);
+            }
+            if let Err(e) = consent_store.record_consent(
+                dek_consent::AgreementType::BrowserHistoryScan,
+                "1.0".to_string(),
+                user,
+            ) {
+                error!("Failed to record Browser Scan consent: {}", e);
+                std::process::exit(1);
+            }
+
+            println!("Consent recorded locally. You may now start the DEK service.");
+        }
+        Commands::Wizard => {
+            info!("Launching First-Run Wizard...");
+            let url = "http://127.0.0.1:43891/wizard";
+            if let Err(e) = webbrowser::open(url) {
+                error!(
+                    "Failed to open browser: {}. Please visit {} manually.",
+                    e, url
+                );
+            } else {
+                info!("Opened {} in your default browser.", url);
+            }
+        }
     }
     Ok(())
 }

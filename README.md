@@ -152,7 +152,13 @@ gh attestation verify <asset> -o AECInfraconnect
 Update in place (verifies cosign before applying, with rollback):
 
 ```bash
-dek-cli update --channel beta
+pollen-dek update --channel beta
+```
+
+Export compliance pack (tamper-evident audit logs):
+
+```bash
+pollen-dek export-compliance
 ```
 
 ## Architecture (at a glance)

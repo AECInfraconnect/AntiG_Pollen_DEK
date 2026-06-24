@@ -21,7 +21,13 @@ pub fn scan_web_ai(
 ) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
 
-    if config.enable_browser_history_scan {
+    let consent_store_path = dek_config::paths::get_config_dir().join("consent.json");
+    let consent_store = dek_consent::ConsentStore::new(consent_store_path);
+    let has_consent = consent_store
+        .has_consented(&dek_consent::AgreementType::BrowserHistoryScan)
+        .unwrap_or(false);
+
+    if config.enable_browser_history_scan && has_consent {
         if let Ok(mut hist) = scan_history(catalog) {
             evidence.append(&mut hist);
         }
@@ -30,7 +36,7 @@ pub fn scan_web_ai(
         }
     }
 
-    if config.enable_browser_session_scan {
+    if config.enable_browser_session_scan && has_consent {
         if let Ok(mut sess) = scan_sessions(catalog) {
             evidence.append(&mut sess);
         }

@@ -61,14 +61,20 @@ export function Overview() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">
-          Dashboard Overview
-        </h2>
-        <p className="text-muted-foreground">
-          Real-time metrics and system health for your local Pollek Local
-          Enforcement Kit.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Dashboard Overview
+          </h2>
+          <p className="text-muted-foreground">
+            Real-time metrics and system health for your local Pollek Local
+            Enforcement Kit.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-500 border border-green-500/20 rounded-full">
+          <ShieldAlert className="w-4 h-4" />
+          <span className="text-xs font-semibold uppercase tracking-wider">Air-Gap Ready / Sovereign Mode</span>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

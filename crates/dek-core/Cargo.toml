@@ -23,6 +23,7 @@ os-enforcement = [
 
 [dependencies]
 dek-config = { path = "../dek-config" }
+dek-consent = { path = "../dek-consent" }
 
 dek-bundle-sync = { path = "../dek-bundle-sync" }
 dek-bundle-format = { path = "../dek-bundle-format" }

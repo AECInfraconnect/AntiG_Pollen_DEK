@@ -1785,6 +1785,8 @@ version = "1.0.0-beta.10"
 dependencies = [
  "anyhow",
  "chrono",
+ "dek-config",
+ "dek-consent",
  "dek-control-plane-api",
  "dek-domain-schema",
  "dek-fingerprint-defs",
@@ -1907,7 +1909,9 @@ dependencies = [
  "clap",
  "dek-agent-connector",
  "dek-config",
+ "dek-consent",
  "dek-enroll",
+ "dek-errors",
  "dek-ipc",
  "dek-keystore",
  "dek-spire-node",
@@ -1940,6 +1944,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-consent"
+version = "1.0.0-beta.10"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "dek-control-plane-api"
 version = "0.1.0"
 dependencies = [
@@ -1964,6 +1979,7 @@ dependencies = [
  "dek-bundle-format",
  "dek-bundle-sync",
  "dek-config",
+ "dek-consent",
  "dek-decision",
  "dek-domain-schema",
  "dek-ebpf-common",
@@ -2520,6 +2536,15 @@ dependencies = [
  "metrics 0.24.6",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "dek-risk-score"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

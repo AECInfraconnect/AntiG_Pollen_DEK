@@ -1,7 +1,10 @@
 param (
     [string]$InstallPath = "C:\Program Files\PollenDEK",
-    [string]$BootstrapPath = "C:\ProgramData\PollenDEK\bootstrap.json"
+    [string]$Version = "latest",
+    [string]$Repo = "AECInfraconnect/AntiG_Pollen_DEK"
 )
+
+$ErrorActionPreference = "Stop"
 
 # 1. Elevate if not admin
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -11,7 +14,52 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 
 Write-Host "Installing Pollen DEK to $InstallPath..."
 
-# 2. Create directories
+# 2. Resolve version and download
+if ($Version -eq "latest") {
+    $ReleaseData = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest"
+    $Version = $ReleaseData.tag_name
+}
+
+$Base = "https://github.com/$Repo/releases/download/$Version"
+$Bin = "dek-windows-x86_64.exe"
+
+Write-Host "▶ 1/5 ดาวน์โหลด $Bin ($Version)"
+Invoke-WebRequest -Uri "$Base/$Bin" -OutFile "$env:TEMP\$Bin"
+Invoke-WebRequest -Uri "$Base/$Bin.sha256" -OutFile "$env:TEMP\$Bin.sha256"
+Invoke-WebRequest -Uri "$Base/$Bin.sig" -OutFile "$env:TEMP\$Bin.sig"
+
+Write-Host "▶ 2/5 ตรวจ checksum + ลายเซ็น (supply-chain)"
+$ExpectedHash = (Get-Content "$env:TEMP\$Bin.sha256").Split(" ")[0]
+$ActualHash = (Get-FileHash "$env:TEMP\$Bin" -Algorithm SHA256).Hash.ToLower()
+
+if ($ActualHash -ne $ExpectedHash) {
+    throw "Checksum verification failed! Expected: $ExpectedHash, Got: $ActualHash"
+}
+
+if (Get-Command cosign -ErrorAction SilentlyContinue) {
+    cosign verify-blob --certificate-identity-regexp "https://github.com/$Repo/.github/workflows/.*" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --signature "$env:TEMP\$Bin.sig" "$env:TEMP\$Bin"
+} else {
+    Write-Host "⚠️  cosign ไม่ได้ติดตั้งข้ามการตรวจลายเซ็น (signature check skipped)"
+}
+
+Write-Host "▶ 3/5 ตรวจ dependency ของเครื่อง (preflight)"
+& "$env:TEMP\$Bin" doctor --json > "$env:TEMP\dek-doctor.json"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "พบ dependency ที่ขาด — สรุปและวิธีแก้:"
+    & "$env:TEMP\$Bin" doctor
+    $a = Read-Host "ให้ลองติดตั้ง dependency ที่ติดตั้งได้อัตโนมัติเลยไหม? [y/N] "
+    if ($a -eq "y" -or $a -eq "Y") {
+        & "$env:TEMP\$Bin" doctor --fix
+    }
+}
+
+Write-Host "▶ 4/5 ยอมรับข้อตกลง (Agreements)"
+& "$env:TEMP\$Bin" agree
+if ($LASTEXITCODE -ne 0) {
+    throw "❌ ไม่สามารถติดตั้งได้หากไม่ยอมรับข้อตกลง"
+}
+
+Write-Host "▶ 5/5 ติดตั้ง + เริ่มบริการ"
 if (!(Test-Path $InstallPath)) {
     New-Item -ItemType Directory -Force -Path $InstallPath | Out-Null
 }
@@ -20,48 +68,17 @@ if (!(Test-Path $DataDir)) {
     New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
 }
 
-# Apply icacls to lock down C:\ProgramData\PollenDEK
 Write-Host "Locking down permissions on $DataDir..."
 icacls "$DataDir" /inheritance:r /grant "SYSTEM:(OI)(CI)F" /grant "Administrators:(OI)(CI)F" /T /C /Q
 
-# Check for Edge WebView2 runtime (for dek-ext-authz if GUI is triggered)
 $WebView2RegPath = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
 $WebView2UserRegPath = "HKCU:\Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
 if (!(Test-Path $WebView2RegPath) -and !(Test-Path $WebView2UserRegPath)) {
-    Write-Host "Warning: Edge WebView2 runtime is not installed. dek-ext-authz GUI popups may not work."
-} else {
-    Write-Host "Edge WebView2 runtime detected."
+    Write-Host "Warning: Edge WebView2 runtime is not installed."
 }
 
-# 3. Copy binaries (assumes binaries are in current dir)
-Copy-Item ".\dek-core.exe" "$InstallPath\dek-core.exe" -Force
-Copy-Item ".\dek-updater.exe" "$InstallPath\dek-updater.exe" -Force
-Copy-Item ".\dek-mcp-proxy.exe" "$InstallPath\dek-mcp-proxy.exe" -Force
+Copy-Item "$env:TEMP\$Bin" "$InstallPath\pollen-dek.exe" -Force
+& "$InstallPath\pollen-dek.exe" service install
+& "$InstallPath\pollen-dek.exe" service start
 
-# 4. Bootstrap Configuration
-if (Test-Path $BootstrapPath) {
-    Copy-Item $BootstrapPath "$DataDir\bootstrap.json" -Force
-} else {
-    Write-Host "Warning: bootstrap.json not found at $BootstrapPath"
-}
-
-# 5. Create Windows Service
-$ServiceName = "PollenDEKCore"
-$ServiceDisplay = "Pollen DEK Core Service"
-$ServiceDescription = "Pollen Distributed Enforcement Kernel"
-
-# Check if service exists
-$service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-if ($service) {
-    Stop-Service -Name $ServiceName -Force
-    sc.exe delete $ServiceName
-}
-
-# Install service (runs dek-core.exe)
-# dek-core will use standard paths. It can detect it's running as a service.
-New-Service -Name $ServiceName -DisplayName $ServiceDisplay -BinaryPathName "$InstallPath\dek-core.exe" -Description $ServiceDescription -StartupType Automatic
-
-# Start service
-Start-Service -Name $ServiceName
-
-Write-Host "Installation Complete. Pollen DEK Core is now running as a Windows Service."
+Write-Host "✅ เสร็จ — เปิด dashboard ที่ http://127.0.0.1:43891 หรือรัน: pollen-dek wizard"

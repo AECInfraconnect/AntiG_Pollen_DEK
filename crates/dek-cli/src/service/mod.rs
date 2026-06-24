@@ -5,6 +5,7 @@ use anyhow::Result;
 
 pub mod doctor;
 pub mod enroll;
+pub mod preflight;
 pub mod profile;
 pub mod revoke;
 pub mod rollback;

@@ -66,6 +66,9 @@ mod tests {
 mod state;
 use state::AppState;
 
+mod reputation;
+pub use reputation::{ReputationRegistry, ReputationStatus};
+
 use dek_activation::snapshot::{DekMetadata, RuntimeSnapshot};
 use dek_config::{BootstrapConfig, DekConfig};
 

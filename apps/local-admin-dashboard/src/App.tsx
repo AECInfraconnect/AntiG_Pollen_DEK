@@ -16,6 +16,7 @@ import { AutoDiscovery } from "./pages/AutoDiscovery";
 import { PolicySuggestions } from "./pages/PolicySuggestions";
 import { CostLedger } from "./pages/CostLedger";
 import { PolicyPresets } from "./pages/PolicyPresets";
+import { Wizard } from "./pages/Wizard";
 
 // Merged composite pages
 import { AgentsAndModels } from "./pages/Ecosystem/AgentsAndModels";
@@ -77,6 +78,8 @@ function App() {
           />
           <Route path="shadow-ai" element={<Navigate to="/alerts" replace />} />
         </Route>
+        {/* Full screen Wizard outside DashboardLayout */}
+        <Route path="/wizard" element={<Wizard />} />
       </Routes>
     </Router>
   );
