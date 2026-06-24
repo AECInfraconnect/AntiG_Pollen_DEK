@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use anyhow::{Context, Result};
@@ -180,7 +180,7 @@ mod tests {
     fn test_downgrade_attack_prevented() {
         let dir = env::temp_dir().join(format!(
             "rollback_test_{}",
-            Utc::now().timestamp_nanos_opt().unwrap()
+            Utc::now().timestamp_nanos_opt().unwrap() //
         ));
         let manager = RollbackManager::new(&dir);
 

@@ -1,4 +1,4 @@
-use crate::model::*;
+﻿use crate::model::*;
 use std::collections::HashMap;
 
 pub struct FingerprintDb {
@@ -55,7 +55,7 @@ impl FingerprintDb {
             DefinitionKind::Delta => {
                 if def.base_version != Some(self.version) {
                     anyhow::bail!(
-                        "delta base {:?} != current {} — ต้องดึง full",
+                        "delta base {:?} != current {} โ€” เธ•เนเธญเธเธ”เธถเธ full",
                         def.base_version,
                         self.version
                     );
@@ -152,7 +152,7 @@ mod tests {
             web_ai_signatures: vec![],
             installed_app_signatures: vec![],
         };
-        db.apply(delta).unwrap();
+        db.apply(delta).unwrap(); //
         assert!(db.by_id.contains_key("goose_cli"));
         assert!(!db.by_id.contains_key("ollama"));
         assert_eq!(db.version, 2);

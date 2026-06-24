@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-//! scale_config.rs — freshness/sync + SaaS-scale tunables.
+//! scale_config.rs โ€” freshness/sync + SaaS-scale tunables.
 //!
 //! These live in `DekConfig` and arrive in the SIGNED bundle/config from the
 //! cloud (not hand-edited locally). All fields use serde defaults so existing
@@ -9,7 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Phase 1/2 — policy freshness + sync cadence (consumed by dek-policy-syncer).
+/// Phase 1/2 โ€” policy freshness + sync cadence (consumed by dek-policy-syncer).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SyncerConfig {
     #[serde(default = "default_poll_interval_secs")]
@@ -48,7 +48,7 @@ impl Default for SyncerConfig {
     }
 }
 
-/// Phase 4 — backpressure + circuit breaker tunables (consumed by PEP via dek-resilience).
+/// Phase 4 โ€” backpressure + circuit breaker tunables (consumed by PEP via dek-resilience).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ScaleConfig {
     #[serde(default = "default_max_concurrent")]
@@ -108,9 +108,9 @@ mod tests {
 
     #[test]
     fn deserializes_with_missing_fields_using_defaults() {
-        let s: SyncerConfig = serde_json::from_str("{}").unwrap();
+        let s: SyncerConfig = serde_json::from_str("{}").unwrap(); //
         assert_eq!(s, SyncerConfig::default());
-        let sc: ScaleConfig = serde_json::from_str(r#"{"max_concurrent": 1024}"#).unwrap();
+        let sc: ScaleConfig = serde_json::from_str(r#"{"max_concurrent": 1024}"#).unwrap(); //
         assert_eq!(sc.max_concurrent, 1024);
         assert_eq!(sc.pdp_timeout_ms, 200); // default preserved
     }

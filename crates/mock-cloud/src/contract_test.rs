@@ -58,27 +58,27 @@ async fn trusted_keys_contract_path_serves_signed_envelope() {
     let req = Request::builder()
         .uri("/v1/tenants/t1/devices/d1/trusted-keys")
         .body(Body::empty())
-        .unwrap();
+        .unwrap(); //
 
-    let res = app.oneshot(req).await.unwrap();
+    let res = app.oneshot(req).await.unwrap(); //
     assert_eq!(res.status(), StatusCode::OK);
 
     let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
         .await
-        .unwrap();
-    let body: Value = serde_json::from_slice(&body_bytes).unwrap();
+        .unwrap(); //
+    let body: Value = serde_json::from_slice(&body_bytes).unwrap(); //
 
-    let signatures = body.get("signatures").unwrap().as_array().unwrap();
+    let signatures = body.get("signatures").unwrap().as_array().unwrap(); //
     assert_eq!(signatures.len(), 1);
     let sig_obj = &signatures[0];
-    assert_eq!(sig_obj.get("keyid").unwrap().as_str().unwrap(), "bootstrap");
+    assert_eq!(sig_obj.get("keyid").unwrap().as_str().unwrap(), "bootstrap"); //
 
-    let sig_b64 = sig_obj.get("sig").unwrap().as_str().unwrap();
-    let sig_bytes = base64::prelude::BASE64_STANDARD.decode(sig_b64).unwrap();
-    let sig = ed25519_dalek::Signature::from_slice(&sig_bytes).unwrap();
+    let sig_b64 = sig_obj.get("sig").unwrap().as_str().unwrap(); //
+    let sig_bytes = base64::prelude::BASE64_STANDARD.decode(sig_b64).unwrap(); //
+    let sig = ed25519_dalek::Signature::from_slice(&sig_bytes).unwrap(); //
 
-    let signed_obj = body.get("signed").unwrap();
-    let signed_bytes = serde_json::to_vec(signed_obj).unwrap();
+    let signed_obj = body.get("signed").unwrap(); //
+    let signed_bytes = serde_json::to_vec(signed_obj).unwrap(); //
 
     let sk = SigningKey::from_bytes(&crate::BUNDLE_SEED);
     let vk = sk.verifying_key();
@@ -163,10 +163,10 @@ async fn telemetry_decision_logs_endpoint_accepts_and_redacts() {
         .method("POST")
         .uri("/v1/telemetry/decision-logs")
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_vec(&payload_clean).unwrap()))
-        .unwrap();
+        .body(Body::from(serde_json::to_vec(&payload_clean).unwrap())) //
+        .unwrap(); //
 
-    let res1 = app.clone().oneshot(req1).await.unwrap();
+    let res1 = app.clone().oneshot(req1).await.unwrap(); //
     assert_eq!(res1.status(), StatusCode::OK);
 
     let payload_dirty = json!({
@@ -203,9 +203,9 @@ async fn telemetry_decision_logs_endpoint_accepts_and_redacts() {
         .method("POST")
         .uri("/v1/telemetry/decision-logs")
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_vec(&payload_dirty).unwrap()))
-        .unwrap();
+        .body(Body::from(serde_json::to_vec(&payload_dirty).unwrap())) //
+        .unwrap(); //
 
-    let res2 = app.clone().oneshot(req2).await.unwrap();
+    let res2 = app.clone().oneshot(req2).await.unwrap(); //
     assert_eq!(res2.status(), StatusCode::BAD_REQUEST);
 }

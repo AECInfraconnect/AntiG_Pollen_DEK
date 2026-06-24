@@ -4,2862 +4,2823 @@
  */
 
 export interface paths {
-  "/.well-known/pollen-contract": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/.well-known/pollen-contract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Discover contract capabilities and supported protocol versions. */
+        get: operations["ContractDiscoveryApi_getDiscovery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description Discover contract capabilities and supported protocol versions. */
-    get: operations["ContractDiscoveryApi_getDiscovery"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/a2a/message": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/a2a/message": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Send an Inter-Agent Trust Protocol (IATP) message via the DEK mediator. */
+        post: operations["A2AApi_sendMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Send an Inter-Agent Trust Protocol (IATP) message via the Local Enforcement Kit mediator. */
-    post: operations["A2AApi_sendMessage"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/telemetry/batches": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/telemetry/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Ingest a batch of telemetry events. */
+        post: operations["TelemetryApi_ingestBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Ingest a batch of telemetry events. */
-    post: operations["TelemetryApi_ingestBatch"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/agent-discovery/candidates": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/agent-discovery/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List discovery candidates */
+        get: operations["DiscoveryApi_listCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description List discovery candidates */
-    get: operations["DiscoveryApi_listCandidates"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/block": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Block a candidate */
+        post: operations["DiscoveryApi_blockCandidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Block a candidate */
-    post: operations["DiscoveryApi_blockCandidate"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/ignore": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Ignore a candidate */
+        post: operations["DiscoveryApi_ignoreCandidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Ignore a candidate */
-    post: operations["DiscoveryApi_ignoreCandidate"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/observe-only": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/observe-only": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Observe a candidate only */
+        post: operations["DiscoveryApi_observeCandidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Observe a candidate only */
-    post: operations["DiscoveryApi_observeCandidate"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/register": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Register a candidate */
+        post: operations["DiscoveryApi_registerCandidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Register a candidate */
-    post: operations["DiscoveryApi_registerCandidate"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/agent-discovery/scan": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/agent-discovery/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Start a discovery scan */
+        post: operations["DiscoveryApi_scan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Start a discovery scan */
-    post: operations["DiscoveryApi_scan"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/devices/{device_id}/bundles/latest": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/devices/{device_id}/bundles/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Fetch the latest signed policy bundle manifest for a device. */
+        post: operations["BundleApi_fetchLatest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Fetch the latest signed policy bundle manifest for a device. */
-    post: operations["BundleApi_fetchLatest"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/observations/agents/{agent_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/observations/agents/{agent_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get observations for an agent */
+        get: operations["ObservationApi_getAgentObservations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description Get observations for an agent */
-    get: operations["ObservationApi_getAgentObservations"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/observations/costs": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/observations/costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get cost summary */
+        get: operations["ObservationApi_getCosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description Get cost summary */
-    get: operations["ObservationApi_getCosts"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/observations/coverage": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/observations/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get policy coverage summary */
+        get: operations["ObservationApi_getCoverage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description Get policy coverage summary */
-    get: operations["ObservationApi_getCoverage"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/observations/events": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/observations/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Ingest observation events */
+        post: operations["ObservationApi_ingestEvents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Ingest observation events */
-    post: operations["ObservationApi_ingestEvents"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/observations/resources/{resource_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/observations/resources/{resource_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get observations for a resource */
+        get: operations["ObservationApi_getResourceObservations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description Get observations for a resource */
-    get: operations["ObservationApi_getResourceObservations"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/observations/tools/{tool_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/observations/tools/{tool_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get observations for a tool */
+        get: operations["ObservationApi_getToolObservations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description Get observations for a tool */
-    get: operations["ObservationApi_getToolObservations"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/observations/trust/{agent_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/observations/trust/{agent_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get trust score for an agent */
+        get: operations["ObservationApi_getAgentTrustScore"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description Get trust score for an agent */
-    get: operations["ObservationApi_getAgentTrustScore"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/pdp/routes": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/pdp/routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List all PDP route rules */
+        get: operations["PdpRoutingApi_listRoutes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description List all PDP route rules */
-    get: operations["PdpRoutingApi_listRoutes"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/pdp/routes/simulate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/pdp/routes/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Simulate a routing decision */
+        post: operations["PdpRoutingApi_simulateRoute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Simulate a routing decision */
-    post: operations["PdpRoutingApi_simulateRoute"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/pdp/routes/{route_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/pdp/routes/{route_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a specific PDP route rule */
+        get: operations["PdpRoutingApi_getRoute"];
+        /** @description Create or update a PDP route rule */
+        put: operations["PdpRoutingApi_upsertRoute"];
+        post?: never;
+        /** @description Delete a PDP route rule */
+        delete: operations["PdpRoutingApi_deleteRoute"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description Get a specific PDP route rule */
-    get: operations["PdpRoutingApi_getRoute"];
-    /** @description Create or update a PDP route rule */
-    put: operations["PdpRoutingApi_upsertRoute"];
-    post?: never;
-    /** @description Delete a PDP route rule */
-    delete: operations["PdpRoutingApi_deleteRoute"];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/pdp/runtimes": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/pdp/runtimes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List all PDP runtimes */
+        get: operations["PdpRuntimeApi_listRuntimes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description List all PDP runtimes */
-    get: operations["PdpRuntimeApi_listRuntimes"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/pdp/runtimes/{runtime_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/pdp/runtimes/{runtime_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a specific PDP runtime */
+        get: operations["PdpRuntimeApi_getRuntime"];
+        /** @description Create or update a PDP runtime */
+        put: operations["PdpRuntimeApi_upsertRuntime"];
+        post?: never;
+        /** @description Delete a PDP runtime */
+        delete: operations["PdpRuntimeApi_deleteRuntime"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description Get a specific PDP runtime */
-    get: operations["PdpRuntimeApi_getRuntime"];
-    /** @description Create or update a PDP runtime */
-    put: operations["PdpRuntimeApi_upsertRuntime"];
-    post?: never;
-    /** @description Delete a PDP runtime */
-    delete: operations["PdpRuntimeApi_deleteRuntime"];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/pdp/runtimes/{runtime_id}/clear-cache": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/pdp/runtimes/{runtime_id}/clear-cache": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Clear cache for a PDP runtime */
+        post: operations["PdpRuntimeApi_clearCache"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Clear cache for a PDP runtime */
-    post: operations["PdpRuntimeApi_clearCache"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/pdp/runtimes/{runtime_id}/probe": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/pdp/runtimes/{runtime_id}/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Probe a PDP runtime for health and capability */
+        post: operations["PdpRuntimeApi_probeRuntime"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Probe a PDP runtime for health and capability */
-    post: operations["PdpRuntimeApi_probeRuntime"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/pdp/runtimes/{runtime_id}/validate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/pdp/runtimes/{runtime_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Validate a PDP runtime configuration */
+        post: operations["PdpRuntimeApi_validateRuntime"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Validate a PDP runtime configuration */
-    post: operations["PdpRuntimeApi_validateRuntime"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/pep-capabilities": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/pep-capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List PEP capabilities */
+        get: operations["PepCapabilitiesApi_listCapabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description List PEP capabilities */
-    get: operations["PepCapabilitiesApi_listCapabilities"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/pep-capabilities/check": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/pep-capabilities/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Check PEP capabilities */
+        post: operations["PepCapabilitiesApi_checkCapabilities"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Check PEP capabilities */
-    post: operations["PepCapabilitiesApi_checkCapabilities"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/policy-presets": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/policy-presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List policy presets */
+        get: operations["PolicyPresetsApi_listPresets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description List policy presets */
-    get: operations["PolicyPresetsApi_listPresets"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/policy-presets/{preset_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/policy-presets/{preset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a specific policy preset */
+        get: operations["PolicyPresetsApi_getPreset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description Get a specific policy preset */
-    get: operations["PolicyPresetsApi_getPreset"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/policy-presets/{preset_id}/create-draft": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/policy-presets/{preset_id}/create-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create a draft from a preset */
+        post: operations["PolicyPresetsApi_createDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Create a draft from a preset */
-    post: operations["PolicyPresetsApi_createDraft"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/policy-presets/{preset_id}/preview": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/policy-presets/{preset_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a policy preset */
+        post: operations["PolicyPresetsApi_previewPreset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Preview a policy preset */
-    post: operations["PolicyPresetsApi_previewPreset"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/policy-presets/{preset_id}/simulate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/policy-presets/{preset_id}/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Simulate a policy preset */
+        post: operations["PolicyPresetsApi_simulatePreset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Simulate a policy preset */
-    post: operations["PolicyPresetsApi_simulatePreset"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/policy-suggestions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/policy-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List policy suggestions */
+        get: operations["PolicySuggestionsApi_listSuggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description List policy suggestions */
-    get: operations["PolicySuggestionsApi_listSuggestions"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/policy-suggestions/generate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/policy-suggestions/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Generate policy suggestions */
+        post: operations["PolicySuggestionsApi_generate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Generate policy suggestions */
-    post: operations["PolicySuggestionsApi_generate"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a specific policy suggestion */
+        get: operations["PolicySuggestionsApi_getSuggestion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description Get a specific policy suggestion */
-    get: operations["PolicySuggestionsApi_getSuggestion"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}/approve": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Approve a policy suggestion */
+        post: operations["PolicySuggestionsApi_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Approve a policy suggestion */
-    post: operations["PolicySuggestionsApi_approve"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}/create-draft": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}/create-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create a draft from a suggestion */
+        post: operations["PolicySuggestionsApi_createDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Create a draft from a suggestion */
-    post: operations["PolicySuggestionsApi_createDraft"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}/dismiss": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Dismiss a policy suggestion */
+        post: operations["PolicySuggestionsApi_dismiss"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Dismiss a policy suggestion */
-    post: operations["PolicySuggestionsApi_dismiss"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}/simulate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Simulate a policy suggestion */
+        post: operations["PolicySuggestionsApi_simulate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** @description Simulate a policy suggestion */
-    post: operations["PolicySuggestionsApi_simulate"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/registry/resources": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/registry/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List resources */
+        get: operations["ResourcesApi_listResources"];
+        put?: never;
+        /** @description Create a resource */
+        post: operations["ResourcesApi_createResource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description List resources */
-    get: operations["ResourcesApi_listResources"];
-    put?: never;
-    /** @description Create a resource */
-    post: operations["ResourcesApi_createResource"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/tenants/{tenant_id}/registry/tools": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/tenants/{tenant_id}/registry/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List tools */
+        get: operations["ToolsApi_listTools"];
+        put?: never;
+        /** @description Create a tool */
+        post: operations["ToolsApi_createTool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** @description List tools */
-    get: operations["ToolsApi_listTools"];
-    put?: never;
-    /** @description Create a tool */
-    post: operations["ToolsApi_createTool"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    A2AMessage: {
-      /** @enum {string} */
-      schema_version: "a2a-message.v1";
-      sender_id: string;
-      receiver_id: string;
-      payload_encrypted: string;
-      signature: string;
+    schemas: {
+        A2AMessage: {
+            /** @enum {string} */
+            schema_version: "a2a-message.v1";
+            sender_id: string;
+            receiver_id: string;
+            payload_encrypted: string;
+            signature: string;
+        };
+        A2AMessageResponse: {
+            /** @enum {string} */
+            schema_version: "a2a-response.v1";
+            status: string;
+            reason?: string;
+        };
+        AgentObservationEvent: {
+            event_id: string;
+            tenant_id: string;
+            trace_id: string;
+            agent_id?: string;
+            shadow_candidate_id?: string;
+            tool_id?: string;
+            resource_id?: string;
+            surface: string;
+            action: string;
+            pep_type?: string;
+            risk_level?: string;
+            timestamp: string;
+            payload_json: string;
+            token_usage?: components["schemas"]["TokenUsage"];
+        };
+        AgentObservationEventListResponse: {
+            items: components["schemas"]["AgentObservationEvent"][];
+        };
+        AgentTrustScore: {
+            /** @enum {string} */
+            schema_version: "agent-trust-score.v1";
+            agent_id: string;
+            /** Format: float */
+            score: number;
+            reasons: string[];
+        };
+        BudgetPolicy: {
+            /** @enum {string} */
+            schema_version: "budget-policy.v1";
+            agent_id: string;
+            /** Format: float */
+            daily_cost_cap_usd: number;
+            /** Format: int64 */
+            daily_token_cap: number;
+        };
+        BundleFetchRequest: {
+            tenant_id: string;
+            device_id: string;
+            /** Format: int32 */
+            current_generation?: number;
+            capabilities: string[];
+        };
+        BundleFetchResponse: {
+            /** @enum {string} */
+            schema_version: "bundle-fetch-response.v1";
+            /** @enum {string} */
+            status: "not_modified" | "bundle_ready";
+            /** Format: int32 */
+            generation?: number;
+            envelope?: unknown;
+        };
+        ContractDiscoveryResponse: {
+            /** @enum {string} */
+            schema_version: "contract-discovery.v1";
+            supported: string[];
+            preferred: string;
+            minimum_dek_version?: string;
+            sunset?: Record<string, never>;
+            capabilities: string[];
+        };
+        CostLedgerEntry: {
+            event_id: string;
+            agent_id: string;
+            provider: string;
+            model?: string;
+            /** Format: int64 */
+            input_tokens: number;
+            /** Format: int64 */
+            output_tokens: number;
+            /** Format: int64 */
+            total_tokens: number;
+            /** Format: float */
+            input_cost: number;
+            /** Format: float */
+            output_cost: number;
+            /** Format: float */
+            total_cost: number;
+            currency: string;
+            estimated: boolean;
+            timestamp: string;
+        };
+        CostLedgerListResponse: {
+            items: components["schemas"]["CostLedgerEntry"][];
+        };
+        CostSummaryResponse: {
+            /** @enum {string} */
+            schema_version: "cost-summary.v1";
+            tenant_id: string;
+            period: string;
+            /** Format: float */
+            total_estimated_cost_usd: number;
+            /** Format: int64 */
+            total_tokens: number;
+            provider_breakdown: Record<string, never>;
+            agent_breakdown: Record<string, never>;
+        };
+        DiscoveryCandidate: {
+            candidate_id: string;
+            tenant_id: string;
+            surface: string;
+            first_seen_at: string;
+            last_seen_at: string;
+            /** Format: int64 */
+            observation_count: number;
+            inferred_name?: string;
+            inferred_provider?: string;
+            status: string;
+        };
+        DiscoveryCandidateListResponse: {
+            items: components["schemas"]["DiscoveryCandidate"][];
+        };
+        MissingControl: {
+            control_type: string;
+            reason: string;
+            recommended_policy_type: string;
+            recommended_pep_type: string;
+        };
+        ObjectMeta: {
+            schema_version: string;
+            tenant_id: string;
+            workspace_id: string;
+            environment_id: string;
+            created_at: string;
+            updated_at: string;
+            created_by: string;
+            updated_by: string;
+            source: string;
+            status: string;
+            tags: string[];
+        };
+        /** @enum {string} */
+        PdpFailureBehavior: "deny" | "fallback" | "last_known_good" | "allow" | "not_applicable";
+        /** @enum {string} */
+        PdpKind: "policy_router" | "cedar_local" | "opa_wasm" | "wasm_plugin" | "opa_server" | "openfga_server" | "cedar_http" | "custom_http" | "custom_grpc" | "pollen_cloud_pdp";
+        PdpProbeResult: {
+            ok: boolean;
+            effect: string;
+            reason: string;
+            /** Format: int64 */
+            latency_ms: number;
+            decision_id: string;
+            details: unknown;
+        };
+        /** @enum {string} */
+        PdpRouteMode: "local_only" | "local_primary_remote_fallback" | "remote_primary_local_fallback" | "cloud_primary_local_fallback" | "shadow_remote" | "mirror_audit_only" | "strict_remote";
+        PdpRouteRule: {
+            id: string;
+            name: string;
+            enabled: boolean;
+            /** Format: int32 */
+            priority: number;
+            description?: string;
+            match_cond: components["schemas"]["RouteMatch"];
+            mode: components["schemas"]["PdpRouteMode"];
+            primary_pdp_id: string;
+            fallback_pdp_ids: string[];
+            shadow_pdp_ids: string[];
+            required_pdp_ids?: string[];
+            merge_strategy: string;
+            failure_behavior: components["schemas"]["PdpFailureBehavior"];
+            /** Format: int32 */
+            timeout_ms: number;
+            /** Format: int32 */
+            max_retries: number;
+            /** Format: int32 */
+            circuit_breaker_threshold?: number;
+            /** Format: int32 */
+            cooldown_secs?: number;
+            /** Format: int32 */
+            last_known_good_ttl_secs?: number;
+        };
+        PdpRouteRuleListResponse: {
+            items: components["schemas"]["PdpRouteRule"][];
+        };
+        PdpRuntime: {
+            id: string;
+            name: string;
+            category: components["schemas"]["PdpRuntimeCategory"];
+            kind: components["schemas"]["PdpKind"];
+            mode: string;
+            system_managed: boolean;
+            enabled: boolean;
+            status: components["schemas"]["PdpRuntimeStatus"];
+            capabilities: string[];
+            endpoint?: string;
+            auth_ref?: string;
+            config_source: string;
+            active_bundle_id?: string;
+            active_bundle_hash?: string;
+            last_activated_at?: string;
+            last_probe?: components["schemas"]["PdpProbeResult"];
+            health?: unknown;
+            created_at: string;
+            updated_at: string;
+        };
+        /** @enum {string} */
+        PdpRuntimeCategory: "local_engine" | "remote_connector" | "pollen_cloud";
+        PdpRuntimeListResponse: {
+            items: components["schemas"]["PdpRuntime"][];
+        };
+        /** @enum {string} */
+        PdpRuntimeStatus: "installed" | "not_configured" | "loading" | "ready" | "degraded" | "error" | "disabled";
+        PepBinding: {
+            pep_type: string;
+            deployment_status: string;
+            rule_ids: string[];
+            capabilities: string[];
+            limitations: string[];
+        };
+        PolicyArtifact: {
+            name: string;
+            content: string;
+            language: components["schemas"]["SuggestedPolicyLanguage"];
+        };
+        PolicyCoverageSummary: {
+            status: string;
+            policy_ids: string[];
+            missing_controls: components["schemas"]["MissingControl"][];
+            last_simulated_at?: string;
+            last_enforced_at?: string;
+            /** Format: float */
+            confidence: number;
+        };
+        PolicySuggestion: {
+            suggestion_id: string;
+            tenant_id: string;
+            target_agent_id?: string;
+            target_resource_id?: string;
+            target_tool_id?: string;
+            suggestion_type: components["schemas"]["SuggestionType"];
+            title: string;
+            summary: string;
+            severity: components["schemas"]["SuggestionSeverity"];
+            /** Format: float */
+            confidence: number;
+            recommended_policy_type: components["schemas"]["SuggestedPolicyLanguage"];
+            recommended_pep_type: string;
+            artifacts: components["schemas"]["PolicyArtifact"][];
+            status: components["schemas"]["SuggestionStatus"];
+            created_at: string;
+        };
+        PolicySuggestionListResponse: {
+            items: components["schemas"]["PolicySuggestion"][];
+        };
+        PollenError: {
+            code: string;
+            message: string;
+            trace_id?: string;
+        };
+        Resource: {
+            meta: components["schemas"]["ObjectMeta"];
+            resource_id: string;
+            resource_type: string;
+            name: string;
+            uri: string;
+            classification: string;
+            owner_entity_id?: string;
+            attributes: Record<string, never>;
+            data_boundary: string;
+            data_tags: string[];
+            pii_types: string[];
+            secret_types: string[];
+            allowed_actions: string[];
+            observed_actions: string[];
+            observed_by_agent_ids: string[];
+            reachable_via_tool_ids: string[];
+            policy_coverage: components["schemas"]["PolicyCoverageSummary"];
+            pep_bindings: components["schemas"]["PepBinding"][];
+            first_seen_at?: string;
+            last_seen_at?: string;
+            /** Format: int64 */
+            access_count_24h: number;
+            /** Format: int64 */
+            violation_count_24h: number;
+            cost_relevant: boolean;
+        };
+        ResourceListResponse: {
+            items: components["schemas"]["Resource"][];
+        };
+        RouteMatch: {
+            agent_ids?: string[];
+            tool_categories?: string[];
+            resource_types?: string[];
+            protocols?: string[];
+            sensitivities?: string[];
+            environments?: string[];
+            risk_tiers?: string[];
+        };
+        SandboxConfig: {
+            /** @enum {string} */
+            schema_version: "sandbox-config.v1";
+            /** Format: int64 */
+            timeout_ms: number;
+            /** Format: int32 */
+            max_memory_mb: number;
+            enable_network: boolean;
+        };
+        SchemaFingerprint: {
+            input_schema_hash: string;
+            output_schema_hash?: string;
+            descriptor_hash?: string;
+            previous_descriptor_hash?: string;
+            drift_status: string;
+        };
+        SimulationRequest: {
+            action: string;
+            resource: string;
+            principal: string;
+            context: unknown;
+            target_pep?: string;
+        };
+        SimulationResult: {
+            passed?: boolean;
+            decision?: string;
+            logs?: string[];
+        };
+        /** @enum {string} */
+        SuggestedPolicyLanguage: "Rego" | "Cedar" | "OpenFga";
+        /** @enum {string} */
+        SuggestionSeverity: "Low" | "Medium" | "High" | "Critical";
+        /** @enum {string} */
+        SuggestionStatus: "Draft" | "Suggested" | "Approved" | "Dismissed" | "Applied";
+        /** @enum {string} */
+        SuggestionType: "RestrictMcpTool" | "RequireApprovalForSensitiveResource" | "RegisterShadowAgent" | "EnforceCostBudget" | "RestrictExternalLlmProvider";
+        TelemetryBatchRequest: {
+            /** @enum {string} */
+            schema_version: "telemetry-batch.v1";
+            tenant_id: string;
+            device_id: string;
+            batch_id: string;
+            events: unknown[];
+        };
+        TelemetryIngestResponse: {
+            /** @enum {string} */
+            schema_version: "telemetry-ingest-response.v1";
+            /** Format: int32 */
+            accepted: number;
+            /** Format: int32 */
+            rejected: number;
+            /** Format: int32 */
+            retry_after_seconds?: number;
+        };
+        TokenUsage: {
+            /** Format: int64 */
+            input_tokens?: number;
+            /** Format: int64 */
+            output_tokens?: number;
+            /** Format: int64 */
+            total_tokens?: number;
+            model?: string;
+        };
+        Tool: {
+            meta: components["schemas"]["ObjectMeta"];
+            tool_id: string;
+            mcp_server_id?: string;
+            name: string;
+            description?: string;
+            input_schema: unknown;
+            output_schema?: unknown;
+            side_effect_level: string;
+            data_access_level: string;
+            risk_level: string;
+            category: string;
+            source: string;
+            declared_by_agent_ids: string[];
+            observed_by_agent_ids: string[];
+            reachable_resource_ids: string[];
+            required_entitlements: string[];
+            schema_fingerprint: components["schemas"]["SchemaFingerprint"];
+            policy_coverage: components["schemas"]["PolicyCoverageSummary"];
+            pep_bindings: components["schemas"]["PepBinding"][];
+            last_seen_at?: string;
+            first_seen_at?: string;
+            /** Format: int64 */
+            observation_count_24h: number;
+            /** Format: int64 */
+            deny_count_24h: number;
+            /** Format: int64 */
+            allow_count_24h: number;
+        };
+        ToolListResponse: {
+            items: components["schemas"]["Tool"][];
+        };
     };
-    A2AMessageResponse: {
-      /** @enum {string} */
-      schema_version: "a2a-response.v1";
-      status: string;
-      reason?: string;
+    responses: never;
+    parameters: {
+        "PollenHeaders.contractVersion": string;
+        "PollenHeaders.deviceId": string;
+        "PollenHeaders.tenantId": string;
     };
-    AgentObservationEvent: {
-      event_id: string;
-      tenant_id: string;
-      trace_id: string;
-      agent_id?: string;
-      shadow_candidate_id?: string;
-      tool_id?: string;
-      resource_id?: string;
-      surface: string;
-      action: string;
-      pep_type?: string;
-      risk_level?: string;
-      timestamp: string;
-      payload_json: string;
-      token_usage?: components["schemas"]["TokenUsage"];
-    };
-    AgentObservationEventListResponse: {
-      items: components["schemas"]["AgentObservationEvent"][];
-    };
-    AgentTrustScore: {
-      /** @enum {string} */
-      schema_version: "agent-trust-score.v1";
-      agent_id: string;
-      /** Format: float */
-      score: number;
-      reasons: string[];
-    };
-    BudgetPolicy: {
-      /** @enum {string} */
-      schema_version: "budget-policy.v1";
-      agent_id: string;
-      /** Format: float */
-      daily_cost_cap_usd: number;
-      /** Format: int64 */
-      daily_token_cap: number;
-    };
-    BundleFetchRequest: {
-      tenant_id: string;
-      device_id: string;
-      /** Format: int32 */
-      current_generation?: number;
-      capabilities: string[];
-    };
-    BundleFetchResponse: {
-      /** @enum {string} */
-      schema_version: "bundle-fetch-response.v1";
-      /** @enum {string} */
-      status: "not_modified" | "bundle_ready";
-      /** Format: int32 */
-      generation?: number;
-      envelope?: unknown;
-    };
-    ContractDiscoveryResponse: {
-      /** @enum {string} */
-      schema_version: "contract-discovery.v1";
-      supported: string[];
-      preferred: string;
-      minimum_dek_version?: string;
-      sunset?: Record<string, never>;
-      capabilities: string[];
-    };
-    CostLedgerEntry: {
-      event_id: string;
-      agent_id: string;
-      provider: string;
-      model?: string;
-      /** Format: int64 */
-      input_tokens: number;
-      /** Format: int64 */
-      output_tokens: number;
-      /** Format: int64 */
-      total_tokens: number;
-      /** Format: float */
-      input_cost: number;
-      /** Format: float */
-      output_cost: number;
-      /** Format: float */
-      total_cost: number;
-      currency: string;
-      estimated: boolean;
-      timestamp: string;
-    };
-    CostLedgerListResponse: {
-      items: components["schemas"]["CostLedgerEntry"][];
-    };
-    CostSummaryResponse: {
-      /** @enum {string} */
-      schema_version: "cost-summary.v1";
-      tenant_id: string;
-      period: string;
-      /** Format: float */
-      total_estimated_cost_usd: number;
-      /** Format: int64 */
-      total_tokens: number;
-      provider_breakdown: Record<string, never>;
-      agent_breakdown: Record<string, never>;
-    };
-    DiscoveryCandidate: {
-      candidate_id: string;
-      tenant_id: string;
-      surface: string;
-      first_seen_at: string;
-      last_seen_at: string;
-      /** Format: int64 */
-      observation_count: number;
-      inferred_name?: string;
-      inferred_provider?: string;
-      status: string;
-    };
-    DiscoveryCandidateListResponse: {
-      items: components["schemas"]["DiscoveryCandidate"][];
-    };
-    MissingControl: {
-      control_type: string;
-      reason: string;
-      recommended_policy_type: string;
-      recommended_pep_type: string;
-    };
-    ObjectMeta: {
-      schema_version: string;
-      tenant_id: string;
-      workspace_id: string;
-      environment_id: string;
-      created_at: string;
-      updated_at: string;
-      created_by: string;
-      updated_by: string;
-      source: string;
-      status: string;
-      tags: string[];
-    };
-    /** @enum {string} */
-    PdpFailureBehavior:
-      | "deny"
-      | "fallback"
-      | "last_known_good"
-      | "allow"
-      | "not_applicable";
-    /** @enum {string} */
-    PdpKind:
-      | "policy_router"
-      | "cedar_local"
-      | "opa_wasm"
-      | "wasm_plugin"
-      | "opa_server"
-      | "openfga_server"
-      | "cedar_http"
-      | "custom_http"
-      | "custom_grpc"
-      | "pollen_cloud_pdp";
-    PdpProbeResult: {
-      ok: boolean;
-      effect: string;
-      reason: string;
-      /** Format: int64 */
-      latency_ms: number;
-      decision_id: string;
-      details: unknown;
-    };
-    /** @enum {string} */
-    PdpRouteMode:
-      | "local_only"
-      | "local_primary_remote_fallback"
-      | "remote_primary_local_fallback"
-      | "cloud_primary_local_fallback"
-      | "shadow_remote"
-      | "mirror_audit_only"
-      | "strict_remote";
-    PdpRouteRule: {
-      id: string;
-      name: string;
-      enabled: boolean;
-      /** Format: int32 */
-      priority: number;
-      description?: string;
-      match_cond: components["schemas"]["RouteMatch"];
-      mode: components["schemas"]["PdpRouteMode"];
-      primary_pdp_id: string;
-      fallback_pdp_ids: string[];
-      shadow_pdp_ids: string[];
-      required_pdp_ids?: string[];
-      merge_strategy: string;
-      failure_behavior: components["schemas"]["PdpFailureBehavior"];
-      /** Format: int32 */
-      timeout_ms: number;
-      /** Format: int32 */
-      max_retries: number;
-      /** Format: int32 */
-      circuit_breaker_threshold?: number;
-      /** Format: int32 */
-      cooldown_secs?: number;
-      /** Format: int32 */
-      last_known_good_ttl_secs?: number;
-    };
-    PdpRouteRuleListResponse: {
-      items: components["schemas"]["PdpRouteRule"][];
-    };
-    PdpRuntime: {
-      id: string;
-      name: string;
-      category: components["schemas"]["PdpRuntimeCategory"];
-      kind: components["schemas"]["PdpKind"];
-      mode: string;
-      system_managed: boolean;
-      enabled: boolean;
-      status: components["schemas"]["PdpRuntimeStatus"];
-      capabilities: string[];
-      endpoint?: string;
-      auth_ref?: string;
-      config_source: string;
-      active_bundle_id?: string;
-      active_bundle_hash?: string;
-      last_activated_at?: string;
-      last_probe?: components["schemas"]["PdpProbeResult"];
-      health?: unknown;
-      created_at: string;
-      updated_at: string;
-    };
-    /** @enum {string} */
-    PdpRuntimeCategory: "local_engine" | "remote_connector" | "pollen_cloud";
-    PdpRuntimeListResponse: {
-      items: components["schemas"]["PdpRuntime"][];
-    };
-    /** @enum {string} */
-    PdpRuntimeStatus:
-      | "installed"
-      | "not_configured"
-      | "loading"
-      | "ready"
-      | "degraded"
-      | "error"
-      | "disabled";
-    PepBinding: {
-      pep_type: string;
-      deployment_status: string;
-      rule_ids: string[];
-      capabilities: string[];
-      limitations: string[];
-    };
-    PolicyArtifact: {
-      name: string;
-      content: string;
-      language: components["schemas"]["SuggestedPolicyLanguage"];
-    };
-    PolicyCoverageSummary: {
-      status: string;
-      policy_ids: string[];
-      missing_controls: components["schemas"]["MissingControl"][];
-      last_simulated_at?: string;
-      last_enforced_at?: string;
-      /** Format: float */
-      confidence: number;
-    };
-    PolicySuggestion: {
-      suggestion_id: string;
-      tenant_id: string;
-      target_agent_id?: string;
-      target_resource_id?: string;
-      target_tool_id?: string;
-      suggestion_type: components["schemas"]["SuggestionType"];
-      title: string;
-      summary: string;
-      severity: components["schemas"]["SuggestionSeverity"];
-      /** Format: float */
-      confidence: number;
-      recommended_policy_type: components["schemas"]["SuggestedPolicyLanguage"];
-      recommended_pep_type: string;
-      artifacts: components["schemas"]["PolicyArtifact"][];
-      status: components["schemas"]["SuggestionStatus"];
-      created_at: string;
-    };
-    PolicySuggestionListResponse: {
-      items: components["schemas"]["PolicySuggestion"][];
-    };
-    PollenError: {
-      code: string;
-      message: string;
-      trace_id?: string;
-    };
-    Resource: {
-      meta: components["schemas"]["ObjectMeta"];
-      resource_id: string;
-      resource_type: string;
-      name: string;
-      uri: string;
-      classification: string;
-      owner_entity_id?: string;
-      attributes: Record<string, never>;
-      data_boundary: string;
-      data_tags: string[];
-      pii_types: string[];
-      secret_types: string[];
-      allowed_actions: string[];
-      observed_actions: string[];
-      observed_by_agent_ids: string[];
-      reachable_via_tool_ids: string[];
-      policy_coverage: components["schemas"]["PolicyCoverageSummary"];
-      pep_bindings: components["schemas"]["PepBinding"][];
-      first_seen_at?: string;
-      last_seen_at?: string;
-      /** Format: int64 */
-      access_count_24h: number;
-      /** Format: int64 */
-      violation_count_24h: number;
-      cost_relevant: boolean;
-    };
-    ResourceListResponse: {
-      items: components["schemas"]["Resource"][];
-    };
-    RouteMatch: {
-      agent_ids?: string[];
-      tool_categories?: string[];
-      resource_types?: string[];
-      protocols?: string[];
-      sensitivities?: string[];
-      environments?: string[];
-      risk_tiers?: string[];
-    };
-    SandboxConfig: {
-      /** @enum {string} */
-      schema_version: "sandbox-config.v1";
-      /** Format: int64 */
-      timeout_ms: number;
-      /** Format: int32 */
-      max_memory_mb: number;
-      enable_network: boolean;
-    };
-    SchemaFingerprint: {
-      input_schema_hash: string;
-      output_schema_hash?: string;
-      descriptor_hash?: string;
-      previous_descriptor_hash?: string;
-      drift_status: string;
-    };
-    SimulationRequest: {
-      action: string;
-      resource: string;
-      principal: string;
-      context: unknown;
-      target_pep?: string;
-    };
-    SimulationResult: {
-      passed?: boolean;
-      decision?: string;
-      logs?: string[];
-    };
-    /** @enum {string} */
-    SuggestedPolicyLanguage: "Rego" | "Cedar" | "OpenFga";
-    /** @enum {string} */
-    SuggestionSeverity: "Low" | "Medium" | "High" | "Critical";
-    /** @enum {string} */
-    SuggestionStatus:
-      | "Draft"
-      | "Suggested"
-      | "Approved"
-      | "Dismissed"
-      | "Applied";
-    /** @enum {string} */
-    SuggestionType:
-      | "RestrictMcpTool"
-      | "RequireApprovalForSensitiveResource"
-      | "RegisterShadowAgent"
-      | "EnforceCostBudget"
-      | "RestrictExternalLlmProvider";
-    TelemetryBatchRequest: {
-      /** @enum {string} */
-      schema_version: "telemetry-batch.v1";
-      tenant_id: string;
-      device_id: string;
-      batch_id: string;
-      events: unknown[];
-    };
-    TelemetryIngestResponse: {
-      /** @enum {string} */
-      schema_version: "telemetry-ingest-response.v1";
-      /** Format: int32 */
-      accepted: number;
-      /** Format: int32 */
-      rejected: number;
-      /** Format: int32 */
-      retry_after_seconds?: number;
-    };
-    TokenUsage: {
-      /** Format: int64 */
-      input_tokens?: number;
-      /** Format: int64 */
-      output_tokens?: number;
-      /** Format: int64 */
-      total_tokens?: number;
-      model?: string;
-    };
-    Tool: {
-      meta: components["schemas"]["ObjectMeta"];
-      tool_id: string;
-      mcp_server_id?: string;
-      name: string;
-      description?: string;
-      input_schema: unknown;
-      output_schema?: unknown;
-      side_effect_level: string;
-      data_access_level: string;
-      risk_level: string;
-      category: string;
-      source: string;
-      declared_by_agent_ids: string[];
-      observed_by_agent_ids: string[];
-      reachable_resource_ids: string[];
-      required_entitlements: string[];
-      schema_fingerprint: components["schemas"]["SchemaFingerprint"];
-      policy_coverage: components["schemas"]["PolicyCoverageSummary"];
-      pep_bindings: components["schemas"]["PepBinding"][];
-      last_seen_at?: string;
-      first_seen_at?: string;
-      /** Format: int64 */
-      observation_count_24h: number;
-      /** Format: int64 */
-      deny_count_24h: number;
-      /** Format: int64 */
-      allow_count_24h: number;
-    };
-    ToolListResponse: {
-      items: components["schemas"]["Tool"][];
-    };
-  };
-  responses: never;
-  parameters: {
-    "PollenHeaders.contractVersion": string;
-    "PollenHeaders.deviceId": string;
-    "PollenHeaders.tenantId": string;
-  };
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  ContractDiscoveryApi_getDiscovery: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ContractDiscoveryResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  A2AApi_sendMessage: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["A2AMessage"];
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["A2AMessageResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  TelemetryApi_ingestBatch: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["TelemetryBatchRequest"];
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TelemetryIngestResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  DiscoveryApi_listCandidates: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["DiscoveryCandidateListResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  DiscoveryApi_blockCandidate: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        candidate_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  DiscoveryApi_ignoreCandidate: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        candidate_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  DiscoveryApi_observeCandidate: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        candidate_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  DiscoveryApi_registerCandidate: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        candidate_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  DiscoveryApi_scan: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  BundleApi_fetchLatest: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        device_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["BundleFetchRequest"];
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["BundleFetchResponse"];
-        };
-      };
-      /** @description The client has made a conditional request and the resource has not been modified. */
-      304: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  ObservationApi_getAgentObservations: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        agent_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentObservationEventListResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  ObservationApi_getCosts: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CostSummaryResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  ObservationApi_getCoverage: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicyCoverageSummary"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  ObservationApi_ingestEvents: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["AgentObservationEvent"][];
-      };
-    };
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  ObservationApi_getResourceObservations: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        resource_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentObservationEventListResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  ObservationApi_getToolObservations: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        tool_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentObservationEventListResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  ObservationApi_getAgentTrustScore: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        agent_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentTrustScore"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PdpRoutingApi_listRoutes: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PdpRouteRuleListResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PdpRoutingApi_simulateRoute: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SimulationRequest"];
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SimulationResult"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PdpRoutingApi_getRoute: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        route_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PdpRouteRule"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PdpRoutingApi_upsertRoute: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        route_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["PdpRouteRule"];
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PdpRouteRule"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PdpRoutingApi_deleteRoute: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        route_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PdpRuntimeApi_listRuntimes: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PdpRuntimeListResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PdpRuntimeApi_getRuntime: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        runtime_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PdpRuntime"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PdpRuntimeApi_upsertRuntime: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        runtime_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["PdpRuntime"];
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PdpRuntime"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PdpRuntimeApi_deleteRuntime: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        runtime_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PdpRuntimeApi_clearCache: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        runtime_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PdpRuntimeApi_probeRuntime: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        runtime_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": unknown;
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PdpProbeResult"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PdpRuntimeApi_validateRuntime: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        runtime_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PepCapabilitiesApi_listCapabilities: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PepCapabilitiesApi_checkCapabilities: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": unknown;
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PolicyPresetsApi_listPresets: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PolicyPresetsApi_getPreset: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        preset_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PolicyPresetsApi_createDraft: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        preset_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": unknown;
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PolicyPresetsApi_previewPreset: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        preset_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": unknown;
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PolicyPresetsApi_simulatePreset: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        preset_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": unknown;
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PolicySuggestionsApi_listSuggestions: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicySuggestionListResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PolicySuggestionsApi_generate: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PolicySuggestionsApi_getSuggestion: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        suggestion_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicySuggestion"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PolicySuggestionsApi_approve: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        suggestion_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PolicySuggestionsApi_createDraft: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        suggestion_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PolicySuggestionsApi_dismiss: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        suggestion_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  PolicySuggestionsApi_simulate: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-        suggestion_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description There is no content to send for this request, but the headers may be useful. */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  ResourcesApi_listResources: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ResourceListResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  ResourcesApi_createResource: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["Resource"];
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Resource"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  ToolsApi_listTools: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ToolListResponse"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
-  ToolsApi_createTool: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
-        "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
-        "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
-      };
-      path: {
-        tenant_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["Tool"];
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Tool"];
-        };
-      };
-      /** @description An unexpected error response. */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PollenError"];
-        };
-      };
-    };
-  };
+    ContractDiscoveryApi_getDiscovery: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractDiscoveryResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    A2AApi_sendMessage: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["A2AMessage"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["A2AMessageResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    TelemetryApi_ingestBatch: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TelemetryBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryIngestResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    DiscoveryApi_listCandidates: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveryCandidateListResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    DiscoveryApi_blockCandidate: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    DiscoveryApi_ignoreCandidate: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    DiscoveryApi_observeCandidate: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    DiscoveryApi_registerCandidate: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    DiscoveryApi_scan: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    BundleApi_fetchLatest: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BundleFetchRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BundleFetchResponse"];
+                };
+            };
+            /** @description The client has made a conditional request and the resource has not been modified. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    ObservationApi_getAgentObservations: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentObservationEventListResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    ObservationApi_getCosts: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostSummaryResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    ObservationApi_getCoverage: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyCoverageSummary"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    ObservationApi_ingestEvents: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentObservationEvent"][];
+            };
+        };
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    ObservationApi_getResourceObservations: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentObservationEventListResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    ObservationApi_getToolObservations: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                tool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentObservationEventListResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    ObservationApi_getAgentTrustScore: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentTrustScore"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PdpRoutingApi_listRoutes: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PdpRouteRuleListResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PdpRoutingApi_simulateRoute: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulationRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationResult"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PdpRoutingApi_getRoute: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                route_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PdpRouteRule"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PdpRoutingApi_upsertRoute: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                route_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PdpRouteRule"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PdpRouteRule"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PdpRoutingApi_deleteRoute: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                route_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PdpRuntimeApi_listRuntimes: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PdpRuntimeListResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PdpRuntimeApi_getRuntime: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                runtime_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PdpRuntime"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PdpRuntimeApi_upsertRuntime: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                runtime_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PdpRuntime"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PdpRuntime"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PdpRuntimeApi_deleteRuntime: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                runtime_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PdpRuntimeApi_clearCache: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                runtime_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PdpRuntimeApi_probeRuntime: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                runtime_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PdpProbeResult"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PdpRuntimeApi_validateRuntime: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                runtime_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PepCapabilitiesApi_listCapabilities: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PepCapabilitiesApi_checkCapabilities: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PolicyPresetsApi_listPresets: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PolicyPresetsApi_getPreset: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                preset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PolicyPresetsApi_createDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                preset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PolicyPresetsApi_previewPreset: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                preset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PolicyPresetsApi_simulatePreset: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                preset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PolicySuggestionsApi_listSuggestions: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicySuggestionListResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PolicySuggestionsApi_generate: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PolicySuggestionsApi_getSuggestion: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicySuggestion"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PolicySuggestionsApi_approve: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PolicySuggestionsApi_createDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PolicySuggestionsApi_dismiss: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    PolicySuggestionsApi_simulate: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    ResourcesApi_listResources: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceListResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    ResourcesApi_createResource: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Resource"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Resource"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    ToolsApi_listTools: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolListResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    ToolsApi_createTool: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Tool"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tool"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Shield, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
-import { DeploymentApi } from "../../services/api";
+import { DeploymentApi, PolicyApi } from "../../services/api";
 import type { PolicyPresetV2, ControlMode } from "../../types/policy-presets";
 import { PolicyPreview } from "./PolicyPreview";
 import { AgentSelector } from "../policy-deployment/AgentSelector";
@@ -68,7 +68,7 @@ export function PresetWizard({
   const [capabilities, setCapabilities] = useState<any[]>([]);
   useEffect(() => {
     PolicyApi.getCapabilities()
-      .then((res) => setCapabilities(res.capabilities || []))
+      .then((res: any) => setCapabilities(res.capabilities || []))
       .catch(console.error);
   }, []);
 

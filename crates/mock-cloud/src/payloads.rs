@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use serde_json::json;
@@ -47,6 +47,6 @@ pub fn mock_network_guardrails_payload() -> serde_json::Value {
 pub fn hash_payload(val: &serde_json::Value) -> String {
     use sha2::{Digest, Sha256};
     let mut h = Sha256::new();
-    h.update(serde_json::to_vec(val).unwrap());
+    h.update(serde_json::to_vec(val).unwrap()); //
     hex::encode(h.finalize())
 }

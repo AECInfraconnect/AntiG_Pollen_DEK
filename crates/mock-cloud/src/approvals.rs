@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use crate::state::{AppState, ApprovalRequest, AuditLog};
@@ -47,7 +47,7 @@ pub async fn submit_approval(
         timestamp: Utc::now().to_rfc3339(),
     };
 
-    let mut approvals = state.approvals.lock().unwrap();
+    let mut approvals = state.approvals.lock().unwrap(); //
     approvals.insert(ref_id.clone(), approval);
 
     (
@@ -67,7 +67,7 @@ struct ApprovalsTemplate {
 }
 
 pub async fn admin_approvals_view(State(state): State<AppState>) -> impl IntoResponse {
-    let approvals_guard = state.approvals.lock().unwrap();
+    let approvals_guard = state.approvals.lock().unwrap(); //
     let mut approvals: Vec<ApprovalRequest> = approvals_guard.values().cloned().collect();
     approvals.sort_by(|a, b| b.timestamp.cmp(&a.timestamp)); // newest first
 
@@ -86,7 +86,7 @@ pub async fn admin_approve_deny(
         return Redirect::to("/mock/admin/approvals");
     }
 
-    let mut approvals = state.approvals.lock().unwrap();
+    let mut approvals = state.approvals.lock().unwrap(); //
     if let Some(approval) = approvals.get_mut(&ref_id) {
         approval.status = if action == "approve" {
             "APPROVED".to_string()
@@ -94,7 +94,7 @@ pub async fn admin_approve_deny(
             "DENIED".to_string()
         };
 
-        state.audit_logs.lock().unwrap().push(AuditLog {
+        state.audit_logs.lock().unwrap().push(AuditLog { //
             timestamp: Utc::now().to_rfc3339(),
             actor: "admin".to_string(),
             action: format!("APPROVAL_{}", action.to_uppercase()),

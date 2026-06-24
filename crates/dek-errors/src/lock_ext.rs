@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-//! lock_ext.rs — poison-safe Mutex/RwLock access (Phase B reliability).
+//! lock_ext.rs โ€” poison-safe Mutex/RwLock access (Phase B reliability).
 //!
 //! `Mutex::lock().unwrap()` aborts the whole process on poisoning because the
 //! workspace is built with `panic = "abort"`. For a long-running enforcement
@@ -75,8 +75,8 @@ mod tests {
         let m2 = m.clone();
         // poison it
         let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            let _g = m2.lock().unwrap();
-            panic!("boom");
+            let _g = m2.lock().unwrap(); //
+            panic!("boom"); //
         }));
         // lock_safe still works (would abort with .lock().unwrap())
         let mut g = m.lock_safe();

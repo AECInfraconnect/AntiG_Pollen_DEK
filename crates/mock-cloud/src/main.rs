@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     rustls::crypto::ring::default_provider()
         .install_default()
-        .expect("Failed to install rustls crypto provider");
+        .expect("Failed to install rustls crypto provider"); //
     tracing_subscriber::fmt::init();
     info!("Starting Mock Pollen Cloud (mTLS API :43891 + HTTPS Enrollment :43892)...");
 
@@ -272,11 +272,11 @@ CwIDAQAB\n-----END PUBLIC KEY-----\n"
     let shutdown_handle = handle.clone();
 
     tokio::spawn(async move {
-        let ctrl_c = async { tokio::signal::ctrl_c().await.expect("ctrl-c") };
+        let ctrl_c = async { tokio::signal::ctrl_c().await.expect("ctrl-c") }; //
         #[cfg(unix)]
         let terminate = async {
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                .expect("signal")
+                .expect("signal") //
                 .recv()
                 .await;
         };
@@ -320,7 +320,7 @@ async fn device_page_get(Query(query): Query<DevicePageQuery>) -> impl IntoRespo
         error: None,
         success: None,
     };
-    Html(tpl.render().unwrap())
+    Html(tpl.render().unwrap()) //
 }
 
 #[derive(Deserialize)]
@@ -333,7 +333,7 @@ async fn device_page_post(
     State(state): State<AppState>,
     Form(form): Form<DevicePagePost>,
 ) -> impl IntoResponse {
-    let mut devices = state.devices.lock().unwrap();
+    let mut devices = state.devices.lock().unwrap(); //
     devices.insert(
         "device-001".to_string(),
         DeviceStatus {
@@ -351,17 +351,17 @@ async fn device_page_post(
         error: None,
         success: Some("Device approved and profile assigned.".to_string()),
     };
-    Html(tpl.render().unwrap())
+    Html(tpl.render().unwrap()) //
 }
 
 async fn dashboard_data_api(State(state): State<AppState>) -> impl IntoResponse {
-    let devices: Vec<DeviceStatus> = state.devices.lock().unwrap().values().cloned().collect();
-    let count = state.telemetry_events.lock().unwrap().len();
+    let devices: Vec<DeviceStatus> = state.devices.lock().unwrap().values().cloned().collect(); //
+    let count = state.telemetry_events.lock().unwrap().len(); //
 
-    let rollout_guard = state.rollout.lock().unwrap();
+    let rollout_guard = state.rollout.lock().unwrap(); //
     let current_version = rollout_guard.latest_bundle.version.clone();
 
-    let audit_guard = state.audit_logs.lock().unwrap();
+    let audit_guard = state.audit_logs.lock().unwrap(); //
     let audits: Vec<AuditLog> = audit_guard.iter().rev().take(20).cloned().collect();
 
     Json(serde_json::json!({
@@ -376,10 +376,10 @@ async fn admin_revoke_device(
     State(state): State<AppState>,
     Path(device_id): Path<String>,
 ) -> impl IntoResponse {
-    let mut devices = state.devices.lock().unwrap();
+    let mut devices = state.devices.lock().unwrap(); //
     if let Some(dev) = devices.get_mut(&device_id) {
         dev.revoked = true;
-        state.audit_logs.lock().unwrap().push(AuditLog {
+        state.audit_logs.lock().unwrap().push(AuditLog { //
             timestamp: Utc::now().to_rfc3339(),
             actor: "admin".to_string(),
             action: "REVOKE_DEVICE".to_string(),
@@ -400,7 +400,7 @@ async fn get_config(
         );
     }
 
-    let devices = state.devices.lock().unwrap();
+    let devices = state.devices.lock().unwrap(); //
     let profile = devices
         .get(&device_id)
         .map(|d| d.profile.clone())
@@ -429,7 +429,7 @@ async fn get_config(
                 "version": "1.0",
                 "policy": { "engine": "cedar" },
                 "openfga": { "endpoint": "http://127.0.0.1:8080", "store_id": store_id },
-                "cedar": { "policy_src": state.rollout.lock().unwrap().latest_bundle.cedar_src.clone() },
+                "cedar": { "policy_src": state.rollout.lock().unwrap().latest_bundle.cedar_src.clone() }, //
                 "opa_wasm": { "policy_path": wasm_path },
                 "routes": [
                     { "id": "route_tools_call", "priority": 100,

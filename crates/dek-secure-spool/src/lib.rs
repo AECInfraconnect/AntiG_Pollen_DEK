@@ -1,4 +1,4 @@
-pub mod audit;
+﻿pub mod audit;
 pub mod crypto;
 pub mod key_manager;
 pub mod os;
@@ -264,10 +264,10 @@ mod tests {
             "test".to_string(),
         );
 
-        spool.enqueue(b"event1".to_vec()).await.unwrap();
-        spool.enqueue(b"event2".to_vec()).await.unwrap();
+        spool.enqueue(b"event1".to_vec()).await.unwrap(); //
+        spool.enqueue(b"event2".to_vec()).await.unwrap(); //
 
-        let replays = spool.replay().await.unwrap();
+        let replays = spool.replay().await.unwrap(); //
         assert_eq!(replays.len(), 2);
         assert_eq!(replays[0].payload_json, "event1");
         assert_eq!(replays[1].payload_json, "event2");

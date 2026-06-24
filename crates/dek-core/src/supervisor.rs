@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-//! supervisor.rs (v2) — aligned to the REAL dek-core structure.
+//! supervisor.rs (v2) โ€” aligned to the REAL dek-core structure.
 //!
 //! Supersedes the earlier generic draft: uses `CancellationToken` (not Notify),
 //! the real deps (`BundleSyncAgent`, `CloudTelemetrySink`, metrics client), and
@@ -493,8 +493,8 @@ impl Supervisor {
     #[allow(clippy::expect_used)]
     async fn wait_for_signal() {
         use tokio::signal::unix::{signal, SignalKind};
-        let mut term = signal(SignalKind::terminate()).expect("SIGTERM handler");
-        let mut int = signal(SignalKind::interrupt()).expect("SIGINT handler");
+        let mut term = signal(SignalKind::terminate()).expect("SIGTERM handler"); //
+        let mut int = signal(SignalKind::interrupt()).expect("SIGINT handler"); //
         tokio::select! { _ = term.recv() => {}, _ = int.recv() => {} }
     }
 

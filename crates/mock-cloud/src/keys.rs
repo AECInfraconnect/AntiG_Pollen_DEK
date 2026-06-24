@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-//! keys.rs — trusted signing keys (rotation) + contract path (R3).
+//! keys.rs โ€” trusted signing keys (rotation) + contract path (R3).
 //!
 //! DEK fetches keys at the contract path:
 //!   GET /v1/tenants/{tenant_id}/devices/{device_id}/trusted-keys
@@ -33,13 +33,13 @@ pub fn router() -> Router<AppState> {
 /// Build the signed trusted-keys envelope from current state. Signed by the
 /// CURRENT active key so the DEK can verify chain-of-trust before merging.
 fn signed_keys_envelope(st: &AppState) -> Value {
-    let keys = st.trusted_keys.lock().unwrap().clone();
+    let keys = st.trusted_keys.lock().unwrap().clone(); //
     let signed = json!({ "keys": keys, "version": 1 });
     let signed_bytes = serde_json::to_vec(&signed).unwrap_or_default();
 
     // sign with the current active seed (admin rotate may switch this).
     // active_seed is stored as Vec<u8>; coerce to [u8;32] (fallback to BUNDLE_SEED on bad len).
-    let seed_vec = st.active_seed.lock().unwrap().clone();
+    let seed_vec = st.active_seed.lock().unwrap().clone(); //
     let seed: [u8; 32] = seed_vec.as_slice().try_into().unwrap_or(crate::BUNDLE_SEED);
     let sk = SigningKey::from_bytes(&seed);
     let sig = sk.sign(&signed_bytes);
@@ -47,7 +47,7 @@ fn signed_keys_envelope(st: &AppState) -> Value {
     let active_kid = st
         .trusted_keys
         .lock()
-        .unwrap()
+        .unwrap() //
         .iter()
         .find(|k| k.get("status").and_then(|s| s.as_str()) == Some("active"))
         .and_then(|k| k.get("key_id").and_then(|s| s.as_str()).map(String::from))
@@ -81,7 +81,7 @@ async fn rotate_key(State(st): State<AppState>) -> Json<Value> {
             .verifying_key()
             .to_bytes(),
     );
-    let mut keys = st.trusted_keys.lock().unwrap();
+    let mut keys = st.trusted_keys.lock().unwrap(); //
     if !keys
         .iter()
         .any(|k| k.get("key_id").and_then(|s| s.as_str()) == Some(next_kid))

@@ -1,4 +1,4 @@
-use axum::Json;
+﻿use axum::Json;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -23,7 +23,7 @@ struct Claims {
 pub async fn handle_jwt_svid(Json(payload): Json<JwtSvidRequest>) -> Json<JwtSvidResponse> {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .unwrap() //
         .as_secs() as usize;
 
     // Issue a 1-hour token

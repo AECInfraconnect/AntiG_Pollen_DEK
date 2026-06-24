@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 #![warn(clippy::print_stdout, clippy::print_stderr)]
@@ -286,7 +286,7 @@ mod tests {
             }
         });
 
-        let decision = runtime.evaluate(std::sync::Arc::new(input)).await.unwrap();
+        let decision = runtime.evaluate(std::sync::Arc::new(input)).await.unwrap(); //
         assert!(decision.allow);
         assert_eq!(decision.reason, "allowed by guardrail policy");
     }
@@ -301,7 +301,7 @@ mod tests {
             }
         });
 
-        let decision = runtime.evaluate(std::sync::Arc::new(input)).await.unwrap();
+        let decision = runtime.evaluate(std::sync::Arc::new(input)).await.unwrap(); //
         assert!(!decision.allow);
         assert_eq!(decision.reason, "tool is not allowed");
     }

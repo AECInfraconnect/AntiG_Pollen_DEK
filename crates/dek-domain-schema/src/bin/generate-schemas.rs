@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
@@ -15,7 +15,7 @@ use dek_domain_schema::{
 #[allow(clippy::print_stdout)]
 fn main() {
     let schema_dir = Path::new("../../schemas");
-    fs::create_dir_all(schema_dir).unwrap();
+    fs::create_dir_all(schema_dir).unwrap(); //
 
     let schemas = vec![
         ("tenant.schema.json", schema_for!(Tenant)),
@@ -33,8 +33,8 @@ fn main() {
 
     for (filename, schema) in schemas {
         let out_path = schema_dir.join(filename);
-        let out_json = serde_json::to_string_pretty(&schema).unwrap();
-        fs::write(&out_path, out_json).unwrap();
+        let out_json = serde_json::to_string_pretty(&schema).unwrap(); //
+        fs::write(&out_path, out_json).unwrap(); //
         println!("Generated {}", out_path.display());
     }
 }

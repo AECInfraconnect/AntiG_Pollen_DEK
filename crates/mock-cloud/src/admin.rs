@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use crate::state::AppState;
@@ -28,7 +28,7 @@ pub struct AdminDashboardTemplate {
 }
 
 pub async fn admin_dashboard(State(state): State<AppState>) -> impl IntoResponse {
-    let reg = state.registry.lock().unwrap();
+    let reg = state.registry.lock().unwrap(); //
 
     let template = AdminDashboardTemplate {
         tenants: reg.tenants.clone(),
@@ -72,7 +72,7 @@ pub async fn admin_bundle_poison(
     state
         .audit_logs
         .lock()
-        .unwrap()
+        .unwrap() //
         .push(crate::state::AuditLog {
             timestamp: chrono::Utc::now().to_rfc3339(),
             actor: "test-harness".to_string(),
@@ -87,12 +87,12 @@ pub async fn admin_bundle_poison(
 }
 
 pub async fn get_audits(State(state): State<AppState>) -> impl IntoResponse {
-    let logs = state.audit_logs.lock().unwrap();
+    let logs = state.audit_logs.lock().unwrap(); //
     (axum::http::StatusCode::OK, axum::Json(logs.clone()))
 }
 
 pub async fn get_telemetry(State(state): State<AppState>) -> impl IntoResponse {
-    let logs = state.telemetry_events.lock().unwrap();
+    let logs = state.telemetry_events.lock().unwrap(); //
     (axum::http::StatusCode::OK, axum::Json(logs.clone()))
 }
 
@@ -104,13 +104,13 @@ pub async fn admin_chaos_outage(
         .get("enabled")
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
-    let mut cfg = state.chaos_config.lock().unwrap();
+    let mut cfg = state.chaos_config.lock().unwrap(); //
     cfg.outage_enabled = enabled;
 
     state
         .audit_logs
         .lock()
-        .unwrap()
+        .unwrap() //
         .push(crate::state::AuditLog {
             timestamp: chrono::Utc::now().to_rfc3339(),
             actor: "test-harness".to_string(),
@@ -126,7 +126,7 @@ pub async fn admin_chaos_outage(
 
 pub async fn admin_keys_rotate(State(state): State<AppState>) -> impl IntoResponse {
     // We just mock key rotation by logging it and maybe adding a dummy key to trusted keys
-    let mut keys = state.trusted_keys.lock().unwrap();
+    let mut keys = state.trusted_keys.lock().unwrap(); //
     let new_key = serde_json::json!({
         "key_id": format!("rotated-{}", chrono::Utc::now().timestamp()),
         "public_b64": "dummy-rotated-key",
@@ -139,7 +139,7 @@ pub async fn admin_keys_rotate(State(state): State<AppState>) -> impl IntoRespon
     state
         .audit_logs
         .lock()
-        .unwrap()
+        .unwrap() //
         .push(crate::state::AuditLog {
             timestamp: chrono::Utc::now().to_rfc3339(),
             actor: "test-harness".to_string(),
@@ -174,7 +174,7 @@ pub async fn admin_policies_publish(
         .revision
         .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
         + 1;
-    let mut rollout = state.rollout.lock().unwrap();
+    let mut rollout = state.rollout.lock().unwrap(); //
     let cedar_src = if require_approval {
         format!("@obligations(\"require_approval\")\npermit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n); // rev {}", rev)
     } else {
@@ -186,7 +186,7 @@ pub async fn admin_policies_publish(
     state
         .audit_logs
         .lock()
-        .unwrap()
+        .unwrap() //
         .push(crate::state::AuditLog {
             timestamp: chrono::Utc::now().to_rfc3339(),
             actor: "test-harness".to_string(),
@@ -204,14 +204,14 @@ pub async fn admin_approvals_approve_all(State(state): State<AppState>) -> impl 
         .revision
         .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
         + 1;
-    let mut rollout = state.rollout.lock().unwrap();
+    let mut rollout = state.rollout.lock().unwrap(); //
     rollout.latest_bundle.cedar_src = format!("permit(\n  principal == User::\"user_bob\",\n  action == Action::\"tools/call\",\n  resource == Resource::\"mcp_tool\"\n); // rev {}", rev);
     drop(rollout);
 
     state
         .audit_logs
         .lock()
-        .unwrap()
+        .unwrap() //
         .push(crate::state::AuditLog {
             timestamp: chrono::Utc::now().to_rfc3339(),
             actor: "admin".to_string(),
@@ -231,7 +231,7 @@ pub async fn admin_policies_publish_tampered(State(state): State<AppState>) -> i
     state
         .audit_logs
         .lock()
-        .unwrap()
+        .unwrap() //
         .push(crate::state::AuditLog {
             timestamp: chrono::Utc::now().to_rfc3339(),
             actor: "test-harness".to_string(),
@@ -259,7 +259,7 @@ pub async fn admin_policies_rollback(State(state): State<AppState>) -> impl Into
     state
         .audit_logs
         .lock()
-        .unwrap()
+        .unwrap() //
         .push(crate::state::AuditLog {
             timestamp: chrono::Utc::now().to_rfc3339(),
             actor: "test-harness".to_string(),
@@ -277,11 +277,11 @@ pub async fn admin_network_publish(
     axum::Json(body): axum::Json<serde_json::Value>,
 ) -> impl IntoResponse {
     if let Some(rules) = body.get("rules").and_then(|r| r.as_array()) {
-        *state.network_rules.lock().unwrap() = rules.clone();
+        *state.network_rules.lock().unwrap() = rules.clone(); //
         state
             .audit_logs
             .lock()
-            .unwrap()
+            .unwrap() //
             .push(crate::state::AuditLog {
                 timestamp: chrono::Utc::now().to_rfc3339(),
                 actor: "admin".to_string(),

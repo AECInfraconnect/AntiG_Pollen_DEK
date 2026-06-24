@@ -24,22 +24,22 @@ paths:
       operationId: ContractDiscoveryApi_getDiscovery
       description: Discover contract capabilities and supported protocol versions.
       parameters:
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ContractDiscoveryResponse"
+                $ref: '#/components/schemas/ContractDiscoveryResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Discovery
   /v1/a2a/message:
@@ -47,22 +47,22 @@ paths:
       operationId: A2AApi_sendMessage
       description: Send an Inter-Agent Trust Protocol (IATP) message via the DEK mediator.
       parameters:
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/A2AMessageResponse"
+                $ref: '#/components/schemas/A2AMessageResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - A2A Mediator
       requestBody:
@@ -70,28 +70,28 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/A2AMessage"
+              $ref: '#/components/schemas/A2AMessage'
   /v1/telemetry/batches:
     post:
       operationId: TelemetryApi_ingestBatch
       description: Ingest a batch of telemetry events.
       parameters:
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TelemetryIngestResponse"
+                $ref: '#/components/schemas/TelemetryIngestResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Telemetry
       requestBody:
@@ -99,7 +99,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TelemetryBatchRequest"
+              $ref: '#/components/schemas/TelemetryBatchRequest'
   /v1/tenants/{tenant_id}/agent-discovery/candidates:
     get:
       operationId: DiscoveryApi_listCandidates
@@ -110,22 +110,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DiscoveryCandidateListResponse"
+                $ref: '#/components/schemas/DiscoveryCandidateListResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Discovery
   /v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/block:
@@ -143,18 +143,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Discovery
   /v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/ignore:
@@ -172,18 +172,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Discovery
   /v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/observe-only:
@@ -201,18 +201,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Discovery
   /v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/register:
@@ -230,18 +230,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Discovery
   /v1/tenants/{tenant_id}/agent-discovery/scan:
@@ -254,18 +254,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Discovery
   /v1/tenants/{tenant_id}/devices/{device_id}/bundles/latest:
@@ -273,9 +273,9 @@ paths:
       operationId: BundleApi_fetchLatest
       description: Fetch the latest signed policy bundle manifest for a device.
       parameters:
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
         - name: tenant_id
           in: path
           required: true
@@ -287,20 +287,20 @@ paths:
           schema:
             type: string
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BundleFetchResponse"
-        "304":
+                $ref: '#/components/schemas/BundleFetchResponse'
+        '304':
           description: The client has made a conditional request and the resource has not been modified.
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Bundles
       requestBody:
@@ -308,7 +308,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/BundleFetchRequest"
+              $ref: '#/components/schemas/BundleFetchRequest'
   /v1/tenants/{tenant_id}/observations/agents/{agent_id}:
     get:
       operationId: ObservationApi_getAgentObservations
@@ -324,22 +324,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AgentObservationEventListResponse"
+                $ref: '#/components/schemas/AgentObservationEventListResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Observation
   /v1/tenants/{tenant_id}/observations/costs:
@@ -352,22 +352,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CostSummaryResponse"
+                $ref: '#/components/schemas/CostSummaryResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Observation
   /v1/tenants/{tenant_id}/observations/coverage:
@@ -380,22 +380,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PolicyCoverageSummary"
+                $ref: '#/components/schemas/PolicyCoverageSummary'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Observation
   /v1/tenants/{tenant_id}/observations/events:
@@ -408,18 +408,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Observation
       requestBody:
@@ -429,7 +429,7 @@ paths:
             schema:
               type: array
               items:
-                $ref: "#/components/schemas/AgentObservationEvent"
+                $ref: '#/components/schemas/AgentObservationEvent'
   /v1/tenants/{tenant_id}/observations/resources/{resource_id}:
     get:
       operationId: ObservationApi_getResourceObservations
@@ -445,22 +445,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AgentObservationEventListResponse"
+                $ref: '#/components/schemas/AgentObservationEventListResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Observation
   /v1/tenants/{tenant_id}/observations/tools/{tool_id}:
@@ -478,22 +478,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AgentObservationEventListResponse"
+                $ref: '#/components/schemas/AgentObservationEventListResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Observation
   /v1/tenants/{tenant_id}/observations/trust/{agent_id}:
@@ -511,22 +511,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AgentTrustScore"
+                $ref: '#/components/schemas/AgentTrustScore'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Observation
   /v1/tenants/{tenant_id}/pdp/routes:
@@ -539,22 +539,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PdpRouteRuleListResponse"
+                $ref: '#/components/schemas/PdpRouteRuleListResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PDPConfig
   /v1/tenants/{tenant_id}/pdp/routes/simulate:
@@ -567,22 +567,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SimulationResult"
+                $ref: '#/components/schemas/SimulationResult'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PDPConfig
       requestBody:
@@ -590,7 +590,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SimulationRequest"
+              $ref: '#/components/schemas/SimulationRequest'
   /v1/tenants/{tenant_id}/pdp/routes/{route_id}:
     get:
       operationId: PdpRoutingApi_getRoute
@@ -606,22 +606,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PdpRouteRule"
+                $ref: '#/components/schemas/PdpRouteRule'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PDPConfig
     put:
@@ -638,22 +638,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PdpRouteRule"
+                $ref: '#/components/schemas/PdpRouteRule'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PDPConfig
       requestBody:
@@ -661,7 +661,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PdpRouteRule"
+              $ref: '#/components/schemas/PdpRouteRule'
     delete:
       operationId: PdpRoutingApi_deleteRoute
       description: Delete a PDP route rule
@@ -676,18 +676,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PDPConfig
   /v1/tenants/{tenant_id}/pdp/runtimes:
@@ -700,22 +700,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PdpRuntimeListResponse"
+                $ref: '#/components/schemas/PdpRuntimeListResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PDPConfig
   /v1/tenants/{tenant_id}/pdp/runtimes/{runtime_id}:
@@ -733,22 +733,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PdpRuntime"
+                $ref: '#/components/schemas/PdpRuntime'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PDPConfig
     put:
@@ -765,22 +765,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PdpRuntime"
+                $ref: '#/components/schemas/PdpRuntime'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PDPConfig
       requestBody:
@@ -788,7 +788,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PdpRuntime"
+              $ref: '#/components/schemas/PdpRuntime'
     delete:
       operationId: PdpRuntimeApi_deleteRuntime
       description: Delete a PDP runtime
@@ -803,18 +803,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PDPConfig
   /v1/tenants/{tenant_id}/pdp/runtimes/{runtime_id}/clear-cache:
@@ -832,18 +832,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PDPConfig
   /v1/tenants/{tenant_id}/pdp/runtimes/{runtime_id}/probe:
@@ -861,22 +861,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PdpProbeResult"
+                $ref: '#/components/schemas/PdpProbeResult'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PDPConfig
       requestBody:
@@ -899,11 +899,11 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
@@ -913,7 +913,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PDPConfig
   /v1/tenants/{tenant_id}/pep-capabilities:
@@ -926,11 +926,11 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
@@ -940,7 +940,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PepCapabilities
   /v1/tenants/{tenant_id}/pep-capabilities/check:
@@ -953,11 +953,11 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
@@ -967,7 +967,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PepCapabilities
       requestBody:
@@ -985,11 +985,11 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
@@ -999,7 +999,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PolicyPresets
   /v1/tenants/{tenant_id}/policy-presets/{preset_id}:
@@ -1017,11 +1017,11 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
@@ -1031,7 +1031,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PolicyPresets
   /v1/tenants/{tenant_id}/policy-presets/{preset_id}/create-draft:
@@ -1049,11 +1049,11 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
@@ -1063,7 +1063,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PolicyPresets
       requestBody:
@@ -1086,11 +1086,11 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
@@ -1100,7 +1100,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PolicyPresets
       requestBody:
@@ -1123,11 +1123,11 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
@@ -1137,7 +1137,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PolicyPresets
       requestBody:
@@ -1155,22 +1155,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PolicySuggestionListResponse"
+                $ref: '#/components/schemas/PolicySuggestionListResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PolicySuggestions
   /v1/tenants/{tenant_id}/policy-suggestions/generate:
@@ -1183,18 +1183,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PolicySuggestions
   /v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}:
@@ -1212,22 +1212,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PolicySuggestion"
+                $ref: '#/components/schemas/PolicySuggestion'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PolicySuggestions
   /v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}/approve:
@@ -1245,18 +1245,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PolicySuggestions
   /v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}/create-draft:
@@ -1274,18 +1274,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PolicySuggestions
   /v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}/dismiss:
@@ -1303,18 +1303,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PolicySuggestions
   /v1/tenants/{tenant_id}/policy-suggestions/{suggestion_id}/simulate:
@@ -1332,18 +1332,18 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "204":
-          description: "There is no content to send for this request, but the headers may be useful. "
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - PolicySuggestions
   /v1/tenants/{tenant_id}/registry/resources:
@@ -1356,22 +1356,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ResourceListResponse"
+                $ref: '#/components/schemas/ResourceListResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Registry
     post:
@@ -1383,22 +1383,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Resource"
+                $ref: '#/components/schemas/Resource'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Registry
       requestBody:
@@ -1406,7 +1406,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Resource"
+              $ref: '#/components/schemas/Resource'
   /v1/tenants/{tenant_id}/registry/tools:
     get:
       operationId: ToolsApi_listTools
@@ -1417,22 +1417,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ToolListResponse"
+                $ref: '#/components/schemas/ToolListResponse'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Registry
     post:
@@ -1444,22 +1444,22 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/PollenHeaders.contractVersion"
-        - $ref: "#/components/parameters/PollenHeaders.deviceId"
-        - $ref: "#/components/parameters/PollenHeaders.tenantId"
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
       responses:
-        "200":
+        '200':
           description: The request has succeeded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Tool"
+                $ref: '#/components/schemas/Tool'
         default:
           description: An unexpected error response.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollenError"
+                $ref: '#/components/schemas/PollenError'
       tags:
         - Registry
       requestBody:
@@ -1467,7 +1467,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Tool"
+              $ref: '#/components/schemas/Tool'
 components:
   parameters:
     PollenHeaders.contractVersion:
@@ -1562,7 +1562,7 @@ components:
         payload_json:
           type: string
         token_usage:
-          $ref: "#/components/schemas/TokenUsage"
+          $ref: '#/components/schemas/TokenUsage'
     AgentObservationEventListResponse:
       type: object
       required:
@@ -1571,7 +1571,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/AgentObservationEvent"
+            $ref: '#/components/schemas/AgentObservationEvent'
     AgentTrustScore:
       type: object
       required:
@@ -1734,7 +1734,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/CostLedgerEntry"
+            $ref: '#/components/schemas/CostLedgerEntry'
     CostSummaryResponse:
       type: object
       required:
@@ -1808,7 +1808,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/DiscoveryCandidate"
+            $ref: '#/components/schemas/DiscoveryCandidate'
     MissingControl:
       type: object
       required:
@@ -1946,9 +1946,9 @@ components:
         description:
           type: string
         match_cond:
-          $ref: "#/components/schemas/RouteMatch"
+          $ref: '#/components/schemas/RouteMatch'
         mode:
-          $ref: "#/components/schemas/PdpRouteMode"
+          $ref: '#/components/schemas/PdpRouteMode'
         primary_pdp_id:
           type: string
         fallback_pdp_ids:
@@ -1966,7 +1966,7 @@ components:
         merge_strategy:
           type: string
         failure_behavior:
-          $ref: "#/components/schemas/PdpFailureBehavior"
+          $ref: '#/components/schemas/PdpFailureBehavior'
         timeout_ms:
           type: integer
           format: int32
@@ -1990,7 +1990,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/PdpRouteRule"
+            $ref: '#/components/schemas/PdpRouteRule'
     PdpRuntime:
       type: object
       required:
@@ -2012,9 +2012,9 @@ components:
         name:
           type: string
         category:
-          $ref: "#/components/schemas/PdpRuntimeCategory"
+          $ref: '#/components/schemas/PdpRuntimeCategory'
         kind:
-          $ref: "#/components/schemas/PdpKind"
+          $ref: '#/components/schemas/PdpKind'
         mode:
           type: string
         system_managed:
@@ -2022,7 +2022,7 @@ components:
         enabled:
           type: boolean
         status:
-          $ref: "#/components/schemas/PdpRuntimeStatus"
+          $ref: '#/components/schemas/PdpRuntimeStatus'
         capabilities:
           type: array
           items:
@@ -2040,7 +2040,7 @@ components:
         last_activated_at:
           type: string
         last_probe:
-          $ref: "#/components/schemas/PdpProbeResult"
+          $ref: '#/components/schemas/PdpProbeResult'
         health: {}
         created_at:
           type: string
@@ -2060,7 +2060,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/PdpRuntime"
+            $ref: '#/components/schemas/PdpRuntime'
     PdpRuntimeStatus:
       type: string
       enum:
@@ -2108,7 +2108,7 @@ components:
         content:
           type: string
         language:
-          $ref: "#/components/schemas/SuggestedPolicyLanguage"
+          $ref: '#/components/schemas/SuggestedPolicyLanguage'
     PolicyCoverageSummary:
       type: object
       required:
@@ -2126,7 +2126,7 @@ components:
         missing_controls:
           type: array
           items:
-            $ref: "#/components/schemas/MissingControl"
+            $ref: '#/components/schemas/MissingControl'
         last_simulated_at:
           type: string
         last_enforced_at:
@@ -2161,26 +2161,26 @@ components:
         target_tool_id:
           type: string
         suggestion_type:
-          $ref: "#/components/schemas/SuggestionType"
+          $ref: '#/components/schemas/SuggestionType'
         title:
           type: string
         summary:
           type: string
         severity:
-          $ref: "#/components/schemas/SuggestionSeverity"
+          $ref: '#/components/schemas/SuggestionSeverity'
         confidence:
           type: number
           format: float
         recommended_policy_type:
-          $ref: "#/components/schemas/SuggestedPolicyLanguage"
+          $ref: '#/components/schemas/SuggestedPolicyLanguage'
         recommended_pep_type:
           type: string
         artifacts:
           type: array
           items:
-            $ref: "#/components/schemas/PolicyArtifact"
+            $ref: '#/components/schemas/PolicyArtifact'
         status:
-          $ref: "#/components/schemas/SuggestionStatus"
+          $ref: '#/components/schemas/SuggestionStatus'
         created_at:
           type: string
     PolicySuggestionListResponse:
@@ -2191,7 +2191,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/PolicySuggestion"
+            $ref: '#/components/schemas/PolicySuggestion'
     PollenError:
       type: object
       required:
@@ -2229,7 +2229,7 @@ components:
         - cost_relevant
       properties:
         meta:
-          $ref: "#/components/schemas/ObjectMeta"
+          $ref: '#/components/schemas/ObjectMeta'
         resource_id:
           type: string
         resource_type:
@@ -2276,11 +2276,11 @@ components:
           items:
             type: string
         policy_coverage:
-          $ref: "#/components/schemas/PolicyCoverageSummary"
+          $ref: '#/components/schemas/PolicyCoverageSummary'
         pep_bindings:
           type: array
           items:
-            $ref: "#/components/schemas/PepBinding"
+            $ref: '#/components/schemas/PepBinding'
         first_seen_at:
           type: string
         last_seen_at:
@@ -2301,7 +2301,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/Resource"
+            $ref: '#/components/schemas/Resource'
     RouteMatch:
       type: object
       properties:
@@ -2506,7 +2506,7 @@ components:
         - allow_count_24h
       properties:
         meta:
-          $ref: "#/components/schemas/ObjectMeta"
+          $ref: '#/components/schemas/ObjectMeta'
         tool_id:
           type: string
         mcp_server_id:
@@ -2544,13 +2544,13 @@ components:
           items:
             type: string
         schema_fingerprint:
-          $ref: "#/components/schemas/SchemaFingerprint"
+          $ref: '#/components/schemas/SchemaFingerprint'
         policy_coverage:
-          $ref: "#/components/schemas/PolicyCoverageSummary"
+          $ref: '#/components/schemas/PolicyCoverageSummary'
         pep_bindings:
           type: array
           items:
-            $ref: "#/components/schemas/PepBinding"
+            $ref: '#/components/schemas/PepBinding'
         last_seen_at:
           type: string
         first_seen_at:
@@ -2572,7 +2572,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/Tool"
+            $ref: '#/components/schemas/Tool'
 servers:
   - url: http://127.0.0.1:17891
     description: Local Control Plane / Mock Cloud

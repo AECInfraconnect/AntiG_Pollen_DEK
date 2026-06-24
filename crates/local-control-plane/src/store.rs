@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used, clippy::needless_borrow)]
+﻿#![allow(clippy::unwrap_used, clippy::needless_borrow)]
 use anyhow::Result;
 use dek_agent_observer::model::{AgentObservationEvent, CostLedgerEntry};
 use dek_control_plane_api::registry::*;
@@ -297,7 +297,7 @@ impl SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             conn.execute(
                 r#"
                 INSERT INTO registry_objects (tenant_id, object_type, object_id, status, source, data_json, created_at, updated_at)
@@ -328,7 +328,7 @@ impl SqliteStore {
 
         let conn_arc = self.conn.clone();
         let data_json = tokio::task::spawn_blocking(move || -> Result<Option<String>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare("SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3")?;
             let mut rows = stmt.query(params![tenant_id, object_type, object_id])?;
             if let Some(row) = rows.next()? {
@@ -356,7 +356,7 @@ impl SqliteStore {
 
         let conn_arc = self.conn.clone();
         let data_jsons = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare(
                 "SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2",
             )?;
@@ -389,7 +389,7 @@ impl SqliteStore {
 
         let conn_arc = self.conn.clone();
         let rows_affected = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let changed = conn.execute(
                 "DELETE FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3",
                 params![tenant_id, object_type, object_id],
@@ -417,7 +417,7 @@ impl RegistryStore for SqliteStore {
         let object_type = object_type.to_string();
         let conn_arc = self.conn.clone();
         let count = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             Ok(conn.execute(
                 "DELETE FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2",
                 params![tenant_id, object_type],
@@ -462,7 +462,7 @@ impl RegistryStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             conn.execute(
                 r#"
                 INSERT INTO registry_objects (tenant_id, object_type, object_id, status, source, data_json, created_at, updated_at)
@@ -491,7 +491,7 @@ impl RegistryStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         let json_str = tokio::task::spawn_blocking(move || -> Result<Option<String>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare(
                 "SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3"
             )?;
@@ -518,7 +518,7 @@ impl RegistryStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         let json_strs = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare(
                 "SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2",
             )?;
@@ -733,7 +733,7 @@ impl RegistryStore for SqliteStore {
         let device_id = inventory.device_id.clone();
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             conn.execute(
                 r#"
                 INSERT INTO agent_inventory (tenant, agent_id, device_id, inventory_json, updated_at)
@@ -761,7 +761,7 @@ impl RegistryStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         let json_str = tokio::task::spawn_blocking(move || -> Result<Option<String>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare(
                 "SELECT inventory_json FROM agent_inventory WHERE tenant = ?1 AND agent_id = ?2",
             )?;
@@ -789,7 +789,7 @@ impl RegistryStore for SqliteStore {
         let tenant_id = tenant_id.to_string();
         let conn_arc = self.conn.clone();
         let json_strs = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt =
                 conn.prepare("SELECT inventory_json FROM agent_inventory WHERE tenant = ?1")?;
             let mut rows = stmt.query(params![tenant_id])?;
@@ -815,7 +815,7 @@ impl RegistryStore for SqliteStore {
         let agent_id = agent_id.to_string();
         let conn_arc = self.conn.clone();
         let rows_affected = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let changed = conn.execute(
                 "DELETE FROM agent_inventory WHERE tenant = ?1 AND agent_id = ?2",
                 params![tenant_id, agent_id],
@@ -904,7 +904,7 @@ impl PolicyStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             conn.execute(
                 "INSERT INTO bundle_blobs (tenant_id, path, bytes) VALUES (?1, ?2, ?3) ON CONFLICT(tenant_id, path) DO UPDATE SET bytes=excluded.bytes",
                 params![tenant, path, bytes]
@@ -920,7 +920,7 @@ impl PolicyStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let bytes = tokio::task::spawn_blocking(move || -> Result<Option<Vec<u8>>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt =
                 conn.prepare("SELECT bytes FROM bundle_blobs WHERE tenant_id = ?1 AND path = ?2")?;
             let mut rows = stmt.query(params![tenant, path])?;
@@ -971,7 +971,7 @@ impl PolicyStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             conn.execute(
                 r#"
                 INSERT INTO policy_preset_deployments (
@@ -1002,7 +1002,7 @@ impl PolicyStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let val = tokio::task::spawn_blocking(move || -> Result<Option<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare("SELECT * FROM policy_preset_deployments WHERE tenant_id = ?1 AND deployment_id = ?2")?;
             let mut rows = stmt.query(params![tenant_id, deployment_id])?;
             if let Some(r) = rows.next()? {
@@ -1033,7 +1033,7 @@ impl PolicyStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Vec<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare("SELECT * FROM policy_preset_deployments WHERE tenant_id = ?1")?;
             let mut rows = stmt.query(params![tenant_id])?;
             let mut out = Vec::new();
@@ -1081,7 +1081,7 @@ impl PolicyStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             conn.execute(
                 r#"
                 INSERT INTO pep_bindings (
@@ -1110,7 +1110,7 @@ impl PolicyStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Vec<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare(
                 "SELECT * FROM pep_bindings WHERE tenant_id = ?1 AND deployment_id = ?2",
             )?;
@@ -1154,7 +1154,7 @@ impl TelemetryStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             conn.execute(
                 "INSERT INTO telemetry_events (tenant_id, event_type, event_id, data_json, created_at)
                  VALUES (?1,?2,?3,?4,?5)
@@ -1171,7 +1171,7 @@ impl TelemetryStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let rows = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare("SELECT data_json FROM telemetry_events WHERE tenant_id=?1 AND event_type=?2 ORDER BY created_at DESC LIMIT 1000")?;
             let mut rows = stmt.query(params![tenant, kind])?;
             let mut out = Vec::new();
@@ -1192,7 +1192,7 @@ impl TelemetryStore for SqliteStore {
         let kind = kind.to_string();
         let conn_arc = self.conn.clone();
         let count = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             Ok(conn.execute(
                 "DELETE FROM telemetry_events WHERE tenant_id = ?1 AND event_type = ?2",
                 params![tenant, kind],
@@ -1244,7 +1244,7 @@ impl PdpStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             conn.execute(
                 r#"
                 INSERT INTO pdp_runtimes (
@@ -1277,7 +1277,7 @@ impl PdpStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Option<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt =
                 conn.prepare("SELECT * FROM pdp_runtimes WHERE tenant_id = ?1 AND id = ?2")?;
             let mut rows = stmt.query(params![tenant, id])?;
@@ -1297,7 +1297,7 @@ impl PdpStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Vec<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare("SELECT * FROM pdp_runtimes WHERE tenant_id = ?1")?;
             let mut rows = stmt.query(params![tenant])?;
             let mut results = Vec::new();
@@ -1319,7 +1319,7 @@ impl PdpStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let rows_affected = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             Ok(conn.execute(
                 "DELETE FROM pdp_runtimes WHERE tenant_id = ?1 AND id = ?2",
                 params![tenant, id],
@@ -1386,7 +1386,7 @@ impl PdpStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             conn.execute(
                 r#"
                 INSERT INTO pdp_routes (
@@ -1422,7 +1422,7 @@ impl PdpStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Option<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt =
                 conn.prepare("SELECT * FROM pdp_routes WHERE tenant_id = ?1 AND id = ?2")?;
             let mut rows = stmt.query(params![tenant, id])?;
@@ -1442,7 +1442,7 @@ impl PdpStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Vec<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn
                 .prepare("SELECT * FROM pdp_routes WHERE tenant_id = ?1 ORDER BY priority DESC")?;
             let mut rows = stmt.query(params![tenant])?;
@@ -1465,7 +1465,7 @@ impl PdpStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let rows_affected = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             Ok(conn.execute(
                 "DELETE FROM pdp_routes WHERE tenant_id = ?1 AND id = ?2",
                 params![tenant, id],
@@ -1703,7 +1703,7 @@ impl ObservabilityStore for SqliteStore {
         let tenant_id = tenant_id.to_string();
         let conn_arc = self.conn.clone();
         let count = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             Ok(conn.execute(
                 "DELETE FROM observation_events WHERE tenant_id = ?1",
                 params![tenant_id],
@@ -1741,7 +1741,7 @@ impl ObservabilityStore for SqliteStore {
         let latency_ms = event.latency_ms;
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             conn.execute(
                 r#"
                 INSERT INTO observation_events (
@@ -1763,7 +1763,7 @@ impl ObservabilityStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let json_strs = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare("SELECT payload_json FROM observation_events WHERE tenant_id = ?1 ORDER BY timestamp DESC LIMIT 100")?;
             let mut rows = stmt.query(params![tenant_id])?;
             let mut out = Vec::new();
@@ -1800,7 +1800,7 @@ impl ObservabilityStore for SqliteStore {
         let timestamp = entry.timestamp.clone();
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             conn.execute(
                 r#"
                 INSERT INTO cost_ledger (id, agent_id, provider, model, input_tokens, output_tokens, total_tokens, input_cost, output_cost, total_cost, currency, estimated, timestamp)
@@ -1817,7 +1817,7 @@ impl ObservabilityStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Vec<CostLedgerEntry>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare("SELECT id, agent_id, provider, model, input_tokens, output_tokens, total_tokens, input_cost, output_cost, total_cost, currency, estimated, timestamp FROM cost_ledger ORDER BY timestamp DESC")?;
             let mut rows = stmt.query(params![])?;
             let mut out = Vec::new();
@@ -1857,7 +1857,7 @@ impl ObservabilityStore for SqliteStore {
         let created_at = suggestion.created_at.clone();
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             conn.execute(
                 r#"
                 INSERT INTO policy_suggestions (id, tenant_id, target_agent_id, target_resource_id, suggestion_type, status, created_at, data_json)
@@ -1878,7 +1878,7 @@ impl ObservabilityStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let json_strs = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let mut stmt = conn.prepare("SELECT data_json FROM policy_suggestions WHERE tenant_id = ?1 ORDER BY created_at DESC")?;
             let mut rows = stmt.query(params![tenant_id])?;
             let mut out = Vec::new();
@@ -1906,7 +1906,7 @@ impl ObservabilityStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let rows = tokio::task::spawn_blocking(move || -> Result<Vec<AgentCostRow>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let sql = r#"
                 SELECT agent_id,
                        COALESCE(SUM(total_cost),0)   AS cost,
@@ -1938,7 +1938,7 @@ impl ObservabilityStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let rows = tokio::task::spawn_blocking(move || -> Result<Vec<ToolUsageRow>> {
-            let conn = conn_arc.lock().unwrap();
+            let conn = conn_arc.lock().unwrap(); //
             let sql = r#"
                 SELECT agent_id, tool_id,
                        COUNT(*) AS calls,

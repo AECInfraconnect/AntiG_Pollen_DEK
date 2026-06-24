@@ -1,4 +1,4 @@
-use dek_fingerprint_defs::model::AgentSignatureV2;
+﻿use dek_fingerprint_defs::model::AgentSignatureV2;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -106,8 +106,8 @@ pub async fn probe_mcp_tools(surface: &Surface) -> anyhow::Result<Vec<ToolCapabi
                 .stdout(Stdio::piped())
                 .spawn()?;
 
-            let mut stdin = child.stdin.take().expect("Failed to open stdin");
-            let stdout = child.stdout.take().expect("Failed to open stdout");
+            let mut stdin = child.stdin.take().expect("Failed to open stdin"); //
+            let stdout = child.stdout.take().expect("Failed to open stdout"); //
 
             // Send tools/list request
             let msg = format!("{}\n", serde_json::to_string(&req_body)?);

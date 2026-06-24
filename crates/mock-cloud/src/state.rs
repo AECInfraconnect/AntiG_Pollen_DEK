@@ -108,7 +108,7 @@ pub fn rand_hex(n_bytes: usize) -> String {
 
 impl AppState {
     pub fn audit_push(&self, actor: &str, action: &str, details: &str) {
-        let mut logs = self.audit_logs.lock().unwrap();
+        let mut logs = self.audit_logs.lock().unwrap(); //
         logs.push(AuditLog {
             timestamp: chrono::Utc::now().to_rfc3339(),
             actor: actor.to_string(),

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use regex::Regex;
@@ -274,7 +274,7 @@ impl DeterministicDetector {
 impl Default for DeterministicDetector {
     #[allow(clippy::panic)]
     fn default() -> Self {
-        Self::new().unwrap_or_else(|_| panic!("Failed to compile regexes"))
+        Self::new().unwrap_or_else(|_| panic!("Failed to compile regexes")) //
     }
 }
 

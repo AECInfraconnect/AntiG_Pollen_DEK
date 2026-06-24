@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
@@ -78,7 +78,7 @@ async fn get_tuf_metadata(
             let cedar_src = state
                 .rollout
                 .lock()
-                .unwrap()
+                .unwrap() //
                 .latest_bundle
                 .cedar_src
                 .clone();
@@ -120,11 +120,11 @@ async fn get_tuf_metadata(
 
             use sha2::{Digest, Sha256};
             let mut h1 = Sha256::new();
-            h1.update(serde_json::to_vec(&routes_json).unwrap());
+            h1.update(serde_json::to_vec(&routes_json).unwrap()); //
             let routes_hash = hex::encode(h1.finalize());
 
             let mut h2 = Sha256::new();
-            h2.update(serde_json::to_vec(&manifest_json).unwrap());
+            h2.update(serde_json::to_vec(&manifest_json).unwrap()); //
             let manifest_hash = hex::encode(h2.finalize());
 
             (
@@ -196,7 +196,7 @@ async fn get_tuf_metadata(
         }
     };
 
-    let signed_bytes = serde_jcs::to_vec(&payload["signed"]).unwrap();
+    let signed_bytes = serde_jcs::to_vec(&payload["signed"]).unwrap(); //
     let signature = signing_key.sign(&signed_bytes);
 
     let mut response = payload;
@@ -226,7 +226,7 @@ async fn get_tuf_artifact(
     let cedar_src = _state
         .rollout
         .lock()
-        .unwrap()
+        .unwrap() //
         .latest_bundle
         .cedar_src
         .clone();
@@ -265,11 +265,11 @@ async fn get_tuf_artifact(
 
     use sha2::{Digest, Sha256};
     let mut h1 = Sha256::new();
-    h1.update(serde_json::to_vec(&routes_json).unwrap());
+    h1.update(serde_json::to_vec(&routes_json).unwrap()); //
     let routes_hash = hex::encode(h1.finalize());
 
     let mut h2 = Sha256::new();
-    h2.update(serde_json::to_vec(&manifest_json).unwrap());
+    h2.update(serde_json::to_vec(&manifest_json).unwrap()); //
     let manifest_hash = hex::encode(h2.finalize());
 
     if hash == routes_hash {

@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-//! dek-auth — shared JWT verification for Pollen DEK PEPs (proxy + stdio-wrapper).
+//! dek-auth โ€” shared JWT verification for Pollen DEK PEPs (proxy + stdio-wrapper).
 //!
 //! Extracts the JWT logic that previously lived inline in `dek-mcp-proxy` and
 //! fixes the P1 security gap: expiry and audience are now ENFORCED, and only
@@ -20,7 +20,7 @@ use jsonwebtoken::{
 use serde_json::Value;
 use thiserror::Error;
 
-/// Algorithms we accept. ASYMMETRIC ONLY — never HS* (symmetric) because a
+/// Algorithms we accept. ASYMMETRIC ONLY โ€” never HS* (symmetric) because a
 /// public key must never be usable as an HMAC secret. `none` has no variant
 /// in `jsonwebtoken` and is rejected at header-parse time.
 const ALLOWED_ALGS: &[Algorithm] = &[
@@ -62,7 +62,7 @@ pub enum AuthError {
 pub struct Identity {
     pub principal: String,
     pub tenant_id: Option<String>,
-    /// Full claim set, in case callers need extra claims (roles, scopes, …).
+    /// Full claim set, in case callers need extra claims (roles, scopes, โ€ฆ).
     pub claims: Value,
 }
 
@@ -198,7 +198,7 @@ mod tests {
     fn now() -> u64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
+            .expect("Time went backwards") //
             .as_secs()
     }
 
@@ -210,7 +210,7 @@ mod tests {
             Err(AuthError::MissingToken)
         ));
         assert_eq!(
-            extract_bearer(Some("Bearer xyz")).expect("Should extract"),
+            extract_bearer(Some("Bearer xyz")).expect("Should extract"), //
             "xyz"
         );
     }
@@ -224,7 +224,7 @@ mod tests {
             &json!({"sub": "attacker", "exp": now() + 3600}),
             &EncodingKey::from_secret(b"public-key-as-secret"),
         )
-        .expect("Encoding failed");
+        .expect("Encoding failed"); //
         let v = Verifier::new(VerifierConfig {
             public_key_pem: Some("-----BEGIN PUBLIC KEY-----\n...".into()),
             ..Default::default()

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 #![warn(clippy::print_stdout, clippy::print_stderr)]
@@ -258,7 +258,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_ttl_logic() {
         let policy = "permit(principal, action, resource);";
-        let adapter = CedarAdapter::new(policy).unwrap();
+        let adapter = CedarAdapter::new(policy).unwrap(); //
 
         let high_risk = json!({ "principal": "User::\"u\"", "action": "Action::\"a\"", "resource": "Resource::\"r\"", "risk_tier": "high" });
         let low_risk = json!({ "principal": "User::\"u\"", "action": "Action::\"a\"", "resource": "Resource::\"r\"", "risk_tier": "low" });
@@ -283,23 +283,23 @@ mod tests {
         };
 
         // Evaluate high risk: should not cache
-        let _ = adapter.evaluate(req_high).await.unwrap();
-        let cache_key_high = serde_json::to_string(&high_risk).unwrap();
+        let _ = adapter.evaluate(req_high).await.unwrap(); //
+        let cache_key_high = serde_json::to_string(&high_risk).unwrap(); //
         assert!(
             adapter.cache.get(&cache_key_high).is_none(),
             "High risk should not be cached"
         );
 
         // Evaluate low risk: should cache
-        let _ = adapter.evaluate(req_low).await.unwrap();
-        let cache_key_low = serde_json::to_string(&low_risk).unwrap();
+        let _ = adapter.evaluate(req_low).await.unwrap(); //
+        let cache_key_low = serde_json::to_string(&low_risk).unwrap(); //
         assert!(
             adapter.cache.get(&cache_key_low).is_some(),
             "Low risk should be cached"
         );
 
         // Clear cache
-        adapter.clear_cache().await.unwrap();
+        adapter.clear_cache().await.unwrap(); //
         assert!(
             adapter.cache.get(&cache_key_low).is_none(),
             "Cache should be cleared"

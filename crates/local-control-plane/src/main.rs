@@ -1,4 +1,4 @@
-use std::sync::atomic::AtomicU64;
+﻿use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
@@ -28,7 +28,7 @@ async fn main() -> anyhow::Result<()> {
 
     #[allow(clippy::expect_used)]
     let metrics_handle = dek_metrics::install_recorder("local-control-plane")
-        .expect("Failed to install Prometheus recorder");
+        .expect("Failed to install Prometheus recorder"); //
 
     let cfg = LocalControlPlaneConfig::from_env()?;
 

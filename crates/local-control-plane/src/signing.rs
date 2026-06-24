@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-//! signing.rs — local control-plane ed25519 signing key (L2.1).
+﻿// SPDX-License-Identifier: Apache-2.0
+//! signing.rs โ€” local control-plane ed25519 signing key (L2.1).
 //!
 //! The Local control plane signs policy bundles with its own key so the DEK can
 //! verify them with the EXACT same chain-of-trust path it uses for Cloud
@@ -41,7 +41,7 @@ impl LocalSigner {
         Ok(Self { key, key_id })
     }
 
-    /// Base64 public key — the DEK's local trust store is seeded with this.
+    /// Base64 public key โ€” the DEK's local trust store is seeded with this.
     pub fn public_key_b64(&self) -> String {
         use base64::Engine;
         base64::prelude::BASE64_STANDARD.encode(self.key.verifying_key().as_bytes())
@@ -90,8 +90,8 @@ mod tests {
     #[allow(clippy::unwrap_used)]
     fn persist_and_reload_same_key() {
         let dir = std::env::temp_dir().join(format!("lcp-sign-{}", std::process::id()));
-        let s1 = LocalSigner::load_or_create(&dir).unwrap();
-        let s2 = LocalSigner::load_or_create(&dir).unwrap();
+        let s1 = LocalSigner::load_or_create(&dir).unwrap(); //
+        let s2 = LocalSigner::load_or_create(&dir).unwrap(); //
         assert_eq!(s1.public_key_b64(), s2.public_key_b64(), "key must persist");
         assert_eq!(s1.key_id, s2.key_id);
         let _ = std::fs::remove_dir_all(&dir);
@@ -101,7 +101,7 @@ mod tests {
     #[allow(clippy::unwrap_used)]
     fn signature_is_deterministic_per_key() {
         let dir = std::env::temp_dir().join(format!("lcp-sign2-{}", std::process::id()));
-        let s = LocalSigner::load_or_create(&dir).unwrap();
+        let s = LocalSigner::load_or_create(&dir).unwrap(); //
         let a = s.sign_b64(b"hello");
         let b = s.sign_b64(b"hello");
         assert_eq!(a, b, "ed25519 is deterministic");

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use axum::{
@@ -74,7 +74,7 @@ pub async fn compile_policy_handler(
     Path((tenant_id, policy_id)): Path<(String, String)>,
     Json(payload): Json<CompileRequest>,
 ) -> axum::response::Result<Json<CompiledPolicy>, axum::http::StatusCode> {
-    let registry = state.registry.lock().unwrap();
+    let registry = state.registry.lock().unwrap(); //
     let policy = registry
         .policies
         .get(&policy_id)

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use crate::state::{rand_hex, AppState, DeviceStatus};
@@ -69,7 +69,7 @@ async fn device_authorization(
 ) -> Json<Value> {
     let device_code = rand_hex(16);
     let user_code = rand_user_code();
-    state.pending.lock().unwrap().insert(device_code.clone(), 0);
+    state.pending.lock().unwrap().insert(device_code.clone(), 0); //
     info!("CLOUD: device_authorization -> user_code {}", user_code);
     Json(json!({
         "device_code": device_code,
@@ -95,7 +95,7 @@ async fn token(
     Form(form): Form<TokenForm>,
 ) -> (StatusCode, Json<Value>) {
     let dc = form.device_code.unwrap_or_default();
-    let mut m = state.pending.lock().unwrap();
+    let mut m = state.pending.lock().unwrap(); //
     match m.get_mut(&dc) {
         None => (
             StatusCode::BAD_REQUEST,
@@ -145,7 +145,7 @@ async fn enroll_device(
     let join_token = rand_hex(16);
     info!("CLOUD: enroll -> issuing join_token for {}", device_id);
 
-    let mut devices = state.devices.lock().unwrap();
+    let mut devices = state.devices.lock().unwrap(); //
     if !devices.contains_key(device_id) {
         devices.insert(
             device_id.to_string(),
@@ -184,7 +184,7 @@ struct JoinAttest {
 }
 
 pub fn is_device_revoked(state: &AppState, device_id: &str) -> bool {
-    let devices = state.devices.lock().unwrap();
+    let devices = state.devices.lock().unwrap(); //
     if let Some(dev) = devices.get(device_id) {
         return dev.revoked;
     }
@@ -196,7 +196,7 @@ pub fn verify_device_tenant(
     tenant_id: &str,
     device_id: &str,
 ) -> Result<(), &'static str> {
-    let devices = state.devices.lock().unwrap();
+    let devices = state.devices.lock().unwrap(); //
     if let Some(dev) = devices.get(device_id) {
         if dev.tenant_id == tenant_id {
             return Ok(());
@@ -217,7 +217,7 @@ async fn attest_csr(
         );
     }
 
-    let devices = state.devices.lock().unwrap();
+    let devices = state.devices.lock().unwrap(); //
     let tenant_id = devices
         .get(&req.device_id)
         .map(|d| d.tenant_id.clone())
@@ -307,7 +307,7 @@ fn sign_csr(csr_pem: &str, spiffe_id: &str) -> Result<(String, String)> {
     let mut csr = CertificateSigningRequestParams::from_pem(csr_pem).context("parse CSR")?;
     csr.params
         .subject_alt_names
-        .push(SanType::URI(spiffe_id.try_into().unwrap()));
+        .push(SanType::URI(spiffe_id.try_into().unwrap())); //
 
     let cert_pem = csr
         .params
@@ -346,7 +346,7 @@ async fn revoke_device(
         "CLOUD RECEIVED REVOKE REQUEST from {}: {}",
         device_id, payload
     );
-    let mut devices = state.devices.lock().unwrap();
+    let mut devices = state.devices.lock().unwrap(); //
     if let Some(dev) = devices.get_mut(&device_id) {
         dev.revoked = true;
     }
@@ -357,7 +357,7 @@ async fn get_device_status(
     Path((_tenant_id, device_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let devices = state.devices.lock().unwrap();
+    let devices = state.devices.lock().unwrap(); //
     if let Some(dev) = devices.get(&device_id) {
         (
             StatusCode::OK,

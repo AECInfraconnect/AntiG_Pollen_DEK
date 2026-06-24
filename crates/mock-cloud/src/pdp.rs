@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use axum::{extract::State, routing::post, Json, Router};
@@ -25,7 +25,7 @@ pub async fn simulate_pdp(
     State(state): State<AppState>,
     Json(req): Json<AccessRequest>,
 ) -> axum::response::Result<Json<AccessDecision>, axum::http::StatusCode> {
-    let registry = state.registry.lock().unwrap();
+    let registry = state.registry.lock().unwrap(); //
 
     let mut decision = "Deny".to_string();
     let mut matching_policies = vec![];

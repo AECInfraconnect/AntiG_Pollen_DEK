@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-//! svid_renewal.rs — keep the device's X.509-SVID fresh.
+//! svid_renewal.rs โ€” keep the device's X.509-SVID fresh.
 //!
 //! SPIRE issues short-lived SVIDs. The join token from enrollment is one-time,
 //! so renewal authenticates with the CURRENT SVID (mTLS) and asks the server to
 //! sign a fresh CSR. After renewal we atomically rewrite the cert/key and
 //! hot-swap every mTLS client (telemetry sink, bundle agent, metrics client)
-//! via the existing `update_mtls` machinery — no restart needed.
+//! via the existing `update_mtls` machinery โ€” no restart needed.
 //!
 //! Fail-open: any renewal failure keeps the current SVID and retries with
 //! backoff; it never crashes the daemon.
@@ -120,7 +120,7 @@ fn seconds_until_renewal(cert_path: &str) -> Result<(Duration, i64)> {
     let remaining = not_after - now_secs();
     metrics::gauge!("dek_svid_expiry_seconds").set(remaining as f64);
     if remaining <= 600 {
-        return Ok((MIN_SLEEP, not_after)); // <= 10m remaining — renew promptly
+        return Ok((MIN_SLEEP, not_after)); // <= 10m remaining โ€” renew promptly
     }
     let renew_in = (remaining - 600).max(MIN_SLEEP.as_secs() as i64);
     Ok((Duration::from_secs(renew_in as u64), not_after))
@@ -170,7 +170,7 @@ pub async fn force_renew(
 }
 
 /// Renew the SVID and atomically install the new key+cert at the given paths.
-/// Returns the new SPIFFE ID. Pure I/O — no client hot-swap — so it is unit
+/// Returns the new SPIFFE ID. Pure I/O โ€” no client hot-swap โ€” so it is unit
 /// testable in isolation.
 pub async fn fetch_and_install_svid(
     renew_url: &str,
@@ -201,7 +201,7 @@ fn atomic_write(path: &str, data: &[u8]) -> Result<()> {
 }
 
 // ============================================================================
-// Tests — run with: cargo test -p dek-core svid_renewal
+// Tests โ€” run with: cargo test -p dek-core svid_renewal
 // dek-core/Cargo.toml [dev-dependencies]:
 //   tokio = { workspace = true, features = ["full"] }
 //   axum = "0.7"
@@ -221,14 +221,14 @@ mod tests {
     // ---- scheduler logic: half-life, floored at MIN_SLEEP ----
     #[test]
     fn renewal_schedules_at_half_life_and_floors() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().unwrap(); //
         let (ca, ca_key) = make_ca();
 
         // long-lived (~1000s) -> sleep ~400s (1000 - 600)
         let long = sign_leaf(&ca, &ca_key, "device-x", time_offset(1000));
         let p_long = dir.path().join("long.crt");
-        std::fs::write(&p_long, &long).unwrap();
-        let (d, _) = seconds_until_renewal(p_long.to_str().unwrap()).unwrap();
+        std::fs::write(&p_long, &long).unwrap(); //
+        let (d, _) = seconds_until_renewal(p_long.to_str().unwrap()).unwrap(); //
         assert!(
             d.as_secs() >= 390 && d.as_secs() <= 410,
             "got {}s",
@@ -238,15 +238,15 @@ mod tests {
         // near-expired -> floored at MIN_SLEEP (60s)
         let short = sign_leaf(&ca, &ca_key, "device-x", time_offset(2));
         let p_short = dir.path().join("short.crt");
-        std::fs::write(&p_short, &short).unwrap();
-        let (d2, _) = seconds_until_renewal(p_short.to_str().unwrap()).unwrap();
+        std::fs::write(&p_short, &short).unwrap(); //
+        let (d2, _) = seconds_until_renewal(p_short.to_str().unwrap()).unwrap(); //
         assert_eq!(d2, MIN_SLEEP);
     }
 
     // ---- renewal path: short-lived cert is swapped for a fresh one ----
     #[tokio::test]
     async fn renewal_swaps_cert_on_disk() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().unwrap(); //
         let (ca, ca_key) = make_ca();
 
         // 1) initial identity on disk: a plain client cert (NO spiffe SAN), short-lived.
@@ -254,10 +254,10 @@ mod tests {
         let key_path = dir.path().join("client.key");
         let ca_path = dir.path().join("root_ca.crt");
         let (init_cert, init_key) = make_client(&ca, &ca_key, "device-renew-1");
-        std::fs::write(&cert_path, &init_cert).unwrap();
-        std::fs::write(&key_path, &init_key).unwrap();
-        std::fs::write(&ca_path, ca.pem()).unwrap();
-        let before = std::fs::read_to_string(&cert_path).unwrap();
+        std::fs::write(&cert_path, &init_cert).unwrap(); //
+        std::fs::write(&key_path, &init_key).unwrap(); //
+        std::fs::write(&ca_path, ca.pem()).unwrap(); //
+        let before = std::fs::read_to_string(&cert_path).unwrap(); //
         assert!(
             !before.contains("spiffe"),
             "precondition: initial cert has no spiffe SAN"
@@ -266,8 +266,8 @@ mod tests {
         // 2) spawn mock renew endpoint that signs the CSR (short-lived, spiffe SAN).
         let ca_pem = ca.pem();
         let ca_key_pem = ca_key.serialize_pem();
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let addr = listener.local_addr().unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap(); //
+        let addr = listener.local_addr().unwrap(); //
         let state = MockState {
             ca_pem: ca_pem.clone(),
             ca_key_pem,
@@ -278,7 +278,7 @@ mod tests {
         tokio::spawn(async move {
             axum::serve(listener, app.into_make_service())
                 .await
-                .unwrap();
+                .unwrap(); //
         });
 
         // 3) build an mTLS client from the on-disk identity (unused over http, but
@@ -296,7 +296,7 @@ mod tests {
                 msg.push_str(&format!("\nCaused by: {s:?}"));
                 source = s.source();
             }
-            panic!("{msg}");
+            panic!("{msg}"); //
         });
         let renew_url = format!("http://{addr}/spire/svid/renew");
 
@@ -308,16 +308,16 @@ mod tests {
             mtls.client_key_path.as_str(),
         )
         .await
-        .expect("renewal should install a new SVID");
+        .expect("renewal should install a new SVID"); //
 
         // 4) assert the cert on disk was swapped for the new SVID.
-        let after = std::fs::read_to_string(&cert_path).unwrap();
+        let after = std::fs::read_to_string(&cert_path).unwrap(); //
         assert_ne!(before, after, "cert file must change after renewal");
         assert!(spiffe.starts_with("spiffe://"));
         assert!(spiffe.contains("device-renew-1"));
 
-        let (_, pem) = x509_parser::pem::parse_x509_pem(after.as_bytes()).unwrap();
-        let cert = pem.parse_x509().unwrap();
+        let (_, pem) = x509_parser::pem::parse_x509_pem(after.as_bytes()).unwrap(); //
+        let cert = pem.parse_x509().unwrap(); //
         let has_spiffe = cert
             .subject_alternative_name()
             .ok()
@@ -360,21 +360,21 @@ mod tests {
     }
 
     fn make_ca() -> (rcgen::Certificate, rcgen::KeyPair) {
-        let _g = CA_LOCK.lock().unwrap();
+        let _g = CA_LOCK.lock().unwrap(); //
         use rcgen::{BasicConstraints, CertificateParams, IsCa, KeyUsagePurpose};
-        let mut p = CertificateParams::new(vec!["Pollen Test Root CA".to_string()]).unwrap();
+        let mut p = CertificateParams::new(vec!["Pollen Test Root CA".to_string()]).unwrap(); //
         p.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
         p.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
-        let key_pair = rcgen::KeyPair::generate_for(&rcgen::PKCS_ECDSA_P256_SHA256).unwrap();
-        let cert = p.self_signed(&key_pair).unwrap();
+        let key_pair = rcgen::KeyPair::generate_for(&rcgen::PKCS_ECDSA_P256_SHA256).unwrap(); //
+        let cert = p.self_signed(&key_pair).unwrap(); //
         (cert, key_pair)
     }
 
     fn make_client(ca: &rcgen::Certificate, ca_key: &rcgen::KeyPair, cn: &str) -> (String, String) {
         use rcgen::CertificateParams;
-        let p = CertificateParams::new(vec![cn.to_string()]).unwrap();
-        let key_pair = rcgen::KeyPair::generate_for(&rcgen::PKCS_ECDSA_P256_SHA256).unwrap();
-        let cert = p.signed_by(&key_pair, ca, ca_key).unwrap();
+        let p = CertificateParams::new(vec![cn.to_string()]).unwrap(); //
+        let key_pair = rcgen::KeyPair::generate_for(&rcgen::PKCS_ECDSA_P256_SHA256).unwrap(); //
+        let cert = p.signed_by(&key_pair, ca, ca_key).unwrap(); //
         (cert.pem(), key_pair.serialize_pem())
     }
 
@@ -385,10 +385,10 @@ mod tests {
         not_after: time::OffsetDateTime,
     ) -> String {
         use rcgen::CertificateParams;
-        let mut p = CertificateParams::new(vec![cn.to_string()]).unwrap();
+        let mut p = CertificateParams::new(vec![cn.to_string()]).unwrap(); //
         p.not_after = not_after;
-        let key_pair = rcgen::KeyPair::generate_for(&rcgen::PKCS_ECDSA_P256_SHA256).unwrap();
-        p.signed_by(&key_pair, ca, ca_key).unwrap().pem()
+        let key_pair = rcgen::KeyPair::generate_for(&rcgen::PKCS_ECDSA_P256_SHA256).unwrap(); //
+        p.signed_by(&key_pair, ca, ca_key).unwrap().pem() //
     }
 
     fn sign_csr(
@@ -399,17 +399,17 @@ mod tests {
         ttl_secs: i64,
     ) -> String {
         use rcgen::{CertificateParams, CertificateSigningRequestParams, KeyPair, SanType};
-        let ca_key = KeyPair::from_pem(ca_key_pem).unwrap();
-        let ca_params = CertificateParams::from_ca_cert_pem(ca_pem).unwrap();
-        let ca = ca_params.self_signed(&ca_key).unwrap();
-        let mut csr = CertificateSigningRequestParams::from_pem(csr_pem).unwrap();
+        let ca_key = KeyPair::from_pem(ca_key_pem).unwrap(); //
+        let ca_params = CertificateParams::from_ca_cert_pem(ca_pem).unwrap(); //
+        let ca = ca_params.self_signed(&ca_key).unwrap(); //
+        let mut csr = CertificateSigningRequestParams::from_pem(csr_pem).unwrap(); //
         csr.params
             .subject_alt_names
-            .push(SanType::URI(spiffe.try_into().unwrap()));
+            .push(SanType::URI(spiffe.try_into().unwrap())); //
         csr.params.not_after = time_offset(ttl_secs);
         csr.params
             .signed_by(&csr.public_key, &ca, &ca_key)
-            .unwrap()
+            .unwrap() //
             .pem()
     }
 }

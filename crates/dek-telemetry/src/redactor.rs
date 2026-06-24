@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 #![allow(clippy::expect_used, clippy::len_without_is_empty)]
@@ -15,13 +15,13 @@ impl Redactor {
             // Basic regex to catch typical secrets.
             // Bearer tokens
             Regex::new(r"Bearer\s+[A-Za-z0-9\-\._~\+/]+")
-                .expect("PII regex is a valid compile-time constant"),
+                .expect("PII regex is a valid compile-time constant"), //
             // Basic Auth
             Regex::new(r"Basic\s+[A-Za-z0-9\+/=]+")
-                .expect("PII regex is a valid compile-time constant"),
+                .expect("PII regex is a valid compile-time constant"), //
             // Common API keys
             Regex::new(r"(?i)(api_key|apikey|sk_live|sk_test|sk-[a-zA-Z0-9]{32,})")
-                .expect("PII regex is a valid compile-time constant"),
+                .expect("PII regex is a valid compile-time constant"), //
         ];
         Self { patterns }
     }

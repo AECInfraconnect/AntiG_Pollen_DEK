@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 #![warn(clippy::print_stdout, clippy::print_stderr)]
@@ -197,7 +197,7 @@ impl PolicyRouter {
         }
     }
 
-    /// ids เธ‚เธญเธ‡ evaluator เธ—เธตเนˆ register เธˆเธฃเธดเธ‡เนƒเธ™ build เธ™เธตเน‰ (feature-gated adapters)
+    /// ids เน€เธโ€เน€เธเธเน€เธโ€ก evaluator เน€เธโ€”เน€เธเธ•เน€เธห register เน€เธหเน€เธเธเน€เธเธ”เน€เธโ€กเน€เธฦ’เน€เธโข build เน€เธโขเน€เธเธ•เน€เธโ€ฐ (feature-gated adapters)
     pub fn evaluator_ids(&self) -> Vec<String> {
         self.evaluators.keys().cloned().collect()
     }
@@ -737,7 +737,7 @@ mod tests {
     async fn test_empty_router_denies_all() {
         let router = PolicyRouter::new();
         let payload = serde_json::json!({ "request_type": "tools/call" });
-        let res = router.authorize(payload).await.unwrap();
+        let res = router.authorize(payload).await.unwrap(); //
         assert_eq!(res.decision, "deny");
         assert_eq!(res.reason, "no matching route");
     }
@@ -769,7 +769,7 @@ mod tests {
         }]);
 
         let payload = serde_json::json!({ "request_type": "test" });
-        let res = router.authorize(payload).await.unwrap();
+        let res = router.authorize(payload).await.unwrap(); //
         assert_eq!(res.decision, "allow");
     }
 
@@ -799,7 +799,7 @@ mod tests {
         }]);
 
         let payload = serde_json::json!({ "request_type": "emergency_action" });
-        let res = router.authorize(payload).await.unwrap();
+        let res = router.authorize(payload).await.unwrap(); //
         assert_eq!(res.decision, "allow");
         assert_eq!(res.reason, "Break-glass mode activated");
     }
@@ -858,7 +858,7 @@ mod tests {
         }]);
 
         let payload = serde_json::json!({ "request_type": "permit" });
-        let res = router.authorize(payload).await.unwrap();
+        let res = router.authorize(payload).await.unwrap(); //
         // Even though deny evaluated first, permit_overrides + dummy allow should yield allow
         assert_eq!(res.decision, "allow");
     }
@@ -890,12 +890,12 @@ mod tests {
         }]);
 
         let payload = serde_json::json!({ "request_type": "test" });
-        let res = router.authorize_dry_run(payload).await.unwrap();
+        let res = router.authorize_dry_run(payload).await.unwrap(); //
         assert_eq!(res.decision, "allow");
         assert_eq!(res.reason, "All evaluators passed");
 
         // Ensure no metrics/stats were mutated
-        let stats = router.stats.get("dummy").unwrap().lock_safe();
+        let stats = router.stats.get("dummy").unwrap().lock_safe(); //
         assert_eq!(stats.successes, 0); // dry_run should skip incrementing
     }
 
@@ -930,12 +930,12 @@ mod tests {
 
         // Payload without require_dummy -> won't evaluate dummy, defaults to auto-select but fail-closed since no match
         let payload1 = serde_json::json!({ "request_type": "test" });
-        let res1 = router.authorize(payload1).await.unwrap();
+        let res1 = router.authorize(payload1).await.unwrap(); //
         assert_eq!(res1.decision, "deny");
 
         // Payload with require_dummy -> evaluates dummy -> allow
         let payload2 = serde_json::json!({ "request_type": "test", "require_dummy": true });
-        let res2 = router.authorize(payload2).await.unwrap();
+        let res2 = router.authorize(payload2).await.unwrap(); //
         assert_eq!(res2.decision, "allow");
     }
 }

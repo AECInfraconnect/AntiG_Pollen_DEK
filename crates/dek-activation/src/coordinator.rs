@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use crate::snapshot::RuntimeSnapshot;
@@ -221,7 +221,7 @@ mod tests {
     #[tokio::test]
     async fn test_sequential_reloads() {
         let plugin_host = Arc::new(
-            dek_wasm_host::WasmPluginHost::new(dek_wasm_host::WasmHostConfig::default()).unwrap(),
+            dek_wasm_host::WasmPluginHost::new(dek_wasm_host::WasmHostConfig::default()).unwrap(), //
         );
         let router = Arc::new(dek_policy_router::PolicyRouter::new());
         let metadata = crate::snapshot::DekMetadata::default();

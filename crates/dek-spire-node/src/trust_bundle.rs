@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-//! trust_bundle.rs — F3.2: poll & pin the SPIRE trust bundle (root rotation).
+﻿// SPDX-License-Identifier: Apache-2.0
+//! trust_bundle.rs โ€” F3.2: poll & pin the SPIRE trust bundle (root rotation).
 //!
 //! Matches the Cloud/mock `/v1/trust-bundle` response shape:
 //!   { "trust_bundle_pem": "<PEM>", "jwt_authorities": [...], "refresh_hint": 3600 }
@@ -10,7 +10,7 @@
 //! JWKS (jwt_authorities) is published to the JWT-SVID verifier.
 //!
 //! Fail-closed: on refresh failure, keep the LAST-KNOWN-GOOD root and retry with
-//! backoff — never drop to an empty/unverified trust state.
+//! backoff โ€” never drop to an empty/unverified trust state.
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn install_detects_change() {
         let dir = std::env::temp_dir().join(format!("tb-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(&dir).unwrap(); //
         let p = dir.join("root.crt").to_string_lossy().to_string();
 
         let tb1 = TrustBundleResponse {
@@ -136,20 +136,20 @@ mod tests {
             jwt_authorities: vec![],
             refresh_hint: 3600,
         };
-        assert!(install_root(&tb1, &p).unwrap(), "first = changed");
-        assert!(!install_root(&tb1, &p).unwrap(), "same = no change");
+        assert!(install_root(&tb1, &p).unwrap(), "first = changed"); //
+        assert!(!install_root(&tb1, &p).unwrap(), "same = no change"); //
         let tb2 = TrustBundleResponse {
             trust_bundle_pem: "BBB".into(),
             ..tb1
         };
-        assert!(install_root(&tb2, &p).unwrap(), "new root = changed");
+        assert!(install_root(&tb2, &p).unwrap(), "new root = changed"); //
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn parse_mock_shape() {
         let j = serde_json::json!({ "trust_bundle_pem": "X", "jwt_authorities": [], "refresh_hint": 1800 });
-        let tb: TrustBundleResponse = serde_json::from_value(j).unwrap();
+        let tb: TrustBundleResponse = serde_json::from_value(j).unwrap(); //
         assert_eq!(tb.refresh_hint, 1800);
     }
 }

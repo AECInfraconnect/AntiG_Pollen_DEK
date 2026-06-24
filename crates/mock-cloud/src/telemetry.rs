@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-//! telemetry.rs — R3: full contract telemetry surface (§5).
+//! telemetry.rs โ€” R3: full contract telemetry surface (ยง5).
 //!
 //! The DEK flusher (R2.1) POSTs typed telemetry to split endpoints. This mirrors
 //! the Cloud contract so the same DEK code works against mock-cloud and the real
@@ -49,7 +49,7 @@ pub struct TelemetryPayload {
 /// Shared ingest: redaction-check + store into the unified buffer. Returns the
 /// count accepted, or an error if unredacted secrets are detected.
 fn ingest(state: &AppState, events: Vec<serde_json::Value>, kind: &str) -> Result<usize, String> {
-    let mut logs = state.telemetry_events.lock().unwrap();
+    let mut logs = state.telemetry_events.lock().unwrap(); //
     let mut n = 0;
     for event_val in events {
         let event: TelemetryEvent = match serde_json::from_value(event_val.clone()) {
@@ -175,7 +175,7 @@ async fn ingest_batches(
     State(s): State<AppState>,
     Json(p): Json<TelemetryBatchRequest>,
 ) -> impl IntoResponse {
-    let mut logs = s.telemetry_events.lock().unwrap();
+    let mut logs = s.telemetry_events.lock().unwrap(); //
     let mut n = 0;
     for event in p.events {
         logs.push_front(event);

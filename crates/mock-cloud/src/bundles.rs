@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use crate::state::AppState;
@@ -73,7 +73,7 @@ fn generate_bundle(
     let cedar_src = state
         .rollout
         .lock()
-        .unwrap()
+        .unwrap() //
         .latest_bundle
         .cedar_src
         .clone();
@@ -129,7 +129,7 @@ fn sign_bundle(manifest: &BundleManifest) -> serde_json::Value {
     use base64::Engine;
     let public_key = signing_key.verifying_key();
 
-    let payload_string = serde_json::to_string(manifest).unwrap();
+    let payload_string = serde_json::to_string(manifest).unwrap(); //
     let signature = signing_key.sign(payload_string.as_bytes());
 
     json!({
@@ -304,11 +304,11 @@ async fn get_network_guardrails_artifact(
     Path((_tenant_id, _device_id)): Path<(String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let rules: Vec<serde_json::Value> = state.network_rules.lock().unwrap().clone();
+    let rules: Vec<serde_json::Value> = state.network_rules.lock().unwrap().clone(); //
     let signed = serde_json::Value::Array(rules);
-    let signed_bytes = serde_jcs::to_vec(&signed).unwrap();
-    let active_seed = state.active_seed.lock().unwrap();
-    let sk = SigningKey::from_bytes(active_seed.as_slice().try_into().unwrap());
+    let signed_bytes = serde_jcs::to_vec(&signed).unwrap(); //
+    let active_seed = state.active_seed.lock().unwrap(); //
+    let sk = SigningKey::from_bytes(active_seed.as_slice().try_into().unwrap()); //
     let sig = sk.sign(&signed_bytes);
 
     use base64::Engine;

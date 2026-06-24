@@ -1,16 +1,16 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-//! routing.rs — R2.1: map each telemetry event to its contract endpoint.
+//! routing.rs โ€” R2.1: map each telemetry event to its contract endpoint.
 //!
-//! The Cloud contract (docs/contracts/pollen-cloud-dek-api.md §5) splits
+//! The Cloud contract (docs/contracts/pollen-cloud-dek-api.md ยง5) splits
 //! telemetry into typed endpoints instead of one firehose:
 //!   /v1/telemetry/decision-logs   <- Decision
 //!   /v1/telemetry/security-events <- Security
 //!   /v1/telemetry/traces          <- Trace
 //!   /v1/telemetry/ebpf-events     <- EbpfGuardrail
 //!   /v1/metrics                   <- Metric  (also OTLP path)
-//!   /v1/telemetry/events          <- everything else (OsGuardrail/OsLifecycle/…)
+//!   /v1/telemetry/events          <- everything else (OsGuardrail/OsLifecycle/โ€ฆ)
 //!
 //! The spooler stays a single queue; routing happens at flush time by reading
 //! the event's serde tag. Unknown/!tagged events fall back to /events so we
@@ -108,7 +108,7 @@ mod tests {
             (3, json!({"event_type":"security"})),
         ];
         let g = group_by_endpoint(batch);
-        assert_eq!(g.get("/v1/telemetry/decision-logs").unwrap().0.len(), 2);
-        assert_eq!(g.get("/v1/telemetry/security-events").unwrap().0.len(), 1);
+        assert_eq!(g.get("/v1/telemetry/decision-logs").unwrap().0.len(), 2); //
+        assert_eq!(g.get("/v1/telemetry/security-events").unwrap().0.len(), 1); //
     }
 }

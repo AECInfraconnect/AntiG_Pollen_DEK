@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use crate::state::AppState;
@@ -18,7 +18,7 @@ pub fn router() -> Router<AppState> {
 }
 
 pub async fn get_decision_logs_json(State(state): State<AppState>) -> impl IntoResponse {
-    let events = state.telemetry_events.lock().unwrap();
+    let events = state.telemetry_events.lock().unwrap(); //
     let decisions: Vec<_> = events
         .iter()
         .filter_map(|e| match e {
@@ -64,7 +64,7 @@ struct DecisionLogEntry {
 }
 
 pub async fn view_decision_logs(State(state): State<AppState>) -> impl IntoResponse {
-    let events = state.telemetry_events.lock().unwrap();
+    let events = state.telemetry_events.lock().unwrap(); //
     let mut logs: Vec<DecisionLogEntry> = events
         .iter()
         .filter_map(|e| match e {

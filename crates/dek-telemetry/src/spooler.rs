@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-//! spooler.rs — durable, bounded telemetry spool (SQLite-backed).
+//! spooler.rs โ€” durable, bounded telemetry spool (SQLite-backed).
 //!
 //! Production hardening (vs. previous):
 //!  - Bounded on disk: a hard row cap with drop-oldest/lowest-priority eviction
@@ -297,15 +297,15 @@ mod tests {
     fn evicts_oldest_when_over_capacity() {
         let tmp = std::env::temp_dir().join(format!("spooler_test_{}", std::process::id()));
         std::env::set_var("DEK_DATA_DIR", &tmp);
-        let s = Spooler::with_capacity(":memory:", 3).unwrap();
+        let s = Spooler::with_capacity(":memory:", 3).unwrap(); //
         for i in 0..5 {
-            s.push(Priority::Normal, &json!({ "n": i })).unwrap();
+            s.push(Priority::Normal, &json!({ "n": i })).unwrap(); //
         }
         assert_eq!(s.len().unwrap(), 3); // only newest 3 survive
-        let batch = s.pop_batch(10).unwrap();
+        let batch = s.pop_batch(10).unwrap(); //
         let ns: Vec<i64> = batch
             .iter()
-            .map(|(_, v)| v["n"].as_i64().unwrap())
+            .map(|(_, v)| v["n"].as_i64().unwrap()) //
             .collect();
         assert_eq!(ns, vec![2, 3, 4]); // 0,1 evicted
         let _ = std::fs::remove_dir_all(&tmp);
@@ -315,14 +315,14 @@ mod tests {
     fn critical_survives_eviction_over_low() {
         let tmp = std::env::temp_dir().join(format!("spooler_test_{}_2", std::process::id()));
         std::env::set_var("DEK_DATA_DIR", &tmp);
-        let s = Spooler::with_capacity(":memory:", 2).unwrap();
-        s.push(Priority::Critical, &json!({ "k": "keep" })).unwrap();
-        s.push(Priority::Low, &json!({ "k": "a" })).unwrap();
-        s.push(Priority::Low, &json!({ "k": "b" })).unwrap();
-        let batch = s.pop_batch(10).unwrap();
+        let s = Spooler::with_capacity(":memory:", 2).unwrap(); //
+        s.push(Priority::Critical, &json!({ "k": "keep" })).unwrap(); //
+        s.push(Priority::Low, &json!({ "k": "a" })).unwrap(); //
+        s.push(Priority::Low, &json!({ "k": "b" })).unwrap(); //
+        let batch = s.pop_batch(10).unwrap(); //
         let ks: Vec<String> = batch
             .iter()
-            .map(|(_, v)| v["k"].as_str().unwrap().to_string())
+            .map(|(_, v)| v["k"].as_str().unwrap().to_string()) //
             .collect();
         assert!(ks.contains(&"keep".to_string()), "critical must survive");
         assert_eq!(batch.len(), 2);

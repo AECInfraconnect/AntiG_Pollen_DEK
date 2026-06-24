@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use crate::state::AppState;
@@ -27,7 +27,7 @@ async fn toggle_outage(
     Json(req): Json<OutageReq>,
 ) -> impl IntoResponse {
     {
-        let mut cfg = state.chaos_config.lock().unwrap();
+        let mut cfg = state.chaos_config.lock().unwrap(); //
         cfg.outage_enabled = req.enabled;
     }
     Json(serde_json::json!({"status": "outage_updated", "enabled": req.enabled}))
@@ -43,7 +43,7 @@ async fn set_latency(
     Json(req): Json<LatencyReq>,
 ) -> impl IntoResponse {
     {
-        let mut cfg = state.chaos_config.lock().unwrap();
+        let mut cfg = state.chaos_config.lock().unwrap(); //
         cfg.global_latency_ms = req.delay_ms as i64;
     }
     Json(serde_json::json!({"status": "latency_updated", "delay_ms": req.delay_ms}))
@@ -51,7 +51,7 @@ async fn set_latency(
 
 pub async fn chaos_middleware(State(state): State<AppState>, req: Request, next: Next) -> Response {
     let (outage, latency) = {
-        let cfg = state.chaos_config.lock().unwrap();
+        let cfg = state.chaos_config.lock().unwrap(); //
         (cfg.outage_enabled, cfg.global_latency_ms)
     };
 

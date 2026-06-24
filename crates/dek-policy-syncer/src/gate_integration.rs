@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 //! Integration: prove the cross-process gate fails closed and recovers.
@@ -12,7 +12,7 @@ use dek_policy_syncer::state::{
 fn now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .unwrap() //
         .as_secs() as i64
 }
 
@@ -24,7 +24,7 @@ static SERIAL: Mutex<()> = Mutex::new(());
 
 #[test]
 fn gate_denies_then_allows_then_denies() {
-    let _g = SERIAL.lock().unwrap();
+    let _g = SERIAL.lock().unwrap(); //
 
     // 1) StrictDeny published -> gate denies with reason.
     write_status_atomic(&EnforcementStatus {
@@ -32,7 +32,7 @@ fn gate_denies_then_allows_then_denies() {
         updated_unix: now(),
         bundle_version: Some("1_1_1".into()),
     })
-    .unwrap();
+    .unwrap(); //
     invalidate_cache();
     assert_eq!(strict_deny_reason().as_deref(), Some("bundle_expired_beyond_grace"));
 
@@ -42,7 +42,7 @@ fn gate_denies_then_allows_then_denies() {
         updated_unix: now(),
         bundle_version: Some("2_2_2".into()),
     })
-    .unwrap();
+    .unwrap(); //
     invalidate_cache();
     assert_eq!(strict_deny_reason(), None);
 
@@ -52,7 +52,7 @@ fn gate_denies_then_allows_then_denies() {
         updated_unix: now(),
         bundle_version: Some("2_2_2".into()),
     })
-    .unwrap();
+    .unwrap(); //
     invalidate_cache();
     assert_eq!(strict_deny_reason(), None, "grace period must keep enforcing (allow path)");
 
@@ -62,7 +62,7 @@ fn gate_denies_then_allows_then_denies() {
         updated_unix: now(),
         bundle_version: None,
     })
-    .unwrap();
+    .unwrap(); //
     invalidate_cache();
     assert!(strict_deny_reason().is_some());
 
@@ -72,7 +72,7 @@ fn gate_denies_then_allows_then_denies() {
 
 #[test]
 fn gate_fails_closed_when_status_absent() {
-    let _g = SERIAL.lock().unwrap();
+    let _g = SERIAL.lock().unwrap(); //
     // Ensure no status file -> gate MUST deny (never fail-open).
     let _ = std::fs::remove_file(dek_policy_syncer::state::status_path());
     invalidate_cache();

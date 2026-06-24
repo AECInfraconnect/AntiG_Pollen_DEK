@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+﻿// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use anyhow::Result;
@@ -62,7 +62,7 @@ mod tests {
             ),
         ];
 
-        let merged = merge_safe(configs).unwrap();
+        let merged = merge_safe(configs).unwrap(); //
         assert_eq!(merged["a"], 5); // Emergency overrides baseline
         assert_eq!(merged["b"], 2); // Tenant overrides baseline
         assert_eq!(merged["c"], 3); // DeviceGroup overrides Tenant

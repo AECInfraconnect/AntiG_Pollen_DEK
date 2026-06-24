@@ -1,4 +1,4 @@
-#![allow(clippy::panic)]
+﻿#![allow(clippy::panic)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
@@ -14,7 +14,7 @@ pub fn load_seed_data(state: &AppState, profile: &str) {
     let fixtures_dir = base_dir.join(profile);
     let default_dir = base_dir;
 
-    let mut reg = state.registry.lock().unwrap();
+    let mut reg = state.registry.lock().unwrap(); //
 
     let get_path = |name: &str| {
         let p = fixtures_dir.join(name);
@@ -118,15 +118,15 @@ mod tests {
                 fixture_path.display()
             );
 
-            let schema_str = fs::read_to_string(&schema_path).unwrap();
-            let fixture_str = fs::read_to_string(&fixture_path).unwrap();
+            let schema_str = fs::read_to_string(&schema_path).unwrap(); //
+            let fixture_str = fs::read_to_string(&fixture_path).unwrap(); //
 
-            let schema_json: Value = serde_json::from_str(&schema_str).unwrap();
-            let fixture_json: Value = serde_json::from_str(&fixture_str).unwrap();
+            let schema_json: Value = serde_json::from_str(&schema_str).unwrap(); //
+            let fixture_json: Value = serde_json::from_str(&fixture_str).unwrap(); //
 
-            let compiled = jsonschema::validator_for(&schema_json).expect("Invalid JSON schema");
+            let compiled = jsonschema::validator_for(&schema_json).expect("Invalid JSON schema"); //
             if !compiled.is_valid(&fixture_json) {
-                panic!(
+                panic!( //
                     "Fixture {} failed validation against {}",
                     fixture_name, schema_name
                 );
