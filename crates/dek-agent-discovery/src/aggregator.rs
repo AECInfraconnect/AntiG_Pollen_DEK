@@ -456,6 +456,41 @@ fn aggregate_by_merge_key(
         }
         labels.insert("suggested_preset".into(), preset_id.to_string());
 
+        let mut mcp_stdio_paths = vec![];
+        let mut mcp_http_urls = vec![];
+        let mut local_model_urls = vec![];
+        let mut browser_ext_evidence = vec![];
+
+        for ev in &group {
+            match ev.source {
+                EvidenceSource::McpConfig => {
+                    if let Some(path) = ev.source_path_redacted.clone() {
+                        mcp_stdio_paths.push(path);
+                    }
+                }
+                EvidenceSource::LocalModelServer => {
+                    if let Some(obj) = ev.data.as_object() {
+                        if let Some(url) = obj.get("endpoint").and_then(|v| v.as_str()) {
+                            local_model_urls.push(url.to_string());
+                        }
+                    }
+                }
+                EvidenceSource::BrowserExtension => {
+                    if let Some(obj) = ev.data.as_object() {
+                        if let Some(ext_id) = obj.get("extension_id").and_then(|v| v.as_str()) {
+                            browser_ext_evidence.push(ext_id.to_string());
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        for server in &mcp_servers {
+            if server.transport == "http" {
+                mcp_http_urls.push(server.server_name.clone());
+            }
+        }
+
         candidates.push(DiscoveredAgentCandidateV2 {
             schema_version: "pollen.agent_discovery_candidate.v2".into(),
             candidate_id: cand_id,
@@ -485,7 +520,11 @@ fn aggregate_by_merge_key(
                 executable_signer: None,
                 declared_tools: vec![],
                 declared_resources: vec![],
-                trust_level: "medium".into(),
+                mcp_stdio_config_paths: mcp_stdio_paths,
+                mcp_http_urls,
+                local_model_endpoints: local_model_urls,
+                browser_extension_evidence: browser_ext_evidence,
+                trust_level: "Unknown".into(),
                 initial_status: "pending_approval".into(),
             },
             suggested_observation_profile: ObservationProfile {

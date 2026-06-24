@@ -7,6 +7,10 @@ name = "acceptance-tests"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
+ "dek-capability-registry",
+ "dek-deployment-planner",
+ "dek-domain-schema",
  "reqwest 0.12.28",
  "rustls",
  "serde",

@@ -603,3 +603,11 @@ export const PdpRoutingApi = {
   delete: (id: string) => defaultClient.deletePdpRoute(id),
   simulate: (payload: any) => defaultClient.simulatePdpRoute(payload),
 };
+
+export const PolicyFirstApi = {
+  getLatestSnapshot: () => defaultClient.fetchApi("/local/capability-snapshot/latest"),
+  getPolicySuggestions: () => defaultClient.fetchApi("/policy-suggestions"),
+  evaluateFeasibility: (req: any) => defaultClient.fetchApi("/policies/feasibility", { method: "POST", body: JSON.stringify(req) }),
+  createDeploymentSession: (req: any) => defaultClient.fetchApi("/deployment-sessions", { method: "POST", body: JSON.stringify(req) }),
+  approveAction: (sessionId: string, actionId: string) => defaultClient.fetchApi(`/deployment-sessions/${sessionId}/actions/${actionId}/approve`, { method: "POST" }),
+};

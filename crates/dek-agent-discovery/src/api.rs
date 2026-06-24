@@ -59,7 +59,11 @@ pub async fn run_scan(
                             executable_signer: None,
                             declared_tools: vec![],
                             declared_resources: vec![],
-                            trust_level: "medium".into(),
+                            mcp_stdio_config_paths: vec![],
+                            mcp_http_urls: vec![],
+                            local_model_endpoints: vec![],
+                            browser_extension_evidence: vec![],
+                            trust_level: "Unknown".into(),
                             initial_status: "pending_approval".into(),
                         },
                         suggested_observation_profile: ObservationProfile {

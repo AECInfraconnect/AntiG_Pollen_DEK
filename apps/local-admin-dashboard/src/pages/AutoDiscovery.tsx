@@ -18,6 +18,28 @@ export function AutoDiscovery() {
   const [scanType, setScanType] = useState("deep");
   const [privacyMode, setPrivacyMode] = useState(true);
   const [scanHistory, setScanHistory] = useState<DiscoveryScanJob[]>([]);
+  const [snapshot, setSnapshot] = useState<any>(null);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [deployModal, setDeployModal] = useState<{show: boolean, policy: any | null}>({show: false, policy: null});
+  const [deploying, setDeploying] = useState(false);
+
+  const fetchCapabilities = async () => {
+    try {
+      const snap = await PolicyFirstApi.getLatestSnapshot();
+      setSnapshot(snap);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchSuggestions = async () => {
+    try {
+      const suggs = await PolicyFirstApi.getPolicySuggestions();
+      setSuggestions(suggs);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchCandidates = () => {
     setLoadingCandidates(true);
@@ -56,7 +78,27 @@ export function AutoDiscovery() {
 
   useEffect(() => {
     fetchCandidates();
+    fetchCapabilities();
+    fetchSuggestions();
   }, []);
+
+  const handleDeploy = async () => {
+    if (!deployModal.policy) return;
+    setDeploying(true);
+    try {
+      await PolicyFirstApi.createDeploymentSession({
+        policy_template_id: deployModal.policy.policy_template_id,
+        target_agent_ids: deployModal.policy.target_agent_ids,
+      });
+      alert("Deployment session created successfully!");
+      setDeployModal({ show: false, policy: null });
+    } catch (e) {
+      alert("Failed to deploy");
+      console.error(e);
+    } finally {
+      setDeploying(false);
+    }
+  };
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -260,7 +302,7 @@ export function AutoDiscovery() {
 
       <div className="border-b border-border">
         <nav className="-mb-px flex space-x-6">
-          {["candidates", "control_plans", "evidence", "history"].map((tab) => (
+          {["candidates", "capabilities", "policies", "timeline", "evidence"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -273,13 +315,15 @@ export function AutoDiscovery() {
             >
               {tab === "candidates"
                 ? "Agents"
-                : tab === "control_plans"
-                  ? "Control Plans"
-                  : tab === "evidence"
-                    ? "Advanced / Evidence"
-                    : tab === "history"
-                      ? "History"
-                      : tab}
+                : tab === "capabilities"
+                  ? "What POLLEK can do"
+                  : tab === "policies"
+                    ? "Recommended Policies"
+                    : tab === "timeline"
+                      ? "Timeline"
+                      : tab === "evidence"
+                        ? "Advanced Details"
+                        : tab}
             </button>
           ))}
         </nav>
@@ -438,64 +482,89 @@ export function AutoDiscovery() {
           </div>
         )}
 
-        {activeTab === "control_plans" && (
+        {activeTab === "capabilities" && (
           <div>
-            <h3 className="font-semibold mb-4">Control Binding Plans</h3>
+            <h3 className="font-semibold mb-4">What POLLEK can do on this device</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Review suggested security bindings for discovered agents before
-              enforcing them.
+              Overview of local control capabilities automatically detected by the Policy Enforcement Point (PEP).
             </p>
 
-            {candidates.filter(
-              (c) =>
-                c.suggested_control_bindings &&
-                c.suggested_control_bindings.length > 0,
-            ).length === 0 ? (
+            {!snapshot ? (
               <div className="flex h-[150px] items-center justify-center rounded-md border border-dashed border-muted">
                 <p className="text-sm text-muted-foreground">
-                  No suggested control bindings found.
+                  No snapshot available.
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                {candidates
-                  .filter(
-                    (c) =>
-                      c.suggested_control_bindings &&
-                      c.suggested_control_bindings.length > 0,
-                  )
-                  .map((c, idx) => (
+                <div className="border rounded-lg p-4 bg-muted/10">
+                  <h4 className="font-medium text-primary mb-2">Device Info</h4>
+                  <p className="text-sm">OS: {snapshot.os?.type} {snapshot.os?.version} ({snapshot.os?.arch})</p>
+                  <p className="text-sm">Device ID: {snapshot.device_id}</p>
+                </div>
+                
+                <h4 className="font-medium mt-4">Detected Control Methods</h4>
+                {snapshot.methods && snapshot.methods.length > 0 ? (
+                  snapshot.methods.map((m: any, idx: number) => (
+                    <div key={idx} className="border rounded-lg p-4 bg-muted/10 flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">{m.method}</p>
+                        <p className="text-xs text-muted-foreground">Status: {m.status}</p>
+                      </div>
+                      <div className="flex gap-2">
+                         {m.can_observe && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-1 rounded">Can Observe</span>}
+                         {m.can_enforce && <span className="text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded">Can Enforce</span>}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                   <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-muted/10 text-center">
+                     No capabilities found yet.
+                   </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "policies" && (
+          <div>
+            <h3 className="font-semibold mb-4">Recommended Policies</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              These policies are suggested based on the discovered agents and local capabilities.
+            </p>
+
+            {suggestions.length === 0 ? (
+              <div className="flex h-[150px] items-center justify-center rounded-md border border-dashed border-muted">
+                <p className="text-sm text-muted-foreground">
+                  No suggestions available.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {suggestions.map((sugg, idx) => (
                     <div
                       key={idx}
                       className="border rounded-lg overflow-hidden"
                     >
                       <div className="bg-muted/30 p-3 border-b flex justify-between items-center">
-                        <h4 className="font-medium">{c.display_name}</h4>
+                        <h4 className="font-medium">{sugg.display_name?.en || sugg.suggestion_id}</h4>
                         <span className="text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-0.5 rounded border">
-                          ID: {c.candidate_id}
+                          Feasibility: {sugg.feasibility}
                         </span>
                       </div>
                       <div className="p-4 space-y-3">
-                        {c.suggested_control_bindings.map(
-                          (plan: any, planIdx: number) => (
-                            <div
-                              key={planIdx}
-                              className="flex items-center justify-between p-3 border rounded border-primary/20 bg-primary/5"
-                            >
-                              <div>
-                                <p className="font-medium text-sm">
-                                  {plan.summary}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Action: {plan.action} | Kind: {plan.kind}
-                                </p>
-                              </div>
-                              <button className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded font-medium shadow-sm hover:opacity-90">
-                                Apply Binding
-                              </button>
-                            </div>
-                          ),
-                        )}
+                         <p className="text-sm">{sugg.description?.en || ""}</p>
+                         <p className="text-xs text-muted-foreground">Target Agents: {sugg.target_agent_ids.join(", ")}</p>
+                         
+                         <div className="flex justify-end pt-2">
+                           <button 
+                             onClick={() => setDeployModal({ show: true, policy: sugg })}
+                             className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded font-medium shadow-sm hover:opacity-90"
+                           >
+                             Deploy Preview
+                           </button>
+                         </div>
                       </div>
                     </div>
                   ))}
@@ -710,6 +779,56 @@ export function AutoDiscovery() {
               >
                 <ShieldAlert className="w-4 h-4" />
                 {isRegistering ? "กำลังบันทึก..." : "ปกป้อง Agent นี้"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deployModal.show && deployModal.policy && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-xl font-bold mb-4">Deploy Policy Preview</h3>
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/10 rounded-md border">
+                 <p className="font-medium text-sm">{deployModal.policy.display_name?.en}</p>
+                 <p className="text-xs text-muted-foreground mt-1">{deployModal.policy.description?.en}</p>
+              </div>
+              <div className="p-3 bg-primary/10 rounded-md border border-primary/20">
+                 <p className="font-medium text-sm text-primary mb-1">Control Level Options</p>
+                 <p className="text-xs text-primary/80">
+                   The system will automatically configure the required PEP mechanisms. 
+                 </p>
+                 <div className="mt-3 space-y-2">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                       <input type="radio" name="controlLevel" value="warn" defaultChecked={deployModal.policy.recommended_control_level === 'Warn'} />
+                       <span>Warn Only</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                       <input type="radio" name="controlLevel" value="approval" defaultChecked={deployModal.policy.recommended_control_level === 'Approval'} />
+                       <span>Require Approval</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                       <input type="radio" name="controlLevel" value="enforce" defaultChecked={deployModal.policy.recommended_control_level === 'Enforce'} />
+                       <span>Strict Enforce</span>
+                    </label>
+                 </div>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setDeployModal({ show: false, policy: null })}
+                className="px-4 py-2 text-sm border rounded hover:bg-muted"
+                disabled={deploying}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeploy}
+                disabled={deploying}
+                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
+              >
+                {deploying ? "Deploying..." : "Confirm Deployment"}
               </button>
             </div>
           </div>

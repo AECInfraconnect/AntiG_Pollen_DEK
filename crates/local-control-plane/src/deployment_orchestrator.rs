@@ -29,6 +29,34 @@ impl DeploymentEventSink for MemoryEventSink {
     }
 }
 
+pub struct StoreEventSink {
+    // In a real implementation, this would hold database pool and telemetry spool references.
+}
+
+impl StoreEventSink {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl DeploymentEventSink for StoreEventSink {
+    async fn emit(&self, event: DeploymentEvent) -> anyhow::Result<()> {
+        // Pseudo-code for secure telemetry and timeline integration:
+        // 1. Write to local event store (SQLite) for the timeline view.
+        // 2. Write to secure telemetry spool for cloud/admin sync.
+
+        // Ensure correlation ID, policy ID, and agent/entity IDs are present.
+        let _correlation_id = &event.correlation_id;
+        let _policy_id = &event.policy_id;
+        let _agent_id = &event.agent_id;
+
+        // Emitting to local log
+        println!("Emitting deployment event: {:?}", event.event_id);
+
+        Ok(())
+    }
+}
+
 pub struct DeploymentOrchestrator<T: DeploymentEventSink> {
     event_sink: std::sync::Arc<T>,
 }

@@ -102,6 +102,10 @@ pub struct SuggestedAgentRegistration {
     pub executable_signer: Option<String>,
     pub declared_tools: Vec<String>,
     pub declared_resources: Vec<String>,
+    pub mcp_stdio_config_paths: Vec<String>,
+    pub mcp_http_urls: Vec<String>,
+    pub local_model_endpoints: Vec<String>,
+    pub browser_extension_evidence: Vec<String>,
     pub trust_level: String,
     pub initial_status: String,
 }

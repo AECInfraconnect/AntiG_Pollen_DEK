@@ -186,7 +186,7 @@ mod tests {
             target_scope: DeploymentScope::Agent {
                 agent_id: "ag1".into(),
             },
-            status: DeploymentSessionStatus::Planning,
+            status: DeploymentSessionStatus::DeploymentPlanCreated,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             created_by: "test".into(),
