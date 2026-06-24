@@ -13,6 +13,7 @@ mod engine_selector;
 pub use engine_selector::{DecisionKind, EngineSelector};
 
 pub mod context;
+pub mod engine;
 pub mod engine_plan;
 pub mod merge;
 pub mod route_matcher;

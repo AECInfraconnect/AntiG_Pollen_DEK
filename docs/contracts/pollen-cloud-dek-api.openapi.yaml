@@ -13,7 +13,7 @@ paths:
     post:
       summary: Start Device Authorization Flow
       responses:
-        '200':
+        "200":
           description: Device Code and User Code
           content:
             application/json:
@@ -31,7 +31,7 @@ paths:
     post:
       summary: Poll for access token using device code
       responses:
-        '200':
+        "200":
           description: Access Token
           content:
             application/json:
@@ -52,7 +52,7 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        '200':
+        "200":
           description: Device registration details
 
   /v1/tenants/{tenant_id}/devices/{device_id}/attest:
@@ -75,7 +75,7 @@ paths:
               properties:
                 csr: { type: string }
       responses:
-        '200':
+        "200":
           description: SVID issued
           content:
             application/json:
@@ -98,7 +98,7 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        '200':
+        "200":
           description: Configuration payload
 
   /v1/tenants/{tenant_id}/devices/{device_id}/bundles/latest:
@@ -114,7 +114,7 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        '200':
+        "200":
           description: Policy Bundle Manifest
 
   /v1/tenants/{tenant_id}/devices/{device_id}/telemetry/events:
@@ -130,7 +130,7 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        '202':
+        "202":
           description: Accepted
 
   /v1/tenants/{tenant_id}/devices/{device_id}/decision-logs:
@@ -146,7 +146,7 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        '202':
+        "202":
           description: Accepted
 
   /v1/tenants/{tenant_id}/devices/{device_id}/health:
@@ -162,5 +162,5 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        '202':
+        "202":
           description: Health accepted

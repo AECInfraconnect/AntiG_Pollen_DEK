@@ -16,7 +16,10 @@
   "mcp_server_id": "mcp-local-files",
   "name": "Read Secret File",
   "description": "Reads local secret files",
-  "input_schema": { "type": "object", "properties": { "path": { "type": "string" } } },
+  "input_schema": {
+    "type": "object",
+    "properties": { "path": { "type": "string" } }
+  },
   "output_schema": null,
   "side_effect_level": "local",
   "data_access_level": "restricted",

@@ -15,6 +15,7 @@
 
 use arc_swap::{ArcSwap, ArcSwapOption};
 use dek_activation::snapshot::RuntimeSnapshot;
+use dek_agent_observer::ingest::ObservationStore;
 use dek_mcp_normalizer::http::HttpTransportAdapter;
 use dek_resilience::admission::AdmissionControl;
 use dek_resilience::rate_limit::RateLimiter;
@@ -33,6 +34,8 @@ pub struct AppState {
     pub admission: Arc<AdmissionControl>,
     /// Rate Limiter
     pub rate_limiter: Arc<RateLimiter>,
+    /// Observer persistence and trust store
+    pub observer: Arc<dyn ObservationStore>,
 }
 
 impl AppState {
@@ -42,6 +45,7 @@ impl AppState {
         telemetry: Option<Arc<CloudTelemetrySink>>,
         admission: Arc<AdmissionControl>,
         rate_limiter: Arc<RateLimiter>,
+        observer: Arc<dyn ObservationStore>,
     ) -> Arc<Self> {
         Arc::new(Self {
             http_adapter,
@@ -50,6 +54,7 @@ impl AppState {
             telemetry,
             admission,
             rate_limiter,
+            observer,
         })
     }
 

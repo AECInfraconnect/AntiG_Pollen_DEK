@@ -38,7 +38,7 @@
 
 ## PR-3 · `dek-bundle-sync` key rotation (Phase 2 verifier)
 
-**ไฟล์ใหม่:** `crates/dek-bundle-sync/src/keys.rs`  (TrustedKeySet + verify + tests)
+**ไฟล์ใหม่:** `crates/dek-bundle-sync/src/keys.rs` (TrustedKeySet + verify + tests)
 **แก้:** `crates/dek-bundle-sync/src/lib.rs` (ดู `BUNDLE_SYNC_keys_patch.md`)
 
 - `pub mod keys;`
@@ -47,8 +47,8 @@
 - เมธอด: `update_keys(set)`, `key_set_snapshot()`
 - แทน verify loop ด้วย `key_set.verify(now, &signed_bytes, &parse_signatures(...))`
 - เพิ่ม `BundleError::{SignatureRejected, RollbackBlocked}` (thiserror) + คืน error ชนิดนี้
-**Cargo (dek-bundle-sync):** + `arc-swap = "1"`, + `thiserror = "1"` (มี ed25519-dalek/base64/serde อยู่แล้ว)
-**Acceptance:** `cargo test -p dek-bundle-sync` (keys: valid/overlap/revoke/forged)
+  **Cargo (dek-bundle-sync):** + `arc-swap = "1"`, + `thiserror = "1"` (มี ed25519-dalek/base64/serde อยู่แล้ว)
+  **Acceptance:** `cargo test -p dek-bundle-sync` (keys: valid/overlap/revoke/forged)
 
 ---
 
@@ -71,8 +71,8 @@
 - `crates/dek-core/src/supervisor.rs` — สร้าง `PolicySyncer::new(bundle_agent, Some(telemetry), FreshnessConfig{from cfg.syncer})`, `spawn(poll_interval, cancel)`, เก็บ `SyncerHandle` ใน Supervisor struct (อย่าให้ drop)
 - ลบ/แทน `bundle_loop::spawn_bundle_sync_task` เดิมด้วย syncer (ดู `PHASE0_1_wiring.md` + `PHASE2_3_wiring.md`)
 - wire AuditTrail + KeyManager เข้า `sync_once` (ดู `PHASE2_3_wiring.md` §2)
-**Cargo (dek-core):** + `dek-policy-syncer = { path = "../dek-policy-syncer" }`
-**Acceptance:** `cargo build -p dek-core`; unit ของ core เขียว; ไฟล์ `state/enforcement_state.json` ถูกเขียนเมื่อรัน
+  **Cargo (dek-core):** + `dek-policy-syncer = { path = "../dek-policy-syncer" }`
+  **Acceptance:** `cargo build -p dek-core`; unit ของ core เขียว; ไฟล์ `state/enforcement_state.json` ถูกเขียนเมื่อรัน
 
 ---
 
@@ -86,11 +86,11 @@
   - เก็บ `AdmissionControl` ใน `AppState`
 - `crates/dek-ext-authz/src/main.rs`: gate เดียวกันใน `check()`
 - `crates/dek-policy-router/src/lib.rs`: circuit breaker รอบ evaluator + timeout (ดู `PHASE4_5_wiring.md` §4.2) + ย้าย `dek_pdp_unavailable_total` มาที่ `metrics` crate (ดู `METRICS_instrumentation_patch.rs`)
-**Cargo:**
+  **Cargo:**
 - dek-mcp-proxy: + dek-policy-syncer, dek-resilience, metrics="0.22"; tokio features += time,macros,sync
 - dek-ext-authz: + dek-policy-syncer, dek-resilience, metrics="0.22"
 - dek-policy-router: + dek-resilience, metrics="0.22" (ลบ opentelemetry ถ้าไม่ใช้ที่อื่น)
-**Acceptance:** `cargo build -p dek-mcp-proxy -p dek-ext-authz -p dek-policy-router`; manual: ลบ status file → PEP deny
+  **Acceptance:** `cargo build -p dek-mcp-proxy -p dek-ext-authz -p dek-policy-router`; manual: ลบ status file → PEP deny
 
 ---
 
@@ -121,17 +121,17 @@
 
 ## สรุป Cargo changes (รวมทุก PR)
 
-| crate | เพิ่ม |
-|---|---|
-| root `Cargo.toml` | members: dek-resilience, dek-policy-syncer |
-| dek-config | (ไม่มี dep ใหม่) |
-| dek-bundle-sync | arc-swap, thiserror |
-| dek-resilience (ใหม่) | tokio, metrics, tracing |
-| dek-policy-syncer (ใหม่) | dek-bundle-sync, dek-config, dek-telemetry, arc-swap, serde(_json), tokio, tokio-util, anyhow, tracing, metrics, reqwest, sha2, hex |
-| dek-core | dek-policy-syncer |
-| dek-mcp-proxy | dek-policy-syncer, dek-resilience, metrics, dek-metrics; tokio += time,macros,sync |
-| dek-ext-authz | dek-policy-syncer, dek-resilience, metrics, dek-metrics |
-| dek-policy-router | dek-resilience, metrics (−opentelemetry) |
+| crate                    | เพิ่ม                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| root `Cargo.toml`        | members: dek-resilience, dek-policy-syncer                                                                                           |
+| dek-config               | (ไม่มี dep ใหม่)                                                                                                                     |
+| dek-bundle-sync          | arc-swap, thiserror                                                                                                                  |
+| dek-resilience (ใหม่)    | tokio, metrics, tracing                                                                                                              |
+| dek-policy-syncer (ใหม่) | dek-bundle-sync, dek-config, dek-telemetry, arc-swap, serde(\_json), tokio, tokio-util, anyhow, tracing, metrics, reqwest, sha2, hex |
+| dek-core                 | dek-policy-syncer                                                                                                                    |
+| dek-mcp-proxy            | dek-policy-syncer, dek-resilience, metrics, dek-metrics; tokio += time,macros,sync                                                   |
+| dek-ext-authz            | dek-policy-syncer, dek-resilience, metrics, dek-metrics                                                                              |
+| dek-policy-router        | dek-resilience, metrics (−opentelemetry)                                                                                             |
 
 ## ลำดับ merge แนะนำ
 

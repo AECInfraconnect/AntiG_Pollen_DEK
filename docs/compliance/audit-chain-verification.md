@@ -34,18 +34,18 @@ with open("audit_chain.json") as f:
 for i in range(1, len(events)):
     prev_event = events[i-1]
     curr_event = events[i]
-    
+
     # Assert sequence
     assert curr_event["seq"] == prev_event["seq"] + 1
-    
+
     # Assert digest linkage
     assert curr_event["prev_digest"] == prev_event["digest"]
-    
+
     # Recompute current digest
     payload_str = json.dumps(curr_event["payload"], separators=(',', ':'))
     data_to_hash = f"{curr_event['prev_digest']}{curr_event['seq']}{curr_event['timestamp']}{curr_event['event_type']}{payload_str}"
     computed_digest = hashlib.sha256(data_to_hash.encode()).hexdigest()
-    
+
     assert computed_digest == curr_event["digest"]
 
 print("Audit chain is valid and untampered.")

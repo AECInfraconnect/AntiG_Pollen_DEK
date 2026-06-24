@@ -32,5 +32,5 @@ rules:
     severity: warn
     given: $.paths[*][*].responses
     then:
-      field: 'default'
+      field: "default"
       function: truthy

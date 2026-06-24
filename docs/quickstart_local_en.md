@@ -84,7 +84,7 @@ For Windows PowerShell:
 
 ## 4. Run the Local Enforcement Kit
 
-*(Note: In local mode, `profile set local` already bootstraps the configuration, so we skip `dek-cli enroll`)*
+_(Note: In local mode, `profile set local` already bootstraps the configuration, so we skip `dek-cli enroll`)_
 
 For Linux/macOS or bash/Zsh:
 

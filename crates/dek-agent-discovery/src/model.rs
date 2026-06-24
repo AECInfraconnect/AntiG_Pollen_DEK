@@ -143,6 +143,60 @@ pub struct DiscoveryEvidenceV2 {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscoveryEvidenceV3 {
+    pub evidence_id: String,
+    pub tenant_id: String,
+    pub device_id: String,
+    pub source: EvidenceSource,
+    pub observed_at: String,
+    pub confidence: f64,
+    pub privacy_class: PrivacyClass,
+    pub redacted: bool,
+    pub subject: EvidenceSubject,
+    pub signals: Vec<DiscoverySignal>,
+    pub raw_redacted: serde_json::Value,
+    pub merge_key: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum EvidenceSubject {
+    Process {
+        pid: u32,
+        process_name: String,
+        exe_hash: Option<String>,
+    },
+    McpServer {
+        server_name: String,
+        transport: String,
+        config_hash: Option<String>,
+    },
+    HttpEndpoint {
+        url_redacted: String,
+        port: u16,
+        protocol: String,
+    },
+    BrowserExtension {
+        browser: String,
+        profile_hash: String,
+        extension_id: String,
+    },
+    Container {
+        engine: String,
+        container_id_hash: String,
+        image: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscoverySignal {
+    pub name: String,
+    pub weight: f64,
+    pub source: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveredAgentCandidateV2 {
     pub schema_version: String,
     pub candidate_id: String,

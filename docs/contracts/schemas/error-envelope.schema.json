@@ -20,11 +20,25 @@
     },
     "retry_class": {
       "type": "string",
-      "enum": ["no_retry", "retry_immediate", "retry_with_backoff", "retry_after_reauth", "retry_after_admin_action", "fatal_requires_reinstall"]
+      "enum": [
+        "no_retry",
+        "retry_immediate",
+        "retry_with_backoff",
+        "retry_after_reauth",
+        "retry_after_admin_action",
+        "fatal_requires_reinstall"
+      ]
     },
     "safety_action": {
       "type": "string",
-      "enum": ["deny_request", "keep_last_known_good", "enter_observe_only", "enter_degraded_mode", "stop_service", "quarantine_artifact"]
+      "enum": [
+        "deny_request",
+        "keep_last_known_good",
+        "enter_observe_only",
+        "enter_degraded_mode",
+        "stop_service",
+        "quarantine_artifact"
+      ]
     },
     "tenant_id": {
       "type": "string"
@@ -46,5 +60,14 @@
       "type": "string"
     }
   },
-  "required": ["error_id", "domain", "code", "message", "safe_message", "retry_class", "safety_action", "timestamp"]
+  "required": [
+    "error_id",
+    "domain",
+    "code",
+    "message",
+    "safe_message",
+    "retry_class",
+    "safety_action",
+    "timestamp"
+  ]
 }

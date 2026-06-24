@@ -14,26 +14,26 @@ channels:
     address: /v1/tenants/{tenantId}/devices/{deviceId}/events
     messages:
       BundleReady:
-        $ref: '#/components/messages/BundleReady'
+        $ref: "#/components/messages/BundleReady"
       ContractDeprecated:
-        $ref: '#/components/messages/ContractDeprecated'
+        $ref: "#/components/messages/ContractDeprecated"
 operations:
   receiveBundleEvents:
     action: receive
     channel:
-      $ref: '#/channels/bundleEvents'
+      $ref: "#/channels/bundleEvents"
 components:
   messages:
     BundleReady:
       name: BundleReady
       title: BundleReady
       payload:
-        $ref: '#/components/schemas/BundleReadyPayload'
+        $ref: "#/components/schemas/BundleReadyPayload"
     ContractDeprecated:
       name: ContractDeprecated
       title: ContractDeprecated
       payload:
-        $ref: '#/components/schemas/ContractDeprecatedPayload'
+        $ref: "#/components/schemas/ContractDeprecatedPayload"
   schemas:
     BundleReadyPayload:
       type: object

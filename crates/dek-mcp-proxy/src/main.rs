@@ -228,6 +228,16 @@ async fn main() -> Result<()> {
     );
 
     let telemetry_db = dek_config::paths::get_data_dir().join("telemetry.db");
+    let observer_db = dek_config::paths::get_data_dir().join("observer.db");
+
+    let observer_store =
+        dek_agent_observer::ingest::SqliteObservationStore::new(&observer_db.to_string_lossy())
+            .unwrap_or_else(|e| {
+                tracing::error!("failed to init observer db: {}", e);
+                std::process::exit(1);
+            });
+    let observer = std::sync::Arc::new(observer_store);
+
     let telemetry = dek_telemetry::CloudTelemetrySink::new(
         "https://telemetry.pollen-cloud.internal",
         &bootstrap.mtls,
@@ -249,6 +259,7 @@ async fn main() -> Result<()> {
         telemetry,
         admission,
         Arc::new(dek_resilience::rate_limit::RateLimiter::new(100.0, 10.0)),
+        observer,
     );
 
     // Start background file watcher for hot-reloading
@@ -604,7 +615,11 @@ async fn handle_mcp_request(
             uri: normalized.resource_uri.clone(),
         },
         context: policy_input.clone(),
-        input_hash: "mock_hash".into(),
+        input_hash: {
+            use sha2::Digest;
+            let bytes = serde_json::to_vec(&policy_input).unwrap_or_default();
+            hex::encode(sha2::Sha256::digest(&bytes))
+        },
     };
 
     let decision_input = serde_json::to_value(&decision_req).unwrap_or(policy_input.clone());
@@ -615,19 +630,25 @@ async fn handle_mcp_request(
         normalized.tool_name.as_deref().unwrap_or("unknown")
     );
 
-    // Mock Trust Score check for Phase A
-    let mock_trust = dek_agent_observer::trust::TrustScore {
-        agent_id: normalized
-            .agent_id
-            .clone()
-            .unwrap_or_else(|| "unknown".into()),
-        score: 1.0, // ใน Phase ถัดไปจะโหลดจาก Redis / DB
-        reasons: vec![],
-    };
-    match dek_agent_observer::trust::enforce_trust(&mock_trust) {
+    // Compute real trust score via observer baseline
+    let agent_id_str = normalized
+        .agent_id
+        .clone()
+        .unwrap_or_else(|| "unknown".into());
+    let trust_score = state
+        .observer
+        .update_baseline(&agent_id_str)
+        .await
+        .unwrap_or_else(|_| dek_agent_observer::trust::TrustScore {
+            agent_id: agent_id_str.clone(),
+            score: 1.0,
+            reasons: vec![],
+        });
+
+    match dek_agent_observer::trust::enforce_trust(&trust_score) {
         dek_agent_observer::trust::TrustAction::KillSwitch => {
             metrics::counter!("dek_proxy_requests_total", "decision" => "deny", "reason" => "kill_switch").increment(1);
-            tracing::error!(agent = %mock_trust.agent_id, "request denied by trust kill-switch");
+            tracing::error!(agent = %trust_score.agent_id, "request denied by trust kill-switch");
             let body = serde_json::json!({
                 "jsonrpc": "2.0",
                 "id": payload.get("id").unwrap_or(&serde_json::Value::Null),
@@ -637,7 +658,7 @@ async fn handle_mcp_request(
         }
         dek_agent_observer::trust::TrustAction::RequireApproval => {
             // จะถูกแปลงเป็น obligation ในขั้นตอน response
-            tracing::info!(agent = %mock_trust.agent_id, "agent requires human approval");
+            tracing::info!(agent = %trust_score.agent_id, "agent requires human approval");
         }
         dek_agent_observer::trust::TrustAction::Normal => {}
     }
@@ -787,81 +808,84 @@ async fn handle_mcp_request(
             compliance_tags.sort();
             compliance_tags.dedup();
 
-            if let Some(telemetry) = &state.telemetry {
-                let action = if normalized.request_type.is_empty() {
-                    "tools/call".into()
-                } else {
-                    normalized.request_type.clone()
-                };
-                let is_resource = action == "resources/read" || action == "resources/list";
+            let action = if normalized.request_type.is_empty() {
+                "tools/call".into()
+            } else {
+                normalized.request_type.clone()
+            };
+            let is_resource = action == "resources/read" || action == "resources/list";
 
-                let obs = dek_agent_observer::model::AgentObservationEvent {
-                    event_id: uuid::Uuid::new_v4().to_string(),
-                    tenant_id: final_tenant_id.clone(),
-                    trace_id: decision_req.request_id.clone(),
-                    agent_id: normalized.agent_id.clone(),
-                    shadow_candidate_id: None,
-                    tool_id: if is_resource {
-                        None
+            let obs = dek_agent_observer::model::AgentObservationEvent {
+                event_id: uuid::Uuid::new_v4().to_string(),
+                tenant_id: final_tenant_id.clone(),
+                trace_id: decision_req.request_id.clone(),
+                agent_id: normalized.agent_id.clone(),
+                shadow_candidate_id: None,
+                tool_id: if is_resource {
+                    None
+                } else {
+                    normalized.tool_name.clone()
+                },
+                resource_id: None,
+                surface: "mcp".into(),
+                action: action.clone(),
+                pep_type: Some("mcp_proxy".into()),
+                risk_level: None,
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                payload_json: "{}".into(),
+                token_usage: None,
+                event_kind: if is_resource {
+                    dek_agent_observer::model::EventKind::ResourceAccess
+                } else {
+                    dek_agent_observer::model::EventKind::ToolCall
+                },
+                decision: Some(dek_agent_observer::model::DecisionInfo {
+                    allow: decision.allow,
+                    reason_code: if decision.allow {
+                        "OK".into()
                     } else {
-                        normalized.tool_name.clone()
+                        "DENY".into()
                     },
-                    resource_id: None,
-                    surface: "mcp".into(),
-                    action: action.clone(),
-                    pep_type: Some("mcp_proxy".into()),
-                    risk_level: None,
-                    timestamp: chrono::Utc::now().to_rfc3339(),
-                    payload_json: "{}".into(),
-                    token_usage: None,
-                    event_kind: if is_resource {
-                        dek_agent_observer::model::EventKind::ResourceAccess
-                    } else {
-                        dek_agent_observer::model::EventKind::ToolCall
-                    },
-                    decision: Some(dek_agent_observer::model::DecisionInfo {
-                        allow: decision.allow,
-                        reason_code: if decision.allow {
-                            "OK".into()
+                    obligations: decision.obligations.clone(),
+                    matched_policy_ids: vec![],
+                    compliance_tags: compliance_tags.clone(),
+                }),
+                tool_call: if is_resource {
+                    None
+                } else {
+                    Some(dek_agent_observer::model::ToolCall {
+                        tool_name: normalized.tool_name.clone().unwrap_or_default(),
+                        server: None,
+                        args_summary: None,
+                        result_status: if decision.allow {
+                            "ok".into()
                         } else {
-                            "DENY".into()
+                            "denied".into()
                         },
-                        obligations: decision.obligations.clone(),
-                        matched_policy_ids: vec![],
-                        compliance_tags: compliance_tags.clone(),
-                    }),
-                    tool_call: if is_resource {
-                        None
-                    } else {
-                        Some(dek_agent_observer::model::ToolCall {
-                            tool_name: normalized.tool_name.clone().unwrap_or_default(),
-                            server: None,
-                            args_summary: None,
-                            result_status: if decision.allow {
-                                "ok".into()
-                            } else {
-                                "denied".into()
-                            },
-                        })
-                    },
-                    resource_access: if is_resource {
-                        Some(dek_agent_observer::model::ResourceAccess {
-                            resource_type: "mcp_resource".into(),
-                            target_redacted: normalized.resource_uri.clone().unwrap_or_default(),
-                            bytes: None,
-                            verb: "read".into(),
-                        })
-                    } else {
-                        None
-                    },
-                    latency_ms: Some(start_time.elapsed().as_millis() as i64),
-                    provider: None,
-                };
-                let mut event_json = serde_json::to_value(&obs).unwrap_or(json!({}));
+                    })
+                },
+                resource_access: if is_resource {
+                    Some(dek_agent_observer::model::ResourceAccess {
+                        resource_type: "mcp_resource".into(),
+                        target_redacted: normalized.resource_uri.clone().unwrap_or_default(),
+                        bytes: None,
+                        verb: "read".into(),
+                    })
+                } else {
+                    None
+                },
+                latency_ms: Some(start_time.elapsed().as_millis() as i64),
+                provider: None,
+            };
+
+            if let Some(telemetry) = &state.telemetry {
+                let mut event_json = serde_json::to_value(&obs).unwrap_or(serde_json::json!({}));
                 // ensure the spooler treats it correctly
-                event_json["event_type"] = json!("agent_observation");
+                event_json["event_type"] = serde_json::json!("agent_observation");
                 telemetry.emit_async(event_json, dek_telemetry::spooler::Priority::Normal);
             }
+
+            let _ = state.observer.append(obs).await;
 
             let has_mfa = identity
                 .claims

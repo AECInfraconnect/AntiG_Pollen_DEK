@@ -76,13 +76,13 @@ It is an Apache-2.0 runtime that **enforces and observes AI-agent, MCP, API, and
 
 The **Local Admin Dashboard** (React/Vite) provides 20+ pages for full control:
 
-| Category | Pages |
-|----------|-------|
-| **Overview** | Overview dashboard |
-| **Registry** | Agents, MCP Servers, Tools, Resources, Entities, Relationships, Blackbox AI Providers |
-| **Policy** | Policy Enforcer, Policy Presets, Simulator |
-| **Observability** | Auto Discovery, Shadow AI Inbox, Policy Suggestions, Cost Ledger, Alerts |
-| **Operations** | Bundles, Decision Logs (with CSV/JSON export), Settings (connectors, profiles) |
+| Category          | Pages                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| **Overview**      | Overview dashboard                                                                    |
+| **Registry**      | Agents, MCP Servers, Tools, Resources, Entities, Relationships, Blackbox AI Providers |
+| **Policy**        | Policy Enforcer, Policy Presets, Simulator                                            |
+| **Observability** | Auto Discovery, Shadow AI Inbox, Policy Suggestions, Cost Ledger, Alerts              |
+| **Operations**    | Bundles, Decision Logs (with CSV/JSON export), Settings (connectors, profiles)        |
 
 ---
 
@@ -111,7 +111,7 @@ To stop the Local Control Plane:
 - Windows: `.\stop-dek.ps1`
 - macOS/Linux: `./stop-dek.sh`
 
-*(Advanced)* You can also run the backend manually, but you will need to leave the terminal open:
+_(Advanced)_ You can also run the backend manually, but you will need to leave the terminal open:
 
 ```bash
 # Start the Local Control Plane
@@ -183,16 +183,16 @@ Full detail: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ## Crate Landscape (56 crates)
 
-| Layer | Key Crates |
-|-------|-----------|
-| **Control** | `dek-core`, `dek-config`, `dek-policy-syncer`, `dek-bundle-sync`, `dek-activation`, `dek-auth`, `dek-secure-spool` |
-| **Decision** | `dek-mcp-proxy`, `dek-policy-router`, `dek-policy-runtime`, `dek-cedar`, `dek-openfga`, `dek-opa-wasm`, `dek-resilience` |
-| **Observability** | `dek-agent-discovery`, `dek-agent-observer`, `dek-policy-suggester`, `dek-telemetry` |
-| **Network** | `dek-ebpfd`, `dek-ebpf-common`, `dek-windows-wfp`, `dek-macos-nefilter` |
-| **Identity** | `dek-spire-node`, `dek-enroll` |
-| **Interop** | `dek-a2a-mediator`, `dek-execution-sandbox`, `dek-agent-connector`, `dek-mcp-normalizer`, `dek-mcp-stdio-wrapper`, `dek-agent-binding`, `dek-fingerprint-defs` |
-| **SDK** | `dek-pdp-sdk`, `dek-plugin-sdk`, `dek-plugin-host`, `dek-policy-presets` |
-| **Control Planes** | `dek-control-plane-api`, `local-control-plane`, `mock-cloud` |
+| Layer              | Key Crates                                                                                                                                                     |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Control**        | `dek-core`, `dek-config`, `dek-policy-syncer`, `dek-bundle-sync`, `dek-activation`, `dek-auth`, `dek-secure-spool`                                             |
+| **Decision**       | `dek-mcp-proxy`, `dek-policy-router`, `dek-policy-runtime`, `dek-cedar`, `dek-openfga`, `dek-opa-wasm`, `dek-resilience`                                       |
+| **Observability**  | `dek-agent-discovery`, `dek-agent-observer`, `dek-policy-suggester`, `dek-telemetry`                                                                           |
+| **Network**        | `dek-ebpfd`, `dek-ebpf-common`, `dek-windows-wfp`, `dek-macos-nefilter`                                                                                        |
+| **Identity**       | `dek-spire-node`, `dek-enroll`                                                                                                                                 |
+| **Interop**        | `dek-a2a-mediator`, `dek-execution-sandbox`, `dek-agent-connector`, `dek-mcp-normalizer`, `dek-mcp-stdio-wrapper`, `dek-agent-binding`, `dek-fingerprint-defs` |
+| **SDK**            | `dek-pdp-sdk`, `dek-plugin-sdk`, `dek-plugin-host`, `dek-policy-presets`                                                                                       |
+| **Control Planes** | `dek-control-plane-api`, `local-control-plane`, `mock-cloud`                                                                                                   |
 
 ## Documentation
 

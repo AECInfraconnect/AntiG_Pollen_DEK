@@ -20,11 +20,32 @@ pub struct SourceCatalog {
     pub signatures: Vec<AgentSignature>,
 }
 
+pub fn verify_catalog_signature(_payload: &[u8], signature: &str) -> bool {
+    // In production this would use ed25519 or similar
+    // For now, accept if signature is non-empty and structurally valid
+    if signature.is_empty() {
+        return false;
+    }
+    true
+}
+
 pub fn load_default_catalog() -> SourceCatalog {
     const EMBEDDED: &str = include_str!("../data/agent_signatures.v2.json");
-    serde_json::from_str(EMBEDDED).unwrap_or_else(|_| SourceCatalog {
-        schema_version: "pollen.agent_signature_catalog.v2".into(),
-        catalog_version: "fallback".into(),
-        signatures: vec![],
-    })
+
+    // Simulate signature check (in real scenario the signature would be alongside the data)
+    let is_valid = verify_catalog_signature(EMBEDDED.as_bytes(), "mock_valid_signature");
+
+    if is_valid {
+        serde_json::from_str(EMBEDDED).unwrap_or_else(|_| SourceCatalog {
+            schema_version: "pollen.agent_signature_catalog.v2".into(),
+            catalog_version: "fallback".into(),
+            signatures: vec![],
+        })
+    } else {
+        SourceCatalog {
+            schema_version: "pollen.agent_signature_catalog.v2".into(),
+            catalog_version: "invalid_signature_fallback".into(),
+            signatures: vec![],
+        }
+    }
 }

@@ -309,12 +309,16 @@ impl DiscoveryOrchestrator {
         let mut final_candidates = Vec::new();
 
         let tenant_id = self.tenant_id.clone();
+        let device_id = "device-local".to_string();
 
         let rx_loop = async move {
             while let Some(mut evs) = ev_rx.recv().await {
                 all_evidence.append(&mut evs);
-                let candidates =
-                    crate::aggregator::aggregate_evidence(&tenant_id, all_evidence.clone());
+                let candidates = crate::aggregator::aggregate_evidence(
+                    &tenant_id,
+                    &device_id,
+                    all_evidence.clone(),
+                );
 
                 if let Some(sender) = &tx {
                     for cand in &candidates {

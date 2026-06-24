@@ -58,9 +58,7 @@
         },
         "event_type": {
           "type": "string",
-          "enum": [
-            "decision"
-          ]
+          "enum": ["decision"]
         },
         "latency_ms": {
           "type": "integer",
@@ -133,9 +131,7 @@
         },
         "event_type": {
           "type": "string",
-          "enum": [
-            "trace"
-          ]
+          "enum": ["trace"]
         },
         "schema_version": {
           "type": "string"
@@ -181,9 +177,7 @@
         },
         "event_type": {
           "type": "string",
-          "enum": [
-            "security"
-          ]
+          "enum": ["security"]
         },
         "schema_version": {
           "type": "string"
@@ -215,9 +209,7 @@
         },
         "event_type": {
           "type": "string",
-          "enum": [
-            "metric"
-          ]
+          "enum": ["metric"]
         },
         "metrics": {
           "type": "object",
@@ -268,9 +260,7 @@
         },
         "event_type": {
           "type": "string",
-          "enum": [
-            "ebpf_guardrail"
-          ]
+          "enum": ["ebpf_guardrail"]
         },
         "fqdn": {
           "type": "string"
@@ -307,11 +297,7 @@
   "definitions": {
     "TraceSpan": {
       "type": "object",
-      "required": [
-        "duration_ms",
-        "name",
-        "span_id"
-      ],
+      "required": ["duration_ms", "name", "span_id"],
       "properties": {
         "duration_ms": {
           "type": "integer",

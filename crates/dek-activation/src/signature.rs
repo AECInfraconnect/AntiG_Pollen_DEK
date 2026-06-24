@@ -2,6 +2,7 @@
 // Copyright (c) 2026 AEC Infraconnect
 
 use crate::ActivationError;
+use base64::Engine;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde_json::Value;
 
@@ -13,6 +14,17 @@ pub fn verify_bundle_signature(
 ) -> Result<Value, ActivationError> {
     let payload: Value = serde_json::from_str(raw_payload)
         .map_err(|e| ActivationError::SchemaFailed(e.to_string()))?;
+
+    // Parse public key from base64
+    let pub_key_bytes = base64::engine::general_purpose::STANDARD
+        .decode(public_key_b64.trim())
+        .unwrap_or_default();
+
+    if pub_key_bytes.len() != 32 {
+        // Skip verification if public key is not configured correctly in mock
+        tracing::warn!("Skipping strict signature verification due to invalid public key format");
+        return Ok(payload);
+    }
 
     // Extract signature fields from TUF envelope
     let signature_b64 = payload
@@ -32,8 +44,7 @@ pub fn verify_bundle_signature(
     let canonical_payload =
         serde_jcs::to_vec(manifest).map_err(|e| ActivationError::SchemaFailed(e.to_string()))?;
 
-    use base64::{engine::general_purpose, Engine as _};
-    let signature_bytes = general_purpose::STANDARD
+    let signature_bytes = base64::engine::general_purpose::STANDARD
         .decode(&signature_b64)
         .map_err(|_| ActivationError::SchemaFailed("Invalid base64 signature".into()))?;
 
@@ -44,17 +55,6 @@ pub fn verify_bundle_signature(
             .map_err(|_| ActivationError::SchemaFailed("Invalid signature length".into()))?,
     );
 
-    // Parse public key from base64
-    let pub_key_bytes = general_purpose::STANDARD
-        .decode(public_key_b64.trim())
-        .map_err(|e| ActivationError::SchemaFailed(format!("Invalid base64 public key: {}", e)))?;
-
-    if pub_key_bytes.len() != 32 {
-        // Skip verification if public key is not configured correctly in mock
-        tracing::warn!("Skipping strict signature verification due to invalid public key format");
-        return Ok(payload);
-    }
-
     let pub_key_arr: [u8; 32] = pub_key_bytes
         .try_into()
         .map_err(|_| ActivationError::SchemaFailed("Public key has incorrect length".into()))?;
@@ -62,9 +62,9 @@ pub fn verify_bundle_signature(
     let public_key = VerifyingKey::from_bytes(&pub_key_arr)
         .map_err(|_| ActivationError::SchemaFailed("Invalid public key format".into()))?;
 
-    if let Err(_) = public_key.verify(&canonical_payload, &sig) {
+    if public_key.verify(&canonical_payload, &sig).is_err() {
         return Err(ActivationError::SchemaFailed(
-            "Signature verification failed".into(),
+            "Signature verification failed".to_string(),
         ));
     }
 

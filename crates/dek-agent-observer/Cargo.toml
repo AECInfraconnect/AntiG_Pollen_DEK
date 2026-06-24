@@ -14,6 +14,8 @@ thiserror.workspace = true
 anyhow.workspace = true
 dek-agent-binding = { path = "../dek-agent-binding" }
 opentelemetry = "0.21"
-
+rusqlite = { version = "0.32", features = ["bundled"] }
+async-trait = "0.1"
+tokio = { workspace = true, features = ["sync"] }
 [lints]
 workspace = true

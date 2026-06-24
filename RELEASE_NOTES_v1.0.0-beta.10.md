@@ -13,7 +13,7 @@ We are excited to announce Pollek Local Enforcement Kit `v1.0.0-beta.10` — the
 
 ### Security Hardening
 
-- **Content Guard**: The MCP proxy now inspects payloads for prompt injection patterns, PII leakage, and malicious content *before* policy evaluation triggers.
+- **Content Guard**: The MCP proxy now inspects payloads for prompt injection patterns, PII leakage, and malicious content _before_ policy evaluation triggers.
 - **Rate Limiting**: Token-bucket rate limiters per agent protect downstream endpoints from overuse and abuse.
 - **Tamper-Evident Audit**: Decisions are securely queued locally with a SHA-256 hash chain (`AuditEntry`), cryptographically proving audit log integrity.
 

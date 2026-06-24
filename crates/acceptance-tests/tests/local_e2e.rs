@@ -221,7 +221,7 @@ async fn local_e2e_author_publish_enforce_log() -> Result<()> {
         pub_body["published"] == true,
         "publish: not marked published: {pub_body}"
     );
-    println!("[local_e2e] published bundle: {}", pub_body["bundle_id"]);
+    tracing::info!("[local_e2e] published bundle: {}", pub_body["bundle_id"]);
 
     // verify the signed manifest is fetchable on the same contract path Cloud uses
     let manifest: serde_json::Value = c
@@ -321,6 +321,9 @@ CCqGSM49BAMCA0kAMEYCIQC5famYrlcNXrTyLT10TBc6SsRQkTFt5nHNErx9dOFo\n\
         Duration::from_millis(300),
         || async {
             let (st, allow, _body) = authorize(&c, &req).await;
+            if !allow {
+                tracing::info!("poll_until denied: st={}, body={}", st, _body);
+            }
             st == 200 && allow
         },
     )
@@ -331,7 +334,7 @@ CCqGSM49BAMCA0kAMEYCIQC5famYrlcNXrTyLT10TBc6SsRQkTFt5nHNErx9dOFo\n\
         status == 200 && allow,
         "enforce: expected allow per published policy (status={status}, allow={allow}, body={body})"
     );
-    println!("[local_e2e] enforce OK: allow={allow}");
+    tracing::info!("[local_e2e] enforce OK: allow={allow}");
 
     // ======================================================================
     // STEP 4 — DECISION LOG: the DEK's decision telemetry lands in local-cp
@@ -369,19 +372,20 @@ CCqGSM49BAMCA0kAMEYCIQC5famYrlcNXrTyLT10TBc6SsRQkTFt5nHNErx9dOFo\n\
         "decision-log: expected at least one decision recorded in local-cp"
     );
     let has_allow = decisions.iter().any(|d| {
-        d.pointer("/payload/decision").and_then(|v| v.as_str()) == Some("allow")
+        d.pointer("/decision").and_then(|v| v.as_str()) == Some("allow")
+            || d.pointer("/payload/decision").and_then(|v| v.as_str()) == Some("allow")
             || d.pointer("/mcp/verdict").and_then(|v| v.as_str()) == Some("allow")
     });
     anyhow::ensure!(
         has_allow,
         "decision-log: expected an 'allow' decision; got {decisions:?}"
     );
-    println!(
+    tracing::info!(
         "[local_e2e] decision-log OK: {} decision(s) recorded",
         decisions.len()
     );
 
-    println!("[local_e2e] PASS — author -> publish -> enforce -> decision-log");
+    tracing::info!("[local_e2e] PASS — author -> publish -> enforce -> decision-log");
     let _ = std::fs::remove_dir_all(&lcp_data);
     Ok(())
 }

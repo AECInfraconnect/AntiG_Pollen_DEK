@@ -76,7 +76,7 @@ $env:DEK_LCP_AUTH_DISABLE="1"
 
 ## 4. รัน Local Enforcement Kit
 
-*(หมายเหตุ: ใน Local Mode คำสั่ง `profile set local` ได้ทำการสร้างไฟล์ตั้งค่าไปแล้ว จึงไม่ต้องรัน `dek-cli enroll` ซ้ำ)*
+_(หมายเหตุ: ใน Local Mode คำสั่ง `profile set local` ได้ทำการสร้างไฟล์ตั้งค่าไปแล้ว จึงไม่ต้องรัน `dek-cli enroll` ซ้ำ)_
 
 สำหรับ Linux/macOS หรือ bash/Zsh:
 
@@ -89,7 +89,7 @@ $env:DEK_LCP_AUTH_DISABLE="1"
 สำหรับ Windows PowerShell:
 
 ```powershell
-# dek-core จะทำงานค้างไว้คล้ายกับข้อ 2 หากต้องการรันเบื้องหลังให้ใช้คำสั่ง Start-Process 
+# dek-core จะทำงานค้างไว้คล้ายกับข้อ 2 หากต้องการรันเบื้องหลังให้ใช้คำสั่ง Start-Process
 # หรือสามารถเปิดหน้าต่างที่ 3 เพื่อรัน dek-core แยกต่างหากก็ได้
 Start-Process .\target\debug\dek-core.exe -NoNewWindow
 

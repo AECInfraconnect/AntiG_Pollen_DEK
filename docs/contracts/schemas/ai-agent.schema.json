@@ -66,11 +66,7 @@
   "definitions": {
     "Runtime": {
       "type": "object",
-      "required": [
-        "runtime_name",
-        "vendor",
-        "version"
-      ],
+      "required": ["runtime_name", "vendor", "version"],
       "properties": {
         "runtime_name": {
           "type": "string"

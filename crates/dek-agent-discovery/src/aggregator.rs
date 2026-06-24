@@ -3,9 +3,10 @@ use std::collections::{BTreeMap, HashMap};
 
 pub fn aggregate_evidence(
     tenant_id: &str,
+    device_id: &str,
     evidence: Vec<DiscoveryEvidenceV2>,
 ) -> Vec<DiscoveredAgentCandidateV2> {
-    let raw = aggregate_by_merge_key(tenant_id, evidence);
+    let raw = aggregate_by_merge_key(tenant_id, device_id, evidence);
     coalesce_by_identity(tenant_id, raw)
 }
 
@@ -80,6 +81,7 @@ fn is_better_name(new: &str, old: &str) -> bool {
 
 fn aggregate_by_merge_key(
     tenant_id: &str,
+    device_id: &str,
     mut evidence: Vec<DiscoveryEvidenceV2>,
 ) -> Vec<DiscoveredAgentCandidateV2> {
     // Group evidence by merge_key
@@ -97,7 +99,7 @@ fn aggregate_by_merge_key(
 
     for (_key, group) in groups {
         let mut max_confidence = 0.0;
-        let mut risk_score = 10;
+        let mut risk_score = 0;
         let mut agent_type = InferredAgentType::UnknownAiProcess;
         let mut name = "Unknown Agent".to_string();
         let mut vendor = None;
@@ -380,7 +382,7 @@ fn aggregate_by_merge_key(
             schema_version: "pollen.agent_discovery_candidate.v2".into(),
             candidate_id: cand_id,
             tenant_id: tenant_id.to_string(),
-            device_id: "device-local".into(),
+            device_id: device_id.to_string(),
             status,
             instance_count: 1,
             matched_signature_id,

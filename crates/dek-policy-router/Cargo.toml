@@ -13,6 +13,7 @@ dek-cedar = { path = "../dek-cedar" }
 dek-openfga = { path = "../dek-openfga" }
 dek-errors = { path = "../dek-errors" }
 dek-agent-binding = { path = "../dek-agent-binding" }
+dek-domain-schema = { path = "../dek-domain-schema" }
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true

@@ -35,7 +35,7 @@ Do not tag blindly. Tags should only be applied to a green commit on `main`.
    git push origin v1.0.0-beta.5
    ```
 
-   *(Do not use `git push --tags` as it pushes all local tags, potentially triggering multiple pipeline runs for outdated/abandoned tags).*
+   _(Do not use `git push --tags` as it pushes all local tags, potentially triggering multiple pipeline runs for outdated/abandoned tags)._
 
 ## 3. Tag Recovery (Fixing a Botched Release)
 
@@ -59,11 +59,11 @@ If a tag was created on a failing commit or if the release pipeline fails halfwa
 
 Not all artifacts are required for every release tier. The CI pipeline will enforce these checks.
 
-| Artifact / Requirement | Beta Release | General Availability (GA) | Notes |
-| :--- | :--- | :--- | :--- |
-| **All Unit/Integration Tests Pass** | 🟢 Required | 🟢 Required | Includes JUnit generation. |
-| **Gitleaks Audit** | 🟢 Required | 🟢 Required | Hard block. Must have 0 leaked keys. |
-| **Code Signing (Authenticode/Apple)** | 🟡 Optional | 🟢 Required | Beta builds may distribute unsigned binaries. |
-| **eBPF Hardening Checks** | 🟡 Optional | 🟢 Required | Fallback user-mode proxies are acceptable in Beta. |
-| **Documentation Sync** | 🟢 Required | 🟢 Required | README and ARCHITECTURE must be up to date. |
-| **Performance/Soak Tests** | ⚪ Skipped | 🟢 Required | Soak tests run manually or on a schedule for GA. |
+| Artifact / Requirement                | Beta Release | General Availability (GA) | Notes                                              |
+| :------------------------------------ | :----------- | :------------------------ | :------------------------------------------------- |
+| **All Unit/Integration Tests Pass**   | 🟢 Required  | 🟢 Required               | Includes JUnit generation.                         |
+| **Gitleaks Audit**                    | 🟢 Required  | 🟢 Required               | Hard block. Must have 0 leaked keys.               |
+| **Code Signing (Authenticode/Apple)** | 🟡 Optional  | 🟢 Required               | Beta builds may distribute unsigned binaries.      |
+| **eBPF Hardening Checks**             | 🟡 Optional  | 🟢 Required               | Fallback user-mode proxies are acceptable in Beta. |
+| **Documentation Sync**                | 🟢 Required  | 🟢 Required               | README and ARCHITECTURE must be up to date.        |
+| **Performance/Soak Tests**            | ⚪ Skipped   | 🟢 Required               | Soak tests run manually or on a schedule for GA.   |

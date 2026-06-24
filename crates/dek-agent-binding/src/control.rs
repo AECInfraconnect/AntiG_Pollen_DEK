@@ -22,10 +22,14 @@ pub fn derive_control(cap: &CapabilityDescriptor) -> Vec<ControlBindingSpec> {
     cap.interaction_surfaces
         .iter()
         .map(|s| match s {
-            Surface::McpStdio => ControlBindingSpec {
+            Surface::McpStdio { command, args } => ControlBindingSpec {
                 surface_selector: "mcp_stdio".into(),
                 strategy: ControlStrategy::StdioWrapperInjection {
-                    wrapper_path: "dek-mcp-stdio-wrapper".into(),
+                    wrapper_path: format!(
+                        "dek-mcp-stdio-wrapper --target {} {}",
+                        command,
+                        args.join(" ")
+                    ),
                 },
                 reversible: true,
                 requires_approval: false,

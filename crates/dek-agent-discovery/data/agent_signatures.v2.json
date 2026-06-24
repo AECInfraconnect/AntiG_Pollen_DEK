@@ -8,12 +8,18 @@
       "agent_type": "desktop_agent",
       "process_names": ["Claude", "Claude.exe"],
       "config_paths": {
-        "macos": ["~/Library/Application Support/Claude/claude_desktop_config.json"],
+        "macos": [
+          "~/Library/Application Support/Claude/claude_desktop_config.json"
+        ],
         "windows": ["%APPDATA%/Claude/claude_desktop_config.json"],
         "linux": ["~/.config/Claude/claude_desktop_config.json"]
       },
       "config_parsers": ["mcp_servers_object"],
-      "control_strategies": ["mcp_stdio_wrapper", "mcp_http_proxy", "observe_only"]
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "mcp_http_proxy",
+        "observe_only"
+      ]
     },
     {
       "id": "cursor",
@@ -24,7 +30,11 @@
         "all": ["~/.cursor/mcp.json", "{workspace}/.cursor/mcp.json"]
       },
       "config_parsers": ["mcp_servers_object"],
-      "control_strategies": ["mcp_stdio_wrapper", "mcp_http_proxy", "observe_only"]
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "mcp_http_proxy",
+        "observe_only"
+      ]
     },
     {
       "id": "vscode",
@@ -37,7 +47,11 @@
         "windows": ["%APPDATA%/Code/User/mcp.json"]
       },
       "config_parsers": ["mcp_servers_vscode"],
-      "control_strategies": ["mcp_stdio_wrapper", "mcp_http_proxy", "observe_only"]
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "mcp_http_proxy",
+        "observe_only"
+      ]
     },
     {
       "id": "windsurf",
@@ -48,7 +62,11 @@
         "all": ["~/.codeium/windsurf/mcp_config.json"]
       },
       "config_parsers": ["mcp_servers_object"],
-      "control_strategies": ["mcp_stdio_wrapper", "mcp_http_proxy", "observe_only"]
+      "control_strategies": [
+        "mcp_stdio_wrapper",
+        "mcp_http_proxy",
+        "observe_only"
+      ]
     },
     {
       "id": "cline",
@@ -56,8 +74,12 @@
       "agent_type": "ide_extension_agent",
       "process_names": ["Code", "code"],
       "config_paths": {
-        "macos": ["~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json"],
-        "windows": ["%APPDATA%/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json"]
+        "macos": [
+          "~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json"
+        ],
+        "windows": [
+          "%APPDATA%/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json"
+        ]
       },
       "config_parsers": ["mcp_servers_object"],
       "control_strategies": ["mcp_stdio_wrapper", "observe_only"]
@@ -102,13 +124,21 @@
       "process_names": ["ollama", "ollama.exe"],
       "ports": [11434],
       "forensic_artifacts": {
-        "model_cache": ["~/.ollama/models", "%USERPROFILE%/.ollama/models", "/usr/share/ollama/.ollama/models"],
+        "model_cache": [
+          "~/.ollama/models",
+          "%USERPROFILE%/.ollama/models",
+          "/usr/share/ollama/.ollama/models"
+        ],
         "config": ["~/.ollama/config.json"],
         "manifests": ["~/.ollama/models/manifests"],
         "logs": ["~/.ollama/logs/server.log"]
       },
       "config_parsers": ["ollama_api"],
-      "control_strategies": ["ollama_proxy", "network_egress_pep", "observe_only"]
+      "control_strategies": [
+        "ollama_proxy",
+        "network_egress_pep",
+        "observe_only"
+      ]
     },
     {
       "id": "lmstudio",

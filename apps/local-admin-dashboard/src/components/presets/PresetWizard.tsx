@@ -67,7 +67,9 @@ export function PresetWizard({
 
   const [capabilities, setCapabilities] = useState<any[]>([]);
   useEffect(() => {
-    PolicyApi.getCapabilities().then(res => setCapabilities(res.capabilities || [])).catch(console.error);
+    PolicyApi.getCapabilities()
+      .then((res) => setCapabilities(res.capabilities || []))
+      .catch(console.error);
   }, []);
 
   const nextStep = () => {
@@ -270,12 +272,17 @@ export function PresetWizard({
       nextStep();
     } else if (step === "pdp") {
       if (controlMode === "enforce") {
-        const unsupported = selectedPeps.filter(pepId => {
-          const cap = capabilities.find(c => c.pep_type === pepId);
-          return !cap || cap.status !== "available" || cap.mode === "observe_only";
+        const unsupported = selectedPeps.filter((pepId) => {
+          const cap = capabilities.find((c) => c.pep_type === pepId);
+          return (
+            !cap || cap.status !== "available" || cap.mode === "observe_only"
+          );
         });
         if (unsupported.length > 0) {
-          alert("Cannot deploy 'enforce' mode to unsupported or observe-only PEPs: " + unsupported.join(", "));
+          alert(
+            "Cannot deploy 'enforce' mode to unsupported or observe-only PEPs: " +
+              unsupported.join(", "),
+          );
           return;
         }
       }

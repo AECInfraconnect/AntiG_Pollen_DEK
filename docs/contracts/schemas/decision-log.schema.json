@@ -10,5 +10,12 @@
     "resource": { "type": "string" },
     "decision": { "type": "string", "enum": ["allow", "deny"] }
   },
-  "required": ["log_id", "timestamp", "principal", "action", "resource", "decision"]
+  "required": [
+    "log_id",
+    "timestamp",
+    "principal",
+    "action",
+    "resource",
+    "decision"
+  ]
 }

@@ -175,27 +175,27 @@ Kernel L4 policy ห้ามขึ้นกับ semantic payload เช่น
 
 ### 4.1 Existing modules to keep
 
-| Existing crate/app | Role in new flow |
-|---|---|
-| `dek-core` | Supervisor, local API, bundle activation, runtime registry, health |
-| `dek-policy-router` | Multi-PDP routing and decision composition |
-| `dek-policy-syncer` / `dek-bundle-sync` | Pull/push bundle sync, signature check, atomic hot reload |
-| `dek-opa-wasm` | OPA/Rego evaluator via Wasm |
-| `dek-cedar` | Cedar evaluator and schema validation |
-| `dek-openfga` | OpenFGA local/remote check adapter |
-| `dek-enforcement-api` | PEP/provider contract |
-| `dek-control-plane-api` | Cloud/Mock-Cloud/Local control-plane API contract |
-| `dek-domain-schema` | Entity and policy schema definitions |
-| `dek-ebpfd` | Linux L4/DNS enforcement |
-| `dek-windows-wfp` | Windows L4 enforcement |
-| `dek-macos-nefilter` | macOS flow enforcement |
-| `dek-mcp-proxy` | MCP L7 enforcement |
-| `dek-mcp-stdio-wrapper` | stdio MCP/tool enforcement |
-| `dek-ext-authz` | Envoy/Istio external authorization bridge |
-| `dek-wasm-host` / `dek-plugin-host` | Transform/plugin enforcement obligations |
-| `local-control-plane` | Local policy CRUD and bundle service |
-| `apps/local-admin-dashboard` | Local UI without AI |
-| `ui/mock-cloud` / `crates/mock-cloud` | Cloud simulation, AI compiler stub, enterprise flows |
+| Existing crate/app                      | Role in new flow                                                   |
+| --------------------------------------- | ------------------------------------------------------------------ |
+| `dek-core`                              | Supervisor, local API, bundle activation, runtime registry, health |
+| `dek-policy-router`                     | Multi-PDP routing and decision composition                         |
+| `dek-policy-syncer` / `dek-bundle-sync` | Pull/push bundle sync, signature check, atomic hot reload          |
+| `dek-opa-wasm`                          | OPA/Rego evaluator via Wasm                                        |
+| `dek-cedar`                             | Cedar evaluator and schema validation                              |
+| `dek-openfga`                           | OpenFGA local/remote check adapter                                 |
+| `dek-enforcement-api`                   | PEP/provider contract                                              |
+| `dek-control-plane-api`                 | Cloud/Mock-Cloud/Local control-plane API contract                  |
+| `dek-domain-schema`                     | Entity and policy schema definitions                               |
+| `dek-ebpfd`                             | Linux L4/DNS enforcement                                           |
+| `dek-windows-wfp`                       | Windows L4 enforcement                                             |
+| `dek-macos-nefilter`                    | macOS flow enforcement                                             |
+| `dek-mcp-proxy`                         | MCP L7 enforcement                                                 |
+| `dek-mcp-stdio-wrapper`                 | stdio MCP/tool enforcement                                         |
+| `dek-ext-authz`                         | Envoy/Istio external authorization bridge                          |
+| `dek-wasm-host` / `dek-plugin-host`     | Transform/plugin enforcement obligations                           |
+| `local-control-plane`                   | Local policy CRUD and bundle service                               |
+| `apps/local-admin-dashboard`            | Local UI without AI                                                |
+| `ui/mock-cloud` / `crates/mock-cloud`   | Cloud simulation, AI compiler stub, enterprise flows               |
 
 ### 4.2 New modules recommended
 
@@ -339,7 +339,7 @@ spec:
   constraints:
     timeWindow:
       timezone: Asia/Bangkok
-      days: [MON,TUE,WED,THU,FRI]
+      days: [MON, TUE, WED, THU, FRI]
       start: "08:00"
       end: "19:00"
     maxRequestsPerMinute: 120
@@ -386,12 +386,29 @@ spec:
     },
     "spec": {
       "type": "object",
-      "required": ["decisionMode", "subjects", "actions", "resources", "enforcement"],
+      "required": [
+        "decisionMode",
+        "subjects",
+        "actions",
+        "resources",
+        "enforcement"
+      ],
       "properties": {
         "decisionMode": { "enum": ["enforce", "observe", "shadow", "dry_run"] },
         "actions": {
           "type": "array",
-          "items": { "enum": ["network.connect", "http.request", "mcp.call_tool", "tool.execute", "file.read", "file.write", "dds.publish", "dds.subscribe"] }
+          "items": {
+            "enum": [
+              "network.connect",
+              "http.request",
+              "mcp.call_tool",
+              "tool.execute",
+              "file.read",
+              "file.write",
+              "dds.publish",
+              "dds.subscribe"
+            ]
+          }
         }
       }
     }
@@ -487,15 +504,15 @@ POST /v1/telemetry/events
 
 ### 8.1 Compiler decision matrix
 
-| Policy semantics | Best target | Why | Example |
-|---|---|---|---|
-| Relationship permission | OpenFGA | ReBAC graph check | user/team owns project/resource |
-| App principal/action/resource/context | Cedar | Fast typed authz with schema validation | agent can call tool if device healthy |
-| General rules, risk scoring, constraints | OPA/Rego | Flexible ABAC, data-heavy rules | deny if risk_score > threshold |
-| Network L4 allow/block | OS kernel policy | Low-latency flow control | block outbound to unknown IP/port |
-| Text/data transformation | WASM plugin | Safe sandboxed transform | redact PII before telemetry/tool call |
-| API gateway ext authz | OPA/Cedar via ext_authz | L7 request context | HTTP path/method/header policy |
-| MCP tool call | Cedar/OPA + plugin | tool/resource/action + prompt context | allow `read_file` only in workspace |
+| Policy semantics                         | Best target             | Why                                     | Example                               |
+| ---------------------------------------- | ----------------------- | --------------------------------------- | ------------------------------------- |
+| Relationship permission                  | OpenFGA                 | ReBAC graph check                       | user/team owns project/resource       |
+| App principal/action/resource/context    | Cedar                   | Fast typed authz with schema validation | agent can call tool if device healthy |
+| General rules, risk scoring, constraints | OPA/Rego                | Flexible ABAC, data-heavy rules         | deny if risk_score > threshold        |
+| Network L4 allow/block                   | OS kernel policy        | Low-latency flow control                | block outbound to unknown IP/port     |
+| Text/data transformation                 | WASM plugin             | Safe sandboxed transform                | redact PII before telemetry/tool call |
+| API gateway ext authz                    | OPA/Cedar via ext_authz | L7 request context                      | HTTP path/method/header policy        |
+| MCP tool call                            | Cedar/OPA + plugin      | tool/resource/action + prompt context   | allow `read_file` only in workspace   |
 
 ### 8.2 Routing algorithm
 
@@ -696,8 +713,16 @@ Generated tuples:
 
 ```json
 [
-  { "user": "agent:research-agent-001", "relation": "caller", "object": "tool:filesystem.read_file" },
-  { "user": "group:ai-admins#member", "relation": "caller", "object": "tool:browser.search" }
+  {
+    "user": "agent:research-agent-001",
+    "relation": "caller",
+    "object": "tool:filesystem.read_file"
+  },
+  {
+    "user": "group:ai-admins#member",
+    "relation": "caller",
+    "object": "tool:browser.search"
+  }
 ]
 ```
 
@@ -776,7 +801,12 @@ bundle.tar.gz
   },
   "compatibility": {
     "min_dek_version": "1.0.0-beta.1",
-    "required_crates": ["dek-policy-router", "dek-opa-wasm", "dek-cedar", "dek-openfga"],
+    "required_crates": [
+      "dek-policy-router",
+      "dek-opa-wasm",
+      "dek-cedar",
+      "dek-openfga"
+    ],
     "required_pep_types": ["mcp_proxy", "os_l4"],
     "required_os_modules": {
       "linux": ["dek-ebpfd"],
@@ -786,10 +816,26 @@ bundle.tar.gz
   },
   "artifacts": [
     { "type": "ppi", "path": "intent/pol-xxx.yaml", "sha256": "..." },
-    { "type": "opa_wasm", "path": "compiled/opa/pol-xxx.wasm", "sha256": "..." },
-    { "type": "cedar", "path": "compiled/cedar/policies.cedar", "sha256": "..." },
-    { "type": "openfga_model", "path": "compiled/openfga/model.fga", "sha256": "..." },
-    { "type": "os_l4", "path": "compiled/os/os-l4-policy.json", "sha256": "..." }
+    {
+      "type": "opa_wasm",
+      "path": "compiled/opa/pol-xxx.wasm",
+      "sha256": "..."
+    },
+    {
+      "type": "cedar",
+      "path": "compiled/cedar/policies.cedar",
+      "sha256": "..."
+    },
+    {
+      "type": "openfga_model",
+      "path": "compiled/openfga/model.fga",
+      "sha256": "..."
+    },
+    {
+      "type": "os_l4",
+      "path": "compiled/os/os-l4-policy.json",
+      "sha256": "..."
+    }
   ],
   "activation": {
     "strategy": "atomic",
@@ -993,16 +1039,16 @@ Telemetry event -> dek-core/dek-telemetry -> encrypted spool -> Cloud/Mock-Cloud
 
 ## 13. Enforcement Flow by Policy Type
 
-| Policy type | Example | PDP | PEP | Kernel involvement |
-|---|---|---|---|---|
-| Network allow/deny | block unknown outbound 443 | OS L4 plan + optional OPA precompute | eBPF/WFP/NEFilter | Required |
-| MCP tool authorization | agent can call filesystem.read_file | Cedar/OpenFGA/OPA | MCP proxy/stdio wrapper | Not needed |
-| API authorization | POST /v1/chat allowed by role | OPA/Cedar | ext_authz/API gateway | Not needed |
-| Data redaction | redact email/phone before telemetry | WASM plugin + OPA obligations | plugin_host/MCP/API | Not needed |
-| Relationship access | user member of team can access resource | OpenFGA | MCP/API/ext_authz | Not needed |
-| Device posture policy | allow only healthy Local Enforcement Kit devices | Cedar/OPA | all PEPs | Optional for L4 |
-| Rate/quota | max 120 rpm | OPA + local counters | MCP/API | Not kernel in beta |
-| DNS/IP cache policy | allow resolved IP for hostname | OS L4 plan | eBPF/WFP/NEFilter | Required |
+| Policy type            | Example                                          | PDP                                  | PEP                     | Kernel involvement |
+| ---------------------- | ------------------------------------------------ | ------------------------------------ | ----------------------- | ------------------ |
+| Network allow/deny     | block unknown outbound 443                       | OS L4 plan + optional OPA precompute | eBPF/WFP/NEFilter       | Required           |
+| MCP tool authorization | agent can call filesystem.read_file              | Cedar/OpenFGA/OPA                    | MCP proxy/stdio wrapper | Not needed         |
+| API authorization      | POST /v1/chat allowed by role                    | OPA/Cedar                            | ext_authz/API gateway   | Not needed         |
+| Data redaction         | redact email/phone before telemetry              | WASM plugin + OPA obligations        | plugin_host/MCP/API     | Not needed         |
+| Relationship access    | user member of team can access resource          | OpenFGA                              | MCP/API/ext_authz       | Not needed         |
+| Device posture policy  | allow only healthy Local Enforcement Kit devices | Cedar/OPA                            | all PEPs                | Optional for L4    |
+| Rate/quota             | max 120 rpm                                      | OPA + local counters                 | MCP/API                 | Not kernel in beta |
+| DNS/IP cache policy    | allow resolved IP for hostname                   | OS L4 plan                           | eBPF/WFP/NEFilter       | Required           |
 
 ---
 
@@ -1187,17 +1233,17 @@ sequenceDiagram
 
 ### 16.3 Entity security requirements
 
-| Entity | Required identity binding | Required lifecycle control |
-|---|---|---|
-| Local Enforcement Kit device | device certificate + SVID | enrollment, rotation, revoke |
-| Workload/process | binary hash + path + signer + optional SVID | discovery, approval, drift detection |
-| Agent | parent workload + runtime instance ID | session lifecycle, delegation expiry |
-| MCP server | transport + executable + tool list | tool inventory, risk classification |
-| Tool | server + action schema + risk labels | allowlist, schema validation |
-| Network destination | DNS + IP cache + cert metadata optional | TTL, LRU, deny unknown |
-| User/group | OIDC/SCIM/local admin | role mapping, MFA for approval |
-| Policy | immutable version + signature | approval, rollback, retirement |
-| Plugin | signed WASM + ABI + SBOM | sandbox, version pinning |
+| Entity                       | Required identity binding                   | Required lifecycle control           |
+| ---------------------------- | ------------------------------------------- | ------------------------------------ |
+| Local Enforcement Kit device | device certificate + SVID                   | enrollment, rotation, revoke         |
+| Workload/process             | binary hash + path + signer + optional SVID | discovery, approval, drift detection |
+| Agent                        | parent workload + runtime instance ID       | session lifecycle, delegation expiry |
+| MCP server                   | transport + executable + tool list          | tool inventory, risk classification  |
+| Tool                         | server + action schema + risk labels        | allowlist, schema validation         |
+| Network destination          | DNS + IP cache + cert metadata optional     | TTL, LRU, deny unknown               |
+| User/group                   | OIDC/SCIM/local admin                       | role mapping, MFA for approval       |
+| Policy                       | immutable version + signature               | approval, rollback, retirement       |
+| Plugin                       | signed WASM + ABI + SBOM                    | sandbox, version pinning             |
 
 ---
 
@@ -1310,7 +1356,12 @@ Compatible conceptually with OPA decision logs but extended with Pollek fields:
 ### 18.3 React/TypeScript model
 
 ```ts
-export type CompileTarget = "opa_wasm" | "cedar" | "openfga" | "os_l4" | "wasm_plugin";
+export type CompileTarget =
+  | "opa_wasm"
+  | "cedar"
+  | "openfga"
+  | "os_l4"
+  | "wasm_plugin";
 
 export interface PolicyIntentFormState {
   id: string;
@@ -1380,21 +1431,28 @@ app.post("/v1/policy-intents/draft", (req, res) => {
       id: `pol-${Date.now()}`,
       tenant: input.tenant,
       name: "Generated from NL prompt",
-      version: "0.1.0"
+      version: "0.1.0",
     },
     spec: {
       decisionMode: "enforce",
       priority: 500,
-      subjects: { include: [{ type: "agent", selector: { labels: { approved: "true" } } }] },
+      subjects: {
+        include: [
+          { type: "agent", selector: { labels: { approved: "true" } } },
+        ],
+      },
       actions: ["mcp.call_tool"],
       resources: { include: [{ type: "tool", selector: { risk: "low" } }] },
       constraints: { requireDevicePosture: "healthy" },
       enforcement: { preferredPepTypes: ["mcp_proxy"], fallback: "deny" },
-      obligations: { audit: { level: "decision", includeInput: "redacted" } }
-    }
+      obligations: { audit: { level: "decision", includeInput: "redacted" } },
+    },
   };
 
-  res.json({ ppi, explanation: "Drafted from deterministic template. Review before deploy." });
+  res.json({
+    ppi,
+    explanation: "Drafted from deterministic template. Review before deploy.",
+  });
 });
 
 app.listen(8788);
@@ -1588,7 +1646,11 @@ For Pollek Cloud AI Policy Editor:
     {
       "name": "approved agent can connect to OpenAI",
       "input": {
-        "subject": { "type": "agent", "id": "agent:research", "labels": { "approved": "true" } },
+        "subject": {
+          "type": "agent",
+          "id": "agent:research",
+          "labels": { "approved": "true" }
+        },
         "action": "network.connect",
         "resource": { "host": "api.openai.com", "port": 443 },
         "device": { "posture": "healthy" }
@@ -1598,7 +1660,11 @@ For Pollek Cloud AI Policy Editor:
     {
       "name": "unapproved agent denied",
       "input": {
-        "subject": { "type": "agent", "id": "agent:unknown", "labels": { "approved": "false" } },
+        "subject": {
+          "type": "agent",
+          "id": "agent:unknown",
+          "labels": { "approved": "false" }
+        },
         "action": "network.connect",
         "resource": { "host": "api.openai.com", "port": 443 },
         "device": { "posture": "healthy" }

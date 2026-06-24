@@ -24,6 +24,26 @@ use crate::redactor::Redactor;
 pub use crate::spooler::{Priority, Spooler};
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct CanonicalTelemetryEvent {
+    pub schema_version: String,
+    pub event_id: String,
+    pub tenant_id: String,
+    pub device_id: String,
+    pub agent_id: Option<String>,
+    pub binding_id: Option<String>,
+    pub event_type: String,
+    pub control_level: Option<String>,
+    pub decision: Option<String>,
+    pub reason: Option<String>,
+    pub input_hash: Option<String>,
+    pub redacted: bool,
+    pub observed_at: String,
+    #[serde(default)]
+    pub attributes: std::collections::HashMap<String, String>,
+}
+
+// Deprecated: use CanonicalTelemetryEvent instead
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TelemetryEnvelope {
     pub ts: String,
     pub tenant_id: Option<String>,
@@ -179,10 +199,16 @@ impl CloudTelemetrySink {
             .read()
             .map(|p| p.clone())
             .unwrap_or_default();
-        if profile == dek_config::EnterpriseProfile::Regulated {
+
+        // No raw prompt/body by default unless explicitly allowed by profile (e.g., Debug/Permissive)
+        // For now, if it's Regulated or Default, strip it.
+        if profile == dek_config::EnterpriseProfile::Regulated
+            || profile == dek_config::EnterpriseProfile::default()
+        {
             if let Some(obj) = event.as_object_mut() {
                 obj.remove("raw_payload");
                 obj.remove("http_body");
+                obj.remove("prompt");
             }
         }
 

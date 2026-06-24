@@ -7,19 +7,22 @@ pub struct FingerprintSignals {
     pub has_mcp_servers: bool,
 }
 
-pub fn compute_confidence(signals: &FingerprintSignals) -> f64 {
+pub fn compute_confidence(
+    signals: &FingerprintSignals,
+    weights: &std::collections::HashMap<String, f64>,
+) -> f64 {
     let mut score: f64 = 0.0;
     if signals.matched_process_name.is_some() {
-        score += 0.6;
+        score += weights.get("process_name").copied().unwrap_or(0.5);
     }
     if signals.matched_config_path.is_some() {
-        score += 0.4;
+        score += weights.get("config_path").copied().unwrap_or(0.3);
     }
     if signals.matched_port.is_some() {
-        score += 0.4;
+        score += weights.get("port").copied().unwrap_or(0.2);
     }
     if signals.has_mcp_servers {
-        score += 0.2;
+        score += weights.get("mcp_servers").copied().unwrap_or(0.2);
     }
     score.min(1.0)
 }
@@ -61,7 +64,13 @@ pub fn fingerprint_process(process_name: &str) -> f64 {
         matched_port: None,
         has_mcp_servers: false,
     };
-    compute_confidence(&signals)
+    let mut default_weights = std::collections::HashMap::new();
+    default_weights.insert("process_name".to_string(), 0.6);
+    default_weights.insert("config_path".to_string(), 0.4);
+    default_weights.insert("port".to_string(), 0.4);
+    default_weights.insert("mcp_servers".to_string(), 0.2);
+
+    compute_confidence(&signals, &default_weights)
 }
 
 #[cfg(test)]

@@ -39,7 +39,7 @@ cosign verify-blob \
   Pollek-dek-linux-x64.tar.gz
 ```
 
-*Note: Replace `v1.0.0-beta.1` with the exact tag of the release you downloaded.*
+_Note: Replace `v1.0.0-beta.1` with the exact tag of the release you downloaded._
 
 ## 3. SBOM (Software Bill of Materials)
 

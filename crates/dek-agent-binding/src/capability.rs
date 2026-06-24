@@ -14,7 +14,7 @@ pub struct CapabilityDescriptor {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Surface {
-    McpStdio,
+    McpStdio { command: String, args: Vec<String> },
     McpHttp { url: String },
     McpSse { url: String },
     OpenAiCompatApi { port: u16 },
@@ -48,7 +48,10 @@ pub fn capabilities_from_signature(sig: &AgentSignatureV2) -> CapabilityDescript
         .control_strategies
         .iter()
         .filter_map(|s| match s.as_str() {
-            "mcp_stdio_wrapper" => Some(Surface::McpStdio),
+            "mcp_stdio_wrapper" => Some(Surface::McpStdio {
+                command: "unknown".into(),
+                args: vec![],
+            }),
             "ollama_proxy" | "network_egress_pep" => Some(Surface::OpenAiCompatApi {
                 port: sig.ports.first().copied().unwrap_or(0),
             }),
@@ -67,65 +70,108 @@ pub fn capabilities_from_signature(sig: &AgentSignatureV2) -> CapabilityDescript
 }
 
 pub async fn probe_mcp_tools(surface: &Surface) -> anyhow::Result<Vec<ToolCapability>> {
-    match surface {
+    let req_body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "tools/list",
+        "id": 1
+    });
+
+    let tools_json: serde_json::Value = match surface {
         Surface::McpHttp { url } => {
             let client = reqwest::Client::new();
-            let req_body = serde_json::json!({
-                "jsonrpc": "2.0",
-                "method": "tools/list",
-                "id": 1
-            });
-
             let res = client.post(url).json(&req_body).send().await?;
-
-            let data: serde_json::Value = res.json().await?;
-            if let Some(tools) = data
-                .get("result")
-                .and_then(|r| r.get("tools"))
-                .and_then(|t| t.as_array())
-            {
-                let mut caps = Vec::new();
-                for t in tools {
-                    let name = t
-                        .get("name")
-                        .and_then(|n| n.as_str())
-                        .unwrap_or("unknown")
-                        .to_string();
-                    let desc = t
-                        .get("description")
-                        .and_then(|d| d.as_str())
-                        .unwrap_or("")
-                        .to_string();
-                    let schema = t
-                        .get("inputSchema")
-                        .cloned()
-                        .unwrap_or(serde_json::json!({}));
-
-                    let risk_class = if name.contains("delete") || name.contains("remove") {
-                        "delete".to_string()
-                    } else if name.contains("exec") || name.contains("run") {
-                        "exec".to_string()
-                    } else if name.contains("write") || name.contains("update") {
-                        "write".to_string()
-                    } else {
-                        "read".to_string()
-                    };
-
-                    caps.push(ToolCapability {
-                        tool_name: name,
-                        description: desc,
-                        parameters_schema: schema,
-                        risk_class,
-                    });
-                }
-                Ok(caps)
+            res.json().await?
+        }
+        Surface::McpSse { url } => {
+            // For SSE, we would normally connect, get the POST endpoint from the event, and then POST.
+            // Simplified for demonstration: we assume the POST endpoint is url + "/message"
+            let post_url = if url.ends_with("/sse") {
+                url.replace("/sse", "/message")
             } else {
-                anyhow::bail!("Invalid or missing tools array in response");
+                format!("{}/message", url)
+            };
+            let client = reqwest::Client::new();
+            let res = client.post(&post_url).json(&req_body).send().await?;
+            res.json().await?
+        }
+        Surface::McpStdio { command, args } => {
+            // Spawn the process
+            use std::process::Stdio;
+            use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+            use tokio::process::Command;
+
+            let mut child = Command::new(command)
+                .args(args)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .spawn()?;
+
+            let mut stdin = child.stdin.take().expect("Failed to open stdin");
+            let stdout = child.stdout.take().expect("Failed to open stdout");
+
+            // Send tools/list request
+            let msg = format!("{}\n", serde_json::to_string(&req_body)?);
+            stdin.write_all(msg.as_bytes()).await?;
+            stdin.flush().await?;
+
+            // Read response
+            let mut reader = BufReader::new(stdout);
+            let mut line = String::new();
+            reader.read_line(&mut line).await?;
+
+            // Kill child so it doesn't hang around
+            let _ = child.kill().await;
+
+            if line.is_empty() {
+                anyhow::bail!("No response from stdio");
             }
+
+            serde_json::from_str(&line)?
         }
-        _ => {
-            // Simulated probe for non-HTTP surfaces
-            Ok(vec![])
+        _ => return Ok(vec![]),
+    };
+
+    if let Some(tools) = tools_json
+        .get("result")
+        .and_then(|r| r.get("tools"))
+        .and_then(|t| t.as_array())
+    {
+        let mut caps = Vec::new();
+        for t in tools {
+            let name = t
+                .get("name")
+                .and_then(|n| n.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let desc = t
+                .get("description")
+                .and_then(|d| d.as_str())
+                .unwrap_or("")
+                .to_string();
+            let schema = t
+                .get("inputSchema")
+                .cloned()
+                .unwrap_or(serde_json::json!({}));
+
+            let risk_class = if name.contains("delete") || name.contains("remove") {
+                "delete".to_string()
+            } else if name.contains("exec") || name.contains("run") {
+                "exec".to_string()
+            } else if name.contains("write") || name.contains("update") {
+                "write".to_string()
+            } else {
+                "read".to_string()
+            };
+
+            caps.push(ToolCapability {
+                tool_name: name,
+                description: desc,
+                parameters_schema: schema,
+                risk_class,
+            });
         }
+        Ok(caps)
+    } else {
+        anyhow::bail!("Invalid or missing tools array in response");
     }
 }

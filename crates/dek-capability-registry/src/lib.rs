@@ -30,11 +30,23 @@ pub struct PdpCapability {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum CapabilityStatus {
+    Active,
+    Available,
+    MissingDependencies,
+    PermissionDenied,
+    NotSupported,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PepCapability {
     pub r#type: String,
     #[serde(default)]
     pub transports: Vec<String>,
     pub control_level: ControlLevel,
+    pub status: CapabilityStatus,
+    pub status_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

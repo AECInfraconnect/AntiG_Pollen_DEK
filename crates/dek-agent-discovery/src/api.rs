@@ -158,6 +158,35 @@ pub fn to_registry_agent_v2(
         .and_then(|v| v.as_str())
         .unwrap_or(&candidate.suggested_registration.name);
 
+    let mut entrypoints = Vec::new();
+    for mcp in &candidate.discovered_mcp_servers {
+        if let Some(cmd) = &mcp.command {
+            let mut parts = cmd.split_whitespace();
+            if let Some(command) = parts.next() {
+                let args = parts.map(|s| s.to_string()).collect();
+                entrypoints.push(dek_control_plane_api::registry::AgentEntrypoint {
+                    command: command.to_string(),
+                    args,
+                });
+            }
+        }
+    }
+
+    let mut capabilities = Vec::new();
+    for k in candidate.labels.keys() {
+        if let Some(cap) = k.strip_prefix("capability:") {
+            capabilities.push(cap.to_string());
+        }
+    }
+    // Also include inferred capabilities from agent type
+    match candidate.inferred_agent_type {
+        InferredAgentType::LocalModelServer => capabilities.push("model.server".into()),
+        InferredAgentType::McpServer => capabilities.push("mcp.server".into()),
+        _ => {}
+    }
+    capabilities.sort();
+    capabilities.dedup();
+
     Ok(AiAgent {
         meta: dek_control_plane_api::registry::ObjectMeta {
             schema_version: "pollen.agent.v1".into(),
@@ -180,7 +209,7 @@ pub fn to_registry_agent_v2(
             runtime_name: candidate.suggested_registration.runtime_name.clone(),
             version: None,
         },
-        entrypoints: vec![],
+        entrypoints,
         declared_tools: candidate.suggested_registration.declared_tools.clone(),
         declared_resources: candidate.suggested_registration.declared_resources.clone(),
         identity: dek_control_plane_api::registry::AgentIdentity {
@@ -190,7 +219,7 @@ pub fn to_registry_agent_v2(
             signing_key_fingerprint: candidate.suggested_registration.executable_signer.clone(),
         },
         trust_level: dek_control_plane_api::registry::TrustLevel::Medium,
-        capabilities: vec![],
+        capabilities,
         labels: std::collections::HashMap::new(),
     })
 }

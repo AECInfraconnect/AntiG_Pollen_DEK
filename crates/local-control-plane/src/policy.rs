@@ -245,6 +245,30 @@ async fn publish_policy(
         "blackbox_ai_providers": blackbox_ai_providers
     });
 
+    let router_config = serde_json::json!({
+        "policy_config": {
+            "routes": [
+                {
+                    "id": "default-local-route",
+                    "priority": 100,
+                    "enforcement_mode": "standard",
+                    "match_rule": {
+                        "method": "*",
+                        "tool_category": "*",
+                        "resource_type": "*",
+                        "severity_level": "*"
+                    },
+                    "mode": "local_only",
+                    "primary_pdp_id": "cedar",
+                    "fallback_pdp_ids": [],
+                    "shadow_pdp_ids": [],
+                    "pdp_pool": [],
+                    "failover_strategy": "priority"
+                }
+            ]
+        }
+    });
+
     let built = crate::bundle::build_signed_bundle(
         &st.signer,
         &tenant,
@@ -253,7 +277,7 @@ async fn publish_policy(
         build_number,
         compiled,
         &registry_snap,
-        &serde_json::json!({}),
+        &router_config,
         None,
     )
     .await

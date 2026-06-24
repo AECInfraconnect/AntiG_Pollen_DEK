@@ -5,7 +5,10 @@
   "properties": {
     "event_id": { "type": "string" },
     "timestamp": { "type": "string", "format": "date-time" },
-    "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+    "severity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
     "description": { "type": "string" },
     "source_ip": { "type": "string" }
   },

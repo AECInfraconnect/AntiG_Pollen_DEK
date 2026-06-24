@@ -16,36 +16,36 @@ spec:
         app: example-ai-agent
     spec:
       containers:
-      # 1. The primary AI Agent workload
-      - name: ai-agent
-        image: company/example-ai-agent:v1.0
-        env:
-        # Instead of talking directly to local tools, it speaks to the DEK sidecar
-        - name: MCP_SERVER_URL
-          value: "http://127.0.0.1:8080/mcp"
-          
-      # 2. Pollen DEK MCP Sidecar
-      - name: pollen-dek-mcp-sidecar
-        image: pollen/dek-mcp-stdio-wrapper:v0.1.0
-        imagePullPolicy: IfNotPresent
-        command: ["/usr/local/bin/dek-mcp-stdio-wrapper"]
-        args: 
-          - "--listen=127.0.0.1:8080"
-          - "--"
-          - "/usr/local/bin/actual-mcp-server" # The real tool server process being wrapped
-        volumeMounts:
-        - name: dek-policy-bundle
-          mountPath: /etc/pollen/policies
-        - name: spire-agent-socket
-          mountPath: /run/spire/sockets
-          readOnly: true
-      
+        # 1. The primary AI Agent workload
+        - name: ai-agent
+          image: company/example-ai-agent:v1.0
+          env:
+            # Instead of talking directly to local tools, it speaks to the DEK sidecar
+            - name: MCP_SERVER_URL
+              value: "http://127.0.0.1:8080/mcp"
+
+        # 2. Pollen DEK MCP Sidecar
+        - name: pollen-dek-mcp-sidecar
+          image: pollen/dek-mcp-stdio-wrapper:v0.1.0
+          imagePullPolicy: IfNotPresent
+          command: ["/usr/local/bin/dek-mcp-stdio-wrapper"]
+          args:
+            - "--listen=127.0.0.1:8080"
+            - "--"
+            - "/usr/local/bin/actual-mcp-server" # The real tool server process being wrapped
+          volumeMounts:
+            - name: dek-policy-bundle
+              mountPath: /etc/pollen/policies
+            - name: spire-agent-socket
+              mountPath: /run/spire/sockets
+              readOnly: true
+
       volumes:
-      - name: dek-policy-bundle
-        configMap:
-          name: dek-tenant-policy
-      # Spire agent socket (assuming SPIRE is deployed on the node)
-      - name: spire-agent-socket
-        hostPath:
-          path: /run/spire/sockets
-          type: DirectoryOrCreate
+        - name: dek-policy-bundle
+          configMap:
+            name: dek-tenant-policy
+        # Spire agent socket (assuming SPIRE is deployed on the node)
+        - name: spire-agent-socket
+          hostPath:
+            path: /run/spire/sockets
+            type: DirectoryOrCreate

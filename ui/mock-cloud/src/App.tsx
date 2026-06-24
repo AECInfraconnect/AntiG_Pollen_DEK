@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 function App() {
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     // In a real scenario we'd fetch from /api/admin/dashboard
-    fetch('/api/admin/dashboard/data')
-      .then(r => r.json())
-      .then(d => setData(d))
-      .catch(e => console.error(e));
+    fetch("/api/admin/dashboard/data")
+      .then((r) => r.json())
+      .then((d) => setData(d))
+      .catch((e) => console.error(e));
   }, []);
 
   return (
@@ -38,19 +38,29 @@ function App() {
                 </thead>
                 <tbody>
                   {data?.devices?.map((d: any) => (
-                    <tr key={d.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                    <tr
+                      key={d.id}
+                      className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors"
+                    >
                       <td className="py-3">{d.id}</td>
                       <td className="py-3 text-textMuted">{d.tenant_id}</td>
                       <td className="py-3">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${d.revoked ? 'bg-accent/20 text-accent' : 'bg-green-500/20 text-green-400'}`}>
-                          {d.revoked ? 'Revoked' : 'Active'}
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${d.revoked ? "bg-accent/20 text-accent" : "bg-green-500/20 text-green-400"}`}
+                        >
+                          {d.revoked ? "Revoked" : "Active"}
                         </span>
                       </td>
                     </tr>
                   ))}
                   {!data?.devices?.length && (
                     <tr>
-                      <td colSpan={3} className="py-4 text-center text-textMuted">No devices enrolled</td>
+                      <td
+                        colSpan={3}
+                        className="py-4 text-center text-textMuted"
+                      >
+                        No devices enrolled
+                      </td>
                     </tr>
                   )}
                 </tbody>
@@ -63,14 +73,18 @@ function App() {
               <h2 className="text-xl font-semibold mb-2">Policy Status</h2>
               <div className="p-4 bg-surface rounded-xl border border-white/5">
                 <p className="text-sm text-textMuted">Current Active Bundle</p>
-                <p className="text-lg font-bold">{data?.current_version || 'Unknown'}</p>
+                <p className="text-lg font-bold">
+                  {data?.current_version || "Unknown"}
+                </p>
               </div>
             </div>
             <div>
               <h2 className="text-xl font-semibold mb-2">Telemetry</h2>
               <div className="p-4 bg-surface rounded-xl border border-white/5">
                 <p className="text-sm text-textMuted">Events Captured</p>
-                <p className="text-2xl font-bold text-primary">{data?.telemetry_count || 0}</p>
+                <p className="text-2xl font-bold text-primary">
+                  {data?.telemetry_count || 0}
+                </p>
               </div>
             </div>
           </section>

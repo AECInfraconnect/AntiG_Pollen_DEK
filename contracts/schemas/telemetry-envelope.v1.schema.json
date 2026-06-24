@@ -4,7 +4,16 @@
   "title": "PollenTelemetryEnvelopeV1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "event_id", "event_type", "timestamp", "tenant_id", "device_id", "payload", "redaction_applied"],
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "timestamp",
+    "tenant_id",
+    "device_id",
+    "payload",
+    "redaction_applied"
+  ],
   "properties": {
     "schema_version": { "type": "string", "const": "telemetry-envelope.v1" },
     "event_id": { "type": "string" },

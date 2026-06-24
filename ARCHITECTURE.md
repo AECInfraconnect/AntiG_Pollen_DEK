@@ -7,13 +7,13 @@ Control Plane** or **Pollek Cloud** — over one shared contract.
 
 ## Dual-mode design
 
-| | Local (OSS) | Cloud (commercial) |
-|---|---|---|
-| Storage | SQLite | MySQL/TiDB |
-| Tenancy | single-user (`tenant_id=local`) | multi-tenant, RBAC |
-| Transport | HTTP `127.0.0.1` | mTLS over internet |
-| Auth | Local Bearer token | X.509-SVID + OAuth + JWT-SVID (SPIFFE/SPIRE) |
-| Trust root | pinned local signing key | SPIRE trust bundle (rotatable) |
+|            | Local (OSS)                     | Cloud (commercial)                           |
+| ---------- | ------------------------------- | -------------------------------------------- |
+| Storage    | SQLite                          | MySQL/TiDB                                   |
+| Tenancy    | single-user (`tenant_id=local`) | multi-tenant, RBAC                           |
+| Transport  | HTTP `127.0.0.1`                | mTLS over internet                           |
+| Auth       | Local Bearer token              | X.509-SVID + OAuth + JWT-SVID (SPIFFE/SPIRE) |
+| Trust root | pinned local signing key        | SPIRE trust bundle (rotatable)               |
 
 **Invariants (same in both modes):**
 

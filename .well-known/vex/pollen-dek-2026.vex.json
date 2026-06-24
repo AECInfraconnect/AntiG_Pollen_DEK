@@ -9,9 +9,7 @@
       "vulnerability": {
         "name": "RUSTSEC-2025-0134"
       },
-      "products": [
-        "pkg:cargo/pollen-dek"
-      ],
+      "products": ["pkg:cargo/pollen-dek"],
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "The vulnerable code in the dependency is not reachable from any of our execution paths."
@@ -20,9 +18,7 @@
       "vulnerability": {
         "name": "RUSTSEC-2026-0086"
       },
-      "products": [
-        "pkg:cargo/pollen-dek"
-      ],
+      "products": ["pkg:cargo/pollen-dek"],
       "status": "not_affected",
       "justification": "inline_mitigations_already_exist",
       "impact_statement": "The project applies strict sandbox isolation which neutralizes this attack vector."
@@ -31,9 +27,7 @@
       "vulnerability": {
         "name": "RUSTSEC-2026-0088"
       },
-      "products": [
-        "pkg:cargo/pollen-dek"
-      ],
+      "products": ["pkg:cargo/pollen-dek"],
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path"
     },
@@ -41,9 +35,7 @@
       "vulnerability": {
         "name": "RUSTSEC-2026-0089"
       },
-      "products": [
-        "pkg:cargo/pollen-dek"
-      ],
+      "products": ["pkg:cargo/pollen-dek"],
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path"
     },
@@ -51,9 +43,7 @@
       "vulnerability": {
         "name": "RUSTSEC-2026-0094"
       },
-      "products": [
-        "pkg:cargo/pollen-dek"
-      ],
+      "products": ["pkg:cargo/pollen-dek"],
       "status": "not_affected",
       "justification": "inline_mitigations_already_exist"
     },
@@ -61,9 +51,7 @@
       "vulnerability": {
         "name": "RUSTSEC-2026-0095"
       },
-      "products": [
-        "pkg:cargo/pollen-dek"
-      ],
+      "products": ["pkg:cargo/pollen-dek"],
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path"
     },
@@ -71,9 +59,7 @@
       "vulnerability": {
         "name": "RUSTSEC-2026-0096"
       },
-      "products": [
-        "pkg:cargo/pollen-dek"
-      ],
+      "products": ["pkg:cargo/pollen-dek"],
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path"
     }

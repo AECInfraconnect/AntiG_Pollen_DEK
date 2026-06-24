@@ -17,31 +17,31 @@ spec:
       hostNetwork: true
       hostPID: true
       containers:
-      - name: dek-ebpfd
-        image: pollen/dek-ebpfd:v0.1.0
-        imagePullPolicy: IfNotPresent
-        securityContext:
-          privileged: true
-          capabilities:
-            add:
-              - SYS_ADMIN
-              - NET_ADMIN
-              - BPF
-        volumeMounts:
-        - name: sys-fs-bpf
-          mountPath: /sys/fs/bpf
-          mountPropagation: Bidirectional
-        - name: sys-fs-cgroup
-          mountPath: /sys/fs/cgroup
-        env:
-        - name: CGROUP_PATH
-          value: "/sys/fs/cgroup/pollen-dek-supervised"
+        - name: dek-ebpfd
+          image: pollen/dek-ebpfd:v0.1.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - SYS_ADMIN
+                - NET_ADMIN
+                - BPF
+          volumeMounts:
+            - name: sys-fs-bpf
+              mountPath: /sys/fs/bpf
+              mountPropagation: Bidirectional
+            - name: sys-fs-cgroup
+              mountPath: /sys/fs/cgroup
+          env:
+            - name: CGROUP_PATH
+              value: "/sys/fs/cgroup/pollen-dek-supervised"
       volumes:
-      - name: sys-fs-bpf
-        hostPath:
-          path: /sys/fs/bpf
-          type: DirectoryOrCreate
-      - name: sys-fs-cgroup
-        hostPath:
-          path: /sys/fs/cgroup
-          type: Directory
+        - name: sys-fs-bpf
+          hostPath:
+            path: /sys/fs/bpf
+            type: DirectoryOrCreate
+        - name: sys-fs-cgroup
+          hostPath:
+            path: /sys/fs/cgroup
+            type: Directory

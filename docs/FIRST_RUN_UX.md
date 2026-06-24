@@ -15,7 +15,7 @@ Link your device to the Pollek Control Plane:
 dek-cli enroll --cloud-url https://Pollek-cloud.example.com
 ```
 
-*This exchanges a bootstrap token for mutual TLS (mTLS) identities. Certificates are stored securely.*
+_This exchanges a bootstrap token for mutual TLS (mTLS) identities. Certificates are stored securely._
 
 ## 3. Status & Doctor
 
@@ -26,7 +26,7 @@ dek-cli doctor
 dek-cli status
 ```
 
-*The doctor command runs local diagnostics, ensuring ports are available and certs are valid.*
+_The doctor command runs local diagnostics, ensuring ports are available and certs are valid._
 
 ## 4. Run Local Enforcement Kit Core
 
@@ -69,7 +69,7 @@ dek-cli debug rotate-identity
 dek-cli enroll --cloud-url https://Pollek-cloud.example.com
 ```
 
-*ขั้นตอนนี้จะนำ bootstrap token ไปแลกเป็นใบรับรอง mutual TLS (mTLS) โดยระบบจะเก็บใบรับรองไว้อย่างปลอดภัย*
+_ขั้นตอนนี้จะนำ bootstrap token ไปแลกเป็นใบรับรอง mutual TLS (mTLS) โดยระบบจะเก็บใบรับรองไว้อย่างปลอดภัย_
 
 ## 3. ตรวจสอบสถานะ (Status & Doctor)
 
@@ -80,7 +80,7 @@ dek-cli doctor
 dek-cli status
 ```
 
-*คำสั่ง doctor จะวิเคราะห์ความสมบูรณ์ของระบบ พอร์ตที่ใช้ และความถูกต้องของใบรับรองต่างๆ*
+_คำสั่ง doctor จะวิเคราะห์ความสมบูรณ์ของระบบ พอร์ตที่ใช้ และความถูกต้องของใบรับรองต่างๆ_
 
 ## 4. เริ่มใช้งาน Local Enforcement Kit Core
 

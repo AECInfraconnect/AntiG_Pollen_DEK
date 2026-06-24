@@ -51,18 +51,11 @@
       "oneOf": [
         {
           "type": "string",
-          "enum": [
-            "shared",
-            "dedicated",
-            "federated",
-            "customer_managed"
-          ]
+          "enum": ["shared", "dedicated", "federated", "customer_managed"]
         },
         {
           "type": "object",
-          "required": [
-            "custom"
-          ],
+          "required": ["custom"],
           "properties": {
             "custom": {
               "type": "string"

@@ -2,7 +2,9 @@ import fs from "node:fs";
 import yaml from "yaml";
 
 const errors = yaml.parse(fs.readFileSync("catalog/error-codes.yaml", "utf8"));
-const decisions = yaml.parse(fs.readFileSync("catalog/decision-enums.yaml", "utf8"));
+const decisions = yaml.parse(
+  fs.readFileSync("catalog/decision-enums.yaml", "utf8"),
+);
 
 function fail(message: string): never {
   console.error(`semantic-contract-lint: ${message}`);

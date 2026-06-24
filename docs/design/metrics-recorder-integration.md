@@ -112,5 +112,5 @@ By moving to `dek-metrics`, `dek-core` can share the exact same logic, eliminati
 
 ## Future Merge Considerations
 
-* **Target Architectures**: If you wish to natively build for macOS and ARM Linux in the CI release artifacts, modify the `release.yml` matrix by adding `x86_64-apple-darwin` and `aarch64-linux` to the `target` list.
-* **SLSA Provenance**: The pipeline currently relies on generic OIDC keyless signatures (`cosign keyless`). To obtain strict SLSA Level 3 guarantees mapping source commit to final artifact, evaluate integrating `slsa-github-generator`.
+- **Target Architectures**: If you wish to natively build for macOS and ARM Linux in the CI release artifacts, modify the `release.yml` matrix by adding `x86_64-apple-darwin` and `aarch64-linux` to the `target` list.
+- **SLSA Provenance**: The pipeline currently relies on generic OIDC keyless signatures (`cosign keyless`). To obtain strict SLSA Level 3 guarantees mapping source commit to final artifact, evaluate integrating `slsa-github-generator`.

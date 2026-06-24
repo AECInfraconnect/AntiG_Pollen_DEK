@@ -22,6 +22,7 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 rustls = { workspace = true }
 sysinfo = "0.30.12"
+tracing.workspace = true
 
 
 [lints]

@@ -55,7 +55,14 @@
     }
   },
   "required": [
-    "manifest_version", "bundle_id", "bundle_version", "bundle_generation",
-    "tenant_id", "created_at", "expires_at", "activation_mode", "artifacts"
+    "manifest_version",
+    "bundle_id",
+    "bundle_version",
+    "bundle_generation",
+    "tenant_id",
+    "created_at",
+    "expires_at",
+    "activation_mode",
+    "artifacts"
   ]
 }

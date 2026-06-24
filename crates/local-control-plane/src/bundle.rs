@@ -54,7 +54,7 @@ pub async fn build_signed_bundle(
     // Snapshot
     let snap_bytes = serde_json::to_vec(registry_snap)?;
     let snap_sha256 = hex::encode(Sha256::digest(&snap_bytes));
-    let snap_path = format!("registry/{}", snap_sha256);
+    let snap_path = format!("registry/{}.json", snap_sha256);
     blobs.push((snap_path.clone(), snap_bytes));
     artifacts.push(BundleArtifact {
         r#type: "registry_snapshot".to_string(),
@@ -65,7 +65,7 @@ pub async fn build_signed_bundle(
     // Router
     let router_bytes = serde_json::to_vec(router_config)?;
     let router_sha256 = hex::encode(Sha256::digest(&router_bytes));
-    let router_path = format!("router/{}", router_sha256);
+    let router_path = format!("router/{}.json", router_sha256);
     blobs.push((router_path.clone(), router_bytes));
     artifacts.push(BundleArtifact {
         r#type: "router_config".to_string(),
@@ -160,7 +160,7 @@ pub fn router() -> Router<AppState> {
             get(get_manifest).post(get_manifest),
         )
         .route(
-            "/v1/tenants/:tenant/devices/:device/bundles/artifacts/:sha",
+            "/v1/tenants/:tenant/devices/:device/bundles/artifacts/*sha",
             get(get_artifact),
         )
         .route(
@@ -355,9 +355,11 @@ async fn get_manifest(
 }
 
 async fn get_artifact(
-    Path((tenant, _device, sha)): Path<(String, String, String)>,
+    Path((tenant, _device, sha_raw)): Path<(String, String, String)>,
     State(st): State<AppState>,
 ) -> ApiResult<(StatusCode, Vec<u8>)> {
+    let sha = sha_raw.trim_start_matches('/').to_string();
+
     if sha == "network_guardrails.json" {
         let signed_bytes =
             serde_json::to_vec(&serde_json::json!([])).map_err(|e| ApiError::Internal(e.into()))?;
@@ -378,16 +380,28 @@ async fn get_artifact(
     }
 
     let possible_paths = [
+        sha.clone(),
         format!("artifacts/{sha}"),
         format!("registry/{sha}"),
         format!("router/{sha}"),
+        format!("registry/{sha}.json"),
+        format!("router/{sha}.json"),
     ];
+
+    tracing::info!(
+        "get_artifact: sha={}, possible_paths={:?}",
+        sha,
+        possible_paths
+    );
 
     for path in possible_paths {
         if let Ok(Some(bytes)) = st.policy_store.get_blob(&tenant, &path).await {
+            tracing::info!("get_artifact: found blob at {}", path);
             return Ok((StatusCode::OK, bytes));
         }
     }
+
+    tracing::error!("get_artifact: blob not found for sha={}", sha);
 
     Err(ApiError::NotFound("artifact".into()))
 }

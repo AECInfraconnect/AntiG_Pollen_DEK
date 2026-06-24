@@ -12,12 +12,12 @@ This release introduces end-to-end auto-update capabilities, OS installers, and 
 
 ## Downloads and Verification
 
-| OS | File |
-|---|---|
-| Linux (deb) | `Pollek-dek-linux-amd64.deb` |
-| Linux (tar) | `Pollek-dek-linux-amd64.tar.gz` |
-| Windows (zip) | `Pollek-dek-windows-amd64.zip` |
-| macOS (tar) | `Pollek-dek-macos-amd64.tar.gz` |
+| OS            | File                            |
+| ------------- | ------------------------------- |
+| Linux (deb)   | `Pollek-dek-linux-amd64.deb`    |
+| Linux (tar)   | `Pollek-dek-linux-amd64.tar.gz` |
+| Windows (zip) | `Pollek-dek-windows-amd64.zip`  |
+| macOS (tar)   | `Pollek-dek-macos-amd64.tar.gz` |
 
 To verify the integrity of these artifacts, download `SHA256SUMS` and `SHA256SUMS.sig`, then run:
 

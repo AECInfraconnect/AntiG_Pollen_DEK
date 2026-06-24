@@ -4,11 +4,29 @@
   "title": "PollenDecisionResultV1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["request_id", "trace_id", "decision", "reason", "matched_policy_ids", "latency_ms"],
+  "required": [
+    "request_id",
+    "trace_id",
+    "decision",
+    "reason",
+    "matched_policy_ids",
+    "latency_ms"
+  ],
   "properties": {
     "request_id": { "type": "string" },
     "trace_id": { "type": "string" },
-    "decision": { "type": "string", "enum": ["Allow", "Deny", "Redact", "Mask", "Warn", "RequireApproval", "BreakGlassAllow"] },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "Allow",
+        "Deny",
+        "Redact",
+        "Mask",
+        "Warn",
+        "RequireApproval",
+        "BreakGlassAllow"
+      ]
+    },
     "reason": { "type": "string" },
     "matched_policy_ids": { "type": "array", "items": { "type": "string" } },
     "matched_route_id": { "type": "string" },
@@ -22,9 +40,20 @@
         "additionalProperties": false,
         "required": ["engine", "decision"],
         "properties": {
-          "engine":     { "type": "string" },
-          "decision":   { "type": "string", "enum": ["Allow","Deny","Redact","Mask","Warn","RequireApproval","BreakGlassAllow"] },
-          "reason":     { "type": "string" },
+          "engine": { "type": "string" },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "Allow",
+              "Deny",
+              "Redact",
+              "Mask",
+              "Warn",
+              "RequireApproval",
+              "BreakGlassAllow"
+            ]
+          },
+          "reason": { "type": "string" },
           "latency_ms": { "type": "integer", "minimum": 0 }
         }
       }
@@ -36,7 +65,7 @@
         "additionalProperties": false,
         "required": ["type"],
         "properties": {
-          "type":       { "type": "string" },
+          "type": { "type": "string" },
           "parameters": { "type": "object", "additionalProperties": true }
         }
       }

@@ -23,3 +23,6 @@ jobs:
           done < <(find crates .github apps contracts -type f \( -name '*.rs' -o -name '*.yml' -o -name '*.yaml' -o -name '*.ts' -o -name '*.tsx' \) \
             ! -path '*/generated/*')
           exit "$failed"
+
+      - name: actionlint
+        uses: raven-actions/actionlint@v2

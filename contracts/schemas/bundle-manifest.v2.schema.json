@@ -47,7 +47,15 @@
           "artifact_id": { "type": "string" },
           "kind": {
             "type": "string",
-            "enum": ["opa-wasm", "rego", "cedar", "openfga-model", "openfga-tuples", "os-l4-rules", "wasm-plugin-config"]
+            "enum": [
+              "opa-wasm",
+              "rego",
+              "cedar",
+              "openfga-model",
+              "openfga-tuples",
+              "os-l4-rules",
+              "wasm-plugin-config"
+            ]
           },
           "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
           "path": { "type": "string" },
