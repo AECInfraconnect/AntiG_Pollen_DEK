@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
@@ -379,7 +379,8 @@ async fn admin_revoke_device(
     let mut devices = state.devices.lock().unwrap(); //
     if let Some(dev) = devices.get_mut(&device_id) {
         dev.revoked = true;
-        state.audit_logs.lock().unwrap().push(AuditLog { //
+        state.audit_logs.lock().unwrap().push(AuditLog {
+            //
             timestamp: Utc::now().to_rfc3339(),
             actor: "admin".to_string(),
             action: "REVOKE_DEVICE".to_string(),

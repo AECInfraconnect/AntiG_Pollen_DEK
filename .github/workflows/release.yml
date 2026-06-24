@@ -83,6 +83,7 @@ jobs:
       - name: Set cross-compilation env (Linux arm64)
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
+          # shellcheck disable=SC2086
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
       - name: Install cargo-binstall
@@ -161,10 +162,11 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
+          # shellcheck disable=SC2035
           cargo install cargo-deb --locked || true
           cargo deb -p dek-core --no-build --target ${{ matrix.target }} || true
           cd staging
-          tar -czvf ../${{ matrix.artifact_name }}.tar.gz *
+          tar -czvf ../${{ matrix.artifact_name }}.tar.gz ./*
           cp ../target/${{ matrix.target }}/debian/*.deb ../ || true
 
       - name: Package (Windows zip)
@@ -177,8 +179,9 @@ jobs:
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
+          # shellcheck disable=SC2035
           cd staging
-          tar -czvf ../${{ matrix.artifact_name }}.tar.gz *
+          tar -czvf ../${{ matrix.artifact_name }}.tar.gz ./*
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -265,8 +268,9 @@ jobs:
       - name: Sign Artifacts (Keyless)
         working-directory: release_artifacts
         run: |
+          # shellcheck disable=SC2162
           # Keyless signing creates .sig and .pem files per artifact bound to the GitHub runner OIDC token
-          find . -type f ! -name "SHA256SUMS" | while read file; do
+          find . -type f ! -name "SHA256SUMS" | while read -r file; do
             cosign sign-blob --yes --output-signature "$file.sig" --output-certificate "$file.pem" "$file"
           done
 

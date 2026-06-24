@@ -16,6 +16,7 @@ jobs:
       - name: Check for panic, unwrap, expect, todo, unreachable
         run: |
           #!/bin/bash
+          # shellcheck disable=SC2086
           set -e
 
           echo "Scanning for forbidden keywords in src directories..."
@@ -31,6 +32,7 @@ jobs:
           # Search for forbidden patterns
           # Patterns: panic!, unwrap(), expect(, todo!, unreachable!
           # We use grep with line numbers and file names
+          # shellcheck disable=SC2086
           VIOLATIONS=$(grep -nE "(\bpanic!|\bunwrap\(\)|\bexpect\(|\btodo!|\bunreachable!)" $FILES || true)
 
           # Filter out test modules `#[test]` or `#[cfg(test)]` block contents (basic check)

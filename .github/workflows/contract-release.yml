@@ -32,12 +32,12 @@ jobs:
           mkdir -p dist
           cp generated/openapi/pollen.v1.yaml dist/
           cp generated/asyncapi/pollen-sse.v1.yaml dist/
-          tar -czf dist/schemas.tar.gz schemas
-          tar -czf dist/catalog.tar.gz catalog
-          tar -czf dist/pollen-contract-rust.tar.gz generated/rust/pollen-contract
-          tar -czf dist/pollen-contract-typescript.tgz generated/typescript
+          tar -czf dist/schemas.tar.gz -- schemas
+          tar -czf dist/catalog.tar.gz -- catalog
+          tar -czf dist/pollen-contract-rust.tar.gz -- generated/rust/pollen-contract
+          tar -czf dist/pollen-contract-typescript.tgz -- generated/typescript
           cp CHANGELOG.md COMPATIBILITY.md dist/
-          cd dist && sha256sum * > SHA256SUMS
+          cd dist && sha256sum ./* > SHA256SUMS
 
       - name: Install cosign
         uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3

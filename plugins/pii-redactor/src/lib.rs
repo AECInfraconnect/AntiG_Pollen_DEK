@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use regex::Regex;
@@ -298,6 +298,7 @@ pub fn process_json(value: &mut Value, detector: &DeterministicDetector) {
 }
 
 #[cfg(target_arch = "wasm32")]
+#[allow(unsafe_code)]
 #[no_mangle]
 pub extern "C" fn _start() {
     use std::io::{self, Read, Write};

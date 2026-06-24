@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use crate::state::{AppState, ApprovalRequest, AuditLog};
@@ -94,7 +94,8 @@ pub async fn admin_approve_deny(
             "DENIED".to_string()
         };
 
-        state.audit_logs.lock().unwrap().push(AuditLog { //
+        state.audit_logs.lock().unwrap().push(AuditLog {
+            //
             timestamp: Utc::now().to_rfc3339(),
             actor: "admin".to_string(),
             action: format!("APPROVAL_{}", action.to_uppercase()),

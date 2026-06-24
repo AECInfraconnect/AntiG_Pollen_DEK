@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 #![warn(clippy::print_stdout, clippy::print_stderr)]
@@ -859,7 +859,7 @@ mod tests {
 
         let payload = serde_json::json!({ "request_type": "permit" });
         let res = router.authorize(payload).await.unwrap(); //
-        // Even though deny evaluated first, permit_overrides + dummy allow should yield allow
+                                                            // Even though deny evaluated first, permit_overrides + dummy allow should yield allow
         assert_eq!(res.decision, "allow");
     }
 

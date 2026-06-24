@@ -1,4 +1,4 @@
-﻿#![allow(clippy::panic)]
+#![allow(clippy::panic)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
@@ -126,7 +126,8 @@ mod tests {
 
             let compiled = jsonschema::validator_for(&schema_json).expect("Invalid JSON schema"); //
             if !compiled.is_valid(&fixture_json) {
-                panic!( //
+                panic!(
+                    //
                     "Fixture {} failed validation against {}",
                     fixture_name, schema_name
                 );
