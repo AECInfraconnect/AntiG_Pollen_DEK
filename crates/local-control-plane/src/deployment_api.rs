@@ -282,7 +282,7 @@ async fn rollback_deployment(
 
 async fn get_agent_timeline(
     Path(agent_id): Path<String>,
-    State(st): State<AppState>,
+    State(_st): State<AppState>,
 ) -> ApiResult<Json<Value>> {
     // In real system, query events from telemetry store filtering by agent_id
     Ok(Json(serde_json::json!({

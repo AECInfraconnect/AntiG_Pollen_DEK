@@ -1,153 +1,212 @@
-actionlint
-==========
-[![CI Badge][]][CI]
-[![API Document][api-badge]][apidoc]
+# POLLEK.AI -- Open Source Local AI Policy Enforcement Kit
 
-[actionlint][repo] is a static checker for GitHub Actions workflow files. [Try it online!][playground]
+<img src="assets/POLLEK_LOGO.png" alt="POLLEK.AI Logo" width="250" />
 
-Features:
+[![CI](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/ci.yml/badge.svg)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/tag/AECInfraconnect/AntiG_Pollen_DEK?include_prereleases&label=release)](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases)
+[![Compatibility](https://img.shields.io/badge/Compatibility-Matrix-success.svg)](contracts/COMPATIBILITY.md)
 
-- **Syntax check for workflow files** to check unexpected or missing keys following [workflow syntax][syntax-doc]
-- **Strong type check for `${{ }}` expressions** to catch several semantic errors like access to not existing property,
-  type mismatches, ...
-- **Actions usage check** to check that inputs at `with:` and outputs in `steps.{id}.outputs` are correct
-- **Reusable workflow check** to check inputs/outputs/secrets of reusable workflows and workflow calls
-- **[shellcheck][] and [pyflakes][] integrations** for scripts at `run:`
-- **Security checks**; [script injection][script-injection-doc] by untrusted inputs, hard-coded credentials
-- **Other several useful checks**; [glob syntax][filter-pattern-doc] validation, dependencies check for `needs:`,
-  runner label validation, cron syntax validation, ...
+**Pollek Local Enforcement Kit** is the local-first AI Agent Governance Runtime that discovers AI agents on a user's computer, deploys enforceable policies to the right PEP, evaluates decisions through local or cloud PDPs, records tamper-aware telemetry, and gives users a dashboard to observe, control, and prove what AI agents did.
 
-See [the full list](docs/checks.md) of checks done by actionlint.
+It is an Apache-2.0 runtime that **enforces and observes AI-agent, MCP, API, and tool-call activity at the desktop/edge**. It runs **fully locally** with the built-in Local Admin Dashboard, or connects to **Pollek Cloud** (commercial) for managed multi-tenant policy, observability, and compliance. The Local Enforcement Kit speaks **one contract** to both — switching targets changes only the endpoint + trust store, never the enforcement code.
 
-<img src="https://github.com/rhysd/ss/blob/master/actionlint/main.gif?raw=true" alt="actionlint reports 7 errors" width="806" height="492"/>
+---
 
-**Example of broken workflow:**
+## Features
 
-```yaml
-on:
-  push:
-    branch: main
-    tags:
-      - 'v\d+'
-jobs:
-  test:
-    strategy:
-      matrix:
-        os: [macos-latest, linux-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - run: echo "Checking commit '${{ github.event.head_commit.message }}'"
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node_version: 18.x
-      - uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ matrix.platform }}-node-${{ hashFiles('**/package-lock.json') }}
-        if: ${{ github.repository.permissions.admin == true }}
-      - run: npm install && npm test
+### Enforcement & Policy
+
+- **Enforce, don't just observe** — allow/deny/redact MCP tool calls and network
+  egress against signed policy, fail-closed by default.
+- **Parameter-level access control** — field-level restrictions on tool call
+  parameters, enforced natively by the MCP proxy.
+- **Policy your way** — Cedar (ABAC/RBAC), OPA/Rego (complex logic), OpenFGA
+  (ReBAC); the router auto-selects the right engine per request.
+- **Policy Presets V2** — pre-built Rego/Cedar/OpenFGA templates with dynamic PEP capability targeting; deploy common guardrails in one click.
+- **Dry-run Simulation** — test draft policies with what-if scenarios from the
+  dashboard without affecting live traffic.
+- **Granular Control Modes** — define policies that simply `Observe`, `Warn`, require `Approval`, `Enforce`, or `StrictDeny` based on risk tolerance.
+
+### AI Agent Observability & Fingerprinting
+
+- **Shadow AI Discovery** — automatically detects unmanaged AI agents via eBPF/WFP network scanning and heuristic fingerprinting (Ollama, vLLM, Claude Desktop, GitHub Copilot, Cursor).
+- **Secure Telemetry Spool** — telemetry events are seamlessly streamed via `dek-secure-spool`, providing a secure asynchronous feed for auto-discovery and offline processing without opening local IPC ports.
+- **Agent Fingerprint Definitions** — natively supports Offline Baseline definitions with Cloud-pushed Delta updates over SSE. Definitions map agent binaries/processes to known identities securely with signature verification.
+- **Agent Binding Governance** — Maps discovered agents to Runtime Capabilities (resolving HTTP/Stdio MCP surfaces dynamically) and enforces governance constraints throughout the agent lifecycle.
+- **Token & Cost Ledger** — tracks estimated token costs across all observed AI
+  APIs via a configurable price catalog, with per-agent breakdowns.
+- **Telemetry-Driven Policy Suggestions** — auto-generates specific `DeployPreset` rules (like PII Redaction and Prompt Injection blocks) based on active observations from the secure spool.
+- **Governance Loop** — fully integrated Observe → Suggest → Enforce cycle runs
+  end-to-end.
+
+### Security & Trust
+
+- **Air-Gapped & Offline Support** — `dek-cli fingerprint import` natively supports injecting offline fingerprint definitions and rollbacks in completely air-gapped secure edge environments.
+- **Trust Scoring** — calculates real-time Agent Trust Scores via `AgentBaseline`,
+  enabling dynamic `KillSwitch` or `RequireApproval` obligations on anomaly.
+- **Content Guard** — inspects payloads for prompt injection, PII leakage, and
+  malicious content before policy evaluation triggers.
+- **Rate Limiting** — token-bucket rate limiters per agent protect downstream
+  endpoints from overuse and abuse.
+- **Tamper-Evident Audit** — all decisions are securely queued locally with a
+  SHA-256 hash chain before shipping, proving audit log integrity.
+- **Kernel-grade network control** — eBPF on Linux (with DNS LRU caching and
+  runtime modes); Windows WFP / macOS System Extension in progress.
+
+### Platform
+
+- **Local-first, Cloud-ready** — same schema, bundle format, and telemetry
+  envelope in both modes. Built on OpenAPI, TypeSpec, and a shared Contract Hub
+  for `/.well-known/pollen-contract` discovery.
+- **A2A Mediator (Preview)** — Inter-Agent Trust Protocol mediator for Google A2A
+  protocol communication between trusted agents.
+- **Execution Sandbox (Preview)** — isolated, short-lived tool execution
+  environments for untrusted code.
+- **WASM Ext Authz** — natively integrates WASM-based External Authorization (`dek-ext-authz`) for fast, localized, custom edge authorization logic.
+- **MCP Stdio Wrapper** — bridges legacy CLI-based agents (`dek-mcp-stdio-wrapper`), wrapping standard I/O to speak the Model Context Protocol securely.
+- **Plugin / Adapter SDK** — `dek-pdp-sdk` for custom policy engines;
+  `dek-plugin-sdk` for transform plugins (e.g. `pii-redactor`). Bundled adapters
+  are feature-gated.
+- **Internationalization** — Dashboard supports English and Thai natively.
+
+---
+
+## Dashboard
+
+The **Local Admin Dashboard** (React/Vite) provides 20+ pages for full control:
+
+| Category          | Pages                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| **Overview**      | Overview dashboard                                                                    |
+| **Registry**      | Agents, MCP Servers, Tools, Resources, Entities, Relationships, Blackbox AI Providers |
+| **Policy**        | Policy Enforcer, Policy Presets, Simulator                                            |
+| **Observability** | Auto Discovery, Shadow AI Inbox, Policy Suggestions, Cost Ledger, Alerts              |
+| **Operations**    | Bundles, Decision Logs (with CSV/JSON export), Settings (connectors, profiles)        |
+
+---
+
+## Quickstart
+
+### Local mode (single machine, no Cloud)
+
+The easiest way to start the **Local Control Plane** and **Local Admin Dashboard** is using the included one-click scripts. This will automatically compile the backend, build the frontend, and run the server silently in the background.
+
+**On Windows (PowerShell):**
+
+```powershell
+.\start-dek.ps1
 ```
 
-**actionlint reports 7 errors:**
+**On macOS/Linux:**
 
-```
-test.yaml:3:5: unexpected key "branch" for "push" section. expected one of "branches", "branches-ignore", "paths", "paths-ignore", "tags", "tags-ignore", "types", "workflows" [syntax-check]
-  |
-3 |     branch: main
-  |     ^~~~~~~
-test.yaml:5:11: character '\' is invalid for branch and tag names. only special characters [, ?, +, *, \, ! can be escaped with \. see `man git-check-ref-format` for more details. note that regular expression is unavailable. note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet [glob]
-  |
-5 |       - 'v\d+'
-  |           ^~~~
-test.yaml:10:28: label "linux-latest" is unknown. available labels are "windows-latest", "windows-2022", "windows-2019", "windows-2016", "ubuntu-latest", "ubuntu-22.04", "ubuntu-20.04", "ubuntu-18.04", "macos-latest", "macos-12", "macos-12.0", "macos-11", "macos-11.0", "macos-10.15", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
-   |
-10 |         os: [macos-latest, linux-latest]
-   |                            ^~~~~~~~~~~~~
-test.yaml:13:41: "github.event.head_commit.message" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/learn-github-actions/security-hardening-for-github-actions for more details [expression]
-   |
-13 |       - run: echo "Checking commit '${{ github.event.head_commit.message }}'"
-   |                                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:17:11: input "node_version" is not defined in action "actions/setup-node@v4". available inputs are "always-auth", "architecture", "cache", "cache-dependency-path", "check-latest", "node-version", "node-version-file", "registry-url", "scope", "token" [action]
-   |
-17 |           node_version: 18.x
-   |           ^~~~~~~~~~~~~
-test.yaml:21:20: property "platform" is not defined in object type {os: string} [expression]
-   |
-21 |           key: ${{ matrix.platform }}-node-${{ hashFiles('**/package-lock.json') }}
-   |                    ^~~~~~~~~~~~~~~
-test.yaml:22:17: receiver of object dereference "permissions" must be type of object but got "string" [expression]
-   |
-22 |         if: ${{ github.repository.permissions.admin == true }}
-   |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```bash
+./start-dek.sh
 ```
 
-## Why?
+After running the script, the Local Admin Dashboard will automatically open in your browser at `http://127.0.0.1:43891`.
 
-- **Running a workflow is time consuming.** You need to push the changes and wait until the workflow runs on GitHub even if
-  it contains some trivial mistakes. [act][] is useful to debug the workflow locally. But it is not suitable for CI and still
-  time consuming when your workflow gets larger.
-- **Checks of workflow files by GitHub are very loose.** It reports no error even if unexpected keys are in mappings
-  (meant that some typos in keys). And also it reports no error when accessing to property which is actually not existing.
-  For example `matrix.foo` when no `foo` is defined in `matrix:` section, it is evaluated to `null` and causes no error.
-- **Some mistakes silently break a workflow.** Most common case I saw is specifying missing property to cache key. In the
-  case cache silently does not work properly but a workflow itself runs without error. So you might not notice the mistake
-  forever.
+To stop the Local Control Plane:
 
-## Quick start
+- Windows: `.\stop-dek.ps1`
+- macOS/Linux: `./stop-dek.sh`
 
-Install `actionlint` command by downloading [the released binary][releases] or by Homebrew or by `go install`. See
-[the installation document](docs/install.md) for more details like how to manage the command with several package managers
-or run via Docker container.
+_(Advanced)_ You can also run the backend manually, but you will need to leave the terminal open:
 
-```sh
-go install github.com/rhysd/actionlint/cmd/actionlint@latest
+```bash
+# Start the Local Control Plane
+cargo run -p local-control-plane &
+
+# (Optional) If you want to develop the dashboard frontend:
+cd apps/local-admin-dashboard && npm run dev
 ```
 
-Basically all you need to do is run the `actionlint` command in your repository. actionlint automatically detects workflows and
-checks errors. actionlint focuses on finding out mistakes. It tries to catch errors as much as possible and make false positives
-as minimal as possible.
+See **[docs/quickstart_local_en.md](docs/quickstart_local_en.md)** (TH: `_th`).
 
-```sh
-actionlint
+### Pollek Cloud mode
+
+```bash
+dek-cli profile set cloud --url https://cloud.<your-cloud-domain> --tenant-id <tenant>
+dek-cli enroll --cloud-url https://cloud.<your-cloud-domain>
+dek-core &
 ```
 
-Another option to try actionlint is [the online playground][playground]. Your browser can run actionlint through WebAssembly.
+## Download & verify
 
-See [the usage document](docs/usage.md) for more details.
+Binaries for Linux/macOS/Windows (both x86_64 and arm64/aarch64) are on **[GitHub Releases](https://github.com/AECInfraconnect/AntiG_Pollen_DEK/releases)**.
+Each asset ships with `SHA256SUMS`, GitHub Artifact Attestations (`actions/attest-build-provenance`), and a Sigstore cosign signature; verify before running:
 
-## Documents
+```bash
+# 1) Check SHA256SUMS
+sha256sum -c SHA256SUMS
 
-- [Checks](docs/checks.md): Full list of all checks done by actionlint with example inputs, outputs, and playground links.
-- [Installation](docs/install.md): Installation instructions. Prebuilt binaries, Homebrew package, a Docker image, building from
-  source, a download script (for CI) are available.
-- [Usage](docs/usage.md): How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker
-  image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
-- [Configuration](docs/config.md): How to configure actionlint behavior. Currently only labels of self-hosted runners can be
-  configured.
-- [Go API](docs/api.md): How to use actionlint as Go library.
-- [References](docs/reference.md): Links to resources.
+# 2) Verify Cosign Keyless Signature
+cosign verify-blob --certificate <asset>.pem --signature <asset>.sig \
+  --certificate-identity-regexp "https://github.com/AECInfraconnect/AntiG_Pollen_DEK/.*" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" <asset>
 
-## Bug reporting
+# 3) Verify GitHub Artifact Attestation
+gh attestation verify <asset> -o AECInfraconnect
+```
 
-When you see some bugs or false positives, it is helpful to [file a new issue][issue-form] with a minimal example
-of input. Giving me some feedbacks like feature requests or ideas of additional checks is also welcome.
+Update in place (verifies cosign before applying, with rollback):
+
+```bash
+pollen-dek update --channel beta
+```
+
+Export compliance pack (tamper-evident audit logs):
+
+```bash
+pollen-dek export-compliance
+```
+
+## Architecture (at a glance)
+
+```
+ Local Admin Dashboard            Pollek Cloud (commercial)
+  SQLite · tenant=local            MySQL/TiDB · multi-tenant
+  HTTP 127.0.0.1 · Bearer          mTLS + OAuth + SPIFFE/SPIRE
+            \                         /
+             \  same schema/bundle/  /
+              \  telemetry + reload /
+               ▼                   ▼
+                ┌───────────────────┐
+                │     Local Enforcement Kit (PEP)     │  profile: local | cloud
+                │ enforce + observe │
+                │ shadow AI scanner │
+                │ cost/token ledger │
+                │ rate + trust gate │
+                │ content guard     │
+                │ policy suggester  │
+                │ policy presets    │
+                │ A2A mediator      │
+                │ exec sandbox      │
+                └───────────────────┘
+```
+
+Full detail: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+
+## Crate Landscape (56 crates)
+
+| Layer              | Key Crates                                                                                                                                                     |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Control**        | `dek-core`, `dek-config`, `dek-policy-syncer`, `dek-bundle-sync`, `dek-activation`, `dek-auth`, `dek-secure-spool`                                             |
+| **Decision**       | `dek-mcp-proxy`, `dek-policy-router`, `dek-policy-runtime`, `dek-cedar`, `dek-openfga`, `dek-opa-wasm`, `dek-resilience`                                       |
+| **Observability**  | `dek-agent-discovery`, `dek-agent-observer`, `dek-policy-suggester`, `dek-telemetry`                                                                           |
+| **Network**        | `dek-ebpfd`, `dek-ebpf-common`, `dek-windows-wfp`, `dek-macos-nefilter`                                                                                        |
+| **Identity**       | `dek-spire-node`, `dek-enroll`                                                                                                                                 |
+| **Interop**        | `dek-a2a-mediator`, `dek-execution-sandbox`, `dek-agent-connector`, `dek-mcp-normalizer`, `dek-mcp-stdio-wrapper`, `dek-agent-binding`, `dek-fingerprint-defs` |
+| **SDK**            | `dek-pdp-sdk`, `dek-plugin-sdk`, `dek-plugin-host`, `dek-policy-presets`                                                                                       |
+| **Control Planes** | `dek-control-plane-api`, `local-control-plane`, `mock-cloud`                                                                                                   |
+
+## Documentation
+
+Start at **[docs/README.md](docs/README.md)** — install guides, user/developer
+guides, runbooks, security model, compliance mapping, and the
+[Local Enforcement Kit↔Cloud contract](docs/contracts/Pollek-cloud-dek-api.md).
 
 ## License
 
-actionlint is distributed under [the MIT license](./LICENSE.txt).
-
-[CI Badge]: https://github.com/rhysd/actionlint/workflows/CI/badge.svg?branch=main&event=push
-[CI]: https://github.com/rhysd/actionlint/actions?query=workflow%3ACI+branch%3Amain
-[api-badge]: https://pkg.go.dev/badge/github.com/rhysd/actionlint.svg
-[apidoc]: https://pkg.go.dev/github.com/rhysd/actionlint
-[repo]: https://github.com/rhysd/actionlint
-[playground]: https://rhysd.github.io/actionlint/
-[shellcheck]: https://github.com/koalaman/shellcheck
-[pyflakes]: https://github.com/PyCQA/pyflakes
-[act]: https://github.com/nektos/act
-[syntax-doc]: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions
-[filter-pattern-doc]: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
-[script-injection-doc]: https://docs.github.com/en/actions/learn-github-actions/security-hardening-for-github-actions#understanding-the-risk-of-script-injections
-[issue-form]: https://github.com/rhysd/actionlint/issues/new
-[releases]: https://github.com/rhysd/actionlint/releases
+Local Enforcement Kit runtime, CLI, agent, SDK, adapters, and example policies are **Apache-2.0**.
+**Pollek Cloud is commercial.** See [LICENSE](LICENSE) and [NOTICE](NOTICE).

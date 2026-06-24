@@ -8,6 +8,7 @@ use dek_domain_schema::deployment_session::{
 use tokio::sync::mpsc;
 
 pub trait DeploymentEventSink: Send + Sync {
+    #[allow(async_fn_in_trait)]
     async fn emit(&self, event: DeploymentEvent) -> anyhow::Result<()>;
 }
 

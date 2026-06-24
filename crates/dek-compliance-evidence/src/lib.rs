@@ -16,7 +16,7 @@ impl EvidencePackager {
     pub fn generate_markdown_report(&self, redact: bool) -> Result<String> {
         let timestamp = Utc::now().to_rfc3339();
 
-        let mut report = format!("# Compliance Evidence Pack\n");
+        let mut report = "# Compliance Evidence Pack\n".to_string();
         report.push_str(&format!("Generated at: {}\n\n", timestamp));
         report.push_str("## 1. EU AI Act Compliance Mapping\n");
         report.push_str(
