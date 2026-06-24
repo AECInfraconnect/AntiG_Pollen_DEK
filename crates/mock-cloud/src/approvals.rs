@@ -94,7 +94,7 @@ pub async fn admin_approve_deny(
             "DENIED".to_string()
         };
 
-        state.audit_logs.lock().unwrap().push(AuditLog {
+        state.audit_logs.lock().unwrap_or_else(|e| e.into_inner()).push(AuditLog {
             //
             timestamp: Utc::now().to_rfc3339(),
             actor: "admin".to_string(),

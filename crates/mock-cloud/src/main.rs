@@ -379,7 +379,7 @@ async fn admin_revoke_device(
     let mut devices = state.devices.lock().unwrap(); //
     if let Some(dev) = devices.get_mut(&device_id) {
         dev.revoked = true;
-        state.audit_logs.lock().unwrap().push(AuditLog {
+        state.audit_logs.lock().unwrap_or_else(|e| e.into_inner()).push(AuditLog {
             //
             timestamp: Utc::now().to_rfc3339(),
             actor: "admin".to_string(),

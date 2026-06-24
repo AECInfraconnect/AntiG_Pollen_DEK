@@ -104,7 +104,11 @@ fn check_os_version() -> CheckResult {
 
 fn check_privileges() -> CheckResult {
     #[cfg(unix)]
-    let is_admin = unsafe { libc::geteuid() == 0 };
+    let is_admin = std::process::Command::new("id")
+        .arg("-u")
+        .output()
+        .map(|out| String::from_utf8_lossy(&out.stdout).trim() == "0")
+        .unwrap_or(false);
 
     #[cfg(windows)]
     let is_admin = { true };
