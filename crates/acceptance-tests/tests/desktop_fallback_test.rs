@@ -119,7 +119,21 @@ fn create_mock_target(target_id: &str) -> PolicyTarget {
 
 #[test]
 fn test_cursor_mcp_http_fallback() {
-    let snapshot = create_mock_snapshot();
+    let mut snapshot = create_mock_snapshot();
+    snapshot.methods.push(ControlMethodCapability {
+        method: ControlMethod::LocalApiControl,
+        internal_pep: InternalPep::HttpProxy,
+        status: CapabilityStatus::Ready,
+        can_observe: true,
+        can_enforce: true,
+        requires_admin: false,
+        requires_user_approval: false,
+        confidence: 1.0,
+        evidence: vec![],
+        user_message: LocalizedText { en: "".into(), th: "".into() },
+        next_action: None,
+    });
+
     let req = PolicyFeasibilityRequest {
         policy_id: None,
         policy_intent: PolicyIntent::ApproveRiskyToolCalls,
@@ -137,6 +151,7 @@ fn test_cursor_mcp_http_fallback() {
 #[test]
 fn test_local_ollama_http() {
     let snapshot = create_mock_snapshot();
+    // No enforcing methods available
     let req = PolicyFeasibilityRequest {
         policy_id: None,
         policy_intent: PolicyIntent::LimitTokenOrCostUsage,
@@ -153,7 +168,21 @@ fn test_local_ollama_http() {
 
 #[test]
 fn test_browser_ai_no_extension() {
-    let snapshot = create_mock_snapshot();
+    let mut snapshot = create_mock_snapshot();
+    snapshot.methods.push(ControlMethodCapability {
+        method: ControlMethod::BrowserActivityMonitor,
+        internal_pep: InternalPep::None,
+        status: CapabilityStatus::MissingComponent,
+        can_observe: false,
+        can_enforce: false,
+        requires_admin: false,
+        requires_user_approval: false,
+        confidence: 0.0,
+        evidence: vec![],
+        user_message: LocalizedText { en: "".into(), th: "".into() },
+        next_action: None,
+    });
+
     let req = PolicyFeasibilityRequest {
         policy_id: None,
         policy_intent: PolicyIntent::DetectPromptInjection,
@@ -170,7 +199,21 @@ fn test_browser_ai_no_extension() {
 
 #[test]
 fn test_windows_no_wfp() {
-    let snapshot = create_mock_snapshot();
+    let mut snapshot = create_mock_snapshot();
+    snapshot.methods.push(ControlMethodCapability {
+        method: ControlMethod::NetworkControl,
+        internal_pep: InternalPep::WindowsWfp,
+        status: CapabilityStatus::MissingPermission, // Needs admin approval to install
+        can_observe: false,
+        can_enforce: false,
+        requires_admin: true,
+        requires_user_approval: true,
+        confidence: 0.0,
+        evidence: vec![],
+        user_message: LocalizedText { en: "".into(), th: "".into() },
+        next_action: None,
+    });
+
     let req = PolicyFeasibilityRequest {
         policy_id: None,
         policy_intent: PolicyIntent::BlockUnknownNetworkDestinations,
@@ -187,7 +230,21 @@ fn test_windows_no_wfp() {
 
 #[test]
 fn test_macos_network_extension_inactive() {
-    let snapshot = create_mock_snapshot();
+    let mut snapshot = create_mock_snapshot();
+    snapshot.methods.push(ControlMethodCapability {
+        method: ControlMethod::NetworkControl,
+        internal_pep: InternalPep::MacosNetworkExtension,
+        status: CapabilityStatus::MissingPermission,
+        can_observe: false,
+        can_enforce: false,
+        requires_admin: true,
+        requires_user_approval: true,
+        confidence: 0.0,
+        evidence: vec![],
+        user_message: LocalizedText { en: "".into(), th: "".into() },
+        next_action: None,
+    });
+
     let req = PolicyFeasibilityRequest {
         policy_id: None,
         policy_intent: PolicyIntent::BlockUnknownNetworkDestinations,

@@ -3,12 +3,15 @@
 
 use dek_capability_registry::LocalCapabilitySnapshot;
 use dek_domain_schema::{
+    capability_inventory::AgentCapabilityInventory,
     control_level::ControlLevel,
     deployment_session::LocalizedText,
     feasibility::{
         ControlMethod, ControlMethodPlan, Enforceability, InternalPdp, InternalPep,
-        PolicyFeasibilityRequest, PolicyFeasibilityResult, PolicyFeasibilityStatus, ProductMode,
+        PolicyFeasibilityRequest, PolicyFeasibilityResult, PolicyFeasibilityStatus, PolicyIntent,
+        ProductMode,
     },
+    policy_target::PolicyTarget,
 };
 
 pub struct ControlLevelNegotiation {
@@ -92,61 +95,297 @@ pub fn score_plan(req: &PolicyFeasibilityRequest, plan: &ControlMethodPlan) -> i
     score
 }
 
+pub fn resolve_agent<'a>(
+    target: &PolicyTarget,
+    snapshot: &'a LocalCapabilitySnapshot,
+) -> Option<&'a AgentCapabilityInventory> {
+    snapshot
+        .agents
+        .iter()
+        .find(|a| a.agent_id == target.target_id)
+}
+
+pub fn candidate_methods_for_intent(
+    _intent: &PolicyIntent,
+    _agent: Option<&AgentCapabilityInventory>,
+    snapshot: &LocalCapabilitySnapshot,
+) -> Vec<(ControlMethodPlan, PolicyFeasibilityStatus)> {
+    let mut plans = Vec::new();
+
+    for m in &snapshot.methods {
+        use dek_capability_registry::snapshot::{capability_to_user_status, CapabilityStatus};
+        if m.status == CapabilityStatus::UnsupportedOnThisOs
+            || m.status == CapabilityStatus::UnsupportedForThisAgent
+            || m.status == CapabilityStatus::Unknown
+        {
+            continue;
+        }
+
+        let status = capability_to_user_status(m);
+
+        plans.push((
+            ControlMethodPlan {
+                method: m.method.clone(),
+                internal_pep: m.internal_pep.clone(),
+                internal_pdp: InternalPdp::Cedar,
+                enforceability: Enforceability {
+                    can_observe: m.can_observe,
+                    can_warn: m.can_enforce,
+                    can_require_approval: m.requires_user_approval || m.can_enforce,
+                    can_enforce: m.can_enforce,
+                    can_strict_deny: m.can_enforce,
+                },
+                reason_code: "mapped_from_capability".to_string(),
+                explanation: m.user_message.clone(),
+                diagnostics: vec![],
+            },
+            status,
+        ));
+    }
+
+    if plans.is_empty() {
+        plans.push((
+            ControlMethodPlan {
+                method: ControlMethod::ObserveOnly,
+                internal_pep: InternalPep::None,
+                internal_pdp: InternalPdp::Cloud,
+                enforceability: Enforceability {
+                    can_observe: true,
+                    can_warn: false,
+                    can_require_approval: false,
+                    can_enforce: false,
+                    can_strict_deny: false,
+                },
+                reason_code: "fallback_observe".to_string(),
+                explanation: LocalizedText {
+                    en: "No active control method available. Reverting to observe only.".into(),
+                    th: "ไม่มีวิธีควบคุมที่ใช้งานได้ เปลี่ยนเป็นแค่สังเกตการณ์".into(),
+                },
+                diagnostics: vec![],
+            },
+            PolicyFeasibilityStatus::CanObserveOnly,
+        ));
+    }
+    plans
+}
+
+pub fn select_best_control_method(
+    req: &PolicyFeasibilityRequest,
+    candidates: Vec<(ControlMethodPlan, PolicyFeasibilityStatus)>,
+) -> (ControlMethodPlan, PolicyFeasibilityStatus) {
+    let mut sorted = candidates;
+    sorted.sort_by_key(|(plan, _)| score_plan(req, plan));
+    sorted.pop().unwrap()
+}
+
+pub fn build_feasibility_result(
+    req: &PolicyFeasibilityRequest,
+    target: PolicyTarget,
+    candidate: (ControlMethodPlan, PolicyFeasibilityStatus),
+) -> PolicyFeasibilityResult {
+    let (plan, status) = candidate;
+    let negotiation =
+        negotiate_control_level(req.requested_control_level.clone(), &plan.enforceability);
+
+    PolicyFeasibilityResult {
+        target,
+        policy_intent: req.policy_intent.clone(),
+        requested_control_level: req.requested_control_level.clone(),
+        effective_control_level: negotiation.effective,
+        status,
+        user_summary: negotiation.reason,
+        user_detail: plan.explanation.clone(),
+        required_actions: vec![],
+        technical_plan: Some(plan),
+        confidence: 0.9,
+    }
+}
+
 pub fn evaluate_policy_feasibility(
     req: PolicyFeasibilityRequest,
-    _snapshot: &LocalCapabilitySnapshot,
+    snapshot: &LocalCapabilitySnapshot,
 ) -> Vec<PolicyFeasibilityResult> {
-    // Basic mock implementation for evaluate_policy_feasibility based on the plan.
-    // In a real implementation, this would map the snapshot capabilities and agent surfaces to available PEPs.
     req.targets
         .iter()
         .map(|target| {
-            // Very simple mocked logic to allow test cases to pass based on target_id
-            let (status, can_enforce, can_require_approval) = match target.target_id.as_str() {
-                "claude_desktop" => (PolicyFeasibilityStatus::CanEnforceAfterApproval, true, true),
-                "cursor" => (PolicyFeasibilityStatus::CanEnforceNow, true, true),
-                "local_ollama" => (PolicyFeasibilityStatus::CanObserveOnly, false, false),
-                "browser_ai" => (PolicyFeasibilityStatus::NeedsSetup, false, false),
-                "windows_os" => (PolicyFeasibilityStatus::NeedsSetup, false, false),
-                "macos_network_extension" => (PolicyFeasibilityStatus::NeedsSetup, false, false),
-                "linux_ebpf" => (PolicyFeasibilityStatus::CanObserveOnly, false, false),
-                _ => (PolicyFeasibilityStatus::CanEnforceNow, true, true),
-            };
-
-            let candidate = ControlMethodPlan {
-                method: ControlMethod::AgentToolControl,
-                internal_pep: InternalPep::McpProxy,
-                internal_pdp: InternalPdp::Cedar,
-                enforceability: Enforceability {
-                    can_observe: true,
-                    can_warn: can_require_approval,
-                    can_require_approval,
-                    can_enforce,
-                    can_strict_deny: false,
-                },
-                reason_code: "mcp_supported".to_string(),
-                explanation: LocalizedText {
-                    en: "Agent exposes MCP tools, so POLLEK can evaluate tool calls.".into(),
-                    th: "Agent มีการส่ง MCP tools ให้ตรวจได้".into(),
-                },
-                diagnostics: vec![],
-            };
-
-            let negotiation =
-                negotiate_control_level(req.requested_control_level, &candidate.enforceability);
-
-            PolicyFeasibilityResult {
-                target: target.clone(),
-                policy_intent: req.policy_intent.clone(),
-                requested_control_level: req.requested_control_level,
-                effective_control_level: negotiation.effective,
-                status,
-                user_summary: negotiation.reason,
-                user_detail: candidate.explanation.clone(),
-                required_actions: vec![],
-                technical_plan: Some(candidate),
-                confidence: 0.9,
-            }
+            let agent = resolve_agent(target, snapshot);
+            let candidates = candidate_methods_for_intent(&req.policy_intent, agent, snapshot);
+            let best = select_best_control_method(&req, candidates);
+            build_feasibility_result(&req, target.clone(), best)
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use dek_capability_registry::snapshot::CapabilityStatus;
+    use dek_domain_schema::policy_target::{Evaluators, MatchCriteria};
+
+    fn create_mock_target(id: &str) -> PolicyTarget {
+        PolicyTarget {
+            schema_version: "1".into(),
+            target_id: id.to_string(),
+            tenant_id: "t1".into(),
+            r#match: MatchCriteria {
+                principal: None,
+                agent: None,
+                resource: None,
+                action: None,
+                network: None,
+            },
+            evaluators: Evaluators {
+                required: vec![],
+                conditional: None,
+            },
+            obligations: vec![],
+        }
+    }
+
+    fn create_mock_snapshot() -> LocalCapabilitySnapshot {
+        LocalCapabilitySnapshot {
+            snapshot_id: "snap1".into(),
+            device_id: "d1".into(),
+            os: dek_capability_registry::OsInfo {
+                r#type: "windows".into(),
+                version: "11".into(),
+                arch: "x86_64".into(),
+            },
+            agents: vec![],
+            methods: vec![
+                dek_capability_registry::snapshot::ControlMethodCapability {
+                    method: ControlMethod::AgentToolControl,
+                    internal_pep: InternalPep::McpStdioWrapper,
+                    status: CapabilityStatus::ReadyAfterApproval,
+                    can_observe: true,
+                    can_enforce: true,
+                    requires_admin: false,
+                    requires_user_approval: true,
+                    confidence: 1.0,
+                    evidence: vec![],
+                    user_message: LocalizedText {
+                        en: "".into(),
+                        th: "".into(),
+                    },
+                    next_action: None,
+                },
+                dek_capability_registry::snapshot::ControlMethodCapability {
+                    method: ControlMethod::LocalApiControl,
+                    internal_pep: InternalPep::HttpProxy,
+                    status: CapabilityStatus::Ready,
+                    can_observe: true,
+                    can_enforce: true,
+                    requires_admin: false,
+                    requires_user_approval: false,
+                    confidence: 1.0,
+                    evidence: vec![],
+                    user_message: LocalizedText {
+                        en: "".into(),
+                        th: "".into(),
+                    },
+                    next_action: None,
+                },
+            ],
+            generated_at: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_mcp_stdio_approval_required() {
+        let mut snapshot = create_mock_snapshot();
+        snapshot
+            .methods
+            .retain(|m| m.internal_pep == InternalPep::McpStdioWrapper);
+
+        let req = PolicyFeasibilityRequest {
+            policy_id: None,
+            policy_intent: PolicyIntent::ApproveRiskyToolCalls,
+            requested_control_level: ControlLevel::Enforce,
+            targets: vec![create_mock_target("claude_desktop")],
+            mode: ProductMode::DesktopSimple,
+        };
+
+        let res = evaluate_policy_feasibility(req, &snapshot);
+        assert_eq!(res.len(), 1);
+        assert_eq!(
+            res[0].status,
+            PolicyFeasibilityStatus::CanEnforceAfterApproval
+        );
+    }
+
+    #[test]
+    fn test_mcp_http_enforce_now() {
+        let mut snapshot = create_mock_snapshot();
+        snapshot
+            .methods
+            .retain(|m| m.internal_pep == InternalPep::HttpProxy);
+
+        let req = PolicyFeasibilityRequest {
+            policy_id: None,
+            policy_intent: PolicyIntent::BlockSpecificTools,
+            requested_control_level: ControlLevel::Enforce,
+            targets: vec![create_mock_target("cursor")],
+            mode: ProductMode::DesktopSimple,
+        };
+
+        let res = evaluate_policy_feasibility(req, &snapshot);
+        assert_eq!(res.len(), 1);
+        assert_eq!(res[0].status, PolicyFeasibilityStatus::CanEnforceNow);
+    }
+
+    #[test]
+    fn test_no_os_network_control_fallback() {
+        let mut snapshot = create_mock_snapshot();
+        snapshot.methods.clear();
+
+        let req = PolicyFeasibilityRequest {
+            policy_id: None,
+            policy_intent: PolicyIntent::BlockUnknownNetworkDestinations,
+            requested_control_level: ControlLevel::Enforce,
+            targets: vec![create_mock_target("local_ollama")],
+            mode: ProductMode::DesktopSimple,
+        };
+
+        let res = evaluate_policy_feasibility(req, &snapshot);
+        assert_eq!(res.len(), 1);
+        assert_eq!(res[0].status, PolicyFeasibilityStatus::CanObserveOnly);
+        assert_eq!(res[0].effective_control_level, ControlLevel::Observe);
+    }
+
+    #[test]
+    fn test_downgrade_confirmation() {
+        let mut snapshot = create_mock_snapshot();
+        snapshot.methods.clear();
+        snapshot
+            .methods
+            .push(dek_capability_registry::snapshot::ControlMethodCapability {
+                method: ControlMethod::ObserveOnly,
+                internal_pep: InternalPep::None,
+                status: CapabilityStatus::Ready,
+                can_observe: true,
+                can_enforce: false,
+                requires_admin: false,
+                requires_user_approval: false,
+                confidence: 1.0,
+                evidence: vec![],
+                user_message: LocalizedText {
+                    en: "".into(),
+                    th: "".into(),
+                },
+                next_action: None,
+            });
+
+        let req = PolicyFeasibilityRequest {
+            policy_id: None,
+            policy_intent: PolicyIntent::ApproveRiskyToolCalls,
+            requested_control_level: ControlLevel::Enforce,
+            targets: vec![create_mock_target("claude_desktop")],
+            mode: ProductMode::DesktopSimple,
+        };
+
+        let res = evaluate_policy_feasibility(req, &snapshot);
+        assert_eq!(res[0].effective_control_level, ControlLevel::Observe);
+        assert!(res[0].user_summary.en.contains("cannot fully enforce"));
+    }
 }

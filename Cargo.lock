@@ -2058,6 +2058,7 @@ dependencies = [
 name = "dek-deployment-planner"
 version = "1.0.0-beta.10"
 dependencies = [
+ "chrono",
  "dek-capability-registry",
  "dek-domain-schema",
  "serde",
