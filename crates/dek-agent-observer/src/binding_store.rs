@@ -119,6 +119,4 @@ impl AgentBindingStore {
     }
 }
 
-
-
 pub type SharedBindingStore = Arc<AgentBindingStore>;

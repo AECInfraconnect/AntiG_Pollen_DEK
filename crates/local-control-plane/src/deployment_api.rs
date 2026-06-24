@@ -139,7 +139,7 @@ async fn create_deployment(
     Json(mut session): Json<DeploymentSession>,
 ) -> ApiResult<Json<Value>> {
     session.deployment_id = Uuid::new_v4().to_string();
-    session.status = DeploymentSessionStatus::Planning;
+    session.status = DeploymentSessionStatus::ScanStarted;
 
     let sink = std::sync::Arc::new(StoreEventSink {
         store: st.telemetry_store.clone(),

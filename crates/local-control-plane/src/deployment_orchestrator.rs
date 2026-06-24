@@ -47,12 +47,20 @@ impl<T: DeploymentEventSink> DeploymentOrchestrator<T> {
         session.updated_at = chrono::Utc::now();
 
         let phase = match new_status {
-            DeploymentSessionStatus::Planning => DeploymentPhase::RoutePlanning,
-            DeploymentSessionStatus::Deploying => DeploymentPhase::PepDeploy,
-            DeploymentSessionStatus::WaitingForUserAction => DeploymentPhase::RoutePlanning,
+            DeploymentSessionStatus::ScanStarted
+            | DeploymentSessionStatus::ScanCompleted
+            | DeploymentSessionStatus::CapabilitySnapshotCreated => DeploymentPhase::AgentDiscovery,
+            DeploymentSessionStatus::PolicyFeasibilityEvaluated
+            | DeploymentSessionStatus::UserSelectedPolicy
+            | DeploymentSessionStatus::DeploymentPlanCreated => DeploymentPhase::RoutePlanning,
+            DeploymentSessionStatus::ApprovalRequired => DeploymentPhase::RoutePlanning,
+            DeploymentSessionStatus::BundleCreated | DeploymentSessionStatus::BundleActivated => {
+                DeploymentPhase::PepDeploy
+            }
+            DeploymentSessionStatus::WarmCheckPassed => DeploymentPhase::WarmCheck,
             DeploymentSessionStatus::Active
-            | DeploymentSessionStatus::PartiallyActive
-            | DeploymentSessionStatus::ActiveObserveOnly => DeploymentPhase::Enforcement,
+            | DeploymentSessionStatus::PartialActive
+            | DeploymentSessionStatus::ObserveOnlyActive => DeploymentPhase::Enforcement,
             DeploymentSessionStatus::Failed => DeploymentPhase::Rollback,
             DeploymentSessionStatus::RolledBack => DeploymentPhase::Rollback,
         };

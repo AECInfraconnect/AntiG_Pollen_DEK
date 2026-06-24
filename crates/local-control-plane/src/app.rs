@@ -12,8 +12,8 @@ use crate::{
     activity_api, agent_discovery_api, agent_inventory_api, auth, bundle, connectors, consent_api,
     deployment_api, discovery, enforcement_plan_api, observation_api, pdp_cloud_api,
     pdp_routing_api, pdp_runtime_api, pep_capabilities_api, plugin_api, policy, policy_deploy_api,
-    policy_presets_api, policy_suggestions_api, preset_deploy_api, preset_deploy_wizard_api, push,
-    recommendation_api, registry, state::AppState, telemetry,
+    policy_first_api, policy_presets_api, policy_suggestions_api, preset_deploy_api,
+    preset_deploy_wizard_api, push, recommendation_api, registry, state::AppState, telemetry,
 };
 
 pub async fn local_tenant_guard(
@@ -74,6 +74,7 @@ pub fn create_app(state: AppState, static_dir: &str, metrics_handle: PrometheusH
         .merge(policy_deploy_api::router())
         .merge(deployment_api::router())
         .merge(consent_api::router())
+        .merge(policy_first_api::router())
         .route(
             "/v1/tenants/:tenant/devices/:device/events",
             axum::routing::get(push::sse_handler),

@@ -24,12 +24,19 @@ pub struct DeploymentSession {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum DeploymentSessionStatus {
-    Planning,
-    WaitingForUserAction,
-    Deploying,
+    ScanStarted,
+    ScanCompleted,
+    CapabilitySnapshotCreated,
+    PolicyFeasibilityEvaluated,
+    UserSelectedPolicy,
+    DeploymentPlanCreated,
+    ApprovalRequired,
+    BundleCreated,
+    BundleActivated,
+    WarmCheckPassed,
     Active,
-    ActiveObserveOnly,
-    PartiallyActive,
+    ObserveOnlyActive,
+    PartialActive,
     Failed,
     RolledBack,
 }

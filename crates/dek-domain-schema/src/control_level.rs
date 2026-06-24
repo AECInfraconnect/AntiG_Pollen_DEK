@@ -8,11 +8,12 @@ pub enum ControlLevel {
     Warn,
     Approval,
     Enforce,
+    StrictDeny,
 }
 
 impl ControlLevel {
     pub fn may_block(self) -> bool {
-        matches!(self, Self::Approval | Self::Enforce)
+        matches!(self, Self::Approval | Self::Enforce | Self::StrictDeny)
     }
 }
 
@@ -23,6 +24,7 @@ impl std::fmt::Display for ControlLevel {
             Self::Warn => write!(f, "warn"),
             Self::Approval => write!(f, "approval"),
             Self::Enforce => write!(f, "enforce"),
+            Self::StrictDeny => write!(f, "strict_deny"),
         }
     }
 }

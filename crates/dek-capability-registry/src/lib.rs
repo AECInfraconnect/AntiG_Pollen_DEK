@@ -153,3 +153,6 @@ impl CapabilityRegistry {
         }
     }
 }
+
+pub mod snapshot;
+pub use snapshot::*;

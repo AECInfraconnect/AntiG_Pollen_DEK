@@ -361,8 +361,8 @@ async fn get_artifact(
     let sha = sha_raw.trim_start_matches('/').to_string();
 
     if sha == "network_guardrails.json" {
-        let signed_bytes =
-            serde_jcs::to_vec(&serde_json::json!([])).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+        let signed_bytes = serde_jcs::to_vec(&serde_json::json!([]))
+            .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
         let sig_b64 = st.signer.sign_b64(&signed_bytes);
         let signed_payload = serde_json::json!({
             "signed": [],

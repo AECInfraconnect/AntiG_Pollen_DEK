@@ -1878,6 +1878,7 @@ dependencies = [
 name = "dek-capability-registry"
 version = "1.0.0-beta.10"
 dependencies = [
+ "chrono",
  "dek-domain-schema",
  "serde",
  "serde_json",
@@ -2047,6 +2048,16 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+]
+
+[[package]]
+name = "dek-deployment-planner"
+version = "1.0.0-beta.10"
+dependencies = [
+ "dek-capability-registry",
+ "dek-domain-schema",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -4579,6 +4590,7 @@ dependencies = [
  "dek-cedar",
  "dek-config",
  "dek-control-plane-api",
+ "dek-deployment-planner",
  "dek-domain-schema",
  "dek-errors",
  "dek-fingerprint-defs",
