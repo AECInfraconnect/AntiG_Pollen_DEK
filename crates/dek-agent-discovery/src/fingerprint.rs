@@ -1,4 +1,3 @@
-use crate::model::*;
 use crate::process_scan::ProcessEvidence;
 use dek_fingerprint_defs::model::AgentSignatureV2;
 use regex::Regex;

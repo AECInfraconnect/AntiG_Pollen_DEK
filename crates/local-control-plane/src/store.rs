@@ -2014,7 +2014,7 @@ impl DeploymentStore for SqliteStore {
         let session_clone = session.clone();
         tokio::task::spawn_blocking(
             move || -> Result<dek_domain_schema::deployment_session::DeploymentSession> {
-                let mut conn = conn.lock().unwrap();
+                let mut conn = conn.lock().map_err(|e| anyhow::anyhow!("lock failed: {}", e))?;
                 let tx = conn.transaction()?;
 
                 let status_str = serde_json::to_string(&session_clone.status)?
@@ -2067,7 +2067,7 @@ impl DeploymentStore for SqliteStore {
 
         tokio::task::spawn_blocking(
             move || -> Result<Option<dek_domain_schema::deployment_session::DeploymentSession>> {
-                let conn = conn.lock().unwrap();
+                let conn = conn.lock().map_err(|e| anyhow::anyhow!("lock failed: {}", e))?;
                 let mut stmt =
                     conn.prepare("SELECT * FROM deployment_sessions WHERE deployment_id = ?1")?;
                 let mut rows = stmt.query(params![deployment_id])?;
@@ -2114,15 +2114,15 @@ impl DeploymentStore for SqliteStore {
     ) -> Result<()> {
         let conn = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let mut conn = conn.lock().unwrap();
+            let mut conn = conn.lock().map_err(|e| anyhow::anyhow!("lock failed: {}", e))?;
             let tx = conn.transaction()?;
 
             let phase_str = serde_json::to_string(&event.phase)?.trim_matches('"').to_string();
             let status_str = serde_json::to_string(&event.status)?.trim_matches('"').to_string();
             let title_json = serde_json::to_string(&event.title)?;
             let detail_json = serde_json::to_string(&event.detail)?;
-            let tech_detail_json = event.technical_detail.as_ref().map(|x| serde_json::to_string(x).unwrap());
-            let user_action_json = event.user_action.as_ref().map(|x| serde_json::to_string(x).unwrap());
+            let tech_detail_json = event.technical_detail.as_ref().map(|x| serde_json::to_string(x)).transpose()?;
+            let user_action_json = event.user_action.as_ref().map(|x| serde_json::to_string(x)).transpose()?;
 
             let mut stmt = tx.prepare(
                 "INSERT INTO deployment_events (
@@ -2161,7 +2161,7 @@ impl DeploymentStore for SqliteStore {
         let deployment_id = deployment_id.to_string();
 
         tokio::task::spawn_blocking(move || -> Result<Vec<dek_domain_schema::deployment_session::DeploymentEvent>> {
-            let conn = conn.lock().unwrap();
+            let conn = conn.lock().map_err(|e| anyhow::anyhow!("lock failed: {}", e))?;
             let mut stmt = conn.prepare("SELECT * FROM deployment_events WHERE deployment_id = ?1 ORDER BY created_at ASC")?;
             let mut rows = stmt.query(params![deployment_id])?;
 
@@ -2172,8 +2172,8 @@ impl DeploymentStore for SqliteStore {
 
                 let title: dek_domain_schema::deployment_session::LocalizedText = serde_json::from_str(&r.get::<_, String>("title_json")?)?;
                 let detail: dek_domain_schema::deployment_session::LocalizedText = serde_json::from_str(&r.get::<_, String>("detail_json")?)?;
-                let tech_detail = r.get::<_, Option<String>>("technical_detail_json")?.map(|s| serde_json::from_str(&s).unwrap());
-                let user_action = r.get::<_, Option<String>>("user_action_json")?.map(|s| serde_json::from_str(&s).unwrap());
+                let tech_detail = r.get::<_, Option<String>>("technical_detail_json")?.map(|s| serde_json::from_str(&s)).transpose()?;
+                let user_action = r.get::<_, Option<String>>("user_action_json")?.map(|s| serde_json::from_str(&s)).transpose()?;
 
                 let event = dek_domain_schema::deployment_session::DeploymentEvent {
                     event_id: r.get("event_id")?,
