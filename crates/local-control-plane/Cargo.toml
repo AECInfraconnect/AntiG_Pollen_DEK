@@ -45,6 +45,7 @@ dek-config = { version = "0.1.0", path = "../dek-config" }
 dek-agent-discovery = { version = "1.0.0-beta.10", path = "../dek-agent-discovery" }
 dek-policy-suggester = { version = "1.0.0-beta.7", path = "../dek-policy-suggester" }
 dek-agent-observer = { version = "1.0.0-beta.7", path = "../dek-agent-observer" }
+dek-recommend = { version = "1.0.0-beta.10", path = "../dek-recommend" }
 uuid = { version = "1", features = ["v4"] }
 dek-policy-presets = { version = "1.0.0-beta.7", path = "../dek-policy-presets" }
 windows-dpapi = "0.2.0"

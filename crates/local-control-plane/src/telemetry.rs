@@ -63,6 +63,35 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/telemetry/export",
             get(export_telemetry),
         )
+        .route(
+            "/v1/decisions/:id/explain",
+            get(explain_decision),
+        )
+}
+
+async fn explain_decision(
+    Path(id): Path<String>,
+    State(_st): State<AppState>,
+) -> impl IntoResponse {
+    // In a full implementation, we'd query the telemetry store for the decision event
+    // and return its `explanation` payload. For now, we return a mock explanation.
+    // If the explanation isn't stored properly yet, we construct a fallback.
+    let mock_explanation = dek_policy_runtime::explanation::DecisionExplanation {
+        decision: "allow".into(),
+        allow: true,
+        pdp_engine: Some("cedar".into()),
+        pdp_reason_th: "อนุญาตโดยนโยบายพื้นฐาน".into(),
+        pep_plane: "McpStdio".into(),
+        pep_capability: "Local".into(),
+        pep_reason_th: "บังคับใช้ได้จริง".into(),
+        enforced_for_real: true,
+        success: true,
+        status_badge: dek_policy_runtime::explanation::StatusBadge::Ok,
+        user_action_th: None,
+        correlation_id: id,
+    };
+
+    (StatusCode::OK, Json(mock_explanation))
 }
 
 #[derive(serde::Deserialize)]

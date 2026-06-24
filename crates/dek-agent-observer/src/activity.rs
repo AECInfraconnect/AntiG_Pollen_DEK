@@ -17,6 +17,15 @@ pub struct ActivityItem {
     pub decision: Option<String>,
     pub resource: String,
     pub reason: String,
+
+    #[serde(default)]
+    pub pep_plane: Option<String>,
+    #[serde(default)]
+    pub enforced_for_real: Option<bool>,
+    #[serde(default)]
+    pub status_badge: Option<String>,
+    #[serde(default)]
+    pub message_th: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

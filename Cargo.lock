@@ -4542,6 +4542,7 @@ dependencies = [
  "dek-policy-router",
  "dek-policy-runtime",
  "dek-policy-suggester",
+ "dek-recommend",
  "dek-telemetry",
  "ed25519-dalek",
  "futures-util",

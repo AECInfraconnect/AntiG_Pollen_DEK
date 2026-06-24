@@ -22,6 +22,7 @@ pub mod agent_inventory_api;
 pub mod control_binding;
 pub mod observation_api;
 pub mod pep_capabilities_api;
+pub mod recommendation_api;
 pub mod policy_presets_api;
 pub mod policy_suggestions_api;
 pub mod preset_deploy_api;
