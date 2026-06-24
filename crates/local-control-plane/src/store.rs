@@ -2014,7 +2014,9 @@ impl DeploymentStore for SqliteStore {
         let session_clone = session.clone();
         tokio::task::spawn_blocking(
             move || -> Result<dek_domain_schema::deployment_session::DeploymentSession> {
-                let mut conn = conn.lock().map_err(|e| anyhow::anyhow!("lock failed: {}", e))?;
+                let mut conn = conn
+                    .lock()
+                    .map_err(|e| anyhow::anyhow!("lock failed: {}", e))?;
                 let tx = conn.transaction()?;
 
                 let status_str = serde_json::to_string(&session_clone.status)?
@@ -2067,7 +2069,9 @@ impl DeploymentStore for SqliteStore {
 
         tokio::task::spawn_blocking(
             move || -> Result<Option<dek_domain_schema::deployment_session::DeploymentSession>> {
-                let conn = conn.lock().map_err(|e| anyhow::anyhow!("lock failed: {}", e))?;
+                let conn = conn
+                    .lock()
+                    .map_err(|e| anyhow::anyhow!("lock failed: {}", e))?;
                 let mut stmt =
                     conn.prepare("SELECT * FROM deployment_sessions WHERE deployment_id = ?1")?;
                 let mut rows = stmt.query(params![deployment_id])?;
