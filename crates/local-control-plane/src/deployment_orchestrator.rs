@@ -33,6 +33,12 @@ pub struct StoreEventSink {
     // In a real implementation, this would hold database pool and telemetry spool references.
 }
 
+impl Default for StoreEventSink {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StoreEventSink {
     pub fn new() -> Self {
         Self {}
@@ -51,7 +57,7 @@ impl DeploymentEventSink for StoreEventSink {
         let _agent_id = &event.agent_id;
 
         // Emitting to local log
-        println!("Emitting deployment event: {:?}", event.event_id);
+        tracing::debug!("Emitting deployment event: {:?}", event.event_id);
 
         Ok(())
     }

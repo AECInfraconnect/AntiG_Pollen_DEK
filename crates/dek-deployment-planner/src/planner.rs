@@ -9,7 +9,6 @@ use dek_domain_schema::{
         ControlMethod, ControlMethodPlan, Enforceability, InternalPdp, InternalPep,
         PolicyFeasibilityRequest, PolicyFeasibilityResult, PolicyFeasibilityStatus, ProductMode,
     },
-    policy_target::PolicyTarget,
 };
 
 pub struct ControlLevelNegotiation {
@@ -84,10 +83,10 @@ pub fn score_plan(req: &PolicyFeasibilityRequest, plan: &ControlMethodPlan) -> i
         };
     }
 
-    if matches!(req.mode, ProductMode::EnterpriseServer) {
-        if matches!(plan.method, ControlMethod::NetworkControl) {
-            score += 40;
-        }
+    if matches!(req.mode, ProductMode::EnterpriseServer)
+        && matches!(plan.method, ControlMethod::NetworkControl)
+    {
+        score += 40;
     }
 
     score
