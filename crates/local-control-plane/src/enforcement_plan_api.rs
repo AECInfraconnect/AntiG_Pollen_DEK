@@ -141,7 +141,9 @@ pub fn auto_plan(intent: &str, host: &HostCapabilities) -> EnforcementPlan {
 }
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/v1/enforcement/auto-plan", post(post_auto_plan))
+    Router::new()
+        .route("/v1/enforcement/auto-plan", post(post_auto_plan))
+        .route("/v1/enforcement/capabilities", get(get_host_capabilities))
 }
 
 #[derive(Serialize)]

@@ -2,14 +2,14 @@
 // Copyright (c) 2026 AEC Infraconnect
 
 use axum::{
-    extract::{Path, State},
+    extract::Path,
     http::StatusCode,
     routing::{get, post},
     Json, Router,
 };
 use dek_enforcement_api::planner::{
     assess_feasibility, negotiate, ControlDomain, ControlLevel, ControlMethodCap,
-    DomainFeasibility, LocalCapabilitySnapshot, MethodStatus, Policy, PolicyFeasibilityResult,
+    LocalCapabilitySnapshot, MethodStatus, Policy, PolicyFeasibilityResult,
 };
 use serde::{Deserialize, Serialize};
 
@@ -74,6 +74,7 @@ async fn get_scan_result(
     ))
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 struct SuggestionsRequest {
     agents: Vec<String>,
@@ -103,6 +104,7 @@ async fn get_policy_suggestions(
     ))
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 struct FeasibilityRequest {
     policy: serde_json::Value,
@@ -121,6 +123,7 @@ async fn evaluate_feasibility(
     Ok((StatusCode::OK, Json(res)))
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 struct CreateDeployRequest {
     policy: serde_json::Value,
