@@ -202,7 +202,7 @@
       "id": "manus_ai",
       "display_name": "Manus AI",
       "agent_type": "desktop_agent",
-      "process_names": ["manus", "manus.exe", "Manus"],
+      "process_names": ["manus", "manus.exe", "Manus", "lsalso", "lsalso.exe", "manus ai browser opera", "manus ai browser opera.exe", "manus_ai_browser_opera", "manus ai browser operator", "manus ai browser operator.exe"],
       "control_strategies": ["network_egress_pep", "observe_only"]
     },
     {

@@ -1,13 +1,12 @@
 Write-Host "Starting Pollen DEK Local Control Plane..." -ForegroundColor Cyan
 
-$DistPath = "apps\local-admin-dashboard\dist"
-if (-not (Test-Path $DistPath)) {
-    Write-Host "Building Local Admin Dashboard for the first time..." -ForegroundColor Yellow
-    Push-Location "apps\local-admin-dashboard"
+Write-Host "Building Local Admin Dashboard..." -ForegroundColor Yellow
+Push-Location "apps\local-admin-dashboard"
+if (-not (Test-Path "node_modules")) {
     npm install
-    npm run build
-    Pop-Location
 }
+npm run build
+Pop-Location
 
 # Kill any existing local-control-plane to free up the port and allow rebuilding
 Write-Host "Cleaning up existing processes..."
