@@ -131,16 +131,61 @@ fn merge_delta(
         match out
             .web_ai_signatures
             .iter_mut()
-            .find(|x| x.domain == w.domain)
+            .find(|x| x.stable_id() == w.stable_id() || x.domain == w.domain)
         {
             Some(e) => *e = w.clone(),
             None => out.web_ai_signatures.push(w.clone()),
         }
     }
 
+    for browser in &delta.browser_processes {
+        match out.browser_processes.iter_mut().find(|existing| {
+            existing.engine == browser.engine
+                && existing.process_names.iter().any(|existing_name| {
+                    browser
+                        .process_names
+                        .iter()
+                        .any(|incoming_name| existing_name.eq_ignore_ascii_case(incoming_name))
+                })
+        }) {
+            Some(existing) => {
+                for name in &browser.process_names {
+                    if !existing
+                        .process_names
+                        .iter()
+                        .any(|n| n.eq_ignore_ascii_case(name))
+                    {
+                        existing.process_names.push(name.clone());
+                    }
+                }
+            }
+            None => out.browser_processes.push(browser.clone()),
+        }
+    }
+
+    if !delta.ai_process_hints.name_tokens.is_empty()
+        || !delta.ai_process_hints.cmd_tokens.is_empty()
+        || !delta.ai_process_hints.deny_tokens.is_empty()
+        || delta.ai_process_hints.require_match
+    {
+        out.ai_process_hints = delta.ai_process_hints.clone();
+    }
+
     // Process removed_ids if necessary
     out.signatures
         .retain(|s| !delta.removed_ids.contains(&s.id));
+    out.web_ai_signatures
+        .retain(|s| !delta.removed_ids.contains(&s.id) && !delta.removed_ids.contains(&s.domain));
+    out.installed_app_signatures
+        .retain(|s| !delta.removed_ids.contains(&s.id));
+    out.browser_processes.retain(|b| {
+        !b.process_names.iter().any(|name| {
+            delta
+                .removed_ids
+                .iter()
+                .any(|id| name.eq_ignore_ascii_case(id))
+        })
+    });
 
     // Recalculate catalog hash if needed
     // out.catalog_hash = compute_hash(&out);

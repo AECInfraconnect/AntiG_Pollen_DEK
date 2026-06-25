@@ -1,6 +1,6 @@
 use crate::model::InferredAgentType;
 use crate::process_scan::ProcessEvidence;
-use dek_fingerprint_defs::model::{AgentSignatureV2, InstalledAppSignatureDef};
+use dek_fingerprint_defs::model::{AgentSignatureV2, AiProcessHints, InstalledAppSignatureDef};
 use regex::Regex;
 
 /// Quick filter for process scan events before sending to aggregator.
@@ -181,7 +181,7 @@ fn map_type(t: &str) -> InferredAgentType {
     }
 }
 
-fn looks_ai_ish(name: &str, cmd: &str) -> bool {
+fn looks_ai_ish_legacy(name: &str, cmd: &str) -> bool {
     const HINTS: &[&str] = &[
         "ai",
         "agent",
@@ -199,10 +199,49 @@ fn looks_ai_ish(name: &str, cmd: &str) -> bool {
     HINTS.iter().any(|h| name.contains(h) || cmd.contains(h))
 }
 
+fn looks_ai_ish_with_hints(name: &str, cmd: &str, hints: &AiProcessHints) -> bool {
+    let denied = hints
+        .deny_tokens
+        .iter()
+        .any(|token| token_matches(token, name) || token_matches(token, cmd));
+    if denied {
+        return false;
+    }
+
+    let hinted = hints
+        .name_tokens
+        .iter()
+        .any(|token| token_matches(token, name))
+        || hints
+            .cmd_tokens
+            .iter()
+            .any(|token| token_matches(token, cmd));
+
+    if hints.require_match {
+        hinted
+    } else {
+        hinted || looks_ai_ish_legacy(name, cmd)
+    }
+}
+
+fn token_matches(token: &str, text: &str) -> bool {
+    let token = token.trim().to_ascii_lowercase();
+    !token.is_empty() && text.contains(&token)
+}
+
 pub fn fingerprint_process_v2(
     facts: &ProcessFacts,
     sigs: &[AgentSignatureV2],
     apps: &[InstalledAppSignatureDef],
+) -> ResolvedAgent {
+    fingerprint_process_v2_with_hints(facts, sigs, apps, None)
+}
+
+pub fn fingerprint_process_v2_with_hints(
+    facts: &ProcessFacts,
+    sigs: &[AgentSignatureV2],
+    apps: &[InstalledAppSignatureDef],
+    hints: Option<&AiProcessHints>,
 ) -> ResolvedAgent {
     let pname = facts.process_name.to_lowercase();
     let exe = facts.exe_path.replace('\\', "/").to_lowercase();
@@ -276,7 +315,10 @@ pub fn fingerprint_process_v2(
         }
     }
 
-    if best.confidence == 0.0 && looks_ai_ish(&pname, &cmd) {
+    let looks_ai_ish = hints
+        .map(|h| looks_ai_ish_with_hints(&pname, &cmd, h))
+        .unwrap_or_else(|| looks_ai_ish_legacy(&pname, &cmd));
+    if best.confidence == 0.0 && looks_ai_ish {
         best.confidence = 0.45;
     }
 
@@ -332,8 +374,33 @@ mod tests {
             exe_path: "C:/node/node.exe",
             cmdline: "node agent-server.js",
         };
-        let r = fingerprint_process_v2(&facts, &[], &[]);
+        let hints = AiProcessHints {
+            require_match: true,
+            name_tokens: vec!["agent".into()],
+            cmd_tokens: vec!["agent-server".into()],
+            deny_tokens: vec![],
+        };
+        let r = fingerprint_process_v2_with_hints(&facts, &[], &[], Some(&hints));
         assert_eq!(r.confidence, 0.45);
+        assert_eq!(r.display_name, None);
+    }
+
+    #[test]
+    fn denied_ai_ish_process_is_not_emitted() {
+        let facts = ProcessFacts {
+            process_name: "Dell.Telemetry.exe",
+            exe_path: "C:/Program Files/Dell/Dell.Telemetry.exe",
+            cmdline: "Dell.Telemetry.exe ai helper",
+        };
+        let hints = AiProcessHints {
+            require_match: true,
+            name_tokens: vec!["ai".into(), "agent".into()],
+            cmd_tokens: vec!["ai".into()],
+            deny_tokens: vec!["dell".into(), "telemetry".into()],
+        };
+
+        let r = fingerprint_process_v2_with_hints(&facts, &[], &[], Some(&hints));
+        assert_eq!(r.confidence, 0.0);
         assert_eq!(r.display_name, None);
     }
 }

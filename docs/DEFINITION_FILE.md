@@ -1,62 +1,70 @@
-# POLLEK Definition File (`baseline.v3.json`)
+# POLLEK Fingerprint Definition File
 
-The definition file is the core intelligence base for POLLEK's Auto Discovery system. It uses a structured schema to identify native agents, Web AIs running inside browser tabs, and heuristic filters to prevent false positives.
+The active agent discovery catalog is `crates/dek-fingerprint-defs/data/baseline.v3.json`.
+Runtime updates can also be loaded from the signed definition bundle path used by
+`dek-fingerprint-defs::DefinitionStore`.
 
-## Schema Structure
+## Top-Level Sections
 
-The file uses a self-describing JSON format designed for hot-reloading and synchronization via `dek-bundle-sync`.
+- `signatures`: process, CLI, config, port, package, and install markers for AI agents.
+- `installed_app_signatures`: desktop and CLI applications found by install paths or app markers.
+- `web_ai_signatures`: browser-hosted AI surfaces such as ChatGPT, Claude, Gemini, DeepSeek, Copilot, and Perplexity.
+- `browser_processes`: browser executables that should not be emitted as agents by themselves.
+- `ai_process_hints`: allowlist and denylist tokens for unknown AI-like process candidates.
 
-### 1. `browser_processes`
+## Browser AI Signatures
 
-Defines known browser executables. Processes listed here will be **ignored** by the generic process scanner and delegated to the `browser_window_scan`.
-
-```json
-{
-  "process_names": ["chrome.exe", "chrome"],
-  "engine": "chromium"
-}
-```
-
-### 2. `web_ai_signatures`
-
-Defines Web-based AIs. These signatures are matched against open browser window titles and `--app` command line arguments.
+Each `web_ai_signatures` entry supports:
 
 ```json
 {
   "id": "chatgpt_web",
   "domain": "chatgpt.com",
+  "alias_domains": ["chat.openai.com"],
   "name": "ChatGPT (Web)",
   "vendor": "OpenAI",
   "title_patterns": ["ChatGPT"],
   "app_cmdline_patterns": ["--app=*chatgpt.com*"],
-  "capability_tags": ["llm.chat"],
+  "capability_tags": ["llm.chat", "web.chat"],
   "risk_weight": 0.5
 }
 ```
 
-### 3. `ai_process_hints`
+Discovery uses these fields across multiple sources:
 
-Heuristics to identify potential AI processes that lack formal signatures, while aggressively dropping non-AI bloatware (e.g., `Dell.*`, `Intel.*`).
+- Browser session files and SNI match `domain` and `alias_domains`.
+- Browser windows match `title_patterns`.
+- PWA/app windows match `app_cmdline_patterns`, especially Chromium `--app=https://...`.
+- `id` is the stable merge key. Keep it unchanged across definition updates.
 
-```json
-{
-  "require_match": true,
-  "name_tokens": ["ollama", "lmstudio"],
-  "cmd_tokens": ["langchain", "--model"],
-  "deny_tokens": ["dell", "nvidia", "update"]
-}
+## Browser Process Denylist
+
+`browser_processes` describes processes such as `chrome.exe`, `msedge.exe`, `firefox.exe`,
+and `safari`. Process scanning skips these entries, because a browser is only a container
+for web AI surfaces. Browser-specific sources then emit named candidates such as
+`ChatGPT (Web)` or `Claude (Web)`.
+
+## Unknown Process Hints
+
+`ai_process_hints` controls whether unknown process evidence can become an unconfirmed
+candidate.
+
+- `require_match: true` means an unknown process must match `name_tokens` or `cmd_tokens`.
+- `deny_tokens` removes common vendor helpers, updaters, drivers, and telemetry processes.
+- Known signatures still win over hints. Hints only affect unknown candidates.
+
+This protects users from false positives such as generic Dell, NVIDIA, Intel, Realtek,
+update, helper, or telemetry processes.
+
+## Adding A New AI
+
+1. Prefer a precise `signatures` or `installed_app_signatures` entry for local apps and CLIs.
+2. Add a `web_ai_signatures` entry for browser-hosted AI.
+3. Add process names to `browser_processes` only when the process is a browser container.
+4. Add broad unknown-process tokens to `ai_process_hints` sparingly.
+5. Run:
+
+```powershell
+cargo test -p dek-fingerprint-defs -p dek-agent-discovery --locked
+cargo clippy -p dek-fingerprint-defs -p dek-agent-discovery -p local-control-plane --all-targets --locked -- -D warnings
 ```
-
-### 4. `signatures`
-
-Standard app signatures for desktop and CLI agents (e.g., `Claude Desktop`, `Cursor`).
-
-## How to Add a New Web AI
-
-1. Edit `data/baseline.v3.json` or the relevant update delta.
-2. Locate the `web_ai_signatures` array.
-3. Append a new object:
-   - Provide a unique `id`.
-   - Add typical words found in the window title to `title_patterns`.
-   - Add PWA command-line matches to `app_cmdline_patterns` if applicable.
-4. Distribute the updated definition bundle. `dek-bundle-sync` will automatically download and apply the new definitions without requiring a binary recompilation.

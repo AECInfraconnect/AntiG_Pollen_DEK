@@ -22,8 +22,8 @@ pub fn embedded_baseline() -> FingerprintDefinition {
         model_classifier: None,
         web_ai_signatures: vec![],
         installed_app_signatures: vec![],
-        ai_process_hints: AiProcessHints::default(),
         browser_processes: vec![],
+        ai_process_hints: AiProcessHints::default(),
     })
 }
 
@@ -69,4 +69,25 @@ pub fn load_latest_baseline() -> FingerprintDefinition {
     }
 
     baseline
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn embedded_baseline_has_browser_ai_definition_sections() -> anyhow::Result<()> {
+        let baseline: crate::model::FingerprintDefinition =
+            serde_json::from_str(include_str!("../data/baseline.v3.json"))?;
+
+        assert!(!baseline.browser_processes.is_empty());
+        assert!(baseline.browser_processes.iter().any(|browser| browser
+            .process_names
+            .iter()
+            .any(|name| name.eq_ignore_ascii_case("chrome.exe"))));
+        assert!(baseline.ai_process_hints.require_match);
+        assert!(baseline
+            .web_ai_signatures
+            .iter()
+            .any(|sig| sig.id == "chatgpt_web" && sig.name == "ChatGPT (Web)"));
+        Ok(())
+    }
 }

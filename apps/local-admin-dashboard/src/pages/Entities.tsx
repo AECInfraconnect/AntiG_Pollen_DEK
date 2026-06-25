@@ -19,8 +19,46 @@ export function Entities() {
 
   const fetchEntities = () => {
     setLoading(true);
-    RegistryApi.listEntities()
-      .then(setItems)
+    Promise.all([
+      RegistryApi.listEntities(),
+      RegistryApi.listDiscoveryCandidates(),
+    ])
+      .then(([entities, candidates]) => {
+        const observableSurfaces = candidates
+          .filter(
+            (candidate: any) =>
+              candidate.labels?.["entity.observe_enforce"] ===
+                "observable_surface" &&
+              candidate.labels?.["entity.kind"] !== "ai_agent",
+          )
+          .map((candidate: any) => ({
+            meta: {
+              status: candidate.status,
+              source: "discovery",
+              created_at: candidate.first_seen,
+            },
+            entity_id: `discovery:${candidate.candidate_id}`,
+            entity_type:
+              candidate.labels?.["entity.kind"] ??
+              candidate.inferred_agent_type,
+            display_name: candidate.display_name,
+            external_ids: [
+              {
+                provider: "agent_discovery",
+                id: candidate.candidate_id,
+              },
+            ],
+            roles: [],
+            attributes: {
+              discovery_candidate_id: candidate.candidate_id,
+              confidence: candidate.confidence,
+              risk_score: candidate.risk_score,
+              capabilities: candidate.capability_tags ?? [],
+              status: candidate.status,
+            },
+          }));
+        setItems([...entities, ...observableSurfaces]);
+      })
       .catch((err) => {
         console.error(err);
         toast.error("Failed to load entities");
@@ -48,7 +86,11 @@ export function Entities() {
     });
 
     if (isConfirmed) {
-      RegistryApi.deleteEntity(id)
+      const deletion = id.startsWith("discovery:")
+        ? RegistryApi.deleteDiscoveryCandidate(id.slice("discovery:".length))
+        : RegistryApi.deleteEntity(id);
+
+      deletion
         .then(() => {
           if (selectedId === id) {
             setParams((p) => {
@@ -101,15 +143,34 @@ export function Entities() {
           />
         }
         renderCard={(e, selected) => {
+          const isDiscoverySurface = e.entity_id?.startsWith("discovery:");
           const isGoverned = e.meta?.status === "active";
           return (
             <EntityCard
               title={e.display_name}
               subtitle={e.entity_type}
               icon={UserCircle}
-              status={isGoverned ? "ok" : "idle"}
-              statusLabel={isGoverned ? "Governed" : "Unmanaged"}
-              meta={[{ label: "ID", value: e.entity_id.slice(0, 8) }]}
+              status={
+                isGoverned ? "ok" : isDiscoverySurface ? "degraded" : "idle"
+              }
+              statusLabel={
+                isGoverned
+                  ? "Governed"
+                  : isDiscoverySurface
+                    ? "Discovered"
+                    : "Unmanaged"
+              }
+              meta={[
+                { label: "ID", value: e.entity_id.slice(0, 18) },
+                ...(isDiscoverySurface && e.attributes?.confidence
+                  ? [
+                      {
+                        label: "Confidence",
+                        value: `${(e.attributes.confidence * 100).toFixed(0)}%`,
+                      },
+                    ]
+                  : []),
+              ]}
               selected={selected}
             />
           );

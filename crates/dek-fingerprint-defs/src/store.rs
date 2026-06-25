@@ -35,6 +35,8 @@ impl FingerprintService {
                 by_id: cur.by_id.clone(),
                 web_ai: cur.web_ai.clone(),
                 installed_apps: cur.installed_apps.clone(),
+                browser_processes: cur.browser_processes.clone(),
+                ai_process_hints: cur.ai_process_hints.clone(),
             }
         };
 
@@ -58,6 +60,8 @@ impl FingerprintService {
                     by_id: w.by_id.clone(),
                     web_ai: w.web_ai.clone(),
                     installed_apps: w.installed_apps.clone(),
+                    browser_processes: w.browser_processes.clone(),
+                    ai_process_hints: w.ai_process_hints.clone(),
                 });
             }
 

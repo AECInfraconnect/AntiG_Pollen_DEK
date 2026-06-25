@@ -27,12 +27,7 @@ pub fn scan_ide_extensions() -> Result<Vec<DiscoveryEvidenceV2>> {
                             .to_string_lossy()
                             .to_string()
                             .to_lowercase();
-                        if name.contains("github.copilot")
-                            || name.contains("cline")
-                            || name.contains("claude-dev")
-                            || name.contains("continue")
-                            || name.contains("sourcegraph.cody")
-                        {
+                        if let Some(identity) = extension_identity(&name) {
                             evidence.push(DiscoveryEvidenceV2 {
                                 evidence_id: uuid::Uuid::new_v4().to_string(),
                                 source: EvidenceSource::IdeExtension,
@@ -41,7 +36,11 @@ pub fn scan_ide_extensions() -> Result<Vec<DiscoveryEvidenceV2>> {
                                 privacy_class: PrivacyClass::InternalMetadata,
                                 redacted: true,
                                 data: serde_json::json!({
-                                    "extension_folder": name
+                                    "extension_folder": name,
+                                    "name": identity.name,
+                                    "vendor": identity.vendor,
+                                    "product": identity.product,
+                                    "capability_tags": ["code.agentic", "ide.extension", "tool.use"]
                                 }),
                                 merge_key: Some(format!(
                                     "vscode:{}",
@@ -60,4 +59,83 @@ pub fn scan_ide_extensions() -> Result<Vec<DiscoveryEvidenceV2>> {
     }
 
     Ok(evidence)
+}
+
+struct ExtensionIdentity {
+    name: &'static str,
+    vendor: &'static str,
+    product: &'static str,
+}
+
+fn extension_identity(folder_name: &str) -> Option<ExtensionIdentity> {
+    let known = [
+        (
+            "github.copilot",
+            ExtensionIdentity {
+                name: "GitHub Copilot",
+                vendor: "GitHub",
+                product: "Copilot",
+            },
+        ),
+        (
+            "anthropic.claude-code",
+            ExtensionIdentity {
+                name: "Claude Code",
+                vendor: "Anthropic",
+                product: "Claude Code",
+            },
+        ),
+        (
+            "claude-dev",
+            ExtensionIdentity {
+                name: "Cline",
+                vendor: "Cline",
+                product: "Cline",
+            },
+        ),
+        (
+            "cline",
+            ExtensionIdentity {
+                name: "Cline",
+                vendor: "Cline",
+                product: "Cline",
+            },
+        ),
+        (
+            "rooveterinaryinc.roo-cline",
+            ExtensionIdentity {
+                name: "Roo Code",
+                vendor: "Roo Code",
+                product: "Roo Code",
+            },
+        ),
+        (
+            "continue",
+            ExtensionIdentity {
+                name: "Continue",
+                vendor: "Continue",
+                product: "Continue",
+            },
+        ),
+        (
+            "sourcegraph.cody",
+            ExtensionIdentity {
+                name: "Sourcegraph Cody",
+                vendor: "Sourcegraph",
+                product: "Cody",
+            },
+        ),
+        (
+            "codeium",
+            ExtensionIdentity {
+                name: "Codeium",
+                vendor: "Codeium",
+                product: "Codeium",
+            },
+        ),
+    ];
+
+    known
+        .into_iter()
+        .find_map(|(needle, identity)| folder_name.contains(needle).then_some(identity))
 }

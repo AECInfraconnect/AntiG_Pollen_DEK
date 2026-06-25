@@ -74,7 +74,10 @@ fn coalesce_by_identity(
 
 fn is_better_name(new: &str, old: &str) -> bool {
     let bad = |s: &str| {
-        s == "Unknown Agent" || s.contains("unconfirmed") || basename_no_ext(s) == s && s.len() > 15
+        s == "Unknown Agent"
+            || s.starts_with("Possible AI Agent")
+            || s.contains("unconfirmed")
+            || basename_no_ext(s) == s && s.len() > 15
     };
     bad(old) && !bad(new)
 }
@@ -292,6 +295,43 @@ fn aggregate_by_merge_key(
                     // Not fully utilizing this signal yet in identity.rs
                 }
                 EvidenceSource::InstalledAppScan => {
+                    if let Some(evidence_name) = ev.data.get("name").and_then(|v| v.as_str()) {
+                        name = evidence_name.to_string();
+                        vendor = ev
+                            .data
+                            .get("vendor")
+                            .and_then(|v| v.as_str())
+                            .map(str::to_string);
+                        product = ev
+                            .data
+                            .get("product")
+                            .and_then(|v| v.as_str())
+                            .map(str::to_string);
+                        agent_type = ev
+                            .data
+                            .get("agent_type")
+                            .and_then(|v| v.as_str())
+                            .map(|agent_type| match agent_type {
+                                "desktop_agent" => InferredAgentType::DesktopAgent,
+                                "ide_agent" => InferredAgentType::IdeAgent,
+                                "cli_agent" => InferredAgentType::CliAgent,
+                                "local_model_server" | "local_model" => {
+                                    InferredAgentType::LocalModelServer
+                                }
+                                _ => InferredAgentType::DesktopAgent,
+                            })
+                            .unwrap_or(InferredAgentType::DesktopAgent);
+                        if let Some(caps) =
+                            ev.data.get("capability_tags").and_then(|v| v.as_array())
+                        {
+                            for cap in caps.iter().filter_map(|v| v.as_str()) {
+                                let cap = cap.to_string();
+                                if !capability_tags.contains(&cap) {
+                                    capability_tags.push(cap);
+                                }
+                            }
+                        }
+                    }
                     if let Some(path) = ev.data.get("path").and_then(|v| v.as_str()) {
                         let sigs =
                             &dek_fingerprint_defs::load_latest_baseline().installed_app_signatures;
@@ -316,8 +356,40 @@ fn aggregate_by_merge_key(
                     }
                 }
                 EvidenceSource::BrowserSession
+                | EvidenceSource::BrowserWindow
                 | EvidenceSource::BrowserHistory
                 | EvidenceSource::NetworkSni => {
+                    if let Some(evidence_name) = ev.data.get("name").and_then(|v| v.as_str()) {
+                        name = evidence_name.to_string();
+                        vendor = ev
+                            .data
+                            .get("vendor")
+                            .and_then(|v| v.as_str())
+                            .map(str::to_string);
+                        agent_type = InferredAgentType::WebAIApp;
+                        if let Some(caps) =
+                            ev.data.get("capability_tags").and_then(|v| v.as_array())
+                        {
+                            for cap in caps.iter().filter_map(|v| v.as_str()) {
+                                let cap = cap.to_string();
+                                if !capability_tags.contains(&cap) {
+                                    capability_tags.push(cap);
+                                }
+                            }
+                        }
+                        let detail = ev
+                            .data
+                            .get("matched_domain")
+                            .and_then(|v| v.as_str())
+                            .or_else(|| ev.data.get("domain").and_then(|v| v.as_str()))
+                            .or_else(|| ev.data.get("origin").and_then(|v| v.as_str()))
+                            .unwrap_or("web_ai");
+                        matched_signals.push(MatchedSignal {
+                            kind: format!("{:?}", ev.source),
+                            detail: detail.to_string(),
+                            weight: ev.confidence,
+                        });
+                    }
                     if let Some(url) = ev
                         .data
                         .get("url")
@@ -330,7 +402,7 @@ fn aggregate_by_merge_key(
                         for w_sig in sigs {
                             if url.contains(&w_sig.domain) {
                                 name = w_sig.name.clone();
-                                vendor = w_sig.vendor.clone();
+                                vendor = Some(w_sig.vendor.clone());
                                 for cap in &w_sig.capability_tags {
                                     if !capability_tags.contains(cap) {
                                         capability_tags.push(cap.clone());
@@ -351,29 +423,6 @@ fn aggregate_by_merge_key(
                             agent_type = InferredAgentType::WebAIApp;
                         }
                     }
-                }
-                EvidenceSource::BrowserWindow => {
-                    if let Some(n) = ev.data.get("name").and_then(|v| v.as_str()) {
-                        name = n.to_string();
-                    }
-                    if let Some(v) = ev.data.get("vendor").and_then(|v| v.as_str()) {
-                        vendor = Some(v.to_string());
-                    }
-                    if let Some(caps) = ev.data.get("capability_tags").and_then(|v| v.as_array()) {
-                        for cap in caps {
-                            if let Some(c) = cap.as_str() {
-                                if !capability_tags.contains(&c.to_string()) {
-                                    capability_tags.push(c.to_string());
-                                }
-                            }
-                        }
-                    }
-                    agent_type = InferredAgentType::WebAIApp;
-                    matched_signals.push(MatchedSignal {
-                        kind: format!("{:?}", ev.source),
-                        detail: name.clone(),
-                        weight: ev.confidence,
-                    });
                 }
                 _ => {}
             }
@@ -469,35 +518,46 @@ fn aggregate_by_merge_key(
         }
 
         if name == "Unknown Agent" && !ctx.process_name.is_empty() {
-            name = format!("Unknown Agent ({})", ctx.process_name);
+            name = format!("Possible AI Agent ({})", ctx.process_name);
         }
 
         if !resolved_by_signature || best_hint.confidence >= 1.0 {
+            let hint_is_web_ai = matches!(
+                best_hint.agent_type.as_ref(),
+                Some(InferredAgentType::WebAIApp)
+            );
             if let Some(n) = best_hint
                 .name
                 .filter(|n| !n.is_empty() && n != "Unknown Agent")
             {
                 let n_lower = n.to_lowercase();
-                if let Some(sig) = signatures.iter().find(|s| {
-                    s.display_name.to_lowercase() == n_lower
-                        || s.process_names.iter().any(|pn| {
-                            let pn_lower = pn.to_lowercase();
-                            let generic = [
-                                "node",
-                                "node.exe",
-                                "python",
-                                "python.exe",
-                                "chrome",
-                                "msedge",
-                                "firefox",
-                                "safari",
-                                "brave",
-                                "code",
-                            ];
-                            !generic.contains(&pn_lower.as_str()) && n_lower.contains(&pn_lower)
-                        })
-                        || s.id.to_lowercase().replace("_", " ") == n_lower
-                }) {
+                let signature_hint = if hint_is_web_ai {
+                    None
+                } else {
+                    signatures.iter().find(|s| {
+                        s.display_name.to_lowercase() == n_lower
+                            || s.process_names.iter().any(|pn| {
+                                let pn_lower = pn.to_lowercase();
+                                let generic = [
+                                    "node",
+                                    "node.exe",
+                                    "python",
+                                    "python.exe",
+                                    "chrome",
+                                    "msedge",
+                                    "firefox",
+                                    "safari",
+                                    "brave",
+                                    "code",
+                                    "chat",
+                                ];
+                                !generic.contains(&pn_lower.as_str()) && n_lower.contains(&pn_lower)
+                            })
+                            || s.id.to_lowercase().replace("_", " ") == n_lower
+                    })
+                };
+
+                if let Some(sig) = signature_hint {
                     name = sig.display_name.clone();
                     vendor = sig.vendor.clone();
                     product = sig.product.clone();
@@ -571,7 +631,7 @@ fn aggregate_by_merge_key(
             risk_score = std::cmp::min(100, computed_risk);
         }
 
-        if name == "Unknown Agent" {
+        if name == "Unknown Agent" || name.starts_with("Possible AI Agent") {
             status = DiscoveryStatus::PendingApproval;
         }
 
@@ -619,6 +679,14 @@ fn aggregate_by_merge_key(
         for tag in &capability_tags {
             labels.insert(format!("capability:{}", tag), "true".into());
         }
+        labels.insert(
+            "entity.kind".into(),
+            entity_kind_for_candidate(&agent_type).into(),
+        );
+        labels.insert(
+            "entity.observe_enforce".into(),
+            observe_enforce_class_for_candidate(&agent_type).into(),
+        );
         labels.insert("suggested_preset".into(), preset_id.to_string());
 
         capability_tags.sort();
@@ -814,6 +882,30 @@ fn basename_no_ext(p: &str) -> String {
         .to_string()
 }
 
+fn entity_kind_for_candidate(agent_type: &InferredAgentType) -> &'static str {
+    match agent_type {
+        InferredAgentType::McpServer => "mcp_server",
+        InferredAgentType::McpClient => "mcp_client",
+        InferredAgentType::LocalModelServer => "local_model_endpoint",
+        InferredAgentType::WebAIApp => "web_ai_surface",
+        InferredAgentType::BrowserAgent => "browser_surface",
+        InferredAgentType::IdeExtension => "ide_extension",
+        _ => "ai_agent",
+    }
+}
+
+fn observe_enforce_class_for_candidate(agent_type: &InferredAgentType) -> &'static str {
+    match agent_type {
+        InferredAgentType::McpServer
+        | InferredAgentType::McpClient
+        | InferredAgentType::LocalModelServer
+        | InferredAgentType::WebAIApp
+        | InferredAgentType::BrowserAgent
+        | InferredAgentType::IdeExtension => "observable_surface",
+        _ => "agent",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -852,5 +944,40 @@ mod tests {
         ));
         assert!(candidate.capability_tags.contains(&"llm.chat".to_string()));
         assert!(candidate.capability_tags.contains(&"web.chat".to_string()));
+    }
+
+    #[test]
+    fn browser_window_hint_resolves_named_web_ai_identity() {
+        let candidates = aggregate_evidence(
+            "local",
+            "device-local",
+            vec![DiscoveryEvidenceV2 {
+                evidence_id: "ev_claude_window".into(),
+                source: EvidenceSource::BrowserWindow,
+                confidence: 0.85,
+                observed_at: "2026-06-25T00:00:00Z".into(),
+                privacy_class: PrivacyClass::InternalMetadata,
+                redacted: true,
+                data: serde_json::json!({
+                    "origin": "https://claude.ai",
+                    "name": "Claude (Web)",
+                    "vendor": "Anthropic",
+                    "capability_tags": ["llm.chat", "web.chat"],
+                    "detected_via": "browser_window_title"
+                }),
+                merge_key: Some("webai:claude_web:chrome".into()),
+                source_path_hash: None,
+                source_path_redacted: Some("chrome.exe".into()),
+            }],
+        );
+
+        assert_eq!(candidates.len(), 1);
+        let candidate = &candidates[0];
+        assert_eq!(candidate.display_name, "Claude (Web)");
+        assert!(matches!(
+            candidate.inferred_agent_type,
+            InferredAgentType::WebAIApp
+        ));
+        assert!(candidate.capability_tags.contains(&"llm.chat".to_string()));
     }
 }

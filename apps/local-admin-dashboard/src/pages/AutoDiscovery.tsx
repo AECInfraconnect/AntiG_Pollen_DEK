@@ -34,7 +34,8 @@ export function AutoDiscovery() {
   const selectedId = params.get("selected") ?? undefined;
   const [protectTarget, setProtectTarget] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [confirmTarget, setConfirmTarget] = useState<DiscoveredAgentCandidateV2 | null>(null);
+  const [confirmTarget, setConfirmTarget] =
+    useState<DiscoveredAgentCandidateV2 | null>(null);
   const [editName, setEditName] = useState("");
   const [filter, setFilter] = useState<"all" | "pending" | "registered">("all");
   const [isScanning, setIsScanning] = useState(false);
@@ -62,28 +63,33 @@ export function AutoDiscovery() {
     setLoading(true);
     Promise.all([
       RegistryApi.listDiscoveryCandidates(),
-      RegistryApi.listAgents()
+      RegistryApi.listAgents(),
     ])
       .then(([discovered, agents]) => {
-        const agentIds = new Set(agents.map(a => a.agent_id));
-        
+        const agentIds = new Set(agents.map((a) => a.agent_id));
+
         const registeredFingerprints = new Set(
           discovered
-            .filter(c => agentIds.has(c.candidate_id) || c.status === "registered")
-            .map(c => c.evidence?.[0]?.merge_key || c.display_name)
+            .filter(
+              (c) => agentIds.has(c.candidate_id) || c.status === "registered",
+            )
+            .map((c) => c.evidence?.[0]?.merge_key || c.display_name),
         );
 
         // Update discovered status if they exist in agents or share a fingerprint
-        const mergedCandidates = discovered.map(c => {
-           const fp = c.evidence?.[0]?.merge_key || c.display_name;
-           if (agentIds.has(c.candidate_id) || registeredFingerprints.has(fp)) {
-              return { ...c, status: "registered" };
-           }
-           return c;
+        const mergedCandidates = discovered.map((c) => {
+          const fp = c.evidence?.[0]?.merge_key || c.display_name;
+          if (agentIds.has(c.candidate_id) || registeredFingerprints.has(fp)) {
+            return { ...c, status: "registered" };
+          }
+          return c;
         });
 
         // Sort by first_seen descending (Latest Discover on top)
-        mergedCandidates.sort((a, b) => new Date(b.first_seen).getTime() - new Date(a.first_seen).getTime());
+        mergedCandidates.sort(
+          (a, b) =>
+            new Date(b.first_seen).getTime() - new Date(a.first_seen).getTime(),
+        );
 
         setCandidates(mergedCandidates);
       })
@@ -201,6 +207,7 @@ export function AutoDiscovery() {
           "cli_agent",
           "container",
           "browser_extension",
+          "installed_app",
           "web_ai",
         ],
         privacy_mode: true,
@@ -217,6 +224,7 @@ export function AutoDiscovery() {
           "cli_agent",
           "container",
           "browser_extension",
+          "installed_app",
           "web_ai",
         ],
         candidates_found: 0,
@@ -249,11 +257,15 @@ export function AutoDiscovery() {
           <button
             onClick={triggerScan}
             disabled={
-              isScanning || scanJob?.status === "queued" || scanJob?.status === "running"
+              isScanning ||
+              scanJob?.status === "queued" ||
+              scanJob?.status === "running"
             }
             className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-sm disabled:opacity-50"
           >
-            {isScanning || scanJob?.status === "queued" || scanJob?.status === "running" ? (
+            {isScanning ||
+            scanJob?.status === "queued" ||
+            scanJob?.status === "running" ? (
               <Activity className="h-4 w-4 animate-spin" />
             ) : (
               <Search className="h-4 w-4" />
@@ -310,7 +322,9 @@ export function AutoDiscovery() {
         }
         renderGroupHeader={(c, _, prev) => {
           const d1 = new Date(c.first_seen).toLocaleDateString();
-          const d2 = prev ? new Date(prev.first_seen).toLocaleDateString() : null;
+          const d2 = prev
+            ? new Date(prev.first_seen).toLocaleDateString()
+            : null;
           if (d1 !== d2) {
             const isToday = d1 === new Date().toLocaleDateString();
             return (
@@ -343,7 +357,10 @@ export function AutoDiscovery() {
                 {
                   label: "Discovered",
                   value: new Date(c.first_seen).toLocaleString(undefined, {
-                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   }),
                 },
                 {
@@ -574,7 +591,9 @@ export function AutoDiscovery() {
             onClick={() => setConfirmTarget(null)}
           />
           <div className="relative z-50 w-full max-w-md rounded-xl border bg-card p-6 shadow-lg">
-            <h3 className="text-lg font-semibold mb-4">Confirm Agent Registration</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              Confirm Agent Registration
+            </h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1 text-muted-foreground">
@@ -589,7 +608,8 @@ export function AutoDiscovery() {
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                This agent will be registered and appear in the Agents & Models inventory.
+                This agent will be registered and appear in the Agents & Models
+                inventory.
               </p>
               <div className="flex justify-end gap-2 mt-6">
                 <button
@@ -603,7 +623,9 @@ export function AutoDiscovery() {
                   disabled={confirmingId === confirmTarget.candidate_id}
                   className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {confirmingId === confirmTarget.candidate_id ? "Confirming..." : "Confirm"}
+                  {confirmingId === confirmTarget.candidate_id
+                    ? "Confirming..."
+                    : "Confirm"}
                 </button>
               </div>
             </div>

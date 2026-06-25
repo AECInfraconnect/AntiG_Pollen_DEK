@@ -192,7 +192,29 @@ async fn start_scan(
 
         // Spawn a receiver to handle incremental candidates
         tokio::spawn(async move {
-            while let Some(candidate) = rx.recv().await {
+            while let Some(mut candidate) = rx.recv().await {
+                if let Ok(Some(existing_raw)) = st3
+                    .registry_store
+                    .get_raw(&tenant3, "discovery_candidate", &candidate.candidate_id)
+                    .await
+                {
+                    if let Ok(existing) = serde_json::from_value::<
+                        dek_agent_discovery::model::DiscoveredAgentCandidateV2,
+                    >(existing_raw)
+                    {
+                        candidate.first_seen = existing.first_seen;
+                        if matches!(
+                            existing.status,
+                            dek_agent_discovery::model::DiscoveryStatus::Registered
+                                | dek_agent_discovery::model::DiscoveryStatus::Ignored
+                        ) {
+                            candidate.status = existing.status;
+                            candidate.display_name = existing.display_name;
+                            candidate.suggested_registration.name =
+                                existing.suggested_registration.name;
+                        }
+                    }
+                }
                 let val = serde_json::to_value(&candidate).unwrap_or_default();
                 let _ = st3
                     .registry_store

@@ -921,22 +921,160 @@
     ]
   },
   "browser_processes": [
-    { "process_names": ["chrome.exe","chrome"],   "engine": "chromium" },
-    { "process_names": ["msedge.exe","msedge"],   "engine": "chromium" },
-    { "process_names": ["brave.exe","brave"],     "engine": "chromium" },
-    { "process_names": ["opera.exe","opera"],     "engine": "chromium" },
-    { "process_names": ["arc.exe"],               "engine": "chromium" },
-    { "process_names": ["firefox.exe","firefox"], "engine": "firefox" }
+    {
+      "process_names": [
+        "chrome.exe",
+        "chrome",
+        "google chrome"
+      ],
+      "engine": "chromium"
+    },
+    {
+      "process_names": [
+        "msedge.exe",
+        "msedge",
+        "microsoft edge"
+      ],
+      "engine": "chromium"
+    },
+    {
+      "process_names": [
+        "brave.exe",
+        "brave",
+        "brave browser"
+      ],
+      "engine": "chromium"
+    },
+    {
+      "process_names": [
+        "opera.exe",
+        "opera",
+        "opera gx"
+      ],
+      "engine": "chromium"
+    },
+    {
+      "process_names": [
+        "vivaldi.exe",
+        "vivaldi"
+      ],
+      "engine": "chromium"
+    },
+    {
+      "process_names": [
+        "chromium.exe",
+        "chromium"
+      ],
+      "engine": "chromium"
+    },
+    {
+      "process_names": [
+        "arc.exe",
+        "arc"
+      ],
+      "engine": "chromium"
+    },
+    {
+      "process_names": [
+        "firefox.exe",
+        "firefox"
+      ],
+      "engine": "firefox"
+    },
+    {
+      "process_names": [
+        "safari"
+      ],
+      "engine": "webkit"
+    }
   ],
+  "ai_process_hints": {
+    "require_match": true,
+    "name_tokens": [
+      "agent",
+      "aider",
+      "antigravity",
+      "autogen",
+      "claude",
+      "cline",
+      "codex",
+      "continue",
+      "copilot",
+      "crewai",
+      "cursor",
+      "gemini",
+      "goose",
+      "gpt4all",
+      "hiclaw",
+      "jan",
+      "koboldcpp",
+      "langchain",
+      "llama",
+      "lm studio",
+      "lmstudio",
+      "localai",
+      "mcp",
+      "ollama",
+      "opencode",
+      "openclaw",
+      "roo",
+      "vllm",
+      "windsurf"
+    ],
+    "cmd_tokens": [
+      "--model",
+      "@anthropic-ai/claude-code",
+      "@google/gemini-cli",
+      "@openai/codex",
+      "autogen",
+      "claude-code",
+      "codex",
+      "crewai",
+      "gemini-cli",
+      "langchain",
+      "llama_index",
+      "mcp-server",
+      "modelcontextprotocol",
+      "ollama serve",
+      "openai",
+      "anthropic"
+    ],
+    "deny_tokens": [
+      "adobe",
+      "dell",
+      "driver",
+      "helper",
+      "hp",
+      "intel",
+      "logi",
+      "nvidia",
+      "realtek",
+      "servicehost",
+      "telemetry",
+      "update"
+    ]
+  },
   "web_ai_signatures": [
     {
       "id": "chatgpt_web",
       "domain": "chatgpt.com",
+      "alias_domains": [
+        "chat.openai.com"
+      ],
       "name": "ChatGPT (Web)",
       "vendor": "OpenAI",
-      "title_patterns": ["ChatGPT"],
-      "app_cmdline_patterns": ["--app=*chatgpt.com*", "--app=*chat.openai.com*"],
-      "capability_tags": ["llm.chat"],
+      "title_patterns": [
+        "ChatGPT",
+        "OpenAI"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*chatgpt.com*",
+        "--app=*chat.openai.com*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "web.chat"
+      ],
       "risk_weight": 0.5
     },
     {
@@ -944,39 +1082,119 @@
       "domain": "claude.ai",
       "name": "Claude (Web)",
       "vendor": "Anthropic",
-      "title_patterns": ["Claude"],
-      "app_cmdline_patterns": ["--app=*claude.ai*"],
-      "capability_tags": ["llm.chat"],
+      "title_patterns": [
+        "Claude"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*claude.ai*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "web.chat"
+      ],
       "risk_weight": 0.5
+    },
+    {
+      "id": "claude_code_web",
+      "domain": "code.claude.com",
+      "name": "Claude Code (Web)",
+      "vendor": "Anthropic",
+      "title_patterns": [
+        "Claude Code"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*claude.ai/code*",
+        "--app=*code.claude.com*"
+      ],
+      "capability_tags": [
+        "code.agentic",
+        "tool.use",
+        "web.chat"
+      ],
+      "risk_weight": 0.7
     },
     {
       "id": "gemini_web",
       "domain": "gemini.google.com",
+      "alias_domains": [
+        "bard.google.com"
+      ],
       "name": "Gemini (Web)",
       "vendor": "Google",
-      "title_patterns": ["Gemini"],
-      "app_cmdline_patterns": ["--app=*gemini.google.com*"],
-      "capability_tags": ["llm.chat"],
+      "title_patterns": [
+        "Gemini",
+        "Google Gemini"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*gemini.google.com*",
+        "--app=*bard.google.com*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "web.chat"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "id": "google_ai_studio_web",
+      "domain": "aistudio.google.com",
+      "name": "Google AI Studio",
+      "vendor": "Google",
+      "title_patterns": [
+        "Google AI Studio",
+        "AI Studio"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*aistudio.google.com*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "llm.api",
+        "web.chat"
+      ],
       "risk_weight": 0.5
     },
     {
       "id": "deepseek_web",
       "domain": "chat.deepseek.com",
+      "alias_domains": [
+        "deepseek.com",
+        "api.deepseek.com"
+      ],
       "name": "DeepSeek (Web)",
       "vendor": "DeepSeek",
-      "title_patterns": ["DeepSeek"],
-      "app_cmdline_patterns": ["--app=*deepseek.com*"],
-      "capability_tags": ["llm.chat"],
+      "title_patterns": [
+        "DeepSeek"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*chat.deepseek.com*",
+        "--app=*deepseek.com*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "web.chat"
+      ],
       "risk_weight": 0.5
     },
     {
       "id": "copilot_web",
       "domain": "copilot.microsoft.com",
+      "alias_domains": [
+        "bing.com/chat"
+      ],
       "name": "Copilot (Web)",
       "vendor": "Microsoft",
-      "title_patterns": ["Copilot"],
-      "app_cmdline_patterns": ["--app=*copilot.microsoft.com*"],
-      "capability_tags": ["llm.chat"],
+      "title_patterns": [
+        "Copilot",
+        "Microsoft Copilot"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*copilot.microsoft.com*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "web.chat"
+      ],
       "risk_weight": 0.5
     },
     {
@@ -984,28 +1202,246 @@
       "domain": "perplexity.ai",
       "name": "Perplexity (Web)",
       "vendor": "Perplexity",
-      "title_patterns": ["Perplexity"],
-      "app_cmdline_patterns": ["--app=*perplexity.ai*"],
-      "capability_tags": ["llm.chat", "web.search"],
+      "title_patterns": [
+        "Perplexity"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*perplexity.ai*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "web.search",
+        "web.chat"
+      ],
       "risk_weight": 0.5
     },
     {
       "id": "manus_web",
       "domain": "manus.im",
+      "alias_domains": [
+        "manus.ai"
+      ],
       "name": "Manus AI",
       "vendor": "Manus",
-      "title_patterns": ["Manus"],
-      "app_cmdline_patterns": [],
-      "capability_tags": ["browser.control"],
+      "title_patterns": [
+        "Manus"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*manus.im*",
+        "--app=*manus.ai*"
+      ],
+      "capability_tags": [
+        "browser.control",
+        "tool.use"
+      ],
       "risk_weight": 0.6
+    },
+    {
+      "id": "grok_web",
+      "domain": "grok.com",
+      "alias_domains": [
+        "x.com/i/grok"
+      ],
+      "name": "Grok (Web)",
+      "vendor": "xAI",
+      "title_patterns": [
+        "Grok"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*grok.com*",
+        "--app=*x.com/i/grok*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "web.search",
+        "web.chat"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "id": "poe_web",
+      "domain": "poe.com",
+      "name": "Poe (Web)",
+      "vendor": "Quora",
+      "title_patterns": [
+        "Poe"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*poe.com*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "web.chat"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "id": "you_web",
+      "domain": "you.com",
+      "name": "You.com (Web)",
+      "vendor": "You.com",
+      "title_patterns": [
+        "You.com"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*you.com*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "web.search",
+        "web.chat"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "id": "meta_ai_web",
+      "domain": "meta.ai",
+      "name": "Meta AI (Web)",
+      "vendor": "Meta",
+      "title_patterns": [
+        "Meta AI"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*meta.ai*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "web.chat"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "id": "mistral_le_chat_web",
+      "domain": "chat.mistral.ai",
+      "alias_domains": [
+        "lechat.mistral.ai"
+      ],
+      "name": "Le Chat (Web)",
+      "vendor": "Mistral AI",
+      "title_patterns": [
+        "Le Chat",
+        "Mistral"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*chat.mistral.ai*",
+        "--app=*lechat.mistral.ai*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "web.chat"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "id": "phind_web",
+      "domain": "phind.com",
+      "name": "Phind (Web)",
+      "vendor": "Phind",
+      "title_patterns": [
+        "Phind"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*phind.com*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "web.search",
+        "code.assist"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "id": "blackbox_web",
+      "domain": "blackbox.ai",
+      "name": "Blackbox AI (Web)",
+      "vendor": "Blackbox AI",
+      "title_patterns": [
+        "Blackbox",
+        "Blackbox AI"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*blackbox.ai*"
+      ],
+      "capability_tags": [
+        "llm.chat",
+        "code.assist",
+        "web.chat"
+      ],
+      "risk_weight": 0.5
+    },
+    {
+      "id": "bolt_web",
+      "domain": "bolt.new",
+      "name": "Bolt (Web)",
+      "vendor": "StackBlitz",
+      "title_patterns": [
+        "Bolt",
+        "bolt.new"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*bolt.new*"
+      ],
+      "capability_tags": [
+        "code.agentic",
+        "tool.use",
+        "web.chat"
+      ],
+      "risk_weight": 0.7
+    },
+    {
+      "id": "v0_web",
+      "domain": "v0.dev",
+      "name": "v0 (Web)",
+      "vendor": "Vercel",
+      "title_patterns": [
+        "v0"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*v0.dev*"
+      ],
+      "capability_tags": [
+        "code.agentic",
+        "web.chat"
+      ],
+      "risk_weight": 0.6
+    },
+    {
+      "id": "lovable_web",
+      "domain": "lovable.dev",
+      "name": "Lovable (Web)",
+      "vendor": "Lovable",
+      "title_patterns": [
+        "Lovable"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*lovable.dev*"
+      ],
+      "capability_tags": [
+        "code.agentic",
+        "web.chat"
+      ],
+      "risk_weight": 0.6
+    },
+    {
+      "id": "replit_web",
+      "domain": "replit.com",
+      "name": "Replit Agent (Web)",
+      "vendor": "Replit",
+      "title_patterns": [
+        "Replit",
+        "Replit Agent"
+      ],
+      "app_cmdline_patterns": [
+        "--app=*replit.com*"
+      ],
+      "capability_tags": [
+        "code.agentic",
+        "tool.use",
+        "web.chat"
+      ],
+      "risk_weight": 0.7
     }
   ],
-  "ai_process_hints": {
-    "require_match": true,
-    "name_tokens": ["ollama","lmstudio","llama","gpt4all","jan","openclaw","hiclaw","aider","cline","continue"],
-    "cmd_tokens": ["langchain","llama_index","crewai","autogen","--model","openai","anthropic","mcp-server"],
-    "deny_tokens": ["dell","nvidia","realtek","intel","update","helper","crash","telemetry"]
-  },
   "signatures": [
     {
       "id": "claude_desktop",

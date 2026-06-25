@@ -31,9 +31,13 @@ pub fn match_process(
         let mut conf = 0.0f64;
         let mut by = "";
 
-        if s.process_names.iter().any(|n| {
-            n.eq_ignore_ascii_case(&pname) || strip_ext(&pname) == strip_ext(&n.to_lowercase())
-        }) {
+        if !pname.trim().is_empty()
+            && s.process_names.iter().any(|n| {
+                !n.trim().is_empty()
+                    && (n.eq_ignore_ascii_case(&pname)
+                        || strip_ext(&pname) == strip_ext(&n.to_lowercase()))
+            })
+        {
             conf = conf.max(0.9);
             by = "process_name";
         }
@@ -41,7 +45,7 @@ pub fn match_process(
         if !exe.is_empty()
             && s.exe_path_patterns
                 .iter()
-                .any(|p| glob_match(&p.to_lowercase(), &exe))
+                .any(|p| !p.trim().is_empty() && glob_match(&p.to_lowercase(), &exe))
         {
             conf = conf.max(0.95);
             by = "exe_path";
@@ -50,15 +54,17 @@ pub fn match_process(
         if !cmd.is_empty()
             && s.cmd_patterns
                 .iter()
-                .any(|p| glob_match(&p.to_lowercase(), &cmd))
+                .any(|p| !p.trim().is_empty() && glob_match(&p.to_lowercase(), &cmd))
         {
             conf = conf.max(0.85);
             by = "cmd_pattern";
         }
 
-        if s.cli_binaries
-            .iter()
-            .any(|b| basename(&exe) == *b || cmd.split_whitespace().next() == Some(b))
+        if (!exe.trim().is_empty() || !cmd.trim().is_empty())
+            && s.cli_binaries.iter().any(|b| {
+                !b.trim().is_empty()
+                    && (basename(&exe) == *b || cmd.split_whitespace().next() == Some(b))
+            })
         {
             conf = conf.max(0.8);
             by = "cli_binary";
@@ -66,10 +72,11 @@ pub fn match_process(
 
         if s.install_markers.iter().any(|m| {
             facts.installed_paths.iter().any(|ip| {
-                glob_match(
-                    &m.path.to_lowercase(),
-                    &ip.replace('\\', "/").to_lowercase(),
-                )
+                !m.path.trim().is_empty()
+                    && glob_match(
+                        &m.path.to_lowercase(),
+                        &ip.replace('\\', "/").to_lowercase(),
+                    )
             })
         }) {
             conf = conf.max(0.85);
@@ -95,10 +102,9 @@ pub fn match_process(
                 .iter()
                 .any(|path| !exe.is_empty() && glob_match(&path.to_lowercase(), &exe))
         });
-        let hit_name = a
-            .process_names()
-            .iter()
-            .any(|n| n.eq_ignore_ascii_case(&pname));
+        let hit_name = a.process_names().iter().any(|n| {
+            !pname.trim().is_empty() && !n.trim().is_empty() && n.eq_ignore_ascii_case(&pname)
+        });
         if hit_path || hit_name {
             let conf = if hit_path { 0.95 } else { 0.9 };
             if best.as_ref().map(|b| conf > b.confidence).unwrap_or(true) {

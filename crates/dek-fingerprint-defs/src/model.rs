@@ -30,13 +30,35 @@ pub struct FingerprintDefinition {
     pub ai_process_hints: AiProcessHints,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BrowserProcessDef {
+    #[serde(default)]
+    pub process_names: Vec<String>,
+    pub engine: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+pub struct AiProcessHints {
+    #[serde(default)]
+    pub require_match: bool,
+    #[serde(default)]
+    pub name_tokens: Vec<String>,
+    #[serde(default)]
+    pub cmd_tokens: Vec<String>,
+    #[serde(default)]
+    pub deny_tokens: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InstalledAppSignatureDef {
     #[serde(default)]
     pub id: String,
+    #[serde(alias = "display_name")]
     pub name: String,
     pub vendor: String,
+    #[serde(default)]
     pub product: String,
+    #[serde(default)]
     pub agent_type: String,
     #[serde(default)]
     pub capability_tags: Vec<String>,
@@ -66,8 +88,10 @@ pub struct WebAiSignatureDef {
     #[serde(default)]
     pub id: String,
     pub domain: String,
+    #[serde(default)]
+    pub alias_domains: Vec<String>,
     pub name: String,
-    pub vendor: Option<String>,
+    pub vendor: String,
     #[serde(default)]
     pub title_patterns: Vec<String>,
     #[serde(default)]
@@ -78,23 +102,22 @@ pub struct WebAiSignatureDef {
     pub risk_weight: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BrowserProcessDef {
-    #[serde(default)]
-    pub process_names: Vec<String>,
-    pub engine: String,
-}
+impl WebAiSignatureDef {
+    pub fn stable_id(&self) -> &str {
+        if self.id.is_empty() {
+            &self.domain
+        } else {
+            &self.id
+        }
+    }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct AiProcessHints {
-    #[serde(default)]
-    pub require_match: bool,
-    #[serde(default)]
-    pub name_tokens: Vec<String>,
-    #[serde(default)]
-    pub cmd_tokens: Vec<String>,
-    #[serde(default)]
-    pub deny_tokens: Vec<String>,
+    pub fn domains(&self) -> Vec<&str> {
+        let mut domains = vec![self.domain.as_str()];
+        domains.extend(self.alias_domains.iter().map(String::as_str));
+        domains.sort_unstable();
+        domains.dedup();
+        domains
+    }
 }
 
 fn default_web_risk() -> f64 {
@@ -154,6 +177,7 @@ pub struct RiskFlagDef {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PopularModelDef {
+    #[serde(default)]
     pub match_pattern: String,
     #[serde(alias = "match")]
     pub match_: Option<String>, // the JSON has `match` instead of `match_pattern`, so we use alias and fallback
@@ -250,21 +274,32 @@ pub struct AgentSignatureV2 {
     pub id: String,
     pub display_name: String,
     pub agent_type: String,
+    #[serde(default = "default_revision")]
     pub revision: u32,
+    #[serde(default)]
     pub meta: SignatureMeta,
 
+    #[serde(default)]
     pub process_names: Vec<String>,
+    #[serde(default)]
     pub binary_hashes: Vec<String>,
+    #[serde(default)]
     pub config_paths: HashMap<String, Vec<String>>,
+    #[serde(default)]
     pub config_parsers: Vec<String>,
+    #[serde(default)]
     pub ports: Vec<u16>,
+    #[serde(default)]
     pub port_probe: Option<PortProbeSpec>,
+    #[serde(default = "default_detection_logic")]
     pub detection_logic: DetectionLogic,
 
+    #[serde(default)]
     pub control_strategies: Vec<String>,
+    #[serde(default = "default_agent_risk")]
     pub risk_weight: f64,
 
-    // ===== signal ใหม่ (แก้ node.exe ambiguity) =====
+    // Extra signals reduce ambiguity for wrapper processes such as node.exe.
     #[serde(default)]
     pub cmd_patterns: Vec<String>,
     #[serde(default)]
@@ -287,6 +322,18 @@ pub struct AgentSignatureV2 {
     pub capability_tags: Vec<String>,
     #[serde(default)]
     pub signal_weights: Option<SignalWeights>,
+}
+
+fn default_revision() -> u32 {
+    1
+}
+
+fn default_agent_risk() -> f64 {
+    0.5
+}
+
+fn default_detection_logic() -> DetectionLogic {
+    DetectionLogic::AnyOf
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -334,12 +381,17 @@ impl Default for SignalWeights {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SignatureMeta {
+    #[serde(default)]
     pub author: String,
+    #[serde(default)]
     pub description: String,
+    #[serde(default)]
     pub references: Vec<String>,
+    #[serde(default)]
     pub added_in: String,
+    #[serde(default)]
     pub tags: Vec<String>,
 }
 
@@ -355,5 +407,7 @@ pub enum DetectionLogic {
     AnyOf,
     ProcessAndConfig,
     ProcessOrConfigWithPort,
+    ProcessOrPort,
     HashMatch,
+    NetworkEgress,
 }

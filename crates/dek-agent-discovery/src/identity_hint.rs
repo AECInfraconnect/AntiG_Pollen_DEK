@@ -18,7 +18,9 @@ pub fn extract_identity_hint(ev: &DiscoveryEvidenceV2) -> Option<IdentityHint> {
     let s = |k: &str| d.get(k).and_then(|v| v.as_str()).map(String::from);
 
     match ev.source {
-        EvidenceSource::BrowserSession | EvidenceSource::BrowserHistory => Some(IdentityHint {
+        EvidenceSource::BrowserSession
+        | EvidenceSource::BrowserWindow
+        | EvidenceSource::BrowserHistory => Some(IdentityHint {
             name: s("name"),
             vendor: s("vendor"),
             agent_type: Some(InferredAgentType::WebAIApp),
@@ -35,11 +37,13 @@ pub fn extract_identity_hint(ev: &DiscoveryEvidenceV2) -> Option<IdentityHint> {
             ..Default::default()
         }),
         EvidenceSource::CliAgent => Some(IdentityHint {
-            name: s("name").or_else(|| s("cli_name")),
+            name: s("name")
+                .or_else(|| s("cli_name"))
+                .or_else(|| s("cli_agent")),
             vendor: s("vendor"),
             product: s("product"),
             agent_type: Some(InferredAgentType::CliAgent),
-            capability_tags: vec!["code.agentic".into()],
+            capability_tags: capability_tags_from_data(d, &["code.agentic", "tool.use"]),
             confidence: ev.confidence,
         }),
         EvidenceSource::Container => Some(IdentityHint {
@@ -56,6 +60,14 @@ pub fn extract_identity_hint(ev: &DiscoveryEvidenceV2) -> Option<IdentityHint> {
             capability_tags: vec!["automation".into(), "tool.use".into()],
             confidence: ev.confidence,
             ..Default::default()
+        }),
+        EvidenceSource::IdeExtension => Some(IdentityHint {
+            name: s("name"),
+            vendor: s("vendor"),
+            product: s("product"),
+            agent_type: Some(InferredAgentType::IdeExtension),
+            capability_tags: capability_tags_from_data(d, &["ide.extension", "tool.use"]),
+            confidence: ev.confidence,
         }),
         EvidenceSource::InstalledAppScan => {
             let agent_type = s("agent_type").map(|at| match at.as_str() {

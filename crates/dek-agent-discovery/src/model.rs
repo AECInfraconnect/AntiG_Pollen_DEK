@@ -73,7 +73,6 @@ pub enum EvidenceSource {
     BrowserExtension,
     LocalModelServer,
     NetworkEgress,
-    BrowserWindow,
     TokenUsage,
     UserConfirmation,
     CliAgent,
@@ -81,6 +80,7 @@ pub enum EvidenceSource {
     PortProbe,
     PythonFramework,
     BrowserSession,
+    BrowserWindow,
     BrowserHistory,
     NetworkSni,
 }

@@ -20,14 +20,24 @@ pub async fn run_scan(
             let defs = dek_fingerprint_defs::load_latest_baseline();
             let sigs = defs.signatures;
             let apps = defs.installed_app_signatures;
+            let browsers = defs.browser_processes;
+            let hints = defs.ai_process_hints;
             for p in processes {
+                if crate::browser_window_scan::is_browser_process(&p.process_name, &browsers) {
+                    continue;
+                }
                 let cmdline = p.cmd_template.join(" ");
                 let facts = crate::fingerprint::ProcessFacts {
                     process_name: &p.process_name,
                     exe_path: p.exe_path_redacted.as_deref().unwrap_or(""),
                     cmdline: &cmdline,
                 };
-                let resolved = crate::fingerprint::fingerprint_process_v2(&facts, &sigs, &apps);
+                let resolved = crate::fingerprint::fingerprint_process_v2_with_hints(
+                    &facts,
+                    &sigs,
+                    &apps,
+                    Some(&hints),
+                );
 
                 let above = resolved.confidence >= config.min_fingerprint_confidence;
                 if above || resolved.confidence >= config.min_unconfirmed_confidence {

@@ -6,6 +6,8 @@ pub struct FingerprintDb {
     pub by_id: HashMap<String, AgentSignatureV2>,
     pub web_ai: HashMap<String, WebAiSignatureDef>,
     pub installed_apps: HashMap<String, InstalledAppSignatureDef>,
+    pub browser_processes: Vec<BrowserProcessDef>,
+    pub ai_process_hints: AiProcessHints,
 }
 
 impl FingerprintDb {
@@ -18,7 +20,7 @@ impl FingerprintDb {
         let web_ai = base
             .web_ai_signatures
             .into_iter()
-            .map(|s| (s.domain.clone(), s))
+            .map(|s| (s.stable_id().to_string(), s))
             .collect();
         let installed_apps = base
             .installed_app_signatures
@@ -30,6 +32,8 @@ impl FingerprintDb {
             by_id,
             web_ai,
             installed_apps,
+            browser_processes: base.browser_processes,
+            ai_process_hints: base.ai_process_hints,
         }
     }
 
@@ -44,13 +48,15 @@ impl FingerprintDb {
                 self.web_ai = def
                     .web_ai_signatures
                     .into_iter()
-                    .map(|s| (s.domain.clone(), s))
+                    .map(|s| (s.stable_id().to_string(), s))
                     .collect();
                 self.installed_apps = def
                     .installed_app_signatures
                     .into_iter()
                     .map(|s| (s.id.clone(), s))
                     .collect();
+                self.browser_processes = def.browser_processes;
+                self.ai_process_hints = def.ai_process_hints;
             }
             DefinitionKind::Delta => {
                 if def.base_version != Some(self.version) {
@@ -64,20 +70,59 @@ impl FingerprintDb {
                     self.by_id.insert(sig.id.clone(), sig);
                 }
                 for sig in def.web_ai_signatures {
-                    self.web_ai.insert(sig.domain.clone(), sig);
+                    self.web_ai.insert(sig.stable_id().to_string(), sig);
                 }
                 for sig in def.installed_app_signatures {
                     self.installed_apps.insert(sig.id.clone(), sig);
+                }
+                for browser in def.browser_processes {
+                    upsert_browser_process(&mut self.browser_processes, browser);
+                }
+                if !def.ai_process_hints.name_tokens.is_empty()
+                    || !def.ai_process_hints.cmd_tokens.is_empty()
+                    || !def.ai_process_hints.deny_tokens.is_empty()
+                    || def.ai_process_hints.require_match
+                {
+                    self.ai_process_hints = def.ai_process_hints;
                 }
                 for id in &def.removed_ids {
                     self.by_id.remove(id);
                     self.web_ai.remove(id);
                     self.installed_apps.remove(id);
+                    self.browser_processes.retain(|b| {
+                        !b.process_names
+                            .iter()
+                            .any(|name| name.eq_ignore_ascii_case(id))
+                    });
                 }
             }
         }
         self.version = def.definition_version;
         Ok(())
+    }
+}
+
+fn upsert_browser_process(items: &mut Vec<BrowserProcessDef>, incoming: BrowserProcessDef) {
+    if let Some(existing) = items.iter_mut().find(|existing| {
+        existing.engine == incoming.engine
+            && existing.process_names.iter().any(|existing_name| {
+                incoming
+                    .process_names
+                    .iter()
+                    .any(|incoming_name| existing_name.eq_ignore_ascii_case(incoming_name))
+            })
+    }) {
+        for name in incoming.process_names {
+            if !existing
+                .process_names
+                .iter()
+                .any(|n| n.eq_ignore_ascii_case(&name))
+            {
+                existing.process_names.push(name);
+            }
+        }
+    } else {
+        items.push(incoming);
     }
 }
 
@@ -122,7 +167,7 @@ mod tests {
     }
 
     #[test]
-    fn delta_adds_and_removes() {
+    fn delta_adds_and_removes() -> anyhow::Result<()> {
         let base = FingerprintDefinition {
             schema_version: "v2".into(),
             definition_version: 1,
@@ -136,8 +181,8 @@ mod tests {
             model_classifier: None,
             web_ai_signatures: vec![],
             installed_app_signatures: vec![],
-            ai_process_hints: Default::default(),
             browser_processes: vec![],
+            ai_process_hints: AiProcessHints::default(),
         };
         let mut db = FingerprintDb::from_baseline(base);
         let delta = FingerprintDefinition {
@@ -153,13 +198,14 @@ mod tests {
             model_classifier: None,
             web_ai_signatures: vec![],
             installed_app_signatures: vec![],
-            ai_process_hints: Default::default(),
             browser_processes: vec![],
+            ai_process_hints: AiProcessHints::default(),
         };
-        db.apply(delta).unwrap(); //
+        db.apply(delta)?;
         assert!(db.by_id.contains_key("goose_cli"));
         assert!(!db.by_id.contains_key("ollama"));
         assert_eq!(db.version, 2);
+        Ok(())
     }
 
     #[test]
@@ -169,6 +215,8 @@ mod tests {
             by_id: std::collections::HashMap::new(),
             web_ai: std::collections::HashMap::new(),
             installed_apps: std::collections::HashMap::new(),
+            browser_processes: vec![],
+            ai_process_hints: AiProcessHints::default(),
         };
         let bad = FingerprintDefinition {
             schema_version: "v2".into(),
@@ -183,8 +231,8 @@ mod tests {
             model_classifier: None,
             web_ai_signatures: vec![],
             installed_app_signatures: vec![],
-            ai_process_hints: Default::default(),
             browser_processes: vec![],
+            ai_process_hints: AiProcessHints::default(),
         };
         assert!(db.apply(bad).is_err());
     }

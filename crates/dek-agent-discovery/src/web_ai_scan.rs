@@ -100,7 +100,7 @@ fn scan_history(
                                                 "vendor": sig.vendor.clone(),
                                                 "capability_tags": sig.capability_tags.clone(),
                                             }),
-                                            merge_key: Some(format!("webai:{}", sig.domain)),
+                                            merge_key: Some(format!("webai:{}", sig.stable_id())),
                                             source_path_hash: Some(
                                                 crate::redaction::sha256_string(
                                                     &path.to_string_lossy(),
@@ -193,7 +193,7 @@ fn scan_sessions(
                             "detected_via": "browser_session_open_tab",
                             "matched_domain": matched_domain,
                         }),
-                        merge_key: Some(format!("webai:{}", sig.domain)),
+                        merge_key: Some(format!("webai:{}", sig.stable_id())),
                         source_path_hash: Some(crate::redaction::sha256_string(
                             &file_path.to_string_lossy(),
                         )),
@@ -238,7 +238,7 @@ fn scan_network_sni(
                         "browser_pid": flow.browser_pid,
                         "matched_domain": matched_domain,
                     }),
-                    merge_key: Some(format!("webai:{}", sig.domain)),
+                    merge_key: Some(format!("webai:{}", sig.stable_id())),
                     source_path_hash: None,
                     source_path_redacted: Some("network:sni".to_string()),
                 });
@@ -281,7 +281,7 @@ fn scan_bookmarks(
                                 "capability_tags": sig.capability_tags.clone(),
                                 "matched_domain": matched_domain,
                             }),
-                            merge_key: Some(format!("webai:{}", sig.domain)),
+                            merge_key: Some(format!("webai:{}", sig.stable_id())),
                             source_path_hash: Some(crate::redaction::sha256_string(
                                 &path.to_string_lossy(),
                             )),
@@ -433,7 +433,7 @@ fn get_browser_history_paths() -> Vec<PathBuf> {
 }
 
 fn web_ai_domains(sig: &dek_fingerprint_defs::model::WebAiSignatureDef) -> Vec<&str> {
-    let mut domains = vec![sig.domain.as_str()];
+    let mut domains = sig.domains();
 
     match sig.domain.as_str() {
         "chatgpt.com" => domains.push("chat.openai.com"),
@@ -699,12 +699,13 @@ mod tests {
 
     fn sig(domain: &str) -> dek_fingerprint_defs::model::WebAiSignatureDef {
         dek_fingerprint_defs::model::WebAiSignatureDef {
-            id: "test".into(),
+            id: domain.replace('.', "_"),
             domain: domain.to_string(),
+            alias_domains: Vec::new(),
             name: "Test AI".to_string(),
-            vendor: Some("Test".to_string()),
-            title_patterns: vec![],
-            app_cmdline_patterns: vec![],
+            vendor: "Test".to_string(),
+            title_patterns: Vec::new(),
+            app_cmdline_patterns: Vec::new(),
             capability_tags: vec!["llm.chat".to_string()],
             risk_weight: 0.5,
         }

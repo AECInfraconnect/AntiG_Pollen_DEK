@@ -51,10 +51,11 @@ pub fn score_signature(ctx: &ResolutionContext, sig: &AgentSignatureV2) -> Optio
     let mut score = 0.0_f64;
 
     // --- สัญญาณอ่อน: ชื่อ process ---
-    if sig
-        .process_names
-        .iter()
-        .any(|n| n.eq_ignore_ascii_case(&ctx.process_name))
+    if !ctx.process_name.trim().is_empty()
+        && sig
+            .process_names
+            .iter()
+            .any(|n| !n.trim().is_empty() && n.eq_ignore_ascii_case(&ctx.process_name))
     {
         push(
             &mut signals,
@@ -66,6 +67,9 @@ pub fn score_signature(ctx: &ResolutionContext, sig: &AgentSignatureV2) -> Optio
     }
     // --- สัญญาณแข็ง: install marker (exists) ---
     for m in &sig.install_markers {
+        if m.path.trim().is_empty() {
+            continue;
+        }
         let expanded = expand_path(&m.path);
         if ctx.present_paths.iter().any(|p| p == &expanded) {
             push(
@@ -79,30 +83,35 @@ pub fn score_signature(ctx: &ResolutionContext, sig: &AgentSignatureV2) -> Optio
     }
     // --- cmd pattern (argv ที่ redact แล้ว) ---
     for pat in &sig.cmd_patterns {
-        if regex_match(pat, &ctx.cmd_redacted) {
+        if !pat.trim().is_empty()
+            && !ctx.cmd_redacted.trim().is_empty()
+            && regex_match(pat, &ctx.cmd_redacted)
+        {
             push(&mut signals, &mut score, "cmd_pattern", pat, w.cmd_pattern);
         }
     }
     // --- exe path glob ---
     if let Some(exe) = &ctx.exe_path_norm {
         for pat in &sig.exe_path_patterns {
-            if glob_match(pat, exe) {
+            if !pat.trim().is_empty() && glob_match(pat, exe) {
                 push(&mut signals, &mut score, "exe_path", pat, w.exe_path);
             }
         }
     }
     // --- CLI binary บน PATH ---
     for cli in &sig.cli_binaries {
-        if ctx.cli_on_path.iter().any(|c| c == cli) {
+        if !cli.trim().is_empty() && ctx.cli_on_path.iter().any(|c| c == cli) {
             push(&mut signals, &mut score, "cli_binary", cli, w.cli_binary);
         }
     }
     // --- package marker ---
     for pkg in &sig.package_markers {
-        if ctx
-            .packages
-            .iter()
-            .any(|(eco, name)| eco == &pkg.ecosystem && name == &pkg.name)
+        if !pkg.ecosystem.trim().is_empty()
+            && !pkg.name.trim().is_empty()
+            && ctx
+                .packages
+                .iter()
+                .any(|(eco, name)| eco == &pkg.ecosystem && name == &pkg.name)
         {
             push(&mut signals, &mut score, "package", &pkg.name, w.package);
         }
@@ -110,14 +119,14 @@ pub fn score_signature(ctx: &ResolutionContext, sig: &AgentSignatureV2) -> Optio
     // --- config path ---
     for (name, paths) in &sig.config_paths {
         for pat in paths {
-            if ctx.present_paths.iter().any(|p| glob_match(pat, p)) {
+            if !pat.trim().is_empty() && ctx.present_paths.iter().any(|p| glob_match(pat, p)) {
                 push(&mut signals, &mut score, "config_path", name, w.config_path);
             }
         }
     }
 
     if let Some(h) = &ctx.binary_hash {
-        if sig.binary_hashes.iter().any(|bh| bh == h) {
+        if !h.trim().is_empty() && sig.binary_hashes.iter().any(|bh| bh == h) {
             push(
                 &mut signals,
                 &mut score,
@@ -128,12 +137,12 @@ pub fn score_signature(ctx: &ResolutionContext, sig: &AgentSignatureV2) -> Optio
         }
     }
     for host in &sig.egress_hosts {
-        if ctx.egress_hosts.iter().any(|h| h == host) {
+        if !host.trim().is_empty() && ctx.egress_hosts.iter().any(|h| h == host) {
             push(&mut signals, &mut score, "egress", host, w.egress);
         }
     }
     for p in &sig.ports {
-        if ctx.listening_ports.contains(p) {
+        if *p != 0 && ctx.listening_ports.contains(p) {
             push(&mut signals, &mut score, "port", &p.to_string(), w.port);
         }
     }
