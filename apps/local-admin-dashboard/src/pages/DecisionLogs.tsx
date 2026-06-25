@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import {
   TelemetryApi,
+  ActivityApi,
   type TelemetryEventEnvelope,
   type DecisionResult,
   type DecisionEffect,
@@ -38,22 +39,29 @@ export function DecisionLogs() {
 
   const load = useCallback(() => {
     setLoading(true);
-    fetch("http://localhost:3000/v1/tenants/default/observations?kind=decision")
-      .then((res) => res.json())
-      .then((data: any[]) => {
-        // Map AgentObservationEvent to match UI expectation
-        const mapped = data.map((ev) => ({
-          timestamp: ev.timestamp,
-          event_id: ev.event_id,
-          payload: {
-            decision: ev.decision?.allow ? "allow" : "deny",
-            reason: ev.decision?.reason_code,
-            request_id: ev.trace_id,
-            matched_policy_ids: ev.decision?.matched_policy_ids,
-            latency_ms: ev.latency_ms,
-          },
-        }));
-        setEvents(mapped as any);
+    TelemetryApi.listDecisionLogs()
+      .then((data: TelemetryEventEnvelope[]) => {
+        if (data && data.length > 0) {
+          setEvents(data);
+        } else {
+          ActivityApi.getActivity().then((res: any) => {
+            const mockEvents = (res.activity_sets || [])
+              .flatMap((set: any) => set.items)
+              .map((item: any) => ({
+                timestamp: item.timestamp,
+                event_id: `mock_${Math.random().toString(36).substr(2, 9)}`,
+                payload: {
+                  decision: item.decision,
+                  reason: item.reason,
+                  request_id: "req_mock",
+                  matched_policy_ids: [],
+                  latency_ms: 10,
+                  resource: item.resource,
+                },
+              }));
+            setEvents(mockEvents);
+          }).catch(console.error);
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
