@@ -24,7 +24,9 @@ export function MasterDetailLayout({
       <div className="flex items-center justify-between flex-shrink-0 mb-6">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
-          {description && <p className="text-muted-foreground">{description}</p>}
+          {description && (
+            <p className="text-muted-foreground">{description}</p>
+          )}
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
@@ -34,7 +36,7 @@ export function MasterDetailLayout({
         <div
           className={cn(
             "flex-1 overflow-y-auto no-scrollbar pb-6 transition-all duration-300",
-            detailContent ? "w-1/2 lg:w-7/12" : "w-full"
+            detailContent ? "w-1/2 lg:w-7/12" : "w-full",
           )}
         >
           {masterContent}
@@ -56,4 +58,3 @@ export function MasterDetailLayout({
     </div>
   );
 }
-

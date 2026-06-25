@@ -1,15 +1,21 @@
+import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Users, Cpu, FileKey, Activity, Info } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { RegistryApi } from "../services/api";
 import type { AiAgent } from "../services/api";
-import { MasterDetailLayout } from "../components/layout/MasterDetailLayout";
-import { EntityCard } from "../components/shared/EntityCard";
-import type { EntityCardProps } from "../components/shared/EntityCard";
+import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayout";
+import { EntityCard } from "../components/master-detail/EntityCard";
+import { DetailPane } from "../components/master-detail/DetailPane";
+import { EmptyState } from "../components/master-detail/EmptyState";
+import type { UiStatus } from "../lib/status";
 
 export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
   const [agents, setAgents] = useState<AiAgent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
+  const selectedAgentId = params.get("selected") ?? undefined;
 
   const fetchAgents = () => {
     setLoading(true);
@@ -23,132 +29,176 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
     fetchAgents();
   }, []);
 
+  const select = (id: string) =>
+    setParams((p) => {
+      p.set("selected", id);
+      return p;
+    });
+
   const deleteAgent = async (id: string) => {
     if (
       !confirm(
-        "Are you sure you want to delete this agent? Note: Make sure no active policies depend on it."
+        "Are you sure you want to delete this agent? Note: Make sure no active policies depend on it.",
       )
     )
       return;
     try {
       await RegistryApi.deleteAgent(id);
-      setSelectedAgentId(null);
+      if (selectedAgentId === id) {
+        setParams((p) => {
+          p.delete("selected");
+          return p;
+        });
+      }
       fetchAgents();
     } catch (e) {
       console.error("Failed to delete agent:", e);
-      alert("Failed to delete agent");
+      toast.error("Failed to delete agent");
     }
   };
 
-  const mappedCards: EntityCardProps[] = agents.map((agent) => ({
-    id: agent.agent_id,
-    kind: "agent",
-    title: agent.name,
-    subtitle: agent.agent_id,
-    status:
-      agent.enforcement_mode === "Enforce"
-        ? "active"
-        : agent.enforcement_mode === "Observe"
-        ? "observe_only"
-        : agent.enforcement_mode === "Shadow"
-        ? "partial"
-        : "unknown",
-    statusLabel: agent.enforcement_mode || "Not Enforceable",
-    summary: `Version: ${agent.runtime.version || "Unknown"}`,
-    chips: [{ label: agent.runtime.runtime_name || "Unknown", tone: "neutral" }],
-    lastUpdatedAt: agent.meta.updated_at,
-  }));
-
-  const selectedAgent = agents.find((a) => a.agent_id === selectedAgentId);
-
-  const masterContent = (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {loading ? (
-        <div className="text-muted-foreground p-4">Loading agents...</div>
-      ) : mappedCards.length === 0 ? (
-        <div className="text-muted-foreground p-4">No agents registered.</div>
-      ) : (
-        mappedCards.map((card) => (
-          <EntityCard
-            key={card.id}
-            {...card}
-            selected={selectedAgentId === card.id}
-            onClick={() => setSelectedAgentId(card.id)}
-          />
-        ))
-      )}
-    </div>
-  );
-
-  const detailContent = selectedAgent ? (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-xl font-bold">{selectedAgent.name}</h3>
-        <p className="text-sm text-muted-foreground font-mono mt-1">
-          {selectedAgent.agent_id}
-        </p>
-      </div>
-
-      <div className="space-y-4">
-        <div className="p-4 bg-muted/50 rounded-lg border">
-          <h4 className="text-sm font-semibold mb-2">Capabilities</h4>
-          <ul className="text-sm space-y-1 text-muted-foreground">
-            {selectedAgent.capabilities?.map((cap: string) => (
-              <li key={cap} className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary/50" />
-                {cap}
-              </li>
-            )) || <li>No specific capabilities</li>}
-          </ul>
-        </div>
-
-        <div className="p-4 bg-muted/50 rounded-lg border">
-          <h4 className="text-sm font-semibold mb-2">Raw JSON</h4>
-          <pre className="text-xs font-mono overflow-x-auto p-2 bg-background rounded border">
-            {JSON.stringify(selectedAgent, null, 2)}
-          </pre>
-        </div>
-      </div>
-
-      <div className="flex gap-2 justify-end">
-        <a
-          href="/wizard"
-          className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-md text-sm font-medium hover:bg-primary/20"
-        >
-          Apply Policy
-        </a>
-        <button
-          onClick={() => deleteAgent(selectedAgent.agent_id)}
-          className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-md text-sm font-medium hover:bg-red-500/20"
-        >
-          Delete
-        </button>
-      </div>
-    </div>
-  ) : null;
-
   return (
-    <MasterDetailLayout
-      title={hideHeader ? "" : "AI Agents"}
-      description={
-        hideHeader
-          ? undefined
-          : "Manage authorized AI agents and client identities in the local workspace."
-      }
-      actions={
-        hideHeader ? null : (
-          <a
-            href="/discovery"
-            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(124,58,237,0.3)]"
+    <div className={hideHeader ? "space-y-6" : "p-6 md:p-8 space-y-6"}>
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight">AI Agents</h2>
+            <p className="text-sm text-muted-foreground">
+              Manage authorized AI agents and client identities in the local
+              workspace.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/discovery")}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-sm"
           >
-            <Plus className="h-4 w-4" />
-            Discover & Register
-          </a>
-        )
-      }
-      masterContent={masterContent}
-      detailContent={detailContent}
-      onCloseDetail={() => setSelectedAgentId(null)}
-    />
+            <Plus className="h-4 w-4" /> Discover & Register
+          </button>
+        </div>
+      )}
+
+      <MasterDetailLayout
+        idSelector={(x: any) => x.id || x.id}
+        items={agents}
+        loading={loading}
+        selectedId={selectedAgentId}
+        onSelect={select}
+        toolbar={
+          <div className="flex items-center gap-2 mb-4">
+            <input
+              type="text"
+              placeholder="Search agents..."
+              className="px-3 py-1.5 text-sm rounded-md border bg-background"
+            />
+          </div>
+        }
+        emptyState={
+          <EmptyState
+            icon={Users}
+            title="No agents registered"
+            description="Discover or manually register AI agents to govern their access."
+            actionLabel="Discover Agents"
+            onAction={() => navigate("/discovery")}
+          />
+        }
+        renderCard={(a, selected) => {
+          let status: UiStatus = "idle";
+          if (a.enforcement_mode === "Enforce") status = "ok";
+          else if (a.enforcement_mode === "Observe") status = "info";
+          else if (a.enforcement_mode === "Shadow") status = "degraded";
+
+          return (
+            <EntityCard
+              title={a.name}
+              subtitle={a.runtime.runtime_name || "Unknown"}
+              icon={Cpu}
+              status={status}
+              statusLabel={a.enforcement_mode || "Unknown"}
+              meta={[
+                { label: "Version", value: a.runtime.version || "Unknown" },
+              ]}
+              selected={selected}
+            />
+          );
+        }}
+        renderDetail={(a) => {
+          let status: UiStatus = "idle";
+          if (a.enforcement_mode === "Enforce") status = "ok";
+          else if (a.enforcement_mode === "Observe") status = "info";
+          else if (a.enforcement_mode === "Shadow") status = "degraded";
+
+          return (
+            <DetailPane
+              title={a.name}
+              subtitle={a.runtime.runtime_name || "Unknown"}
+              status={status}
+              statusLabel={a.enforcement_mode || "Unknown"}
+              actions={[
+                {
+                  label: "Apply Policy",
+                  primary: true,
+                  onClick: () => navigate("/protect"),
+                },
+                {
+                  label: "Delete",
+                  danger: true,
+                  onClick: () => deleteAgent(a.agent_id),
+                },
+              ]}
+              tabs={[
+                {
+                  id: "overview",
+                  label: "Overview",
+                  content: (
+                    <div className="space-y-6">
+                      <div className="p-4 bg-muted/30 rounded-xl border space-y-3">
+                        <h4 className="text-sm font-semibold">Capabilities</h4>
+                        <ul className="text-sm space-y-1.5 text-muted-foreground">
+                          {a.capabilities?.map((cap: string) => (
+                            <li key={cap} className="flex items-center gap-2">
+                              <div className="h-1.5 w-1.5 rounded-full bg-primary/50" />
+                              <span className="text-foreground/80">{cap}</span>
+                            </li>
+                          )) || <li>No specific capabilities</li>}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
+                          <Info className="h-4 w-4" /> Raw JSON
+                        </h4>
+                        <pre className="text-[10px] font-mono bg-muted/50 p-4 rounded-lg overflow-x-auto border">
+                          {JSON.stringify(a, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  id: "policies",
+                  label: "Policies",
+                  content: (
+                    <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed rounded-lg text-muted-foreground">
+                      <FileKey className="h-8 w-8 mb-2 opacity-50" />
+                      <p className="text-sm">No policies explicitly bound.</p>
+                    </div>
+                  ),
+                },
+                {
+                  id: "activity",
+                  label: "Timeline",
+                  content: (
+                    <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed rounded-lg text-muted-foreground">
+                      <Activity className="h-8 w-8 mb-2 opacity-50" />
+                      <p className="text-sm">No activity recorded yet.</p>
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          );
+        }}
+      />
+    </div>
   );
 }

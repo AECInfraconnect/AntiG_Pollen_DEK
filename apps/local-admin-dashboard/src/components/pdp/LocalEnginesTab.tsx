@@ -12,9 +12,13 @@ export function LocalEnginesTab() {
     setLoading(true);
     try {
       const data = await PdpRuntimeApi.list();
-      const locals = data.filter((r: PdpRuntime) => r.category === "local_engine");
+      const locals = data.filter(
+        (r: PdpRuntime) => r.category === "local_engine",
+      );
       // Deduplicate by ID
-      const unique = Array.from(new Map(locals.map((r: PdpRuntime) => [r.id, r])).values());
+      const unique = Array.from(
+        new Map(locals.map((r: PdpRuntime) => [r.id, r])).values(),
+      );
       setItems(unique as PdpRuntime[]);
     } finally {
       setLoading(false);

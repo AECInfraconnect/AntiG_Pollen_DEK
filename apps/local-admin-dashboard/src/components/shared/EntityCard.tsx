@@ -1,8 +1,28 @@
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type EntityKind = "agent" | "user" | "device" | "mcp_server" | "tool" | "resource" | "policy" | "deployment" | "capability_snapshot" | "control_method" | "evidence";
-export type EntityStatus = "ready" | "active" | "observe_only" | "needs_approval" | "needs_setup" | "partial" | "warning" | "failed" | "unknown";
+export type EntityKind =
+  | "agent"
+  | "user"
+  | "device"
+  | "mcp_server"
+  | "tool"
+  | "resource"
+  | "policy"
+  | "deployment"
+  | "capability_snapshot"
+  | "control_method"
+  | "evidence";
+export type EntityStatus =
+  | "ready"
+  | "active"
+  | "observe_only"
+  | "needs_approval"
+  | "needs_setup"
+  | "partial"
+  | "warning"
+  | "failed"
+  | "unknown";
 export type ChipTone = "neutral" | "success" | "warning" | "danger" | "info";
 
 export interface EntityCardProps {
@@ -57,25 +77,42 @@ export function EntityCard({
       onClick={onClick}
       className={cn(
         "group relative overflow-hidden rounded-xl border bg-card/50 p-4 transition-all hover:shadow-md cursor-pointer",
-        selected ? "border-primary shadow-[0_0_15px_rgba(124,58,237,0.15)] bg-primary/5" : "hover:border-primary/50"
+        selected
+          ? "border-primary shadow-[0_0_15px_rgba(124,58,237,0.15)] bg-primary/5"
+          : "hover:border-primary/50",
       )}
     >
       <div className="flex justify-between items-start mb-2">
         <div>
           <h3 className="font-semibold text-base tracking-tight">{title}</h3>
-          {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+          {subtitle && (
+            <p className="text-sm text-muted-foreground">{subtitle}</p>
+          )}
         </div>
-        <div className={cn("px-2 py-1 rounded-full text-xs font-medium border", statusColors[status])}>
+        <div
+          className={cn(
+            "px-2 py-1 rounded-full text-xs font-medium border",
+            statusColors[status],
+          )}
+        >
           {statusLabel}
         </div>
       </div>
-      
-      <p className="text-sm text-muted-foreground mt-3 mb-4 line-clamp-2">{summary}</p>
-      
+
+      <p className="text-sm text-muted-foreground mt-3 mb-4 line-clamp-2">
+        {summary}
+      </p>
+
       {chips.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-4">
           {chips.map((chip, idx) => (
-            <span key={idx} className={cn("px-2 py-0.5 rounded-md text-xs border", toneColors[chip.tone])}>
+            <span
+              key={idx}
+              className={cn(
+                "px-2 py-0.5 rounded-md text-xs border",
+                toneColors[chip.tone],
+              )}
+            >
               {chip.label}
             </span>
           ))}
@@ -89,7 +126,9 @@ export function EntityCard({
               {metrics.map((m, i) => (
                 <div key={i} className="flex flex-col">
                   <span className="font-medium text-foreground">{m.value}</span>
-                  <span className="text-[10px] uppercase tracking-wider">{m.label}</span>
+                  <span className="text-[10px] uppercase tracking-wider">
+                    {m.label}
+                  </span>
                 </div>
               ))}
             </div>
@@ -105,4 +144,3 @@ export function EntityCard({
     </div>
   );
 }
-

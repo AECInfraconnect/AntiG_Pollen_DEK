@@ -1,3 +1,5 @@
+import { useConfirm } from "../components/ui/ConfirmDialog";
+import { toast } from "sonner";
 import { useState, useEffect, useCallback } from "react";
 import {
   Activity,
@@ -28,6 +30,8 @@ const EFFECT_STYLE: Record<
 };
 
 export function DecisionLogs() {
+  const { confirm } = useConfirm();
+
   const [events, setEvents] = useState<TelemetryEventEnvelope[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "allow" | "deny">("all");
@@ -89,9 +93,11 @@ export function DecisionLogs() {
 
   const clearHistory = async () => {
     if (
-      !confirm(
-        "Are you sure you want to clear all decision logs? This cannot be undone.",
-      )
+      !(await confirm({
+        title: "Confirm",
+        description: "Are you sure you want to drop all logs?",
+        danger: true,
+      }))
     )
       return;
     try {
@@ -99,7 +105,7 @@ export function DecisionLogs() {
       load();
     } catch (e) {
       console.error("Failed to clear decision logs:", e);
-      alert("Failed to clear decision logs");
+      toast.error("Failed to clear decision logs");
     }
   };
 

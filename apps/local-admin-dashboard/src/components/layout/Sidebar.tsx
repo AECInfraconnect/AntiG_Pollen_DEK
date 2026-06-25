@@ -1,82 +1,82 @@
 import { Link, useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
-import * as LucideIcons from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
+import { NAV } from "../../config/navigation";
 import { useMode } from "../../context/ModeContext";
-import { getNavItems } from "../../navigation/menu";
+import { ModeSwitcher } from "./ModeSwitcher";
 
 export function Sidebar() {
-  const location = useLocation();
   const { mode } = useMode();
-  // We do not have i18n fully set up with keys that match menu.ts dynamic label, 
-  // so we will just use label.en or label.th based on current language
+  const { pathname } = useLocation();
   const { i18n } = useTranslation();
-  const currentLang = (i18n.language || "en").startsWith("th") ? "th" : "en";
-
-  const navItems = getNavItems(mode);
+  const th = i18n.language === "th";
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-card/50 backdrop-blur-xl">
-      <div className="flex h-20 items-center justify-center border-b px-6 py-4">
-        <img
-          src="/POLLEK_LOGO.png"
-          alt="Pollek Local Enforcement Kit"
-          className="h-full w-auto object-contain mix-blend-multiply dark:mix-blend-screen dark:brightness-200 dark:contrast-200"
-        />
+    <aside
+      aria-label="Main navigation"
+      className="flex h-full w-64 flex-col border-r border-border bg-card/50 backdrop-blur-xl"
+    >
+      <div className="flex h-16 items-center gap-2 border-b border-border px-5">
+        <span className="text-lg font-semibold tracking-tight">POLLEK</span>
+        <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+          LOCAL
+        </span>
       </div>
 
-      <div
-        className="flex-1 overflow-y-auto py-4 no-scrollbar"
-        style={{ msOverflowStyle: "none", scrollbarWidth: "none" }}
-      >
-        <nav className="space-y-2 px-3">
-          {navItems.map((item) => {
-            const isActive =
-              location.pathname === item.path ||
-              (item.path !== "/" && location.pathname.startsWith(item.path));
-            
-            // @ts-ignore - dynamic icon access
-            const IconComp = LucideIcons[item.icon.split("-").map(p => p.charAt(0).toUpperCase() + p.slice(1)).join("")] || LucideIcons.Circle;
+      <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-5">
+        {NAV.map((group) => {
+          const items = group.items.filter((i) => i.modes.includes(mode));
+          if (!items.length) return null;
+          return (
+            <div key={group.id}>
+              <div className="px-3 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                {th ? group.th : group.en}
+              </div>
+              <div className="space-y-1">
+                {items.map((item) => {
+                  const active =
+                    pathname === item.href ||
+                    (item.href !== "/" && pathname.startsWith(item.href));
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.id}
+                      to={item.href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition focus-visible:ring-2 focus-visible:ring-primary",
+                        item.primary &&
+                          !active &&
+                          "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20",
+                        active &&
+                          "bg-primary/10 text-primary before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-primary",
+                        !active &&
+                          !item.primary &&
+                          "text-foreground/80 hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{th ? item.th : item.en}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </nav>
 
-            return (
-              <Link
-                key={item.id}
-                to={item.path}
-                className={cn(
-                  isActive
-                    ? "bg-primary/10 text-primary font-semibold shadow-[0_0_15px_rgba(124,58,237,0.15)]"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground hover-glow",
-                  "group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-300",
-                )}
-              >
-                <IconComp
-                  className={cn(
-                    isActive
-                      ? "text-primary"
-                      : "text-muted-foreground group-hover:text-foreground",
-                    "mr-3 h-5 w-5 flex-shrink-0 transition-colors",
-                  )}
-                  aria-hidden="true"
-                />
-                {item.label[currentLang as "en" | "th"]}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
-      <div className="border-t p-4">
-        <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3 hover:bg-muted/80 cursor-pointer transition-colors">
-          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-            <LucideIcons.UserCircle className="h-4 w-4 text-primary" />
+      <div className="border-t border-border p-3 flex flex-col gap-2">
+        <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-2 cursor-pointer transition-colors hover:bg-muted/80">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
+            <div className="h-4 w-4 text-primary" />
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-medium">Local Admin</span>
-            <span className="text-xs text-muted-foreground">mode: {mode.replace("_", " ")}</span>
           </div>
         </div>
+        <ModeSwitcher />
       </div>
-    </div>
+    </aside>
   );
 }
-

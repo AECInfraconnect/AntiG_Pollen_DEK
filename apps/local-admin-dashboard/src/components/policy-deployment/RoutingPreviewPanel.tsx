@@ -1,4 +1,3 @@
-import React from "react";
 import type { RoutingPlan } from "../../types/deployment";
 
 interface Props {

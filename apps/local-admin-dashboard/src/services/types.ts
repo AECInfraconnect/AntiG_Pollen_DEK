@@ -612,24 +612,36 @@ export interface LegacyDeploymentSession {
   created_by: string;
 }
 
-
 // V2 Policy-First Types
 export type ControlLevel = "observe" | "warn" | "ask" | "enforce";
-export type FeasibilityVerdict = "fully_enforceable" | "partial_observe" | "observe_only" | "not_applicable";
-export type MethodStatus = "available" | "needs_install" | "needs_permission" | "unsupported";
+export type FeasibilityVerdict =
+  | "fully_enforceable"
+  | "partial_observe"
+  | "observe_only"
+  | "not_applicable";
+export type MethodStatus =
+  | "available"
+  | "needs_install"
+  | "needs_permission"
+  | "unsupported";
 
 export interface ControlMethodCap {
-  id: string;                 // "mcp_stdio" | "linux_ebpf" | "windows_wfp_um" | ...
-  domains: string[];          // ["network","file_system",...]
+  id: string; // "mcp_stdio" | "linux_ebpf" | "windows_wfp_um" | ...
+  domains: string[]; // ["network","file_system",...]
   max_level: ControlLevel;
   status: MethodStatus;
-  requires: string[];         // ["admin","entitlement",...]
-  source: string; maturity: string;
+  requires: string[]; // ["admin","entitlement",...]
+  source: string;
+  maturity: string;
 }
 export interface CapabilityUpgrade {
-  unlocks: string; method_id: string;
-  how_th: string; how_en: string;
-  download_url?: string; auto_installable: boolean; requires_restart: boolean;
+  unlocks: string;
+  method_id: string;
+  how_th: string;
+  how_en: string;
+  download_url?: string;
+  auto_installable: boolean;
+  requires_restart: boolean;
 }
 export interface LocalCapabilitySnapshot {
   os: { name: string; version: string };
@@ -639,22 +651,47 @@ export interface LocalCapabilitySnapshot {
   snapshot_hash: string;
 }
 export interface DomainFeasibility {
-  domain: string; chosen_method?: string; level: ControlLevel;
-  reason_th: string; reason_en: string;
+  domain: string;
+  chosen_method?: string;
+  level: ControlLevel;
+  reason_th: string;
+  reason_en: string;
 }
 export interface PolicyFeasibilityResult {
   policy_id: string;
-  requested_level: ControlLevel; achievable_level: ControlLevel;
+  requested_level: ControlLevel;
+  achievable_level: ControlLevel;
   verdict: FeasibilityVerdict;
   per_domain: DomainFeasibility[];
   gaps: CapabilityUpgrade[];
-  friendly_th: string; friendly_en: string;
+  friendly_th: string;
+  friendly_en: string;
 }
-export interface MethodBinding { domain: string; method_id: string; effective_level: ControlLevel; maturity: string; }
-export interface ControlMethodPlan { policy_id: string; bindings: MethodBinding[]; fallbacks: string[]; auto_selected: boolean; }
-export interface PolicySuggestion { id: string; title_th: string; title_en: string; domains: string[]; recommended_level: ControlLevel; }
-export interface DeploySession { id: string; feasibility: PolicyFeasibilityResult; plan?: ControlMethodPlan; status: string; }
-
+export interface MethodBinding {
+  domain: string;
+  method_id: string;
+  effective_level: ControlLevel;
+  maturity: string;
+}
+export interface ControlMethodPlan {
+  policy_id: string;
+  bindings: MethodBinding[];
+  fallbacks: string[];
+  auto_selected: boolean;
+}
+export interface PolicySuggestion {
+  id: string;
+  title_th: string;
+  title_en: string;
+  domains: string[];
+  recommended_level: ControlLevel;
+}
+export interface DeploySession {
+  id: string;
+  feasibility: PolicyFeasibilityResult;
+  plan?: ControlMethodPlan;
+  status: string;
+}
 
 export type EventCategory =
   | "discovery"
@@ -702,7 +739,12 @@ export interface RoutePreview {
   explanation: LocalizedText;
 }
 
-export type EntityStatus = "active" | "inactive" | "pending" | "error" | "observing";
+export type EntityStatus =
+  | "active"
+  | "inactive"
+  | "pending"
+  | "error"
+  | "observing";
 
 export interface EntityCardModel {
   entity_id: string;

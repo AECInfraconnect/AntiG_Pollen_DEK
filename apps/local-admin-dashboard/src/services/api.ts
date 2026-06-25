@@ -17,7 +17,12 @@ import type {
   DiscoveryScanJob,
   DiscoveredAgentCandidateV2,
   IdentityConfirmation,
-  LocalCapabilitySnapshot, PolicyFeasibilityResult, DeploySession, ControlMethodPlan, ControlLevel} from "./types";
+  LocalCapabilitySnapshot,
+  PolicyFeasibilityResult,
+  DeploySession,
+  ControlMethodPlan,
+  ControlLevel,
+} from "./types";
 export type * from "./types";
 import type { components } from "../../../../contracts/generated/typescript/api";
 
@@ -130,19 +135,33 @@ export class ControlPlaneClient {
   }
   async getPolicySuggestions(agentIds: string[]): Promise<PolicySuggestion[]> {
     return this.fetchApi("/v1/policy/suggestions", {
-      method: "POST", body: JSON.stringify({ agents: agentIds }),
+      method: "POST",
+      body: JSON.stringify({ agents: agentIds }),
     });
   }
-  async previewFeasibility(policy: unknown, level: ControlLevel): Promise<PolicyFeasibilityResult> {
+  async previewFeasibility(
+    policy: unknown,
+    level: ControlLevel,
+  ): Promise<PolicyFeasibilityResult> {
     return this.fetchApi("/v1/policy/feasibility", {
-      method: "POST", body: JSON.stringify({ policy, requested_level: level }),
+      method: "POST",
+      body: JSON.stringify({ policy, requested_level: level }),
     });
   }
-  async createDeploySession(input: { policy: unknown; agents: string[]; requested_level: ControlLevel }): Promise<DeploySession> {
-    return this.fetchApi("/v1/deploy/session", { method: "POST", body: JSON.stringify(input) });
+  async createDeploySession(input: {
+    policy: unknown;
+    agents: string[];
+    requested_level: ControlLevel;
+  }): Promise<DeploySession> {
+    return this.fetchApi("/v1/deploy/session", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
   }
   async confirmDeploySession(id: string): Promise<ControlMethodPlan> {
-    return this.fetchApi(`/v1/deploy/session/${id}/confirm`, { method: "POST" });
+    return this.fetchApi(`/v1/deploy/session/${id}/confirm`, {
+      method: "POST",
+    });
   }
   async applyDeploySession(id: string) {
     return this.fetchApi(`/v1/deploy/session/${id}/apply`, { method: "POST" });
@@ -702,10 +721,15 @@ export const SimpleWizardApi = {
   getHostCapabilities: () => defaultClient.getHostCapabilities(),
   scanAgents: () => defaultClient.scanAgents(),
   getScanResult: (jobId: string) => defaultClient.getScanResult(jobId),
-  getPolicySuggestions: (agentIds: string[]) => defaultClient.getPolicySuggestions(agentIds),
-  previewFeasibility: (policy: unknown, level: ControlLevel) => defaultClient.previewFeasibility(policy, level),
-  createDeploySession: (input: { policy: unknown; agents: string[]; requested_level: ControlLevel }) => defaultClient.createDeploySession(input),
+  getPolicySuggestions: (agentIds: string[]) =>
+    defaultClient.getPolicySuggestions(agentIds),
+  previewFeasibility: (policy: unknown, level: ControlLevel) =>
+    defaultClient.previewFeasibility(policy, level),
+  createDeploySession: (input: {
+    policy: unknown;
+    agents: string[];
+    requested_level: ControlLevel;
+  }) => defaultClient.createDeploySession(input),
   confirmDeploySession: (id: string) => defaultClient.confirmDeploySession(id),
   applyDeploySession: (id: string) => defaultClient.applyDeploySession(id),
 };
-

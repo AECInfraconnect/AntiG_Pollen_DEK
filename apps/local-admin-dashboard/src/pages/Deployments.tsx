@@ -7,8 +7,20 @@ export function Deployments() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const mockDeployments = [
-    { id: "dep-1", target: "claude_desktop", status: "active", level: "Enforce", date: new Date().toISOString() },
-    { id: "dep-2", target: "cursor", status: "needs_approval", level: "Approval", date: new Date().toISOString() },
+    {
+      id: "dep-1",
+      target: "claude_desktop",
+      status: "active",
+      level: "Enforce",
+      date: new Date().toISOString(),
+    },
+    {
+      id: "dep-2",
+      target: "cursor",
+      status: "needs_approval",
+      level: "Approval",
+      date: new Date().toISOString(),
+    },
   ];
 
   const mappedCards: EntityCardProps[] = mockDeployments.map((d) => ({
@@ -28,7 +40,12 @@ export function Deployments() {
   const masterContent = (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {mappedCards.map((card) => (
-        <EntityCard key={card.id} {...card} selected={selectedId === card.id} onClick={() => setSelectedId(card.id)} />
+        <EntityCard
+          key={card.id}
+          {...card}
+          selected={selectedId === card.id}
+          onClick={() => setSelectedId(card.id)}
+        />
       ))}
     </div>
   );
@@ -40,14 +57,22 @@ export function Deployments() {
         <p className="text-sm text-muted-foreground">{selected.id}</p>
       </div>
       <div className="p-4 bg-muted/50 rounded border">
-        <p className="text-sm">Status: <strong>{selected.status}</strong></p>
-        <p className="text-sm">Target: <strong>{selected.target}</strong></p>
+        <p className="text-sm">
+          Status: <strong>{selected.status}</strong>
+        </p>
+        <p className="text-sm">
+          Target: <strong>{selected.target}</strong>
+        </p>
       </div>
       <div className="flex gap-2 justify-end">
         {selected.status === "needs_approval" && (
-          <button className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium">Approve</button>
+          <button className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium">
+            Approve
+          </button>
         )}
-        <button className="px-4 py-2 bg-muted text-foreground border rounded-md text-sm font-medium">Rollback</button>
+        <button className="px-4 py-2 bg-muted text-foreground border rounded-md text-sm font-medium">
+          Rollback
+        </button>
       </div>
     </div>
   ) : null;

@@ -1,4 +1,3 @@
-import React from "react";
 import { RoutingPreviewPanel } from "./RoutingPreviewPanel";
 import { AgentDeploymentTimeline } from "./AgentDeploymentTimeline";
 import type {

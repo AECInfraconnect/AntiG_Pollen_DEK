@@ -14,7 +14,7 @@ export function LocalEvidence() {
       statusLabel: "Verified",
       summary: "SHA256 signature match for Claude Desktop",
       chips: [{ label: "cryptographic", tone: "success" }],
-    }
+    },
   ];
 
   return (
@@ -24,11 +24,18 @@ export function LocalEvidence() {
       masterContent={
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {mappedCards.map((card) => (
-            <EntityCard key={card.id} {...card} selected={selectedId === card.id} onClick={() => setSelectedId(card.id)} />
+            <EntityCard
+              key={card.id}
+              {...card}
+              selected={selectedId === card.id}
+              onClick={() => setSelectedId(card.id)}
+            />
           ))}
         </div>
       }
-      detailContent={selectedId ? <div className="p-4">Details for {selectedId}</div> : null}
+      detailContent={
+        selectedId ? <div className="p-4">Details for {selectedId}</div> : null
+      }
       onCloseDetail={() => setSelectedId(null)}
     />
   );

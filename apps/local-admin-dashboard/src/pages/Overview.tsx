@@ -10,9 +10,8 @@ export function Overview() {
     tools: 0,
     resources: 0,
   });
-  const [snapshot, setSnapshot] = useState<LegacyLocalCapabilitySnapshot | null>(
-    null,
-  );
+  const [snapshot, setSnapshot] =
+    useState<LegacyLocalCapabilitySnapshot | null>(null);
   const [snapshotLoading, setSnapshotLoading] = useState(true);
   const [activities, setActivities] = useState<any[]>([]);
 

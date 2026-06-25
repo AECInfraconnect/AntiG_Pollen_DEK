@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { Cpu, MoreVertical, Plus } from "lucide-react";
 import { RegistryApi } from "../services/api";
@@ -31,7 +32,7 @@ export function BlackboxAI({ hideHeader = false }: { hideHeader?: boolean }) {
       fetchProviders();
     } catch (e) {
       console.error("Failed to delete provider:", e);
-      alert("Failed to delete provider");
+      toast.error("Failed to delete provider");
     }
   };
 

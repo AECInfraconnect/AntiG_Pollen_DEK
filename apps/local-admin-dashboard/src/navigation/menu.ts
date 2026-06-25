@@ -47,7 +47,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: { en: "Overview", th: "ภาพรวม" },
     path: "/",
     icon: "layout-dashboard",
-    modes: ["desktop_simple", "desktop_advanced", "enterprise_server", "sovereign_airgap"],
+    modes: [
+      "desktop_simple",
+      "desktop_advanced",
+      "enterprise_server",
+      "sovereign_airgap",
+    ],
   },
   {
     id: "scan",
@@ -68,7 +73,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: { en: "Agents", th: "Agents" },
     path: "/agents",
     icon: "bot",
-    modes: ["desktop_simple", "desktop_advanced", "enterprise_server", "sovereign_airgap"],
+    modes: [
+      "desktop_simple",
+      "desktop_advanced",
+      "enterprise_server",
+      "sovereign_airgap",
+    ],
   },
   {
     id: "recommended_policies",
@@ -96,7 +106,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: { en: "Deployments", th: "การติดตั้งใช้งาน" },
     path: "/deployments",
     icon: "server",
-    modes: ["desktop_simple", "desktop_advanced", "enterprise_server", "sovereign_airgap"],
+    modes: [
+      "desktop_simple",
+      "desktop_advanced",
+      "enterprise_server",
+      "sovereign_airgap",
+    ],
   },
   {
     id: "control_methods",

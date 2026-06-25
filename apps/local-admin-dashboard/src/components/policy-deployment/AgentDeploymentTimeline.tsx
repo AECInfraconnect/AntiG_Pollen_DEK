@@ -1,4 +1,3 @@
-import React from "react";
 import type { DeploymentEvent } from "../../types/deployment";
 
 interface Props {

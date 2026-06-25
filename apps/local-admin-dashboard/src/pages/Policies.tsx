@@ -1,3 +1,4 @@
+import { useConfirm } from "../components/ui/ConfirmDialog";
 import { useState, useEffect } from "react";
 import { Plus, X, UploadCloud, Trash2, Pencil } from "lucide-react";
 import { PolicyApi } from "../services/api";
@@ -7,6 +8,8 @@ import { EntityCard } from "../components/shared/EntityCard";
 import type { EntityCardProps } from "../components/shared/EntityCard";
 
 export function Policies() {
+  const { confirm } = useConfirm();
+
   const [policies, setPolicies] = useState<PolicyDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPolicyId, setSelectedPolicyId] = useState<string | null>(null);
@@ -30,7 +33,14 @@ export function Policies() {
   }, []);
 
   const onDelete = async (policyId: string) => {
-    if (!confirm(`Are you sure you want to delete policy ${policyId}?`)) return;
+    if (
+      !(await confirm({
+        title: "Confirm Action",
+        description: `Are you sure you want to delete policy ${policyId}?`,
+        danger: true,
+      }))
+    )
+      return;
     try {
       await PolicyApi.delete(policyId);
       setToast(`Deleted ${policyId}`);
@@ -47,7 +57,9 @@ export function Policies() {
     setPublishing(policyId);
     try {
       const r = await PolicyApi.publish(policyId);
-      setToast(`Published ${policyId} → bundle ${r.bundle_id} (build #${r.build_number})`);
+      setToast(
+        `Published ${policyId} → bundle ${r.bundle_id} (build #${r.build_number})`,
+      );
       reload();
     } catch (e) {
       setToast(`Publish failed: ${String(e)}`);
@@ -69,14 +81,15 @@ export function Policies() {
       kind: "policy",
       title: p.name,
       subtitle: p.policy_id,
-      status: p.meta.status === "active" || p.meta.status === "published" ? "active" 
-            : p.meta.status === "draft" ? "needs_approval" 
+      status:
+        p.meta.status === "active" || p.meta.status === "published"
+          ? "active"
+          : p.meta.status === "draft"
+            ? "needs_approval"
             : "unknown",
       statusLabel: p.meta.status,
       summary: `Targets: ${targetCount}`,
-      chips: [
-        { label: p.policy_type, tone: "neutral" }
-      ],
+      chips: [{ label: p.policy_type, tone: "neutral" }],
       lastUpdatedAt: p.meta.updated_at,
     };
   });
@@ -88,7 +101,9 @@ export function Policies() {
       {loading ? (
         <div className="text-muted-foreground p-4">Loading policies...</div>
       ) : mappedCards.length === 0 ? (
-        <div className="text-muted-foreground p-4">No policies yet. Create one to get started.</div>
+        <div className="text-muted-foreground p-4">
+          No policies yet. Create one to get started.
+        </div>
       ) : (
         mappedCards.map((card) => (
           <EntityCard
@@ -112,7 +127,7 @@ export function Policies() {
       </div>
 
       <div className="flex gap-2">
-         <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-border">
+        <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-border">
           Type: {selectedPolicy.policy_type}
         </span>
         <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-border">
@@ -124,7 +139,9 @@ export function Policies() {
         <div className="p-4 bg-muted/50 rounded-lg border">
           <h4 className="text-sm font-semibold mb-2">Policy Source</h4>
           <pre className="text-xs font-mono overflow-x-auto p-4 bg-black/50 text-green-400 rounded border">
-            {selectedPolicy.source?.kind === "raw_text" ? selectedPolicy.source.text : JSON.stringify(selectedPolicy.source, null, 2)}
+            {selectedPolicy.source?.kind === "raw_text"
+              ? selectedPolicy.source.text
+              : JSON.stringify(selectedPolicy.source, null, 2)}
           </pre>
         </div>
 
@@ -137,16 +154,22 @@ export function Policies() {
             <dd>{selectedPolicy.meta.source}</dd>
             <dt className="text-muted-foreground">Targets</dt>
             <dd>
-              {selectedPolicy.targets.agent_ids.length} agents, {selectedPolicy.targets.tool_ids.length} tools
+              {selectedPolicy.targets.agent_ids.length} agents,{" "}
+              {selectedPolicy.targets.tool_ids.length} tools
             </dd>
           </dl>
         </div>
       </div>
-      
+
       <div className="flex flex-wrap gap-2 justify-end">
         <button
-          onClick={() => setEditorState({ mode: "edit", policy: selectedPolicy })}
-          disabled={selectedPolicy.meta.source === "cloud_sync" || selectedPolicy.meta.created_by !== "local-admin"}
+          onClick={() =>
+            setEditorState({ mode: "edit", policy: selectedPolicy })
+          }
+          disabled={
+            selectedPolicy.meta.source === "cloud_sync" ||
+            selectedPolicy.meta.created_by !== "local-admin"
+          }
           className="px-4 py-2 bg-muted text-foreground border border-border rounded-md text-sm font-medium hover:bg-muted/80 disabled:opacity-50 inline-flex items-center gap-2"
         >
           <Pencil className="h-4 w-4" /> Edit
@@ -156,12 +179,17 @@ export function Policies() {
           disabled={publishing === selectedPolicy.policy_id}
           className="px-4 py-2 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-md text-sm font-medium hover:bg-blue-500/20 disabled:opacity-50 inline-flex items-center gap-2"
         >
-          <UploadCloud className="h-4 w-4" /> 
-          {publishing === selectedPolicy.policy_id ? "Publishing..." : "Publish"}
+          <UploadCloud className="h-4 w-4" />
+          {publishing === selectedPolicy.policy_id
+            ? "Publishing..."
+            : "Publish"}
         </button>
-        <button 
+        <button
           onClick={() => onDelete(selectedPolicy.policy_id)}
-          disabled={selectedPolicy.meta.source === "cloud_sync" || selectedPolicy.meta.created_by !== "local-admin"}
+          disabled={
+            selectedPolicy.meta.source === "cloud_sync" ||
+            selectedPolicy.meta.created_by !== "local-admin"
+          }
           className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-md text-sm font-medium hover:bg-red-500/20 disabled:opacity-50 inline-flex items-center gap-2"
         >
           <Trash2 className="h-4 w-4" /> Delete
@@ -186,7 +214,9 @@ export function Policies() {
         masterContent={
           <>
             {toast && (
-              <div className="glass rounded-lg border px-4 py-3 text-sm mb-4">{toast}</div>
+              <div className="glass rounded-lg border px-4 py-3 text-sm mb-4">
+                {toast}
+              </div>
             )}
             {masterContent}
           </>
@@ -224,7 +254,8 @@ function PolicyEditor({
   const DEFAULT_TEMPLATES: Record<PolicyType, string> = {
     cedar: "permit(principal, action, resource);",
     rego: 'package authz\n\ndefault allow = false\n\nallow {\n  input.action == "read"\n}',
-    open_fga: "model\n  schema 1.1\ntype user\ntype document\n  relations\n    define viewer: [user]",
+    open_fga:
+      "model\n  schema 1.1\ntype user\ntype document\n  relations\n    define viewer: [user]",
     pii_redaction: "",
     route: "",
     composite: "",
@@ -278,8 +309,14 @@ function PolicyEditor({
       setSaving(false);
       return;
     }
-    if (type === "cedar" && !text.includes("permit") && !text.includes("forbid")) {
-      setError("Invalid Cedar policy: Must contain at least one permit or forbid statement.");
+    if (
+      type === "cedar" &&
+      !text.includes("permit") &&
+      !text.includes("forbid")
+    ) {
+      setError(
+        "Invalid Cedar policy: Must contain at least one permit or forbid statement.",
+      );
       setSaving(false);
       return;
     }
@@ -335,23 +372,61 @@ function PolicyEditor({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="glass w-full max-w-2xl rounded-xl border p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="glass w-full max-w-2xl rounded-xl border p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">{mode === "create" ? "New Policy" : mode === "edit" ? "Edit Policy" : "View Policy"}</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <h3 className="text-lg font-semibold">
+            {mode === "create"
+              ? "New Policy"
+              : mode === "edit"
+                ? "Edit Policy"
+                : "View Policy"}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="policy-name" className="text-xs font-medium text-muted-foreground">Name</label>
-            <input id="policy-name" value={name} onChange={(e) => setName(e.target.value)} disabled={readOnly} className="mt-1 w-full rounded-md border bg-transparent px-3 py-2 text-sm disabled:opacity-50" placeholder="e.g. pol-net-deny" />
+            <label
+              htmlFor="policy-name"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              Name
+            </label>
+            <input
+              id="policy-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={readOnly}
+              className="mt-1 w-full rounded-md border bg-transparent px-3 py-2 text-sm disabled:opacity-50"
+              placeholder="e.g. pol-net-deny"
+            />
           </div>
           <div>
-            <label htmlFor="policy-engine" className="text-xs font-medium text-muted-foreground">Engine</label>
-            <select id="policy-engine" value={type} onChange={(e) => setType(e.target.value as PolicyType)} disabled={readOnly || mode === "edit"} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50">
+            <label
+              htmlFor="policy-engine"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              Engine
+            </label>
+            <select
+              id="policy-engine"
+              value={type}
+              onChange={(e) => setType(e.target.value as PolicyType)}
+              disabled={readOnly || mode === "edit"}
+              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50"
+            >
               <option value="cedar">Cedar</option>
               <option value="rego">OPA / Rego</option>
               <option value="open_fga">OpenFGA</option>
@@ -360,18 +435,42 @@ function PolicyEditor({
         </div>
 
         <div>
-          <label htmlFor="policy-source" className="text-xs font-medium text-muted-foreground">Policy source</label>
-          <textarea id="policy-source" value={text} onChange={(e) => handleTextChange(e.target.value)} rows={10} disabled={readOnly} className="mt-1 w-full rounded-md border bg-black/30 px-3 py-2 font-mono text-xs disabled:opacity-50" spellCheck={false} />
+          <label
+            htmlFor="policy-source"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Policy source
+          </label>
+          <textarea
+            id="policy-source"
+            value={text}
+            onChange={(e) => handleTextChange(e.target.value)}
+            rows={10}
+            disabled={readOnly}
+            className="mt-1 w-full rounded-md border bg-black/30 px-3 py-2 font-mono text-xs disabled:opacity-50"
+            spellCheck={false}
+          />
         </div>
 
         {error && (
-          <div className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</div>
+          <div className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            {error}
+          </div>
         )}
 
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-md border px-4 py-2 text-sm hover:bg-muted/50">{readOnly ? "Close" : "Cancel"}</button>
+          <button
+            onClick={onClose}
+            className="rounded-md border px-4 py-2 text-sm hover:bg-muted/50"
+          >
+            {readOnly ? "Close" : "Cancel"}
+          </button>
           {!readOnly && (
-            <button onClick={save} disabled={saving || !name} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+            <button
+              onClick={save}
+              disabled={saving || !name}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
               {saving ? "Saving..." : "Save"}
             </button>
           )}

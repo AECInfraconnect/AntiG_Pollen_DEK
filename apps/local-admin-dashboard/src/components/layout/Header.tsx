@@ -15,6 +15,17 @@ export function Header() {
     }
   }, [isDark]);
 
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        document.getElementById("global-search-input")?.focus();
+      }
+    };
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
+
   const toggleLanguage = () => {
     const nextLang = i18n.language === "en" ? "th" : "en";
     i18n.changeLanguage(nextLang);
@@ -27,10 +38,14 @@ export function Header() {
         <div className="relative w-96">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <input
+            id="global-search-input"
             type="search"
-            placeholder="Search resources, policies, or agents..."
+            placeholder="Search resources, policies, or agents... (⌘K)"
             className="h-9 w-full rounded-md border bg-background pl-9 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
           />
+          <kbd className="pointer-events-none absolute right-2.5 top-2.5 hidden h-4 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex text-muted-foreground">
+            <span className="text-xs">⌘</span>K
+          </kbd>
         </div>
       </div>
       <div className="flex items-center gap-4">
