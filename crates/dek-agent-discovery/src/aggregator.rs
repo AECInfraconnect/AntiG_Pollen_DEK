@@ -323,6 +323,7 @@ fn aggregate_by_merge_key(
                         .get("url")
                         .and_then(|v| v.as_str())
                         .or_else(|| ev.data.get("sni").and_then(|v| v.as_str()))
+                        .or_else(|| ev.data.get("origin").and_then(|v| v.as_str()))
                     {
                         let sigs = &dek_fingerprint_defs::load_latest_baseline().web_ai_signatures;
                         let mut found = false;
@@ -336,6 +337,11 @@ fn aggregate_by_merge_key(
                                     }
                                 }
                                 agent_type = InferredAgentType::WebAIApp;
+                                matched_signals.push(MatchedSignal {
+                                    kind: format!("{:?}", ev.source),
+                                    detail: w_sig.domain.clone(),
+                                    weight: ev.confidence,
+                                });
                                 found = true;
                                 break;
                             }
@@ -783,4 +789,45 @@ fn basename_no_ext(p: &str) -> String {
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn browser_session_origin_resolves_web_ai_identity() {
+        let candidates = aggregate_evidence(
+            "local",
+            "device-local",
+            vec![DiscoveryEvidenceV2 {
+                evidence_id: "ev_chatgpt_session".into(),
+                source: EvidenceSource::BrowserSession,
+                confidence: 0.85,
+                observed_at: "2026-06-25T00:00:00Z".into(),
+                privacy_class: PrivacyClass::InternalMetadata,
+                redacted: true,
+                data: serde_json::json!({
+                    "origin": "https://chatgpt.com",
+                    "name": "ChatGPT (Web)",
+                    "vendor": "OpenAI",
+                    "capability_tags": ["llm.chat"],
+                    "detected_via": "browser_session_open_tab"
+                }),
+                merge_key: Some("webai:chatgpt.com".into()),
+                source_path_hash: Some("hash".into()),
+                source_path_redacted: Some("<browser session>".into()),
+            }],
+        );
+
+        assert_eq!(candidates.len(), 1);
+        let candidate = &candidates[0];
+        assert_eq!(candidate.display_name, "ChatGPT (Web)");
+        assert!(matches!(
+            candidate.inferred_agent_type,
+            InferredAgentType::WebAIApp
+        ));
+        assert!(candidate.capability_tags.contains(&"llm.chat".to_string()));
+        assert!(candidate.capability_tags.contains(&"web.chat".to_string()));
+    }
 }

@@ -76,24 +76,30 @@ export function MasterDetailLayout<T>({
             selectedId ? "hidden md:block" : "block",
           )}
         >
-          {items.map((item) => (
-            <button
-              key={idSelector(item)}
-              role="option"
-              aria-selected={
-                idSelector(item) ===
-                (selected ? idSelector(selected) : selectedId)
-              }
-              onClick={() => onSelect(idSelector(item))}
-              className="block w-full text-left focus-visible:outline-none"
-            >
-              {renderCard(
-                item,
-                idSelector(item) ===
-                  (selected ? idSelector(selected) : selectedId),
-              )}
-            </button>
-          ))}
+          {items.map((item) => {
+            const id = idSelector(item);
+            const isSelected =
+              id === (selected ? idSelector(selected) : selectedId);
+
+            return (
+              <div
+                key={id}
+                role="option"
+                tabIndex={0}
+                aria-selected={isSelected}
+                onClick={() => onSelect(id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSelect(id);
+                  }
+                }}
+                className="block w-full text-left focus-visible:outline-none"
+              >
+                {renderCard(item, isSelected)}
+              </div>
+            );
+          })}
         </div>
         <div
           className={cn(

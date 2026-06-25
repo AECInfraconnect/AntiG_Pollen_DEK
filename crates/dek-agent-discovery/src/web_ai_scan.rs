@@ -1,6 +1,6 @@
 use crate::model::*;
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 pub struct SniFlow {
@@ -36,7 +36,7 @@ pub fn scan_web_ai(
         }
     }
 
-    if config.enable_browser_session_scan && has_consent {
+    if config.enable_browser_session_scan {
         if let Ok(mut sess) = scan_sessions(catalog) {
             evidence.append(&mut sess);
         }
@@ -83,7 +83,8 @@ fn scan_history(
                         if let Ok(parsed_url) = url::Url::parse(&url_result) {
                             if let Some(host) = parsed_url.host_str() {
                                 for sig in catalog {
-                                    if host.ends_with(&sig.domain) {
+                                    if let Some(matched_domain) = host_matches_signature(host, sig)
+                                    {
                                         let origin = format!("{}://{}", parsed_url.scheme(), host);
 
                                         evidence.push(DiscoveryEvidenceV2 {
@@ -99,7 +100,7 @@ fn scan_history(
                                                 "vendor": sig.vendor.clone(),
                                                 "capability_tags": sig.capability_tags.clone(),
                                             }),
-                                            merge_key: Some(sig.domain.to_string()),
+                                            merge_key: Some(format!("webai:{}", sig.domain)),
                                             source_path_hash: Some(
                                                 crate::redaction::sha256_string(
                                                     &path.to_string_lossy(),
@@ -111,6 +112,7 @@ fn scan_history(
                                                 ),
                                             ),
                                         });
+                                        tracing::debug!(%matched_domain, "matched web AI history entry");
                                     }
                                 }
                             }
@@ -132,6 +134,8 @@ fn scan_sessions(
     let mut evidence = Vec::new();
     let mut session_paths = get_browser_session_paths();
     session_paths.extend(crate::browser_session_reader::firefox_session_paths());
+    session_paths.sort();
+    session_paths.dedup();
 
     for path in session_paths {
         if !path.exists() {
@@ -165,7 +169,7 @@ fn scan_sessions(
         }
 
         for file_path in files_to_scan {
-            let bytes = match crate::browser_session_reader::read_session_bytes(&file_path) {
+            let bytes = match read_session_file_bytes(&file_path) {
                 Ok(b) => b,
                 Err(e) => {
                     tracing::debug!(?file_path, %e, "skip session file");
@@ -173,7 +177,7 @@ fn scan_sessions(
                 }
             };
             for sig in catalog {
-                if crate::browser_session_reader::bytes_contain_domain(&bytes, &sig.domain) {
+                if let Some(matched_domain) = bytes_match_signature(&bytes, sig) {
                     evidence.push(DiscoveryEvidenceV2 {
                         evidence_id: uuid::Uuid::new_v4().to_string(),
                         source: EvidenceSource::BrowserSession,
@@ -182,11 +186,12 @@ fn scan_sessions(
                         privacy_class: PrivacyClass::InternalMetadata,
                         redacted: true,
                         data: serde_json::json!({
-                            "origin": format!("https://{}", sig.domain),
+                            "origin": format!("https://{}", matched_domain),
                             "name": sig.name.clone(),
                             "vendor": sig.vendor.clone(),
                             "capability_tags": sig.capability_tags.clone(),
                             "detected_via": "browser_session_open_tab",
+                            "matched_domain": matched_domain,
                         }),
                         merge_key: Some(format!("webai:{}", sig.domain)),
                         source_path_hash: Some(crate::redaction::sha256_string(
@@ -216,7 +221,7 @@ fn scan_network_sni(
 
     for flow in recent_snis {
         for sig in catalog {
-            if flow.sni_host.ends_with(&sig.domain) {
+            if let Some(matched_domain) = host_matches_signature(&flow.sni_host, sig) {
                 evidence.push(DiscoveryEvidenceV2 {
                     evidence_id: uuid::Uuid::new_v4().to_string(),
                     source: EvidenceSource::NetworkSni,
@@ -225,12 +230,15 @@ fn scan_network_sni(
                     privacy_class: PrivacyClass::InternalMetadata,
                     redacted: true,
                     data: serde_json::json!({
-                        "origin": format!("https://{}", sig.domain),
-                        "name": sig.name,
-                        "vendor": sig.vendor,
+                        "origin": format!("https://{}", matched_domain),
+                        "sni": flow.sni_host,
+                        "name": sig.name.clone(),
+                        "vendor": sig.vendor.clone(),
+                        "capability_tags": sig.capability_tags.clone(),
                         "browser_pid": flow.browser_pid,
+                        "matched_domain": matched_domain,
                     }),
-                    merge_key: Some(sig.domain.to_string()),
+                    merge_key: Some(format!("webai:{}", sig.domain)),
                     source_path_hash: None,
                     source_path_redacted: Some("network:sni".to_string()),
                 });
@@ -258,7 +266,7 @@ fn scan_bookmarks(
                 // in real implementation, you'd traverse the bookmark tree
                 let json_str = json.to_string();
                 for sig in catalog {
-                    if json_str.contains(&sig.domain) {
+                    if let Some(matched_domain) = bytes_match_signature(json_str.as_bytes(), sig) {
                         evidence.push(DiscoveryEvidenceV2 {
                             evidence_id: uuid::Uuid::new_v4().to_string(),
                             source: EvidenceSource::BrowserHistory, // close enough or new source
@@ -267,12 +275,13 @@ fn scan_bookmarks(
                             privacy_class: PrivacyClass::InternalMetadata,
                             redacted: true,
                             data: serde_json::json!({
-                                "origin": format!("https://{}", sig.domain),
+                                "origin": format!("https://{}", matched_domain),
                                 "name": sig.name.clone(),
                                 "vendor": sig.vendor.clone(),
                                 "capability_tags": sig.capability_tags.clone(),
+                                "matched_domain": matched_domain,
                             }),
-                            merge_key: Some(sig.domain.to_string()),
+                            merge_key: Some(format!("webai:{}", sig.domain)),
                             source_path_hash: Some(crate::redaction::sha256_string(
                                 &path.to_string_lossy(),
                             )),
@@ -423,6 +432,115 @@ fn get_browser_history_paths() -> Vec<PathBuf> {
     paths
 }
 
+fn web_ai_domains(sig: &dek_fingerprint_defs::model::WebAiSignatureDef) -> Vec<&str> {
+    let mut domains = vec![sig.domain.as_str()];
+
+    match sig.domain.as_str() {
+        "chatgpt.com" => domains.push("chat.openai.com"),
+        "chat.openai.com" => domains.push("chatgpt.com"),
+        "gemini.google.com" => {
+            domains.push("bard.google.com");
+            domains.push("aistudio.google.com");
+        }
+        "aistudio.google.com" => domains.push("gemini.google.com"),
+        "chat.deepseek.com" => {
+            domains.push("deepseek.com");
+            domains.push("api.deepseek.com");
+        }
+        "deepseek.com" => domains.push("chat.deepseek.com"),
+        _ => {}
+    }
+
+    domains.sort_unstable();
+    domains.dedup();
+    domains
+}
+
+fn host_matches_signature(
+    host: &str,
+    sig: &dek_fingerprint_defs::model::WebAiSignatureDef,
+) -> Option<String> {
+    let normalized_host = host.trim_end_matches('.').to_ascii_lowercase();
+
+    web_ai_domains(sig).into_iter().find_map(|domain| {
+        let normalized_domain = domain.to_ascii_lowercase();
+        if normalized_host == normalized_domain
+            || normalized_host.ends_with(&format!(".{normalized_domain}"))
+        {
+            Some(domain.to_string())
+        } else {
+            None
+        }
+    })
+}
+
+fn bytes_match_signature(
+    bytes: &[u8],
+    sig: &dek_fingerprint_defs::model::WebAiSignatureDef,
+) -> Option<String> {
+    web_ai_domains(sig)
+        .into_iter()
+        .find(|domain| crate::browser_session_reader::bytes_contain_domain(bytes, domain))
+        .map(str::to_string)
+}
+
+fn read_session_file_bytes(path: &Path) -> Result<Vec<u8>> {
+    match crate::browser_session_reader::read_session_bytes(path) {
+        Ok(bytes) => Ok(bytes),
+        Err(first_err) => {
+            let file_name = path
+                .file_name()
+                .and_then(|v| v.to_str())
+                .unwrap_or("session.bin");
+            let temp_path = std::env::temp_dir().join(format!(
+                "pollen_session_{}_{}",
+                uuid::Uuid::new_v4(),
+                file_name
+            ));
+
+            if std::fs::copy(path, &temp_path).is_err() {
+                return Err(first_err);
+            }
+
+            let result = crate::browser_session_reader::read_session_bytes(&temp_path);
+            let _ = std::fs::remove_file(temp_path);
+            result
+        }
+    }
+}
+
+fn push_chromium_profile_session_paths(paths: &mut Vec<PathBuf>, profile_dir: PathBuf) {
+    paths.push(profile_dir.join("Sessions"));
+    paths.push(profile_dir.join("Current Session"));
+    paths.push(profile_dir.join("Last Session"));
+    paths.push(profile_dir.join("Current Tabs"));
+    paths.push(profile_dir.join("Last Tabs"));
+}
+
+fn push_chromium_user_data_session_paths(paths: &mut Vec<PathBuf>, user_data_dir: PathBuf) {
+    push_chromium_profile_session_paths(paths, user_data_dir.join("Default"));
+
+    if let Ok(entries) = std::fs::read_dir(&user_data_dir) {
+        for entry in entries.flatten() {
+            let profile_dir = entry.path();
+            if !profile_dir.is_dir() {
+                continue;
+            }
+
+            let profile_name = profile_dir
+                .file_name()
+                .and_then(|v| v.to_str())
+                .unwrap_or_default();
+            let looks_like_profile =
+                profile_name.starts_with("Profile ") || profile_dir.join("Sessions").exists();
+
+            if looks_like_profile {
+                push_chromium_profile_session_paths(paths, profile_dir);
+            }
+        }
+    }
+}
+
 fn get_browser_session_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
 
@@ -448,34 +566,72 @@ fn get_browser_session_paths() -> Vec<PathBuf> {
 
     #[cfg(target_os = "windows")]
     if let Ok(localappdata) = std::env::var("LOCALAPPDATA") {
-        paths.push(
-            PathBuf::from(&localappdata)
-                .join("Google")
-                .join("Chrome")
-                .join("User Data")
-                .join("Default")
-                .join("Sessions"),
+        let localappdata = PathBuf::from(localappdata);
+        push_chromium_user_data_session_paths(
+            &mut paths,
+            localappdata.join("Google").join("Chrome").join("User Data"),
         );
-        paths.push(
-            PathBuf::from(&localappdata)
+        push_chromium_user_data_session_paths(
+            &mut paths,
+            localappdata
                 .join("Microsoft")
                 .join("Edge")
-                .join("User Data")
-                .join("Default")
-                .join("Sessions"),
+                .join("User Data"),
+        );
+        push_chromium_user_data_session_paths(
+            &mut paths,
+            localappdata
+                .join("BraveSoftware")
+                .join("Brave-Browser")
+                .join("User Data"),
+        );
+        push_chromium_user_data_session_paths(
+            &mut paths,
+            localappdata.join("Chromium").join("User Data"),
+        );
+        push_chromium_user_data_session_paths(
+            &mut paths,
+            localappdata.join("Vivaldi").join("User Data"),
+        );
+    }
+
+    #[cfg(target_os = "windows")]
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        let appdata = PathBuf::from(appdata);
+        push_chromium_profile_session_paths(
+            &mut paths,
+            appdata.join("Opera Software").join("Opera Stable"),
+        );
+        push_chromium_profile_session_paths(
+            &mut paths,
+            appdata.join("Opera Software").join("Opera GX Stable"),
         );
     }
 
     #[cfg(target_os = "macos")]
     if let Ok(home) = std::env::var("HOME") {
-        paths.push(
+        push_chromium_user_data_session_paths(
+            &mut paths,
             PathBuf::from(&home)
                 .join("Library")
                 .join("Application Support")
                 .join("Google")
-                .join("Chrome")
-                .join("Default")
-                .join("Sessions"),
+                .join("Chrome"),
+        );
+        push_chromium_user_data_session_paths(
+            &mut paths,
+            PathBuf::from(&home)
+                .join("Library")
+                .join("Application Support")
+                .join("Microsoft Edge"),
+        );
+        push_chromium_user_data_session_paths(
+            &mut paths,
+            PathBuf::from(&home)
+                .join("Library")
+                .join("Application Support")
+                .join("BraveSoftware")
+                .join("Brave-Browser"),
         );
         if let Ok(entries) = std::fs::read_dir(
             PathBuf::from(&home)
@@ -498,12 +654,24 @@ fn get_browser_session_paths() -> Vec<PathBuf> {
 
     #[cfg(target_os = "linux")]
     if let Ok(home) = std::env::var("HOME") {
-        paths.push(
+        push_chromium_user_data_session_paths(
+            &mut paths,
+            PathBuf::from(&home).join(".config").join("google-chrome"),
+        );
+        push_chromium_user_data_session_paths(
+            &mut paths,
+            PathBuf::from(&home).join(".config").join("chromium"),
+        );
+        push_chromium_user_data_session_paths(
+            &mut paths,
+            PathBuf::from(&home).join(".config").join("microsoft-edge"),
+        );
+        push_chromium_user_data_session_paths(
+            &mut paths,
             PathBuf::from(&home)
                 .join(".config")
-                .join("google-chrome")
-                .join("Default")
-                .join("Sessions"),
+                .join("BraveSoftware")
+                .join("Brave-Browser"),
         );
         if let Ok(entries) =
             std::fs::read_dir(PathBuf::from(&home).join(".mozilla").join("firefox"))
@@ -523,4 +691,54 @@ fn get_browser_session_paths() -> Vec<PathBuf> {
     }
 
     paths
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sig(domain: &str) -> dek_fingerprint_defs::model::WebAiSignatureDef {
+        dek_fingerprint_defs::model::WebAiSignatureDef {
+            domain: domain.to_string(),
+            name: "Test AI".to_string(),
+            vendor: "Test".to_string(),
+            capability_tags: vec!["llm.chat".to_string()],
+            risk_weight: 0.5,
+        }
+    }
+
+    #[test]
+    fn host_matching_requires_domain_boundary() {
+        let signature = sig("chatgpt.com");
+
+        assert_eq!(
+            host_matches_signature("chatgpt.com", &signature).as_deref(),
+            Some("chatgpt.com")
+        );
+        assert_eq!(
+            host_matches_signature("www.chatgpt.com", &signature).as_deref(),
+            Some("chatgpt.com")
+        );
+        assert!(host_matches_signature("notchatgpt.com", &signature).is_none());
+    }
+
+    #[test]
+    fn signature_matching_handles_known_web_ai_aliases() {
+        let chatgpt = sig("chatgpt.com");
+        let deepseek = sig("chat.deepseek.com");
+        let gemini = sig("gemini.google.com");
+
+        assert_eq!(
+            bytes_match_signature(b"https://chat.openai.com/c/123", &chatgpt).as_deref(),
+            Some("chat.openai.com")
+        );
+        assert_eq!(
+            host_matches_signature("deepseek.com", &deepseek).as_deref(),
+            Some("deepseek.com")
+        );
+        assert_eq!(
+            host_matches_signature("bard.google.com", &gemini).as_deref(),
+            Some("bard.google.com")
+        );
+    }
 }

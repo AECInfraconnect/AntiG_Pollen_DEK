@@ -22,7 +22,7 @@ pub fn extract_identity_hint(ev: &DiscoveryEvidenceV2) -> Option<IdentityHint> {
             name: s("name"),
             vendor: s("vendor"),
             agent_type: Some(InferredAgentType::WebAIApp),
-            capability_tags: vec!["web.chat".into(), "net.egress.llm".into()],
+            capability_tags: capability_tags_from_data(d, &["web.chat", "net.egress.llm"]),
             confidence: ev.confidence,
             ..Default::default()
         }),
@@ -30,7 +30,7 @@ pub fn extract_identity_hint(ev: &DiscoveryEvidenceV2) -> Option<IdentityHint> {
             name: s("name").or_else(|| s("sni_host")),
             vendor: s("vendor"),
             agent_type: Some(InferredAgentType::WebAIApp),
-            capability_tags: vec!["net.egress.llm".into()],
+            capability_tags: capability_tags_from_data(d, &["net.egress.llm"]),
             confidence: ev.confidence,
             ..Default::default()
         }),
@@ -99,4 +99,25 @@ pub fn extract_identity_hint(ev: &DiscoveryEvidenceV2) -> Option<IdentityHint> {
         }),
         _ => None,
     }
+}
+
+fn capability_tags_from_data(data: &serde_json::Value, defaults: &[&str]) -> Vec<String> {
+    let mut tags: Vec<String> = data
+        .get("capability_tags")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    for default in defaults {
+        let default = default.to_string();
+        if !tags.contains(&default) {
+            tags.push(default);
+        }
+    }
+
+    tags
 }

@@ -1,7 +1,14 @@
 import { useConfirm } from "../components/ui/ConfirmDialog";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { Search, ShieldAlert, Info, Activity, Play } from "lucide-react";
+import {
+  Search,
+  ShieldAlert,
+  Info,
+  Activity,
+  Play,
+  CheckCircle,
+} from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { RegistryApi } from "../services/api";
 import type {
@@ -26,6 +33,7 @@ export function AutoDiscovery() {
   const [params, setParams] = useSearchParams();
   const selectedId = params.get("selected") ?? undefined;
   const [protectTarget, setProtectTarget] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   const clearHistory = async () => {
     if (
@@ -123,6 +131,25 @@ export function AutoDiscovery() {
     return Array.from(
       new Set([...(candidate.capability_tags ?? []), ...fromLabels]),
     ).sort();
+  };
+
+  const confirmAgent = async (candidate: DiscoveredAgentCandidateV2) => {
+    setConfirmingId(candidate.candidate_id);
+    try {
+      const response = await RegistryApi.registerDiscoveryCandidate(
+        candidate.candidate_id,
+        {
+          agent_name: candidate.display_name,
+        },
+      );
+      toast.success(`Confirmed ${response.agent_name ?? candidate.display_name}`);
+      fetchCandidates();
+    } catch (e) {
+      console.error("Failed to confirm agent:", e);
+      toast.error("Failed to confirm agent");
+    } finally {
+      setConfirmingId(null);
+    }
   };
 
   const triggerScan = async () => {
@@ -225,6 +252,7 @@ export function AutoDiscovery() {
           if (c.status === "registered") status = "ok";
           else if (c.status === "pending_approval") status = "degraded";
           const caps = capabilityTags(c);
+          const isRegistered = c.status === "registered";
 
           return (
             <EntityCard
@@ -232,7 +260,7 @@ export function AutoDiscovery() {
               subtitle={c.inferred_agent_type}
               icon={ShieldAlert}
               status={status}
-              statusLabel={c.status === "registered" ? "Registered" : "Pending"}
+              statusLabel={isRegistered ? "Registered" : "Pending"}
               meta={[
                 {
                   label: "Confidence",
@@ -244,6 +272,22 @@ export function AutoDiscovery() {
                     caps.length > 0 ? caps.slice(0, 3).join(", ") : "Unknown",
                 },
               ]}
+              actions={
+                isRegistered
+                  ? []
+                  : [
+                      {
+                        label:
+                          confirmingId === c.candidate_id
+                            ? "Confirming..."
+                            : "Confirm Agent",
+                        icon: CheckCircle,
+                        primary: true,
+                        disabled: confirmingId === c.candidate_id,
+                        onClick: () => confirmAgent(c),
+                      },
+                    ]
+              }
               selected={selected}
             />
           );
@@ -253,17 +297,32 @@ export function AutoDiscovery() {
           if (c.status === "registered") status = "ok";
           else if (c.status === "pending_approval") status = "degraded";
           const caps = capabilityTags(c);
+          const isRegistered = c.status === "registered";
 
           return (
             <DetailPane
               title={c.display_name}
               subtitle={c.inferred_agent_type}
               status={status}
-              statusLabel={c.status === "registered" ? "Registered" : "Pending"}
+              statusLabel={isRegistered ? "Registered" : "Pending"}
               actions={[
+                ...(isRegistered
+                  ? []
+                  : [
+                      {
+                        label:
+                          confirmingId === c.candidate_id
+                            ? "Confirming..."
+                            : "Confirm Agent",
+                        primary: true,
+                        icon: CheckCircle,
+                        disabled: confirmingId === c.candidate_id,
+                        onClick: () => confirmAgent(c),
+                      },
+                    ]),
                 {
                   label: "Protect",
-                  primary: true,
+                  primary: isRegistered,
                   onClick: () => setProtectTarget(c.candidate_id),
                 },
                 {

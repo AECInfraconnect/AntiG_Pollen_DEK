@@ -8,6 +8,7 @@ export function EntityCard({
   status,
   statusLabel,
   meta = [],
+  actions = [],
   selected,
 }: {
   title: string;
@@ -16,6 +17,13 @@ export function EntityCard({
   status: UiStatus;
   statusLabel: string;
   meta?: { label: string; value: React.ReactNode }[];
+  actions?: {
+    label: string;
+    icon?: any;
+    primary?: boolean;
+    disabled?: boolean;
+    onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  }[];
   selected: boolean;
 }) {
   const s = statusToken(status);
@@ -61,6 +69,35 @@ export function EntityCard({
                   </span>
                 </span>
               ))}
+            </div>
+          )}
+          {actions.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {actions.map((action, idx) => {
+                const ActionIcon = action.icon;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    disabled={action.disabled}
+                    onKeyDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      action.onClick(event);
+                    }}
+                    className={cn(
+                      "inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      action.primary
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+                      action.disabled && "cursor-not-allowed opacity-50",
+                    )}
+                  >
+                    {ActionIcon && <ActionIcon className="h-3.5 w-3.5" />}
+                    {action.label}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
