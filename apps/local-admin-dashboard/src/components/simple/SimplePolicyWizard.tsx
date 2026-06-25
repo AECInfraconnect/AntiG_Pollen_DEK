@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ControlLevelSelector } from "./ControlLevelSelector";
 import { FeasibilityPreview } from "./FeasibilityPreview";
@@ -98,9 +98,13 @@ import { useMode } from "../../context/ModeContext";
 type Step = 1 | 2 | 3 | 4;
 
 export function SimplePolicyWizard({
-  agents,
+  agents = [],
+  initialTarget,
+  onComplete,
 }: {
-  agents: { id: string; label: string }[];
+  agents?: { id: string; label: string }[];
+  initialTarget?: string;
+  onComplete?: () => void;
 }) {
   const { mode } = useMode();
   const { t } = useTranslation();
@@ -114,6 +118,12 @@ export function SimplePolicyWizard({
   const [plan, setPlan] = useState<any | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (initialTarget && picked.length === 0) {
+      setPicked([initialTarget]);
+    }
+  }, [initialTarget]);
 
   async function toPolicies() {
     setBusy(true);
@@ -176,6 +186,10 @@ export function SimplePolicyWizard({
         sid = session.id;
       }
       await client.applyDeploySession(sid);
+      if (onComplete) {
+        onComplete();
+        return;
+      }
     } catch {}
     // -> ไปหน้า Activity timeline
     window.location.href = "/activity";
