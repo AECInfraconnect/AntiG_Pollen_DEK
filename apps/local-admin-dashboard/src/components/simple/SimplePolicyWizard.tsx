@@ -101,10 +101,12 @@ export function SimplePolicyWizard({
   agents = [],
   initialTarget,
   onComplete,
+  onCancel,
 }: {
   agents?: { id: string; label: string }[];
   initialTarget?: string;
   onComplete?: () => void;
+  onCancel?: () => void;
 }) {
   const { mode } = useMode();
   const { t } = useTranslation();
@@ -214,19 +216,29 @@ export function SimplePolicyWizard({
     window.location.href = "/activity";
   }
 
+  const isTh = localStorage.getItem("i18nextLng") === "th";
+
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6 relative py-4">
+      {onCancel && (
+        <button
+          onClick={onCancel}
+          className="absolute -top-2 right-0 px-3 py-1.5 text-sm font-medium rounded-md border bg-background hover:bg-muted text-muted-foreground"
+        >
+          Cancel
+        </button>
+      )}
       <StepDots
         step={step}
         labels={[
-          t("step.agent"),
-          t("step.policy"),
-          t("step.level"),
-          t("step.confirm"),
+          isTh ? "1. เลือก Agent" : "1. Agent",
+          isTh ? "2. เลือกนโยบาย" : "2. Policy",
+          isTh ? "3. ตั้งค่าการควบคุม" : "3. Control",
+          isTh ? "4. ยืนยัน" : "4. Confirm",
         ]}
       />
 
-      {step === 1 && (
+      {step === 1 && !initialTarget && (
         <Section title={t("step.agent")}>
           {agents.map((a) => (
             <Toggle
@@ -246,6 +258,12 @@ export function SimplePolicyWizard({
             label={t("common.next")}
           />
         </Section>
+      )}
+
+      {step === 1 && initialTarget && (
+        <div className="py-12 text-center text-sm text-muted-foreground animate-pulse">
+          Loading policy suggestions...
+        </div>
       )}
 
       {step === 2 && (

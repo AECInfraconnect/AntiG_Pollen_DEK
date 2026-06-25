@@ -352,6 +352,29 @@ fn aggregate_by_merge_key(
                         }
                     }
                 }
+                EvidenceSource::BrowserWindow => {
+                    if let Some(n) = ev.data.get("name").and_then(|v| v.as_str()) {
+                        name = n.to_string();
+                    }
+                    if let Some(v) = ev.data.get("vendor").and_then(|v| v.as_str()) {
+                        vendor = Some(v.to_string());
+                    }
+                    if let Some(caps) = ev.data.get("capability_tags").and_then(|v| v.as_array()) {
+                        for cap in caps {
+                            if let Some(c) = cap.as_str() {
+                                if !capability_tags.contains(&c.to_string()) {
+                                    capability_tags.push(c.to_string());
+                                }
+                            }
+                        }
+                    }
+                    agent_type = InferredAgentType::WebAIApp;
+                    matched_signals.push(MatchedSignal {
+                        kind: format!("{:?}", ev.source),
+                        detail: name.clone(),
+                        weight: ev.confidence,
+                    });
+                }
                 _ => {}
             }
         }

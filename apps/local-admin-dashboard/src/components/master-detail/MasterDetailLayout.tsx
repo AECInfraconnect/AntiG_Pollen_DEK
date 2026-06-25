@@ -67,12 +67,12 @@ export function MasterDetailLayout<T>({
           {toolbar}
         </div>
       )}
-      <div className="flex-1 min-h-0 grid gap-4 md:grid-cols-[320px_1fr]">
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4">
         <div
           role="listbox"
           aria-label="Items"
           className={cn(
-            "space-y-2 overflow-y-auto pr-1 pb-4 no-scrollbar",
+            "w-full md:w-80 shrink-0 space-y-2 overflow-y-auto pr-1 pb-4 no-scrollbar",
             selectedId ? "hidden md:block" : "block",
           )}
         >
@@ -103,7 +103,7 @@ export function MasterDetailLayout<T>({
         </div>
         <div
           className={cn(
-            "flex flex-col min-h-0 bg-card/30 rounded-xl border shadow-sm",
+            "flex-1 min-w-0 flex-col min-h-0 bg-card/30 rounded-xl border shadow-sm",
             selectedId ? "flex" : "hidden md:flex",
           )}
         >
@@ -112,7 +112,6 @@ export function MasterDetailLayout<T>({
               <div className="md:hidden flex items-center p-2 border-b border-border bg-card">
                 <button
                   onClick={() => {
-                    // We need a way to clear selection. The easiest is to call onSelect with empty string.
                     onSelect("");
                   }}
                   className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground px-2 py-1 rounded-md"

@@ -532,6 +532,7 @@ export function AutoDiscovery() {
                 toast.success("Protection applied successfully");
                 fetchCandidates();
               }}
+              onCancel={() => setProtectTarget(null)}
             />
           </div>
         </div>

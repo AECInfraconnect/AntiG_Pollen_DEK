@@ -141,7 +141,7 @@ mod windows_impl {
     }
 
     pub fn enumerate(browsers: &[BrowserProcessDef]) -> Vec<BrowserWindow> {
-        let mut sys = System::new();
+        let mut sys = System::new_all();
         sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
         let mut state = EnumState {
@@ -168,6 +168,17 @@ fn enumerate_browser_windows(browsers: &[BrowserProcessDef]) -> Vec<BrowserWindo
 #[cfg(target_os = "macos")]
 mod macos_impl {
     use super::*;
+    pub fn enumerate(browsers: &[BrowserProcessDef]) -> Vec<BrowserWindow> {
+        let mut out = vec![];
+        use sysinfo::System;
+        let mut sys = System::new_all();
+        sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+
+        for (pid, process) in sys.processes() {
+            let pname = process.name().to_string_lossy().to_ascii_lowercase();
+            let is_browser = browsers.iter().any(|b| {
+                b.process_names
+                    .iter()
                     .any(|n| n.eq_ignore_ascii_case(&pname))
             });
             if is_browser {
@@ -180,7 +191,7 @@ mod macos_impl {
                 out.push(BrowserWindow {
                     pid: pid.as_u32(),
                     process_name: pname,
-                    title: String::new(), // Full implementation requires CFDictionary parsing
+                    title: String::new(), // Full implementation requires CGWindowListCopyWindowInfo
                     cmdline,
                 });
             }
@@ -201,7 +212,7 @@ mod linux_impl {
     pub fn enumerate(browsers: &[BrowserProcessDef]) -> Vec<BrowserWindow> {
         let mut out = vec![];
         use sysinfo::System;
-        let mut sys = System::new();
+        let mut sys = System::new_all();
         sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
         // Placeholder for x11rb _NET_CLIENT_LIST logic
