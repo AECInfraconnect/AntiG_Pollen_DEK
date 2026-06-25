@@ -39,18 +39,18 @@ export function DetailPane({
 
   return (
     <div className="flex flex-col h-full rounded-xl bg-card/40 overflow-hidden">
-      <div className="border-b px-6 py-5 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
+      <div className="border-b px-6 py-5 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-xl font-semibold tracking-tight break-words">{title}</h3>
           {subtitle && (
-            <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
+            <p className="text-sm text-muted-foreground mt-1 break-words">{subtitle}</p>
           )}
           <div className="mt-3 flex items-center gap-3">
             <StatusChip status={status} label={statusLabel} />
           </div>
         </div>
         {actions.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {actions.map((act, i) => {
               const Icon = act.icon;
               return (
@@ -59,7 +59,7 @@ export function DetailPane({
                   onClick={act.onClick}
                   disabled={act.disabled}
                   className={cn(
-                    "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-9 px-4 py-2",
+                    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-9 px-4 py-2",
                     act.primary
                       ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                       : act.danger
