@@ -37,6 +37,7 @@ const groups = [
   {
     title: "Security & Policies",
     items: [
+      { name: "Protect", href: "/protect", icon: ShieldCheck },
       { name: "Policy Presets", href: "/policy-presets", icon: ShieldCheck },
       {
         name: "Policy Suggestions",
@@ -49,6 +50,7 @@ const groups = [
   {
     title: "Monitoring & Audit",
     items: [
+      { name: "Activity Timeline", href: "/activity", icon: Activity },
       { name: "Alerts & Shadow AI", href: "/alerts", icon: ShieldAlert },
       { name: "Audit Logs", href: "/audit", icon: Activity },
       { name: "Cost & Tokens", href: "/cost-ledger", icon: Zap },
@@ -68,7 +70,7 @@ const groups = [
   },
 ];
 
-const NAV = {
+export const NAV = {
   simple:    ["/", "/agents", "/protect", "/activity"],
   advanced:  ["/", "/agents", "/protect", "/activity", "/capabilities", "/plugin-marketplace"],
   enterprise:["/", "/agents", "/protect", "/activity", "/capabilities", "/policy-presets",

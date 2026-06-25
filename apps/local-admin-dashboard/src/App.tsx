@@ -18,6 +18,7 @@ import { CostLedger } from "./pages/CostLedger";
 import { PolicyPresets } from "./pages/PolicyPresets";
 import { Wizard } from "./pages/Wizard";
 import { ModeProvider } from "./context/ModeContext";
+import { Protect } from "./pages/Protect";
 
 // Merged composite pages
 import { AgentsAndModels } from "./pages/Ecosystem/AgentsAndModels";
@@ -45,12 +46,14 @@ function App() {
             <Route path="identities" element={<IdentityNetwork />} />
 
             {/* Security & Guardrails */}
+            <Route path="protect" element={<Protect />} />
             <Route path="policy-presets" element={<PolicyPresets />} />
             <Route path="policy-suggestions" element={<PolicySuggestions />} />
             <Route path="policies" element={<Policies />} />
             <Route path="simulator" element={<Simulator />} />
 
             {/* Monitoring & Activity */}
+            <Route path="activity" element={<Navigate to="/audit" replace />} />
             <Route path="alerts" element={<AlertsAndShadowAI />} />
             <Route path="audit" element={<DecisionLogs />} />
             <Route path="cost-ledger" element={<CostLedger />} />

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ControlLevelSelector } from "./ControlLevelSelector";
 import { FeasibilityPreview } from "./FeasibilityPreview";
-import type { ControlLevel, PolicyFeasibilityResultV2 as PolicyFeasibilityResult, PolicySuggestionV2 as PolicySuggestion } from "../../services/types";
-import { SimpleWizardApi as client } from "../../services/api"; // instance ของ ControlPlaneClient
+import type { ControlLevel, PolicyFeasibilityResult, PolicySuggestion } from "../../services/types";
+import { defaultClient as client } from "../../services/api"; // instance ของ ControlPlaneClient
 
 // --- PRIMITIVES (mocking the design system) ---
 function StepDots({ step, labels }: { step: number; labels: string[] }) {
@@ -27,9 +27,12 @@ function i18nTitle(s: any) {
 }
 // ----------------------------------------------
 
+import { useMode } from "../../context/ModeContext";
+
 type Step = 1 | 2 | 3 | 4;
 
 export function SimplePolicyWizard({ agents }: { agents: { id: string; label: string }[] }) {
+  const { mode } = useMode();
   const { t } = useTranslation();
   const [step, setStep] = useState<Step>(1);
   const [picked, setPicked] = useState<string[]>([]);
@@ -37,6 +40,8 @@ export function SimplePolicyWizard({ agents }: { agents: { id: string; label: st
   const [policy, setPolicy] = useState<PolicySuggestion | null>(null);
   const [level, setLevel] = useState<ControlLevel>("enforce");
   const [feasibility, setFeasibility] = useState<PolicyFeasibilityResult | null>(null);
+  const [plan, setPlan] = useState<any | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function toPolicies() {
@@ -53,7 +58,14 @@ export function SimplePolicyWizard({ agents }: { agents: { id: string; label: st
   async function toConfirm() {
     setBusy(true);
     try {
-        setFeasibility(await client.previewFeasibility(policy, level)); // auto-detect + auto-select เกิดที่ backend
+        const feas = await client.previewFeasibility(policy, level);
+        setFeasibility(feas); // auto-detect + auto-select เกิดที่ backend
+        if (mode === "advanced") {
+            const session = await client.createDeploySession({ policy, agents: picked, requested_level: level });
+            setSessionId(session.id);
+            const p = await client.confirmDeploySession(session.id);
+            setPlan(p);
+        }
     } catch {
         setFeasibility({
             policy_id: policy!.id,
@@ -70,9 +82,13 @@ export function SimplePolicyWizard({ agents }: { agents: { id: string; label: st
   }
   async function protectNow() {
     try {
-        const session = await client.createDeploySession({ policy, agents: picked, requested_level: level });
-        await client.confirmDeploySession(session.id);
-        await client.applyDeploySession(session.id);
+        let sid = sessionId;
+        if (!sid) {
+            const session = await client.createDeploySession({ policy, agents: picked, requested_level: level });
+            await client.confirmDeploySession(session.id);
+            sid = session.id;
+        }
+        await client.applyDeploySession(sid);
     } catch {}
     // -> ไปหน้า Activity timeline
     window.location.href = "/activity";
@@ -113,6 +129,19 @@ export function SimplePolicyWizard({ agents }: { agents: { id: string; label: st
       {step === 4 && feasibility && (
         <Section title={t("step.confirm")}>
           <FeasibilityPreview result={feasibility as any} />
+          {mode === "advanced" && plan && (
+            <div className="mt-4 rounded-xl border border-zinc-700 bg-zinc-900/50 p-4">
+              <h4 className="text-sm font-semibold text-zinc-300 mb-2">Control Method Plan (Advanced)</h4>
+              <ul className="space-y-2 text-xs font-mono text-zinc-400">
+                {plan.bindings.map((b: any, i: number) => (
+                  <li key={i}>[{b.domain}] → {b.method_id} (Level: {b.effective_level})</li>
+                ))}
+                {plan.fallbacks.map((f: string, i: number) => (
+                  <li key={`f-${i}`} className="text-amber-500/80">Fallback: {f}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <button onClick={protectNow}
             className="mt-4 w-full rounded-xl bg-violet-600 py-3 font-semibold text-white hover:bg-violet-500">
             {t("simple.protect_now")}

@@ -341,13 +341,18 @@ fn aggregate_by_merge_key(
         // New signature match logic using process_names, cmd_patterns, etc.
         if decision.best.is_none() {
             let facts = crate::signature_match::ProcessFacts {
-                name: ctx.process_name.clone(),
-                exe_path: ctx.exe_path_norm.clone(),
-                cmdline: Some(ctx.cmd_redacted.clone()),
+                process_name: &ctx.process_name,
+                exe_path: ctx.exe_path_norm.as_deref().unwrap_or(""),
+                cmdline: &ctx.cmd_redacted,
+                installed_paths: &ctx.present_paths,
             };
-            if let Some(am) = crate::signature_match::match_process(&facts, &signatures) {
+            if let Some(am) = crate::signature_match::match_process(
+                &facts,
+                &signatures,
+                &baseline.installed_app_signatures,
+            ) {
                 decision.best = Some(crate::identity::AgentMatch {
-                    signature_id: am.agent_id,
+                    signature_id: am.id,
                     display_name: am.display_name,
                     vendor: am.vendor,
                     product: None,

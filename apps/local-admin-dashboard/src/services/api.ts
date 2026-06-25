@@ -17,7 +17,7 @@ import type {
   DiscoveryScanJob,
   DiscoveredAgentCandidateV2,
   IdentityConfirmation,
-} from "./types";
+  LocalCapabilitySnapshot, PolicyFeasibilityResult, DeploySession, ControlMethodPlan, ControlLevel} from "./types";
 export type * from "./types";
 import type { components } from "../../../../contracts/generated/typescript/api";
 
@@ -119,31 +119,33 @@ export class ControlPlaneClient {
     return res.json();
   }
 
-  async getHostCapabilities(): Promise<any> {
-    return this.fetchApi("/v1/local/capability-snapshot/latest");
+  async getHostCapabilities(): Promise<LocalCapabilitySnapshot> {
+    return this.fetchApi("/v1/host/capabilities");
   }
-  async scanAgentsV2(): Promise<{ job_id: string }> {
-    return this.fetchApi("/v1/local/scan", { method: "POST" });
+  async scanAgents(): Promise<{ job_id: string }> {
+    return this.fetchApi("/v1/discovery/scan", { method: "POST" });
   }
-  async getScanResultV2(jobId: string) {
-    return this.fetchApi(`/v1/discovery/scan/${jobId}`); // Not used in wizard directly
+  async getScanResult(jobId: string) {
+    return this.fetchApi(`/v1/discovery/scan/${jobId}`);
   }
-  async getPolicySuggestionsV2(_agentIds: string[]): Promise<any[]> {
-    return this.fetchApi("/v1/policy-suggestions");
-  }
-  async previewFeasibilityV2(_policy: unknown, level: string): Promise<any> {
-    return this.fetchApi("/v1/policies/feasibility", {
-      method: "POST", body: JSON.stringify({ policy_intent: "observe_agent_activity", requested_control_level: level, targets: [], mode: "desktop_simple" }),
+  async getPolicySuggestions(agentIds: string[]): Promise<PolicySuggestion[]> {
+    return this.fetchApi("/v1/policy/suggestions", {
+      method: "POST", body: JSON.stringify({ agents: agentIds }),
     });
   }
-  async createDeploySessionV2(_input: { policy: unknown; agents: string[]; requested_level: string }): Promise<any> {
-    return this.fetchApi("/v1/deployment-sessions", { method: "POST" });
+  async previewFeasibility(policy: unknown, level: ControlLevel): Promise<PolicyFeasibilityResult> {
+    return this.fetchApi("/v1/policy/feasibility", {
+      method: "POST", body: JSON.stringify({ policy, requested_level: level }),
+    });
   }
-  async confirmDeploySessionV2(id: string): Promise<any> {
-    return this.fetchApi(`/v1/deployment-sessions/${id}/actions/action-1/approve`, { method: "POST" });
+  async createDeploySession(input: { policy: unknown; agents: string[]; requested_level: ControlLevel }): Promise<DeploySession> {
+    return this.fetchApi("/v1/deploy/session", { method: "POST", body: JSON.stringify(input) });
   }
-  async applyDeploySessionV2(id: string) {
-    return this.fetchApi(`/v1/deployment-sessions/${id}/retry`, { method: "POST" });
+  async confirmDeploySession(id: string): Promise<ControlMethodPlan> {
+    return this.fetchApi(`/v1/deploy/session/${id}/confirm`, { method: "POST" });
+  }
+  async applyDeploySession(id: string) {
+    return this.fetchApi(`/v1/deploy/session/${id}/apply`, { method: "POST" });
   }
 
   // Registry
@@ -698,12 +700,12 @@ export const PolicyFirstApi = {
 
 export const SimpleWizardApi = {
   getHostCapabilities: () => defaultClient.getHostCapabilities(),
-  scanAgents: () => defaultClient.scanAgentsV2(),
-  getScanResult: (jobId: string) => defaultClient.getScanResultV2(jobId),
-  getPolicySuggestions: (agentIds: string[]) => defaultClient.getPolicySuggestionsV2(agentIds),
-  previewFeasibility: (policy: unknown, level: string) => defaultClient.previewFeasibilityV2(policy, level),
-  createDeploySession: (input: { policy: unknown; agents: string[]; requested_level: string }) => defaultClient.createDeploySessionV2(input),
-  confirmDeploySession: (id: string) => defaultClient.confirmDeploySessionV2(id),
-  applyDeploySession: (id: string) => defaultClient.applyDeploySessionV2(id),
+  scanAgents: () => defaultClient.scanAgents(),
+  getScanResult: (jobId: string) => defaultClient.getScanResult(jobId),
+  getPolicySuggestions: (agentIds: string[]) => defaultClient.getPolicySuggestions(agentIds),
+  previewFeasibility: (policy: unknown, level: ControlLevel) => defaultClient.previewFeasibility(policy, level),
+  createDeploySession: (input: { policy: unknown; agents: string[]; requested_level: ControlLevel }) => defaultClient.createDeploySession(input),
+  confirmDeploySession: (id: string) => defaultClient.confirmDeploySession(id),
+  applyDeploySession: (id: string) => defaultClient.applyDeploySession(id),
 };
 

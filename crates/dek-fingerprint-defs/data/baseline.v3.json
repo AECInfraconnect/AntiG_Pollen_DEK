@@ -2875,6 +2875,11 @@
             "Claude"
           ]
         }
+      ],
+      "process_names": [
+        "Claude.exe",
+        "Claude",
+        "claude"
       ]
     },
     {

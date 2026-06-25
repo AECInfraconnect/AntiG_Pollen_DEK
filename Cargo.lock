@@ -2116,6 +2116,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "dek-domain-schema",
+ "serde",
  "tokio",
 ]
 
@@ -4598,6 +4599,7 @@ dependencies = [
  "dek-control-plane-api",
  "dek-deployment-planner",
  "dek-domain-schema",
+ "dek-enforcement-api",
  "dek-errors",
  "dek-fingerprint-defs",
  "dek-metrics",

@@ -42,3 +42,7 @@ pollen-local.db-wal
  
 # Ignored Design Files
 POLLEK_*
+
+# Context documents
+POLLEK_*.md
+POLLEN_*.md

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Activity, ShieldAlert, Server, Users, Info } from "lucide-react";
 import { RegistryApi, ActivityApi, PolicyFirstApi } from "../services/api";
-import type { LocalCapabilitySnapshot } from "../services/types";
+import type { LegacyLocalCapabilitySnapshot } from "../services/types";
 
 export function Overview() {
   const [metrics, setMetrics] = useState({
@@ -10,7 +10,7 @@ export function Overview() {
     tools: 0,
     resources: 0,
   });
-  const [snapshot, setSnapshot] = useState<LocalCapabilitySnapshot | null>(
+  const [snapshot, setSnapshot] = useState<LegacyLocalCapabilitySnapshot | null>(
     null,
   );
   const [snapshotLoading, setSnapshotLoading] = useState(true);

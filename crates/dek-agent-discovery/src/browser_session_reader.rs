@@ -84,3 +84,32 @@ pub fn firefox_session_paths() -> Vec<PathBuf> {
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_utf16_session_match_chatgpt() {
+        let needle = "chatgpt.com";
+        // construct UTF-16LE bytes
+        let utf16: Vec<u8> = needle
+            .encode_utf16()
+            .flat_map(|u| u.to_le_bytes())
+            .collect();
+
+        let mut haystack = vec![0x00, 0x01, 0x02];
+        haystack.extend_from_slice(&utf16);
+        haystack.extend_from_slice(&[0x03, 0x04]);
+
+        assert!(bytes_contain_domain(&haystack, needle));
+
+        // UTF-8 test
+        let mut haystack_utf8 = vec![0x00, 0x01];
+        haystack_utf8.extend_from_slice(needle.as_bytes());
+        assert!(bytes_contain_domain(&haystack_utf8, needle));
+
+        // Not found
+        assert!(!bytes_contain_domain(&[0, 1, 2, 3], needle));
+    }
+}

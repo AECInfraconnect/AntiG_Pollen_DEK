@@ -83,7 +83,7 @@ export type Resource = components["schemas"]["Resource"];
 export type AgentObservationEvent =
   components["schemas"]["AgentObservationEvent"];
 export type CostLedgerEntry = components["schemas"]["CostLedgerEntry"];
-export type PolicySuggestion = components["schemas"]["PolicySuggestion"];
+export type LegacyPolicySuggestion = components["schemas"]["PolicySuggestion"];
 export type DiscoveryCandidate = components["schemas"]["DiscoveryCandidate"];
 
 export interface ConnectorConfig {
@@ -533,7 +533,7 @@ export interface Enforceability {
   can_strict_deny: boolean;
 }
 
-export interface ControlMethodPlan {
+export interface LegacyControlMethodPlan {
   method: ControlMethod;
   internal_pep: InternalPep;
   internal_pdp: InternalPdp;
@@ -551,7 +551,7 @@ export interface PolicyFeasibilityRequest {
   mode: ProductMode;
 }
 
-export interface PolicyFeasibilityResult {
+export interface LegacyPolicyFeasibilityResult {
   target: any;
   policy_intent: PolicyIntent;
   requested_control_level: string;
@@ -578,7 +578,7 @@ export interface ControlMethodCapability {
   next_action?: RequiredUserAction;
 }
 
-export interface LocalCapabilitySnapshot {
+export interface LegacyLocalCapabilitySnapshot {
   snapshot_id: string;
   device_id: string;
   os: any;
@@ -600,7 +600,7 @@ export interface SuggestedPolicy {
   setup_required: RequiredUserAction[];
 }
 
-export interface DeploymentSession {
+export interface LegacyDeploymentSession {
   deployment_id: string;
   policy_id: string;
   policy_version: string;
@@ -612,17 +612,18 @@ export interface DeploymentSession {
   created_by: string;
 }
 
+
 // V2 Policy-First Types
 export type ControlLevel = "observe" | "warn" | "ask" | "enforce";
 export type FeasibilityVerdict = "fully_enforceable" | "partial_observe" | "observe_only" | "not_applicable";
 export type MethodStatus = "available" | "needs_install" | "needs_permission" | "unsupported";
 
 export interface ControlMethodCap {
-  id: string;
-  domains: string[];
+  id: string;                 // "mcp_stdio" | "linux_ebpf" | "windows_wfp_um" | ...
+  domains: string[];          // ["network","file_system",...]
   max_level: ControlLevel;
   status: MethodStatus;
-  requires: string[];
+  requires: string[];         // ["admin","entitlement",...]
   source: string; maturity: string;
 }
 export interface CapabilityUpgrade {
@@ -630,7 +631,7 @@ export interface CapabilityUpgrade {
   how_th: string; how_en: string;
   download_url?: string; auto_installable: boolean; requires_restart: boolean;
 }
-export interface LocalCapabilitySnapshotV2 {
+export interface LocalCapabilitySnapshot {
   os: { name: string; version: string };
   captured_at: string;
   control_methods: ControlMethodCap[];
@@ -641,7 +642,7 @@ export interface DomainFeasibility {
   domain: string; chosen_method?: string; level: ControlLevel;
   reason_th: string; reason_en: string;
 }
-export interface PolicyFeasibilityResultV2 {
+export interface PolicyFeasibilityResult {
   policy_id: string;
   requested_level: ControlLevel; achievable_level: ControlLevel;
   verdict: FeasibilityVerdict;
@@ -650,7 +651,6 @@ export interface PolicyFeasibilityResultV2 {
   friendly_th: string; friendly_en: string;
 }
 export interface MethodBinding { domain: string; method_id: string; effective_level: ControlLevel; maturity: string; }
-export interface ControlMethodPlanV2 { policy_id: string; bindings: MethodBinding[]; fallbacks: string[]; auto_selected: boolean; }
-export interface PolicySuggestionV2 { id: string; title_th: string; title_en: string; domains: string[]; recommended_level: ControlLevel; }
-export interface DeploySessionV2 { id: string; feasibility: PolicyFeasibilityResultV2; plan?: ControlMethodPlanV2; status: string; }
-
+export interface ControlMethodPlan { policy_id: string; bindings: MethodBinding[]; fallbacks: string[]; auto_selected: boolean; }
+export interface PolicySuggestion { id: string; title_th: string; title_en: string; domains: string[]; recommended_level: ControlLevel; }
+export interface DeploySession { id: string; feasibility: PolicyFeasibilityResult; plan?: ControlMethodPlan; status: string; }

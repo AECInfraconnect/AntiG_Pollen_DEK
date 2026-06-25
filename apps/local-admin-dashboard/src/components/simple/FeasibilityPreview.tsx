@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import type { PolicyFeasibilityResultV2 } from "../../services/types";
+import type { PolicyFeasibilityResult } from "../../services/types";
 import { CapabilityUpgradeCard } from "./CapabilityUpgradeCard";
 
 const BADGE: Record<string, { icon: string; cls: string }> = {
@@ -9,7 +9,7 @@ const BADGE: Record<string, { icon: string; cls: string }> = {
   not_applicable:    { icon: "⚪", cls: "text-zinc-400 border-zinc-600 bg-zinc-500/10" },
 };
 
-export function FeasibilityPreview({ result }: { result: PolicyFeasibilityResultV2 }) {
+export function FeasibilityPreview({ result }: { result: PolicyFeasibilityResult }) {
   const { i18n } = useTranslation();
   const th = i18n.language === "th";
   const b = BADGE[result.verdict] || BADGE["not_applicable"];
@@ -21,12 +21,12 @@ export function FeasibilityPreview({ result }: { result: PolicyFeasibilityResult
           <span className="font-semibold">{th ? result.friendly_th : result.friendly_en}</span>
         </div>
         <ul className="mt-2 space-y-1 text-sm text-zinc-300">
-          {result.per_domain.map((d) => (
+          {result.per_domain.map((d: any) => (
             <li key={d.domain}>• {th ? d.reason_th : d.reason_en}</li>
           ))}
         </ul>
       </div>
-      {result.gaps.length > 0 && result.gaps.map((g) => (
+      {result.gaps.length > 0 && result.gaps.map((g: any) => (
         <CapabilityUpgradeCard key={g.method_id} upgrade={g} />
       ))}
     </div>
