@@ -77,9 +77,12 @@ const groups = [
 
 export const NAV = {
   simple:    ["/", "/agents", "/protect", "/resources", "/activity"],
-  advanced:  ["/", "/agents", "/protect", "/resources", "/activity", "/capabilities", "/plugin-marketplace"],
-  enterprise:["/", "/agents", "/protect", "/resources", "/activity", "/capabilities", "/policy-presets",
-              "/settings", "/bundles", "/identities", "/shadow-ai"],
+  advanced:  ["/", "/agents", "/protect", "/resources", "/activity", "/capabilities", "/plugin-marketplace", "/policies", "/alerts", "/audit"],
+  enterprise:["/", "/agents", "/integrations", "/plugin-marketplace", 
+              "/protect", "/policy-presets", "/policy-suggestions", "/policies",
+              "/resources", "/identities", 
+              "/activity", "/alerts", "/audit", "/cost-ledger",
+              "/entities", "/simulator", "/bundles", "/discovery", "/settings"],
 };
 
 export function Sidebar() {
@@ -87,7 +90,8 @@ export function Sidebar() {
   const { t } = useTranslation();
   const { mode } = useMode();
 
-  const allowed = new Set(NAV[mode]);
+  const safeMode = NAV[mode as keyof typeof NAV] ? mode : "simple";
+  const allowed = new Set(NAV[safeMode as keyof typeof NAV]);
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-card/50 backdrop-blur-xl">

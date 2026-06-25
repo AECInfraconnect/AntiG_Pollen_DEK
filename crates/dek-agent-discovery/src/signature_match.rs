@@ -7,7 +7,7 @@ pub struct ProcessFacts<'a> {
     pub installed_paths: &'a [String],
 }
 
-pub struct AgentMatch {
+pub struct SignatureMatch {
     pub id: String,
     pub display_name: String,
     pub vendor: Option<String>,
@@ -21,8 +21,8 @@ pub fn match_process(
     facts: &ProcessFacts,
     sigs: &[AgentSignatureV2],
     apps: &[InstalledAppSignatureDef],
-) -> Option<AgentMatch> {
-    let mut best: Option<AgentMatch> = None;
+) -> Option<SignatureMatch> {
+    let mut best: Option<SignatureMatch> = None;
     let pname = facts.process_name.to_lowercase();
     let exe = facts.exe_path.replace('\\', "/").to_lowercase();
     let cmd = facts.cmdline.to_lowercase();
@@ -77,7 +77,7 @@ pub fn match_process(
         }
 
         if conf > 0.0 && best.as_ref().map(|b| conf > b.confidence).unwrap_or(true) {
-            best = Some(AgentMatch {
+            best = Some(SignatureMatch {
                 id: s.id.clone(),
                 display_name: s.display_name.clone(),
                 vendor: s.vendor.clone(),
@@ -102,7 +102,7 @@ pub fn match_process(
         if hit_path || hit_name {
             let conf = if hit_path { 0.95 } else { 0.9 };
             if best.as_ref().map(|b| conf > b.confidence).unwrap_or(true) {
-                best = Some(AgentMatch {
+                best = Some(SignatureMatch {
                     id: a.id.clone(),
                     display_name: a.name.clone(),
                     vendor: Some(a.vendor.clone()),

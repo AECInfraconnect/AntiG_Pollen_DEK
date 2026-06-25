@@ -34,6 +34,9 @@ impl AuditEntry {
 pub fn verify_chain(entries: &[AuditEntry]) -> Result<(), u64> {
     let mut prev = "GENESIS".to_string();
     for e in entries {
+        if e.prev_hash != prev {
+            return Err(e.seq);
+        }
         let recomputed = AuditEntry::new(e.seq, e.timestamp.clone(), e.payload_json.clone(), &prev);
         if recomputed.entry_hash != e.entry_hash {
             return Err(e.seq); // คืน seq ที่ถูกแก้

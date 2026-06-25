@@ -13,11 +13,11 @@ export default defineConfig({
   server: {
     proxy: {
       "/v1": {
-        target: "http://127.0.0.1:3000",
+        target: "http://127.0.0.1:43890",
         changeOrigin: true,
       },
       "/.well-known": {
-        target: "http://127.0.0.1:3000",
+        target: "http://127.0.0.1:43890",
         changeOrigin: true,
       },
     },

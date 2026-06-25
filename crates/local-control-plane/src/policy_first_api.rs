@@ -18,22 +18,68 @@ use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/v1/host/capabilities", get(get_host_capabilities))
-        .route("/v1/discovery/scan", post(scan_agents))
-        .route("/v1/discovery/scan/:job", get(get_scan_result))
-        .route("/v1/policy/suggestions", post(get_policy_suggestions))
-        .route("/v1/policy/feasibility", post(evaluate_feasibility))
-        .route("/v1/deploy/session", post(create_deploy_session))
         .route(
-            "/v1/deploy/session/:id/confirm",
+            "/v1/tenants/:tenant/capability-snapshot",
+            get(get_host_capabilities),
+        )
+        .route("/v1/tenants/:tenant/scan", post(scan_agents))
+        .route("/v1/tenants/:tenant/scans/:job", get(get_scan_result))
+        .route(
+            "/v1/tenants/:tenant/policy-suggestions",
+            post(get_policy_suggestions),
+        )
+        .route(
+            "/v1/tenants/:tenant/policies/feasibility",
+            post(evaluate_feasibility),
+        )
+        .route(
+            "/v1/tenants/:tenant/deployment-sessions",
+            post(create_deploy_session),
+        )
+        .route(
+            "/v1/tenants/:tenant/deployment-sessions/:id/confirm",
             post(confirm_deploy_session),
         )
-        .route("/v1/deploy/session/:id/apply", post(apply_deploy_session))
+        .route(
+            "/v1/tenants/:tenant/deployment-sessions/:id/apply",
+            post(apply_deploy_session),
+        )
+}
+
+fn is_elevated() -> bool {
+    // Basic stub for elevation check
+    #[cfg(target_os = "windows")]
+    {
+        // For testing/mocking, assume true or implement real check
+        true
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        true
+    }
 }
 
 fn get_current_snapshot() -> LocalCapabilitySnapshot {
+    if std::env::consts::OS == "windows" {
+        return LocalCapabilitySnapshot {
+            control_methods: vec![ControlMethodCap {
+                id: "windows_wfp_um".into(),
+                domains: vec![ControlDomain::Network],
+                max_level: if is_elevated() {
+                    ControlLevel::Enforce
+                } else {
+                    ControlLevel::Observe
+                },
+                status: if is_elevated() {
+                    MethodStatus::Available
+                } else {
+                    MethodStatus::NeedsPermission
+                },
+            }],
+        };
+    }
+
     let method_id = match std::env::consts::OS {
-        "windows" => "windows_wfp_um",
         "macos" => "macos_netext",
         _ => "linux_ebpf",
     };
@@ -47,7 +93,9 @@ fn get_current_snapshot() -> LocalCapabilitySnapshot {
     }
 }
 
-async fn get_host_capabilities() -> ApiResult<(StatusCode, Json<LocalCapabilitySnapshot>)> {
+async fn get_host_capabilities(
+    Path(_tenant): Path<String>,
+) -> ApiResult<(StatusCode, Json<LocalCapabilitySnapshot>)> {
     Ok((StatusCode::OK, Json(get_current_snapshot())))
 }
 
@@ -56,7 +104,7 @@ struct ScanResponse {
     job_id: String,
 }
 
-async fn scan_agents() -> ApiResult<(StatusCode, Json<ScanResponse>)> {
+async fn scan_agents(Path(_tenant): Path<String>) -> ApiResult<(StatusCode, Json<ScanResponse>)> {
     Ok((
         StatusCode::OK,
         Json(ScanResponse {
@@ -66,7 +114,7 @@ async fn scan_agents() -> ApiResult<(StatusCode, Json<ScanResponse>)> {
 }
 
 async fn get_scan_result(
-    Path(job_id): Path<String>,
+    Path((_tenant, job_id)): Path<(String, String)>,
 ) -> ApiResult<(StatusCode, Json<serde_json::Value>)> {
     Ok((
         StatusCode::OK,
@@ -90,6 +138,7 @@ struct PolicySuggestion {
 }
 
 async fn get_policy_suggestions(
+    Path(_tenant): Path<String>,
     Json(_req): Json<SuggestionsRequest>,
 ) -> ApiResult<(StatusCode, Json<Vec<PolicySuggestion>>)> {
     Ok((
@@ -112,6 +161,7 @@ struct FeasibilityRequest {
 }
 
 async fn evaluate_feasibility(
+    Path(_tenant): Path<String>,
     Json(req): Json<FeasibilityRequest>,
 ) -> ApiResult<(StatusCode, Json<PolicyFeasibilityResult>)> {
     let pol = Policy {
@@ -139,6 +189,7 @@ struct DeploySession {
 }
 
 async fn create_deploy_session(
+    Path(_tenant): Path<String>,
     Json(req): Json<CreateDeployRequest>,
 ) -> ApiResult<(StatusCode, Json<DeploySession>)> {
     let pol = Policy {
@@ -158,7 +209,7 @@ async fn create_deploy_session(
 }
 
 async fn confirm_deploy_session(
-    Path(_id): Path<String>,
+    Path((_tenant, _id)): Path<(String, String)>,
 ) -> ApiResult<(
     StatusCode,
     Json<dek_enforcement_api::planner::ControlMethodPlan>,
@@ -179,7 +230,7 @@ struct DeployReport {
 }
 
 async fn apply_deploy_session(
-    Path(_id): Path<String>,
+    Path((_tenant, _id)): Path<(String, String)>,
 ) -> ApiResult<(StatusCode, Json<DeployReport>)> {
     Ok((
         StatusCode::OK,

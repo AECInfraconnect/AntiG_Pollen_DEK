@@ -1,4 +1,4 @@
-﻿use axum::{http::StatusCode, response::IntoResponse, Json};
+use axum::{http::StatusCode, response::IntoResponse, Json};
 use serde::Serialize;
 
 #[derive(Debug, thiserror::Error)]
@@ -43,7 +43,7 @@ impl IntoResponse for ApiError {
                     ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "unauthorized"),
                     ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "forbidden"),
                     ApiError::Conflict(_) => (StatusCode::CONFLICT, "conflict"),
-                    ApiError::Internal(_) => unreachable!(), //
+                    ApiError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "internal"), // fallback
                 };
 
                 let body = ErrorBody {

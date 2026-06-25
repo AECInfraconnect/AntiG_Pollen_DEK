@@ -1,4 +1,4 @@
-﻿pub mod audit;
+pub mod audit;
 pub mod crypto;
 pub mod key_manager;
 pub mod os;
@@ -102,7 +102,8 @@ impl<K: key_manager::OsKeyStore> Spool<K> {
             (state.last_hash.clone(), state.seq)
         };
 
-        let payload_json = String::from_utf8(data.clone()).unwrap_or_default();
+        let payload_json = String::from_utf8(data.clone())
+            .unwrap_or_else(|_| String::from_utf8_lossy(&data).to_string());
         let audit_entry = audit::AuditEntry::new(
             seq,
             chrono::Utc::now().to_rfc3339(),
@@ -230,6 +231,12 @@ impl<K: key_manager::OsKeyStore> Spool<K> {
                     }
                 }
                 return Err(SpoolError::Tampered);
+            } else {
+                let mut state = self.state.lock().await;
+                if let Some(last) = results.last() {
+                    state.seq = last.seq;
+                    state.last_hash = last.entry_hash.clone();
+                }
             }
         }
         Ok(results)

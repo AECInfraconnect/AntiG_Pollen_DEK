@@ -23,10 +23,12 @@ pub mod policy_template;
 pub mod principal;
 pub mod relationship;
 pub mod resource;
+pub mod scan_session;
 pub mod spiffe;
 pub mod telemetry_event;
 pub mod tenant;
 pub mod tool;
+pub mod user_event;
 
 pub use agent::*;
 pub use bundle::*;
@@ -49,7 +51,10 @@ pub use policy_template::*;
 pub use principal::*;
 pub use relationship::*;
 pub use resource::*;
+pub use scan_session::*;
 pub use spiffe::*;
 pub use telemetry_event::*;
 pub use tenant::*;
 pub use tool::*;
+
+pub use user_event::{EventCategory, UserVisibleEvent};

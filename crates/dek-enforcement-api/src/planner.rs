@@ -222,11 +222,11 @@ pub fn assess_feasibility(
 }
 
 /// 2) Control method selector — เลือกวิธีคุมที่ "ดีที่สุดที่ทำได้จริง" ต่อ domain (capability-aware)
-fn select_method<'a>(
+fn select_method(
     domain: ControlDomain,
     want: ControlLevel,
-    snap: &'a LocalCapabilitySnapshot,
-) -> Option<&'a ControlMethodCap> {
+    snap: &LocalCapabilitySnapshot,
+) -> Option<&ControlMethodCap> {
     let pref: &[&str] = match domain {
         ControlDomain::Network => &["linux_ebpf", "macos_netext", "windows_wfp_um", "mcp_http"],
         ControlDomain::FileSystem => &["linux_landlock", "macos_es", "mcp_stdio"],
