@@ -7,8 +7,6 @@ import type {
   PolicySuggestionV2,
 } from "../services/types";
 import {
-  ShieldCheck,
-  AlertTriangle,
   Check,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -117,13 +115,6 @@ export function Wizard() {
       setLoading(false);
     }
   };
-
-  const levels: { val: ControlLevel; label: string; desc: string }[] = [
-    { val: "observe", label: "Observe Only", desc: "Log activity silently" },
-    { val: "warn", label: "Warn", desc: "Allow but log warning" },
-    { val: "ask", label: "Require Approval", desc: "Prompt user for permission" },
-    { val: "enforce", label: "Enforce (Block)", desc: "Block without exception" },
-  ];
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto py-8">
