@@ -7,17 +7,24 @@ import { EntityCard } from "../components/master-detail/EntityCard";
 import { DetailPane } from "../components/master-detail/DetailPane";
 import { EmptyState } from "../components/master-detail/EmptyState";
 
+import { useConfirm } from "../components/ui/ConfirmDialog";
+import { toast } from "sonner";
+
 export function Entities() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [params, setParams] = useSearchParams();
   const selectedId = params.get("selected") ?? undefined;
+  const { confirm } = useConfirm();
 
   const fetchEntities = () => {
     setLoading(true);
     RegistryApi.listEntities()
       .then(setItems)
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err);
+        toast.error("Failed to load entities");
+      })
       .finally(() => setLoading(false));
   };
 
@@ -31,10 +38,15 @@ export function Entities() {
       return p;
     });
 
-  const handleDelete = (id: string) => {
-    // Custom confirm dialog logic should go here, but for now we use browser confirm
-    // as we haven't built the custom confirm hook yet (in PR-UX-5)
-    if (window.confirm("Are you sure you want to delete this entity?")) {
+  const handleDelete = async (id: string) => {
+    const isConfirmed = await confirm({
+      title: "Delete Entity",
+      description: "Are you sure you want to delete this entity? This action cannot be undone.",
+      confirmText: "Delete",
+      danger: true,
+    });
+    
+    if (isConfirmed) {
       RegistryApi.deleteEntity(id).then(() => {
         if (selectedId === id) {
           setParams((p) => {
@@ -42,8 +54,9 @@ export function Entities() {
             return p;
           });
         }
+        toast.success("Entity deleted successfully");
         fetchEntities();
-      });
+      }).catch(() => toast.error("Failed to delete entity"));
     }
   };
 

@@ -1,9 +1,9 @@
-import { Bell, Search, Moon, Sun, Languages } from "lucide-react";
+import { Bell, Search, Moon, Sun, Languages, Menu } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ModeSwitcher } from "./ModeSwitcher";
 
-export function Header() {
+export function Header({ toggleMobileMenu }: { toggleMobileMenu?: () => void }) {
   const { i18n } = useTranslation();
   const [isDark, setIsDark] = useState(true);
 
@@ -33,9 +33,17 @@ export function Header() {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-card/50 px-6 backdrop-blur-xl">
-      <div className="flex flex-1 items-center gap-4">
-        <div className="relative w-96">
+    <header className="flex h-16 items-center justify-between border-b bg-card/50 px-4 md:px-6 backdrop-blur-xl shrink-0">
+      <div className="flex flex-1 items-center gap-2 md:gap-4">
+        {toggleMobileMenu && (
+          <button
+            onClick={toggleMobileMenu}
+            className="md:hidden rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
+        <div className="relative w-full max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <input
             id="global-search-input"
