@@ -1,0 +1,14 @@
+{
+  "os": {
+    "type": "macos",
+    "version": "14",
+    "arch": "aarch64"
+  },
+  "agents": [],
+  "peps": [
+    {
+      "kind": "NetworkExtension",
+      "approved": false
+    }
+  ]
+}

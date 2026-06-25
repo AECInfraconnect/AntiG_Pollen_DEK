@@ -1,0 +1,16 @@
+{
+  "os": {
+    "type": "macos",
+    "version": "14",
+    "arch": "aarch64"
+  },
+  "agents": [
+    {
+      "id": "agent-2",
+      "surfaces": [
+        "McpHttp"
+      ]
+    }
+  ],
+  "peps": []
+}

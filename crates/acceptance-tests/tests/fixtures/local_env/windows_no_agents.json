@@ -1,0 +1,11 @@
+{
+  "os": {
+    "type": "windows",
+    "version": "11",
+    "arch": "x86_64"
+  },
+  "agents": [],
+  "peps": [
+    "Wfp"
+  ]
+}

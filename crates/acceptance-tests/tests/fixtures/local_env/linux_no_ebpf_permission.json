@@ -1,0 +1,15 @@
+{
+  "os": {
+    "type": "linux",
+    "version": "Ubuntu",
+    "arch": "x86_64"
+  },
+  "agents": [],
+  "peps": [
+    {
+      "kind": "eBPF",
+      "ready": false,
+      "reason": "Permission denied"
+    }
+  ]
+}
