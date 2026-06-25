@@ -67,13 +67,23 @@ export function AutoDiscovery() {
       .then(([discovered, agents]) => {
         const agentIds = new Set(agents.map(a => a.agent_id));
         
-        // Update discovered status if they exist in agents
+        const registeredFingerprints = new Set(
+          discovered
+            .filter(c => agentIds.has(c.candidate_id) || c.status === "registered")
+            .map(c => c.evidence?.[0]?.merge_key || c.display_name)
+        );
+
+        // Update discovered status if they exist in agents or share a fingerprint
         const mergedCandidates = discovered.map(c => {
-           if (agentIds.has(c.candidate_id)) {
+           const fp = c.evidence?.[0]?.merge_key || c.display_name;
+           if (agentIds.has(c.candidate_id) || registeredFingerprints.has(fp)) {
               return { ...c, status: "registered" };
            }
            return c;
         });
+
+        // Sort by first_seen descending (Latest Discover on top)
+        mergedCandidates.sort((a, b) => new Date(b.first_seen).getTime() - new Date(a.first_seen).getTime());
 
         setCandidates(mergedCandidates);
       })
@@ -298,6 +308,19 @@ export function AutoDiscovery() {
             onAction={triggerScan}
           />
         }
+        renderGroupHeader={(c, _, prev) => {
+          const d1 = new Date(c.first_seen).toLocaleDateString();
+          const d2 = prev ? new Date(prev.first_seen).toLocaleDateString() : null;
+          if (d1 !== d2) {
+            const isToday = d1 === new Date().toLocaleDateString();
+            return (
+              <div className="px-2 py-1 mt-4 first:mt-0 mb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {isToday ? "Today (Latest)" : d1}
+              </div>
+            );
+          }
+          return null;
+        }}
         renderCard={(c, selected) => {
           let status: UiStatus = "idle";
           if (c.status === "registered") status = "ok";
@@ -316,6 +339,12 @@ export function AutoDiscovery() {
                 {
                   label: "Confidence",
                   value: `${(c.confidence * 100).toFixed(0)}%`,
+                },
+                {
+                  label: "Discovered",
+                  value: new Date(c.first_seen).toLocaleString(undefined, {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                  }),
                 },
                 {
                   label: "Capabilities",

@@ -9,6 +9,7 @@ export function MasterDetailLayout<T>({
   idSelector,
   renderCard,
   renderDetail,
+  renderGroupHeader,
   toolbar,
   emptyState,
   loading,
@@ -19,6 +20,7 @@ export function MasterDetailLayout<T>({
   idSelector: (item: T) => string;
   renderCard: (item: T, selected: boolean) => ReactNode;
   renderDetail: (item: T) => ReactNode;
+  renderGroupHeader?: (item: T, index: number, prevItem: T | null) => ReactNode;
   toolbar?: ReactNode;
   emptyState?: ReactNode;
   loading?: boolean;
@@ -76,27 +78,31 @@ export function MasterDetailLayout<T>({
             selectedId ? "hidden md:block" : "block",
           )}
         >
-          {items.map((item) => {
+          {items.map((item, index) => {
             const id = idSelector(item);
             const isSelected =
               id === (selected ? idSelector(selected) : selectedId);
+            const prevItem = index > 0 ? items[index - 1] : null;
+            const groupHeader = renderGroupHeader ? renderGroupHeader(item, index, prevItem) : null;
 
             return (
-              <div
-                key={id}
-                role="option"
-                tabIndex={0}
-                aria-selected={isSelected}
-                onClick={() => onSelect(id)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onSelect(id);
-                  }
-                }}
-                className="block w-full text-left focus-visible:outline-none"
-              >
-                {renderCard(item, isSelected)}
+              <div key={id}>
+                {groupHeader}
+                <div
+                  role="option"
+                  tabIndex={0}
+                  aria-selected={isSelected}
+                  onClick={() => onSelect(id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onSelect(id);
+                    }
+                  }}
+                  className="block w-full text-left focus-visible:outline-none"
+                >
+                  {renderCard(item, isSelected)}
+                </div>
               </div>
             );
           })}
