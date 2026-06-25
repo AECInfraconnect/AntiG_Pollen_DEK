@@ -1,6 +1,6 @@
-<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="4.8866439999999995">
-<testsuite name="policy-first.spec.ts" timestamp="2026-06-25T01:43:24.730Z" hostname="chromium" tests="1" failures="0" skipped="0" time="3.796" errors="0">
-<testcase name="Policy-First Navigation › should render sidebar and navigate to simple sections" classname="policy-first.spec.ts" time="3.796">
+<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="5.406878">
+<testsuite name="policy-first.spec.ts" timestamp="2026-06-25T02:53:13.412Z" hostname="chromium" tests="1" failures="0" skipped="0" time="3.81" errors="0">
+<testcase name="Policy-First Navigation › should render sidebar and navigate to simple sections" classname="policy-first.spec.ts" time="3.81">
 </testcase>
 </testsuite>
 </testsuites>

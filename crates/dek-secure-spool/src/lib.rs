@@ -271,10 +271,10 @@ mod tests {
             "test".to_string(),
         );
 
-        spool.enqueue(b"event1".to_vec()).await.unwrap(); //
-        spool.enqueue(b"event2".to_vec()).await.unwrap(); //
+        spool.enqueue(b"event1".to_vec()).await.unwrap();
+        spool.enqueue(b"event2".to_vec()).await.unwrap();
 
-        let replays = spool.replay().await.unwrap(); //
+        let replays = spool.replay().await.unwrap();
         assert_eq!(replays.len(), 2);
         assert_eq!(replays[0].payload_json, "event1");
         assert_eq!(replays[1].payload_json, "event2");
@@ -292,9 +292,8 @@ mod tests {
             Some(km),
             "test".to_string(),
             "test".to_string(),
-        ); // Very small limit
+        );
 
-        // First might succeed or fail depending on metadata, but eventually it hits the limit
         let _ = spool.enqueue(b"event1".to_vec()).await;
         let err = spool
             .enqueue(b"very long event string to fill up spool size quickly".to_vec())

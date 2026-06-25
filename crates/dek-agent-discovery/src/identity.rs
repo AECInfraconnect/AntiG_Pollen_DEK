@@ -239,6 +239,7 @@ pub fn claw_family_heuristic(ctx: &ResolutionContext) -> Option<AgentMatch> {
     let guess = extract_claw_variant(&hay).unwrap_or_else(|| "unknown-claw".into());
     let pretty = match guess.as_str() {
         "openclaw" => "OpenClaw",
+        "antigravity" => "Antigravity",
         "hiclaw" => "HiClaw",
         "qwenpaw" => "QwenPaw",
         "clawhub" => "ClawHub",

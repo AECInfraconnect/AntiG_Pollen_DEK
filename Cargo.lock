@@ -2115,6 +2115,7 @@ version = "1.0.0-beta.10"
 dependencies = [
  "anyhow",
  "async-trait",
+ "dek-agent-discovery",
  "dek-domain-schema",
  "serde",
  "tokio",
