@@ -127,10 +127,9 @@ impl DiscoveryOrchestrator {
                                     "matched_signature_id": resolved.matched_signature_id,
                                     "confirmed": above,
                                 }),
-                                merge_key: Some(format!(
-                                    "{:?}:{}",
-                                    p.exe_path_hash, p.process_name
-                                )),
+                                merge_key: resolved.matched_signature_id.clone().or_else(|| {
+                                    Some(format!("{:?}:{}", p.exe_path_hash, p.process_name))
+                                }),
                                 source_path_hash: p.exe_path_hash.clone(),
                                 source_path_redacted: Some(p.process_name.clone()),
                             });

@@ -104,6 +104,7 @@ fn aggregate_by_merge_key(
         let mut name = "Unknown Agent".to_string();
         let mut vendor = None;
         let mut product = None;
+        let mut matched_signature_id: Option<String> = None;
         let mut capability_tags = Vec::new();
         let mut status = DiscoveryStatus::Discovered;
 
@@ -138,6 +139,18 @@ fn aggregate_by_merge_key(
 
             match ev.source {
                 EvidenceSource::ProcessScan => {
+                    if let Some(r_name) = ev.data.get("resolved_name").and_then(|v| v.as_str()) {
+                        name = r_name.to_string();
+                    }
+                    if let Some(r_vendor) = ev.data.get("vendor").and_then(|v| v.as_str()) {
+                        vendor = Some(r_vendor.to_string());
+                    }
+                    if let Some(sig_id) =
+                        ev.data.get("matched_signature_id").and_then(|v| v.as_str())
+                    {
+                        matched_signature_id = Some(sig_id.to_string());
+                    }
+
                     let process_data = ev.data.get("process").unwrap_or(&ev.data);
                     if let Ok(p) = serde_json::from_value::<crate::process_scan::ProcessEvidence>(
                         process_data.clone(),
@@ -385,7 +398,6 @@ fn aggregate_by_merge_key(
         }
 
         let resolved_by_signature = decision.best.is_some();
-        let mut matched_signature_id = None;
 
         if let Some(best) = decision.best {
             matched_signature_id = Some(best.signature_id.clone());
@@ -395,12 +407,15 @@ fn aggregate_by_merge_key(
             // Map agent_type string to enum
             agent_type = match best.agent_type.as_str() {
                 "desktop_agent" => InferredAgentType::DesktopAgent,
-                "ide_agent" => InferredAgentType::IdeAgent,
+                "ide" | "ide_agent" => InferredAgentType::IdeAgent,
                 "cli_agent" => InferredAgentType::CliAgent,
                 "browser_agent" => InferredAgentType::BrowserAgent,
+                "web_ai" | "web_agent" | "chat_ui" => InferredAgentType::WebAIApp,
+                "local_model" | "local_model_server" => InferredAgentType::LocalModelServer,
+                "automation_agent" => InferredAgentType::AutomationAgent,
                 "mcp_server" => InferredAgentType::McpServer,
                 "mcp_client" => InferredAgentType::McpClient,
-                _ => InferredAgentType::AutomationAgent,
+                _ => InferredAgentType::UnknownAiProcess,
             };
             max_confidence = f64::max(max_confidence, best.confidence);
             for cap in best.capability_tags {
@@ -408,6 +423,10 @@ fn aggregate_by_merge_key(
                     capability_tags.push(cap);
                 }
             }
+        }
+
+        if name == "Unknown Agent" && !ctx.process_name.is_empty() {
+            name = format!("Unknown Agent ({})", ctx.process_name);
         }
 
         if !resolved_by_signature || best_hint.confidence >= 1.0 {
@@ -644,7 +663,54 @@ fn aggregate_by_merge_key(
         });
     }
 
-    candidates
+    let mut final_candidates: std::collections::HashMap<String, DiscoveredAgentCandidateV2> =
+        std::collections::HashMap::new();
+    for cand in candidates {
+        let key = cand
+            .matched_signature_id
+            .clone()
+            .unwrap_or_else(|| cand.candidate_id.clone());
+        if let Some(existing) = final_candidates.get_mut(&key) {
+            existing.evidence.extend(cand.evidence.clone());
+            existing.confidence = f64::max(existing.confidence, cand.confidence);
+            existing.labels.extend(cand.labels.clone());
+            existing
+                .discovered_endpoints
+                .extend(cand.discovered_endpoints.clone());
+            existing
+                .discovered_mcp_servers
+                .extend(cand.discovered_mcp_servers.clone());
+            existing
+                .suggested_registration
+                .mcp_stdio_config_paths
+                .extend(cand.suggested_registration.mcp_stdio_config_paths.clone());
+            existing
+                .suggested_registration
+                .mcp_http_urls
+                .extend(cand.suggested_registration.mcp_http_urls.clone());
+            existing
+                .suggested_registration
+                .local_model_endpoints
+                .extend(cand.suggested_registration.local_model_endpoints.clone());
+            existing
+                .suggested_registration
+                .browser_extension_evidence
+                .extend(
+                    cand.suggested_registration
+                        .browser_extension_evidence
+                        .clone(),
+                );
+            if existing.status == crate::model::DiscoveryStatus::Unconfirmed
+                && cand.status == crate::model::DiscoveryStatus::Discovered
+            {
+                existing.status = crate::model::DiscoveryStatus::Discovered;
+            }
+        } else {
+            final_candidates.insert(key, cand);
+        }
+    }
+
+    final_candidates.into_values().collect()
 }
 
 fn npm_pkg_from_argv(argv: &[String]) -> Option<String> {

@@ -107,7 +107,15 @@ pub fn score_signature(ctx: &ResolutionContext, sig: &AgentSignatureV2) -> Optio
             push(&mut signals, &mut score, "package", &pkg.name, w.package);
         }
     }
-    // --- config path / port / egress / binary hash (เหมือนกัน) ---
+    // --- config path ---
+    for (name, paths) in &sig.config_paths {
+        for pat in paths {
+            if ctx.present_paths.iter().any(|p| glob_match(pat, p)) {
+                push(&mut signals, &mut score, "config_path", name, w.config_path);
+            }
+        }
+    }
+
     if let Some(h) = &ctx.binary_hash {
         if sig.binary_hashes.iter().any(|bh| bh == h) {
             push(

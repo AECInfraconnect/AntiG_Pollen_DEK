@@ -39,13 +39,7 @@ pub fn scan_installed_apps(
                     observed_at: chrono::Utc::now().to_rfc3339(),
                     privacy_class: PrivacyClass::PublicMetadata,
                     redacted: false,
-                    merge_key: Some(crate::identity_key::identity_key(
-                        None,
-                        Some(&sig.vendor),
-                        Some(&sig.product),
-                        None,
-                        &sig.name,
-                    )),
+                    merge_key: Some(sig.id.clone()),
                     source_path_hash: Some(crate::redaction::sha256_string(&matched_path)),
                     source_path_redacted: Some(crate::redaction::redact_path_for_ui(&matched_path)),
                     data: json!({

@@ -168,12 +168,15 @@ fn basename(path: &str) -> String {
 fn map_type(t: &str) -> InferredAgentType {
     match t {
         "desktop_agent" => InferredAgentType::DesktopAgent,
-        "ide_agent" => InferredAgentType::IdeAgent,
+        "ide" | "ide_agent" => InferredAgentType::IdeAgent,
         "cli_agent" => InferredAgentType::CliAgent,
         "browser_agent" => InferredAgentType::BrowserAgent,
+        "web_ai" | "web_agent" | "chat_ui" => InferredAgentType::WebAIApp,
+        "local_model" | "local_model_server" => InferredAgentType::LocalModelServer,
+        "automation_agent" => InferredAgentType::AutomationAgent,
         "mcp_server" => InferredAgentType::McpServer,
         "mcp_client" => InferredAgentType::McpClient,
-        _ => InferredAgentType::AutomationAgent,
+        _ => InferredAgentType::UnknownAiProcess,
     }
 }
 
