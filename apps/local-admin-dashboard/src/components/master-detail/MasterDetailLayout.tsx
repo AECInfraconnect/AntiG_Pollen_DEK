@@ -36,10 +36,10 @@ export function MasterDetailLayout<T>({
             ))}
           </div>
           <div className="hidden md:flex flex-col min-h-0 bg-card/30 rounded-xl border shadow-sm p-6 items-center justify-center">
-             <div className="animate-pulse space-y-4 w-full max-w-md">
-               <div className="h-8 bg-muted rounded w-1/3 mx-auto" />
-               <div className="h-32 bg-muted rounded w-full" />
-             </div>
+            <div className="animate-pulse space-y-4 w-full max-w-md">
+              <div className="h-8 bg-muted rounded w-1/3 mx-auto" />
+              <div className="h-32 bg-muted rounded w-full" />
+            </div>
           </div>
         </div>
       </div>
@@ -58,7 +58,12 @@ export function MasterDetailLayout<T>({
   return (
     <div className="space-y-4 flex flex-col h-[calc(100vh-10rem)]">
       {toolbar && (
-        <div className={cn("transition-all", selectedId ? "hidden md:block" : "block")}>
+        <div
+          className={cn(
+            "transition-all",
+            selectedId ? "hidden md:block" : "block",
+          )}
+        >
           {toolbar}
         </div>
       )}
@@ -68,7 +73,7 @@ export function MasterDetailLayout<T>({
           aria-label="Items"
           className={cn(
             "space-y-2 overflow-y-auto pr-1 pb-4 no-scrollbar",
-            selectedId ? "hidden md:block" : "block"
+            selectedId ? "hidden md:block" : "block",
           )}
         >
           {items.map((item) => (
@@ -90,10 +95,12 @@ export function MasterDetailLayout<T>({
             </button>
           ))}
         </div>
-        <div className={cn(
-          "flex flex-col min-h-0 bg-card/30 rounded-xl border shadow-sm",
-          selectedId ? "flex" : "hidden md:flex"
-        )}>
+        <div
+          className={cn(
+            "flex flex-col min-h-0 bg-card/30 rounded-xl border shadow-sm",
+            selectedId ? "flex" : "hidden md:flex",
+          )}
+        >
           {selected && (
             <>
               <div className="md:hidden flex items-center p-2 border-b border-border bg-card">

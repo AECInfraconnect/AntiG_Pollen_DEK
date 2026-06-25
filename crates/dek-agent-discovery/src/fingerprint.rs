@@ -284,6 +284,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::unwrap_used, clippy::expect_used)]
     fn codex_desktop_passes_threshold() {
         let facts = ProcessFacts {
             process_name: "Codex.exe",
@@ -312,7 +313,7 @@ mod tests {
             "config_parsers": [],
             "ports": [],
             "control_strategies": []
-        })).unwrap();
+        })).expect("valid sig json");
         sigs.push(sig);
 
         let r = fingerprint_process_v2(&facts, &sigs, &apps);

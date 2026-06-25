@@ -148,8 +148,13 @@ export function Overview() {
               </div>
               <div className="flex flex-col gap-2">
                 <h4 className="text-sm font-semibold mt-2">Control Methods</h4>
-                {((snapshot as any).methods || (snapshot as any).control_methods)?.length > 0 ? (
-                  ((snapshot as any).methods || (snapshot as any).control_methods).map((m: any, idx: number) => (
+                {(
+                  (snapshot as any).methods || (snapshot as any).control_methods
+                )?.length > 0 ? (
+                  (
+                    (snapshot as any).methods ||
+                    (snapshot as any).control_methods
+                  ).map((m: any, idx: number) => (
                     <div
                       key={idx}
                       className="flex items-center justify-between p-2 text-sm border-b border-muted/20"
@@ -176,7 +181,8 @@ export function Overview() {
                           m.status === "Available" ||
                           m.status === "installed"
                             ? "bg-emerald-500/20 text-emerald-400"
-                            : m.status === "installed_inactive" || m.status === "Degraded"
+                            : m.status === "installed_inactive" ||
+                                m.status === "Degraded"
                               ? "bg-amber-500/20 text-amber-400"
                               : "bg-rose-500/20 text-rose-400"
                         }`}
@@ -186,7 +192,9 @@ export function Overview() {
                     </div>
                   ))
                 ) : (
-                  <span className="text-sm text-muted-foreground p-2">No control methods available</span>
+                  <span className="text-sm text-muted-foreground p-2">
+                    No control methods available
+                  </span>
                 )}
               </div>
               <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-2">

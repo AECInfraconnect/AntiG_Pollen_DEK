@@ -74,15 +74,16 @@ export function Sidebar({
           const items = group.items.filter((i) => i.modes.includes(mode));
           if (!items.length) return null;
           return (
-            <div key={group.id} className={cn(collapsed && "flex flex-col items-center")}>
+            <div
+              key={group.id}
+              className={cn(collapsed && "flex flex-col items-center")}
+            >
               {!collapsed && (
                 <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {th ? group.th : group.en}
                 </div>
               )}
-              {collapsed && (
-                <div className="mb-2 h-px w-8 bg-border" />
-              )}
+              {collapsed && <div className="mb-2 h-px w-8 bg-border" />}
               <div className="space-y-1 w-full">
                 {items.map((item) => {
                   const active =
@@ -97,7 +98,9 @@ export function Sidebar({
                       aria-current={active ? "page" : undefined}
                       className={cn(
                         "relative flex items-center rounded-lg py-2 text-sm transition focus-visible:ring-2 focus-visible:ring-primary",
-                        collapsed ? "justify-center px-0 w-10 mx-auto" : "gap-3 px-3 w-full",
+                        collapsed
+                          ? "justify-center px-0 w-10 mx-auto"
+                          : "gap-3 px-3 w-full",
                         item.primary &&
                           !active &&
                           "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20",
@@ -108,8 +111,17 @@ export function Sidebar({
                           "text-foreground/80 hover:bg-muted hover:text-foreground",
                       )}
                     >
-                      <Icon className={cn("shrink-0", collapsed ? "h-5 w-5" : "h-4 w-4")} />
-                      {!collapsed && <span className="truncate">{th ? item.th : item.en}</span>}
+                      <Icon
+                        className={cn(
+                          "shrink-0",
+                          collapsed ? "h-5 w-5" : "h-4 w-4",
+                        )}
+                      />
+                      {!collapsed && (
+                        <span className="truncate">
+                          {th ? item.th : item.en}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
@@ -124,7 +136,7 @@ export function Sidebar({
           onClick={() => setCollapsed(!collapsed)}
           className={cn(
             "hidden md:flex absolute -right-3 -top-3 h-6 w-6 items-center justify-center rounded-full border border-border bg-background shadow-sm text-muted-foreground hover:text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-            collapsed && "rotate-180"
+            collapsed && "rotate-180",
           )}
         >
           <ChevronLeft className="h-3 w-3" />
@@ -163,14 +175,16 @@ export function Sidebar({
           onClick={() => setMobileMenuOpen?.(false)}
         />
       )}
-      
+
       {/* Sidebar Container */}
       <aside
         aria-label="Main navigation"
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-border bg-card/95 backdrop-blur-xl transition-all duration-300 md:static",
           collapsed ? "w-20" : "w-64",
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          mobileMenuOpen
+            ? "translate-x-0"
+            : "-translate-x-full md:translate-x-0",
         )}
       >
         <SidebarContent />

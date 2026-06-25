@@ -5,10 +5,13 @@ import { Settings2 } from "lucide-react";
 export function ModeSwitcher({ collapsed }: { collapsed?: boolean }) {
   const { mode, setMode } = useMode();
   const { t } = useTranslation();
-  
+
   if (collapsed) {
     return (
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground" title={t(`mode.${mode}`)}>
+      <div
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground"
+        title={t(`mode.${mode}`)}
+      >
         <Settings2 className="h-4 w-4" />
       </div>
     );

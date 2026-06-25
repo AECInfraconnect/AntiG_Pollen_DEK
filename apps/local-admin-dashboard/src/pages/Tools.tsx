@@ -188,7 +188,7 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
                         {JSON.stringify((t as any).schema, null, 2)}
                       </pre>
                     </div>
-                  )
+                  ),
                 },
                 {
                   id: "policies",

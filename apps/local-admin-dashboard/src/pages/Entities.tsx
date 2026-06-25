@@ -41,22 +41,25 @@ export function Entities() {
   const handleDelete = async (id: string) => {
     const isConfirmed = await confirm({
       title: "Delete Entity",
-      description: "Are you sure you want to delete this entity? This action cannot be undone.",
+      description:
+        "Are you sure you want to delete this entity? This action cannot be undone.",
       confirmText: "Delete",
       danger: true,
     });
-    
+
     if (isConfirmed) {
-      RegistryApi.deleteEntity(id).then(() => {
-        if (selectedId === id) {
-          setParams((p) => {
-            p.delete("selected");
-            return p;
-          });
-        }
-        toast.success("Entity deleted successfully");
-        fetchEntities();
-      }).catch(() => toast.error("Failed to delete entity"));
+      RegistryApi.deleteEntity(id)
+        .then(() => {
+          if (selectedId === id) {
+            setParams((p) => {
+              p.delete("selected");
+              return p;
+            });
+          }
+          toast.success("Entity deleted successfully");
+          fetchEntities();
+        })
+        .catch(() => toast.error("Failed to delete entity"));
     }
   };
 

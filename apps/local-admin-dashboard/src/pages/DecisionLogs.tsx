@@ -44,23 +44,25 @@ export function DecisionLogs() {
         if (data && data.length > 0) {
           setEvents(data);
         } else {
-          ActivityApi.getActivity().then((res: any) => {
-            const mockEvents = (res.activity_sets || [])
-              .flatMap((set: any) => set.items)
-              .map((item: any) => ({
-                timestamp: item.timestamp,
-                event_id: `mock_${Math.random().toString(36).substr(2, 9)}`,
-                payload: {
-                  decision: item.decision,
-                  reason: item.reason,
-                  request_id: "req_mock",
-                  matched_policy_ids: [],
-                  latency_ms: 10,
-                  resource: item.resource,
-                },
-              }));
-            setEvents(mockEvents);
-          }).catch(console.error);
+          ActivityApi.getActivity()
+            .then((res: any) => {
+              const mockEvents = (res.activity_sets || [])
+                .flatMap((set: any) => set.items)
+                .map((item: any) => ({
+                  timestamp: item.timestamp,
+                  event_id: `mock_${Math.random().toString(36).substr(2, 9)}`,
+                  payload: {
+                    decision: item.decision,
+                    reason: item.reason,
+                    request_id: "req_mock",
+                    matched_policy_ids: [],
+                    latency_ms: 10,
+                    resource: item.resource,
+                  },
+                }));
+              setEvents(mockEvents);
+            })
+            .catch(console.error);
         }
       })
       .catch(console.error)

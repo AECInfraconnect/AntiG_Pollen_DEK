@@ -41,7 +41,8 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
     if (
       !(await confirm({
         title: "Delete Agent",
-        description: "Are you sure you want to delete this agent? Note: Make sure no active policies depend on it.",
+        description:
+          "Are you sure you want to delete this agent? Note: Make sure no active policies depend on it.",
         danger: true,
       }))
     )
@@ -111,7 +112,7 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
         renderCard={(a, selected) => {
           let status: UiStatus = "idle";
           let label = a.enforcement_mode || "Unknown";
-          
+
           if (a.enforcement_mode === "Enforce") {
             status = "ok";
             label = "🛡️ Protected";
@@ -140,7 +141,7 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
         renderDetail={(a) => {
           let status: UiStatus = "idle";
           let label = a.enforcement_mode || "Unknown";
-          
+
           if (a.enforcement_mode === "Enforce") {
             status = "ok";
             label = "🛡️ Protected";

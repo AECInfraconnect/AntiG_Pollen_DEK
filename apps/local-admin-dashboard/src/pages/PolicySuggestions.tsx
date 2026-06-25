@@ -100,7 +100,10 @@ export function PolicySuggestions() {
                         <span
                           className={`px-2 py-1 text-xs rounded-full ${s.severity === "high" || s.feasibility === "needs_setup" ? "bg-red-500/10 text-red-500" : s.severity === "medium" ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"}`}
                         >
-                          {(s.status || s.feasibility || "draft").replace(/_/g, " ")}
+                          {(s.status || s.feasibility || "draft").replace(
+                            /_/g,
+                            " ",
+                          )}
                         </span>
                       </div>
                       <div className="space-y-1 mb-4">
@@ -114,7 +117,9 @@ export function PolicySuggestions() {
                             Recommended Policy:
                           </span>
                           <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-muted text-foreground capitalize">
-                            {s.recommended_policy_type || s.recommended_control_level || "Unknown"}
+                            {s.recommended_policy_type ||
+                              s.recommended_control_level ||
+                              "Unknown"}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -130,7 +135,11 @@ export function PolicySuggestions() {
                             Targets:
                           </span>
                           <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-muted text-foreground">
-                            {s.target_agent_id ? s.target_agent_id : (s.target_agent_ids ? s.target_agent_ids.join(", ") : "None")}
+                            {s.target_agent_id
+                              ? s.target_agent_id
+                              : s.target_agent_ids
+                                ? s.target_agent_ids.join(", ")
+                                : "None"}
                           </span>
                         </div>
                       </div>

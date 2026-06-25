@@ -705,8 +705,7 @@ export const PdpRoutingApi = {
 
 export const PolicyFirstApi = {
   scan: () => defaultClient.fetchApi("/scan", { method: "POST" }),
-  getLatestSnapshot: () =>
-    defaultClient.fetchApi("/capability-snapshot"),
+  getLatestSnapshot: () => defaultClient.fetchApi("/capability-snapshot"),
   getPolicySuggestions: () => defaultClient.listPolicySuggestions(),
   evaluateFeasibility: (req: any) =>
     defaultClient.fetchApi("/policies/feasibility", {

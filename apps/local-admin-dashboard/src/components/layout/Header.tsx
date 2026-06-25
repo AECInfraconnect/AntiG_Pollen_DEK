@@ -3,7 +3,11 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ModeSwitcher } from "./ModeSwitcher";
 
-export function Header({ toggleMobileMenu }: { toggleMobileMenu?: () => void }) {
+export function Header({
+  toggleMobileMenu,
+}: {
+  toggleMobileMenu?: () => void;
+}) {
   const { i18n } = useTranslation();
   const [isDark, setIsDark] = useState(true);
 

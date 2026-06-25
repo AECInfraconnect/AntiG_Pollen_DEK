@@ -40,7 +40,8 @@ export function BlackboxAI({ hideHeader = false }: { hideHeader?: boolean }) {
     if (
       !(await confirm({
         title: "Delete Provider",
-        description: "Are you sure you want to delete this external model configuration?",
+        description:
+          "Are you sure you want to delete this external model configuration?",
         danger: true,
       }))
     )
@@ -66,9 +67,12 @@ export function BlackboxAI({ hideHeader = false }: { hideHeader?: boolean }) {
       {!hideHeader && (
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Blackbox AI</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Blackbox AI
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Manage external AI model providers (OpenAI, Anthropic, Google, etc).
+              Manage external AI model providers (OpenAI, Anthropic, Google,
+              etc).
             </p>
           </div>
           <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-sm">
@@ -149,7 +153,7 @@ export function BlackboxAI({ hideHeader = false }: { hideHeader?: boolean }) {
                           </span>
                         </div>
                       </div>
-                      
+
                       <div>
                         <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
                           <Info className="h-4 w-4" /> Raw Data
