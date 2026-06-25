@@ -12,11 +12,15 @@ test.describe("Policy-First Navigation", () => {
     await expect(page.getByRole("heading", { name: "Dashboard Overview" })).toBeVisible();
 
     // 2. Protect
-    await page.getByRole("link", { name: /protect/i }).click();
-    await expect(page.getByRole("heading", { name: /protect/i, exact: false }).first()).toBeVisible();
+    await page.getByRole("link", { name: /(protect|สแกน)/i }).click();
+    await expect(page.getByRole("heading", { name: /(protect|สแกน)/i, exact: false }).first()).toBeVisible();
 
     // 3. Activity
-    await page.getByRole("link", { name: /activity/i }).click();
-    await expect(page).toHaveURL(/.*audit/);
+    await page.getByRole("link", { name: /(activity|กิจกรรม)/i }).click();
+    await expect(page.getByRole("heading", { name: /(activity|กิจกรรม)/i, exact: false }).first()).toBeVisible();
+
+    // 4. Alerts
+    await page.getByRole("link", { name: /(alerts|แจ้งเตือน)/i }).click();
+    await expect(page.getByRole("heading", { name: /(alerts|แจ้งเตือน)/i, exact: false }).first()).toBeVisible();
   });
 });
