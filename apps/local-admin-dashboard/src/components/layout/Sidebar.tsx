@@ -16,11 +16,13 @@ export function Sidebar() {
       aria-label="Main navigation"
       className="flex h-full w-64 flex-col border-r border-border bg-card/50 backdrop-blur-xl"
     >
-      <div className="flex h-16 items-center gap-2 border-b border-border px-5">
-        <span className="text-lg font-semibold tracking-tight">POLLEK</span>
-        <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-          LOCAL
-        </span>
+      <div className="flex h-16 flex-col justify-center border-b border-border px-5">
+        <div className="text-lg font-bold tracking-widest text-primary leading-none mt-1">
+          POLLEK
+        </div>
+        <div className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
+          AI Local Enforcement Kit
+        </div>
       </div>
 
       <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-5">
