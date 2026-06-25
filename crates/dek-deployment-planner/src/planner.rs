@@ -80,14 +80,14 @@ pub fn score_plan(req: &PolicyFeasibilityRequest, plan: &ControlMethodPlan) -> i
             ControlMethod::AgentConfigWrapper => 30,
             ControlMethod::LocalApiControl => 25,
             ControlMethod::BrowserActivityMonitor => 15,
-            ControlMethod::NetworkControl => -10,
+            ControlMethod::SystemNetworkControl => -10,
             ControlMethod::ProcessObservation => 10,
             ControlMethod::ObserveOnly => 0,
         };
     }
 
     if matches!(req.mode, ProductMode::EnterpriseServer)
-        && matches!(plan.method, ControlMethod::NetworkControl)
+        && matches!(plan.method, ControlMethod::SystemNetworkControl)
     {
         score += 40;
     }
@@ -206,17 +206,35 @@ pub fn build_feasibility_result(
     let (plan, status) = candidate;
     let negotiation = negotiate_control_level(req.requested_control_level, &plan.enforceability);
 
+    use dek_domain_schema::feasibility::{RoutePreview, FallbackBehavior};
+
+    let fallback = if negotiation.downgraded {
+        FallbackBehavior::DowngradeToObserve
+    } else {
+        FallbackBehavior::None
+    };
+
+    let route_preview = RoutePreview {
+        user_control_method: plan.method.clone(),
+        advanced_pep: Some(plan.internal_pep.clone()),
+        advanced_pdp: Some(plan.internal_pdp.clone()),
+        fallback,
+        warm_check_required: true,
+        explanation: plan.explanation.clone(),
+    };
+
     PolicyFeasibilityResult {
+        feasibility_id: uuid::Uuid::new_v4().to_string(),
         target,
         policy_intent: req.policy_intent.clone(),
         requested_control_level: req.requested_control_level,
         effective_control_level: negotiation.effective,
         status,
-        user_summary: negotiation.reason,
-        user_detail: plan.explanation.clone(),
+        summary: negotiation.reason,
+        detail: plan.explanation.clone(),
         required_actions: vec![],
-        technical_plan: Some(plan),
-        confidence: 0.9,
+        route_preview,
+        created_at: chrono::Utc::now(),
     }
 }
 

@@ -1,60 +1,124 @@
+pub mod message_catalog;
 // SPDX-License-Identifier: Apache-2.0
+
 // Copyright (c) 2026 AEC Infraconnect
 
+
+
 pub mod agent;
+
 pub mod bundle;
+
 pub mod capabilities;
+
 pub mod capability_inventory;
+
 pub mod control_level;
+
 pub mod core_objects;
+
 pub mod decision;
+
 pub mod dek_device;
+
 pub mod deployment_session;
+
 pub mod ebpf;
+
 pub mod entity;
+
 pub mod feasibility;
+
 pub mod mcp_server;
+
 pub mod network_guardrail;
+
 pub mod pep_deployment;
+
 pub mod policy;
+
 pub mod policy_deployment;
+
 pub mod policy_target;
+
 pub mod policy_template;
+
 pub mod principal;
+
 pub mod relationship;
+
 pub mod resource;
+
 pub mod scan_session;
+
 pub mod spiffe;
+
 pub mod telemetry_event;
+
 pub mod tenant;
+
 pub mod tool;
+
 pub mod user_event;
 
+
+
 pub use agent::*;
+
 pub use bundle::*;
+
 pub use capabilities::*;
+
 pub use capability_inventory::*;
+
 pub use core_objects::*;
+
 pub use decision::*;
+
 pub use dek_device::*;
+
 pub use deployment_session::*;
+
 pub use ebpf::*;
+
 pub use entity::*;
+
 pub use feasibility::*;
+
 pub use mcp_server::*;
+
 pub use network_guardrail::*;
+
 pub use pep_deployment::*;
+
 pub use policy::*;
+
 pub use policy_deployment::*;
+
 pub use policy_target::*;
+
 pub use policy_template::*;
+
 pub use principal::*;
+
 pub use relationship::*;
+
 pub use resource::*;
+
 pub use scan_session::*;
+
 pub use spiffe::*;
+
 pub use telemetry_event::*;
+
 pub use tenant::*;
+
 pub use tool::*;
 
+
+
 pub use user_event::{EventCategory, UserVisibleEvent};
+
+
+
+pub mod entity_card;

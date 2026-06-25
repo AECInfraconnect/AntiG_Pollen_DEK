@@ -9,6 +9,7 @@ pub enum ProductMode {
     DesktopSimple,
     DesktopAdvanced,
     EnterpriseServer,
+    SovereignAirgap,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -54,12 +55,31 @@ use crate::policy_target::PolicyTarget;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+pub enum FallbackBehavior {
+    DowngradeToObserve,
+    WarnThenObserve,
+    RequireUserSetup,
+    None,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RoutePreview {
+    pub user_control_method: ControlMethod,
+    pub advanced_pep: Option<InternalPep>,
+    pub advanced_pdp: Option<InternalPdp>,
+    pub fallback: FallbackBehavior,
+    pub warm_check_required: bool,
+    pub explanation: LocalizedText,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum ControlMethod {
     AgentToolControl,
     AgentConfigWrapper,
     LocalApiControl,
     BrowserActivityMonitor,
-    NetworkControl,
+    SystemNetworkControl,
     ProcessObservation,
     ObserveOnly,
 }
@@ -134,16 +154,17 @@ impl RequiredUserAction {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyFeasibilityResult {
+    pub feasibility_id: String,
     pub target: PolicyTarget,
     pub policy_intent: PolicyIntent,
     pub requested_control_level: ControlLevel,
     pub effective_control_level: ControlLevel,
     pub status: PolicyFeasibilityStatus,
-    pub user_summary: LocalizedText,
-    pub user_detail: LocalizedText,
+    pub summary: LocalizedText,
+    pub detail: LocalizedText,
     pub required_actions: Vec<RequiredUserAction>,
-    pub technical_plan: Option<ControlMethodPlan>,
-    pub confidence: f32,
+    pub route_preview: RoutePreview,
+    pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

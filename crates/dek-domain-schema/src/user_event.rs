@@ -1,59 +1,71 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::deployment_session::LocalizedText;
+use crate::feasibility::RequiredUserAction;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LocalizedText {
-    pub th: String,
-    pub en: String,
+pub struct AdvancedDiagnostic {
+    pub raw_data: String,
 }
 
-impl LocalizedText {
-    pub fn new(en: impl Into<String>, th: impl Into<String>) -> Self {
-        Self {
-            th: th.into(),
-            en: en.into(),
-        }
-    }
-
-    pub fn with_detail(mut self, detail: impl std::fmt::Display) -> Self {
-        let detail = detail.to_string();
-        self.en = format!("{} ({})", self.en, detail);
-        self.th = format!("{} ({})", self.th, detail);
-        self
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserVisibleEvent {
+    pub event_id: String,
+    pub correlation_id: String,
+    pub scan_id: Option<String>,
+    pub deployment_id: Option<String>,
+    pub agent_id: Option<String>,
+    pub entity_id: Option<String>,
+    pub policy_id: Option<String>,
+    pub category: EventCategory,
+    pub status: EventStatus,
+    pub title: LocalizedText,
+    pub detail: LocalizedText,
+    pub next_action: Option<RequiredUserAction>,
+    pub advanced: Option<AdvancedDiagnostic>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum EventCategory {
     Discovery,
-    Security,
-    System,
+    Capability,
+    PolicyFeasibility,
+    Deployment,
+    Approval,
+    Enforcement,
+    Observation,
+    Telemetry,
+    Health,
+    Rollback,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum EventStatus {
-    Info,
+    Queued,
+    Running,
+    Succeeded,
     Warning,
-    Error,
-    Success,
+    Failed,
+    TimedOut,
+    Skipped,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RequiredUserAction {
-    pub kind: String,
-    pub label: LocalizedText,
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserVisibleEvent {
-    pub id: String,
-    pub timestamp: String,
-    pub category: EventCategory,
-    pub status: EventStatus,
-    pub message: LocalizedText,
-    pub action_required: Option<RequiredUserAction>,
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    #[test]
+    fn test_user_event_serde() {
+        let json = r#"{"event_id":"1","correlation_id":"2","category":"discovery","status":"succeeded","title":{"en":"T","th":"T"},"detail":{"en":"D","th":"D"},"created_at":"2026-06-25T00:00:00Z"}"#;
+        let event: UserVisibleEvent = serde_json::from_str(json).unwrap();
+        assert_eq!(event.category, EventCategory::Discovery);
+    }
 }

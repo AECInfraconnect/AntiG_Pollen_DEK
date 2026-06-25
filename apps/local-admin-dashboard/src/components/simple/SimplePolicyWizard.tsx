@@ -60,7 +60,7 @@ export function SimplePolicyWizard({ agents }: { agents: { id: string; label: st
     try {
         const feas = await client.previewFeasibility(policy, level);
         setFeasibility(feas); // auto-detect + auto-select เกิดที่ backend
-        if (mode === "advanced") {
+        if (mode === "desktop_advanced" || mode === "enterprise_server") {
             const session = await client.createDeploySession({ policy, agents: picked, requested_level: level });
             setSessionId(session.id);
             const p = await client.confirmDeploySession(session.id);
@@ -129,7 +129,7 @@ export function SimplePolicyWizard({ agents }: { agents: { id: string; label: st
       {step === 4 && feasibility && (
         <Section title={t("step.confirm")}>
           <FeasibilityPreview result={feasibility as any} />
-          {mode === "advanced" && plan && (
+          {mode === "desktop_advanced" || mode === "enterprise_server" && plan && (
             <div className="mt-4 rounded-xl border border-zinc-700 bg-zinc-900/50 p-4">
               <h4 className="text-sm font-semibold text-zinc-300 mb-2">Control Method Plan (Advanced)</h4>
               <ul className="space-y-2 text-xs font-mono text-zinc-400">

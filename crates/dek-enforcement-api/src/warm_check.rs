@@ -1,4 +1,4 @@
-use dek_domain_schema::user_event::LocalizedText;
+use dek_domain_schema::deployment_session::LocalizedText;
 use async_trait::async_trait;
 
 pub struct WarmCheckCtx {

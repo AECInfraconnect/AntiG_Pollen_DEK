@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { UserCircle, MoreVertical, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import { MasterDetailLayout } from "../components/layout/MasterDetailLayout";
+import { EntityCard } from "../components/shared/EntityCard";
+import type { EntityCardProps } from "../components/shared/EntityCard";
 import { RegistryApi } from "../services/api";
-import type { Entity } from "../services/types";
 
 export function Entities({ hideHeader = false }: { hideHeader?: boolean }) {
-  const [entities, setEntities] = useState<Entity[]>([]);
+  const [entities, setEntities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
 
   const fetchEntities = () => {
     setLoading(true);
@@ -19,126 +22,102 @@ export function Entities({ hideHeader = false }: { hideHeader?: boolean }) {
     fetchEntities();
   }, []);
 
-  const deleteEntity = async (id: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this entity? Note: Make sure no active policies depend on it.",
-      )
-    )
-      return;
-    try {
-      await RegistryApi.deleteEntity(id);
-      fetchEntities();
-    } catch (e) {
-      console.error("Failed to delete entity:", e);
-      alert("Failed to delete entity");
-    }
-  };
+  // Map backend entities to EntityCardProps
+  const mappedCards: EntityCardProps[] = entities.map((entity) => ({
+    id: entity.entity_id,
+    kind: "user", // fallback
+    title: entity.display_name,
+    subtitle: entity.entity_id,
+    status: entity.meta?.status === "active" ? "active" : "unknown",
+    statusLabel: entity.meta?.status === "active" ? "Active" : "Unknown",
+    summary: `Type: ${entity.entity_type}. Roles: ${entity.roles?.join(", ") || "None"}`,
+    chips: entity.roles?.map((r: string) => ({ label: r, tone: "neutral" as const })) || [],
+    metrics: [],
+    lastUpdatedAt: entity.meta?.updated_at,
+  }));
 
-  return (
-    <div className="space-y-6">
-      {!hideHeader && (
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Entities</h2>
-            <p className="text-muted-foreground">
-              Manage human users, service accounts, and workloads.
-            </p>
-          </div>
-          <button className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
-            <Plus className="h-4 w-4" />
-            Register Entity
-          </button>
-        </div>
+  const selectedEntity = entities.find((e) => e.entity_id === selectedEntityId);
+
+  const masterContent = (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {loading ? (
+        <div className="text-muted-foreground p-4">Loading entities...</div>
+      ) : mappedCards.length === 0 ? (
+        <div className="text-muted-foreground p-4">No entities found.</div>
+      ) : (
+        mappedCards.map((card) => (
+          <EntityCard
+            key={card.id}
+            {...card}
+            selected={selectedEntityId === card.id}
+            onClick={() => setSelectedEntityId(card.id)}
+          />
+        ))
       )}
+    </div>
+  );
 
-      <div className="glass rounded-xl overflow-hidden border">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-muted/50 text-muted-foreground">
-            <tr>
-              <th className="px-6 py-4 font-medium">Display Name</th>
-              <th className="px-6 py-4 font-medium">Entity ID</th>
-              <th className="px-6 py-4 font-medium">Type</th>
-              <th className="px-6 py-4 font-medium">Roles</th>
-              <th className="px-6 py-4 font-medium">Status</th>
-              <th className="px-6 py-4 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {loading ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-6 py-8 text-center text-muted-foreground"
-                >
-                  Loading entities...
-                </td>
-              </tr>
-            ) : entities.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-6 py-8 text-center text-muted-foreground"
-                >
-                  No entities registered.
-                </td>
-              </tr>
-            ) : (
-              entities.map((entity) => (
-                <tr
-                  key={entity.entity_id}
-                  className="hover:bg-muted/30 transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <UserCircle className="h-4 w-4 text-primary" />
-                      </div>
-                      <span className="font-medium">{entity.display_name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-muted-foreground font-mono text-xs">
-                    {entity.entity_id}
-                  </td>
-                  <td className="px-6 py-4 text-muted-foreground">
-                    {entity.entity_type}
-                  </td>
-                  <td className="px-6 py-4 text-muted-foreground">
-                    {entity.roles?.join(", ") || "None"}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium ${
-                        entity.meta.status === "active"
-                          ? "bg-emerald-500/10 text-emerald-500"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${entity.meta.status === "active" ? "bg-emerald-500" : "bg-muted-foreground"}`}
-                      />
-                      {entity.meta.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button className="p-2 text-muted-foreground hover:bg-muted rounded-md transition-colors">
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => deleteEntity(entity.entity_id)}
-                        className="px-3 py-1 text-xs text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded border border-red-500/20 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+  const detailContent = selectedEntity ? (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-xl font-bold">{selectedEntity.display_name}</h3>
+        <p className="text-sm text-muted-foreground font-mono mt-1">
+          {selectedEntity.entity_id}
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <div className="p-4 bg-muted/50 rounded-lg border">
+          <h4 className="text-sm font-semibold mb-2">Details</h4>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Type</dt>
+            <dd>{selectedEntity.entity_type}</dd>
+            <dt className="text-muted-foreground">Status</dt>
+            <dd>{selectedEntity.meta?.status}</dd>
+            <dt className="text-muted-foreground">Created</dt>
+            <dd>{selectedEntity.meta?.created_at ? new Date(selectedEntity.meta.created_at).toLocaleString() : "N/A"}</dd>
+          </dl>
+        </div>
+
+        <div className="p-4 bg-muted/50 rounded-lg border">
+          <h4 className="text-sm font-semibold mb-2">Raw JSON</h4>
+          <pre className="text-xs font-mono overflow-x-auto p-2 bg-background rounded border">
+            {JSON.stringify(selectedEntity, null, 2)}
+          </pre>
+        </div>
+      </div>
+      
+      <div className="flex gap-2 justify-end">
+        <button 
+          onClick={() => {
+            if (confirm("Are you sure?")) {
+              RegistryApi.deleteEntity(selectedEntity.entity_id).then(() => {
+                setSelectedEntityId(null);
+                fetchEntities();
+              });
+            }
+          }}
+          className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-md text-sm font-medium hover:bg-red-500/20"
+        >
+          Delete Entity
+        </button>
       </div>
     </div>
+  ) : null;
+
+  return (
+    <MasterDetailLayout
+      title={hideHeader ? "" : "Entities"}
+      description={hideHeader ? undefined : "Manage humans, devices, and agents."}
+      actions={
+        <button className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(124,58,237,0.3)]">
+          <Plus className="h-4 w-4" />
+          Register Entity
+        </button>
+      }
+      masterContent={masterContent}
+      detailContent={detailContent}
+      onCloseDetail={() => setSelectedEntityId(null)}
+    />
   );
 }

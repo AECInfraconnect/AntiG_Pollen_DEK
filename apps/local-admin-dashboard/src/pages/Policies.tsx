@@ -1,35 +1,15 @@
 import { useState, useEffect } from "react";
-import {
-  FileKey,
-  Plus,
-  UploadCloud,
-  X,
-  Eye,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { Plus, X, UploadCloud, Trash2, Pencil } from "lucide-react";
 import { PolicyApi } from "../services/api";
 import type { PolicyDraft, PolicyType } from "../services/api";
-
-const TYPE_BADGE: Record<PolicyType, string> = {
-  cedar: "bg-blue-500/15 text-blue-400",
-  rego: "bg-purple-500/15 text-purple-400",
-  open_fga: "bg-emerald-500/15 text-emerald-400",
-  pii_redaction: "bg-amber-500/15 text-amber-400",
-  route: "bg-slate-500/15 text-slate-400",
-  composite: "bg-pink-500/15 text-pink-400",
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  draft: "bg-slate-500/15 text-slate-400",
-  published: "bg-emerald-500/15 text-emerald-400",
-  active: "bg-emerald-500/15 text-emerald-400",
-  compiled: "bg-blue-500/15 text-blue-400",
-};
+import { MasterDetailLayout } from "../components/layout/MasterDetailLayout";
+import { EntityCard } from "../components/shared/EntityCard";
+import type { EntityCardProps } from "../components/shared/EntityCard";
 
 export function Policies() {
   const [policies, setPolicies] = useState<PolicyDraft[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPolicyId, setSelectedPolicyId] = useState<string | null>(null);
   const [editorState, setEditorState] = useState<{
     mode: "create" | "edit" | "view";
     policy?: PolicyDraft;
@@ -37,11 +17,13 @@ export function Policies() {
   const [publishing, setPublishing] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const reload = () =>
+  const reload = () => {
+    setLoading(true);
     PolicyApi.list()
       .then(setPolicies)
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     reload();
@@ -52,6 +34,7 @@ export function Policies() {
     try {
       await PolicyApi.delete(policyId);
       setToast(`Deleted ${policyId}`);
+      if (selectedPolicyId === policyId) setSelectedPolicyId(null);
       reload();
     } catch (e) {
       setToast(`Delete failed: ${String(e)}`);
@@ -64,9 +47,7 @@ export function Policies() {
     setPublishing(policyId);
     try {
       const r = await PolicyApi.publish(policyId);
-      setToast(
-        `Published ${policyId} → bundle ${r.bundle_id} (build #${r.build_number})`,
-      );
+      setToast(`Published ${policyId} → bundle ${r.bundle_id} (build #${r.build_number})`);
       reload();
     } catch (e) {
       setToast(`Publish failed: ${String(e)}`);
@@ -76,149 +57,143 @@ export function Policies() {
     }
   };
 
-  return (
+  const mappedCards: EntityCardProps[] = policies.map((p) => {
+    const targetCount =
+      p.targets.agent_ids.length +
+      p.targets.tool_ids.length +
+      p.targets.resource_ids.length +
+      p.targets.entity_ids.length;
+
+    return {
+      id: p.policy_id,
+      kind: "policy",
+      title: p.name,
+      subtitle: p.policy_id,
+      status: p.meta.status === "active" || p.meta.status === "published" ? "active" 
+            : p.meta.status === "draft" ? "needs_approval" 
+            : "unknown",
+      statusLabel: p.meta.status,
+      summary: `Targets: ${targetCount}`,
+      chips: [
+        { label: p.policy_type, tone: "neutral" }
+      ],
+      lastUpdatedAt: p.meta.updated_at,
+    };
+  });
+
+  const selectedPolicy = policies.find((p) => p.policy_id === selectedPolicyId);
+
+  const masterContent = (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {loading ? (
+        <div className="text-muted-foreground p-4">Loading policies...</div>
+      ) : mappedCards.length === 0 ? (
+        <div className="text-muted-foreground p-4">No policies yet. Create one to get started.</div>
+      ) : (
+        mappedCards.map((card) => (
+          <EntityCard
+            key={card.id}
+            {...card}
+            selected={selectedPolicyId === card.id}
+            onClick={() => setSelectedPolicyId(card.id)}
+          />
+        ))
+      )}
+    </div>
+  );
+
+  const detailContent = selectedPolicy ? (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <FileKey className="h-6 w-6 text-primary" /> Policy Enforcer
-          </h2>
-          <p className="text-muted-foreground">
-            Author, compile, and publish signed policy bundles to the local
-            workspace.
-          </p>
+      <div>
+        <h3 className="text-xl font-bold">{selectedPolicy.name}</h3>
+        <p className="text-sm text-muted-foreground font-mono mt-1">
+          {selectedPolicy.policy_id}
+        </p>
+      </div>
+
+      <div className="flex gap-2">
+         <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-border">
+          Type: {selectedPolicy.policy_type}
+        </span>
+        <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-border">
+          Status: {selectedPolicy.meta.status}
+        </span>
+      </div>
+
+      <div className="space-y-4">
+        <div className="p-4 bg-muted/50 rounded-lg border">
+          <h4 className="text-sm font-semibold mb-2">Policy Source</h4>
+          <pre className="text-xs font-mono overflow-x-auto p-4 bg-black/50 text-green-400 rounded border">
+            {selectedPolicy.source?.kind === "raw_text" ? selectedPolicy.source.text : JSON.stringify(selectedPolicy.source, null, 2)}
+          </pre>
         </div>
+
+        <div className="p-4 bg-muted/50 rounded-lg border">
+          <h4 className="text-sm font-semibold mb-2">Details</h4>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Created By</dt>
+            <dd>{selectedPolicy.meta.created_by}</dd>
+            <dt className="text-muted-foreground">Source</dt>
+            <dd>{selectedPolicy.meta.source}</dd>
+            <dt className="text-muted-foreground">Targets</dt>
+            <dd>
+              {selectedPolicy.targets.agent_ids.length} agents, {selectedPolicy.targets.tool_ids.length} tools
+            </dd>
+          </dl>
+        </div>
+      </div>
+      
+      <div className="flex flex-wrap gap-2 justify-end">
         <button
-          onClick={() => setEditorState({ mode: "create" })}
-          className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+          onClick={() => setEditorState({ mode: "edit", policy: selectedPolicy })}
+          disabled={selectedPolicy.meta.source === "cloud_sync" || selectedPolicy.meta.created_by !== "local-admin"}
+          className="px-4 py-2 bg-muted text-foreground border border-border rounded-md text-sm font-medium hover:bg-muted/80 disabled:opacity-50 inline-flex items-center gap-2"
         >
-          <Plus className="h-4 w-4" /> New Policy
+          <Pencil className="h-4 w-4" /> Edit
+        </button>
+        <button
+          onClick={() => onPublish(selectedPolicy.policy_id)}
+          disabled={publishing === selectedPolicy.policy_id}
+          className="px-4 py-2 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-md text-sm font-medium hover:bg-blue-500/20 disabled:opacity-50 inline-flex items-center gap-2"
+        >
+          <UploadCloud className="h-4 w-4" /> 
+          {publishing === selectedPolicy.policy_id ? "Publishing..." : "Publish"}
+        </button>
+        <button 
+          onClick={() => onDelete(selectedPolicy.policy_id)}
+          disabled={selectedPolicy.meta.source === "cloud_sync" || selectedPolicy.meta.created_by !== "local-admin"}
+          className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-md text-sm font-medium hover:bg-red-500/20 disabled:opacity-50 inline-flex items-center gap-2"
+        >
+          <Trash2 className="h-4 w-4" /> Delete
         </button>
       </div>
+    </div>
+  ) : null;
 
-      {toast && (
-        <div className="glass rounded-lg border px-4 py-3 text-sm">{toast}</div>
-      )}
-
-      <div className="glass rounded-xl overflow-hidden border">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-muted/50 text-muted-foreground">
-            <tr>
-              <th className="px-6 py-4 font-medium">Name</th>
-              <th className="px-6 py-4 font-medium">Type</th>
-              <th className="px-6 py-4 font-medium">Status</th>
-              <th className="px-6 py-4 font-medium">Targets</th>
-              <th className="px-6 py-4 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {loading ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="px-6 py-8 text-center text-muted-foreground"
-                >
-                  Loading policies...
-                </td>
-              </tr>
-            ) : policies.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="px-6 py-8 text-center text-muted-foreground"
-                >
-                  No policies yet. Create one to get started.
-                </td>
-              </tr>
-            ) : (
-              policies.map((p) => {
-                const targetCount =
-                  p.targets.agent_ids.length +
-                  p.targets.tool_ids.length +
-                  p.targets.resource_ids.length +
-                  p.targets.entity_ids.length;
-                return (
-                  <tr
-                    key={p.policy_id}
-                    className="hover:bg-muted/30 transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="font-medium">{p.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {p.policy_id}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${TYPE_BADGE[p.policy_type] ?? ""}`}
-                      >
-                        {p.policy_type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${STATUS_BADGE[p.meta.status] ?? "bg-slate-500/15 text-slate-400"}`}
-                      >
-                        {p.meta.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {targetCount} target(s)
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() =>
-                            setEditorState({ mode: "view", policy: p })
-                          }
-                          title="View Policy"
-                          className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium hover:bg-muted/50"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setEditorState({ mode: "edit", policy: p })
-                          }
-                          disabled={
-                            p.meta.source === "cloud_sync" ||
-                            p.meta.created_by !== "local-admin"
-                          }
-                          title="Edit Policy"
-                          className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium hover:bg-muted/50 disabled:opacity-50"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(p.policy_id)}
-                          disabled={
-                            p.meta.source === "cloud_sync" ||
-                            p.meta.created_by !== "local-admin"
-                          }
-                          title="Delete Policy"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-red-500/30 text-red-400 px-2 py-1.5 text-xs font-medium hover:bg-red-500/10 disabled:opacity-50 disabled:border-muted"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onPublish(p.policy_id)}
-                          disabled={publishing === p.policy_id}
-                          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted/50 disabled:opacity-50"
-                        >
-                          <UploadCloud className="h-3.5 w-3.5" />
-                          {publishing === p.policy_id
-                            ? "Publishing..."
-                            : "Publish"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+  return (
+    <>
+      <MasterDetailLayout
+        title="Policy Enforcer"
+        description="Author, compile, and publish signed policy bundles to the local workspace."
+        actions={
+          <button
+            onClick={() => setEditorState({ mode: "create" })}
+            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(124,58,237,0.3)]"
+          >
+            <Plus className="h-4 w-4" /> New Policy
+          </button>
+        }
+        masterContent={
+          <>
+            {toast && (
+              <div className="glass rounded-lg border px-4 py-3 text-sm mb-4">{toast}</div>
             )}
-          </tbody>
-        </table>
-      </div>
+            {masterContent}
+          </>
+        }
+        detailContent={detailContent}
+        onCloseDetail={() => setSelectedPolicyId(null)}
+      />
 
       {editorState && (
         <PolicyEditor
@@ -231,7 +206,7 @@ export function Policies() {
           }}
         />
       )}
-    </div>
+    </>
   );
 }
 
@@ -249,8 +224,7 @@ function PolicyEditor({
   const DEFAULT_TEMPLATES: Record<PolicyType, string> = {
     cedar: "permit(principal, action, resource);",
     rego: 'package authz\n\ndefault allow = false\n\nallow {\n  input.action == "read"\n}',
-    open_fga:
-      "model\n  schema 1.1\ntype user\ntype document\n  relations\n    define viewer: [user]",
+    open_fga: "model\n  schema 1.1\ntype user\ntype document\n  relations\n    define viewer: [user]",
     pii_redaction: "",
     route: "",
     composite: "",
@@ -266,17 +240,14 @@ function PolicyEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Track if text was manually edited so we don't overwrite user's typing
   const [isTyping, setIsTyping] = useState(mode !== "create");
 
-  // Change template when type changes (if not typing)
   useEffect(() => {
     if (mode === "create" && !isTyping) {
       setText(DEFAULT_TEMPLATES[type] || "");
     }
   }, [type, mode, isTyping]);
 
-  // Auto-detect engine from text
   const handleTextChange = (newText: string) => {
     setText(newText);
     setIsTyping(true);
@@ -302,27 +273,18 @@ function PolicyEditor({
     setSaving(true);
     setError(null);
 
-    // Basic Syntax Validation
     if (type === "rego" && !text.includes("package")) {
-      setError(
-        'Invalid OPA/Rego policy: Must contain a "package" declaration.',
-      );
+      setError("Invalid OPA/Rego policy: Must contain a package declaration.");
       setSaving(false);
       return;
     }
-    if (
-      type === "cedar" &&
-      !text.includes("permit") &&
-      !text.includes("forbid")
-    ) {
-      setError(
-        'Invalid Cedar policy: Must contain at least one "permit" or "forbid" statement.',
-      );
+    if (type === "cedar" && !text.includes("permit") && !text.includes("forbid")) {
+      setError("Invalid Cedar policy: Must contain at least one permit or forbid statement.");
       setSaving(false);
       return;
     }
     if (type === "open_fga" && !text.includes("model")) {
-      setError('Invalid OpenFGA model: Must contain a "model" declaration.');
+      setError("Invalid OpenFGA model: Must contain a model declaration.");
       setSaving(false);
       return;
     }
@@ -373,115 +335,43 @@ function PolicyEditor({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="glass w-full max-w-2xl rounded-xl border p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="glass w-full max-w-2xl rounded-xl border p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">
-            {mode === "create"
-              ? "New Policy"
-              : mode === "edit"
-                ? "Edit Policy"
-                : "View Policy"}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <h3 className="text-lg font-semibold">{mode === "create" ? "New Policy" : mode === "edit" ? "Edit Policy" : "View Policy"}</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label
-              htmlFor="policy-name"
-              className="text-xs font-medium text-muted-foreground"
-            >
-              Name
-            </label>
-            <input
-              id="policy-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={readOnly}
-              className="mt-1 w-full rounded-md border bg-transparent px-3 py-2 text-sm disabled:opacity-50"
-              placeholder="e.g. pol-net-deny"
-            />
+            <label htmlFor="policy-name" className="text-xs font-medium text-muted-foreground">Name</label>
+            <input id="policy-name" value={name} onChange={(e) => setName(e.target.value)} disabled={readOnly} className="mt-1 w-full rounded-md border bg-transparent px-3 py-2 text-sm disabled:opacity-50" placeholder="e.g. pol-net-deny" />
           </div>
           <div>
-            <label
-              htmlFor="policy-engine"
-              className="text-xs font-medium text-muted-foreground"
-            >
-              Engine
-            </label>
-            <select
-              id="policy-engine"
-              value={type}
-              onChange={(e) => setType(e.target.value as PolicyType)}
-              disabled={readOnly || mode === "edit"}
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50"
-            >
-              <option value="cedar" className="bg-background text-foreground">
-                Cedar
-              </option>
-              <option value="rego" className="bg-background text-foreground">
-                OPA / Rego
-              </option>
-              <option
-                value="open_fga"
-                className="bg-background text-foreground"
-              >
-                OpenFGA
-              </option>
+            <label htmlFor="policy-engine" className="text-xs font-medium text-muted-foreground">Engine</label>
+            <select id="policy-engine" value={type} onChange={(e) => setType(e.target.value as PolicyType)} disabled={readOnly || mode === "edit"} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50">
+              <option value="cedar">Cedar</option>
+              <option value="rego">OPA / Rego</option>
+              <option value="open_fga">OpenFGA</option>
             </select>
           </div>
         </div>
 
         <div>
-          <label
-            htmlFor="policy-source"
-            className="text-xs font-medium text-muted-foreground"
-          >
-            Policy source (compiled on the control plane, not the Local
-            Enforcement Kit)
-          </label>
-          <textarea
-            id="policy-source"
-            value={text}
-            onChange={(e) => handleTextChange(e.target.value)}
-            rows={10}
-            disabled={readOnly}
-            className="mt-1 w-full rounded-md border bg-black/30 px-3 py-2 font-mono text-xs disabled:opacity-50"
-            spellCheck={false}
-          />
+          <label htmlFor="policy-source" className="text-xs font-medium text-muted-foreground">Policy source</label>
+          <textarea id="policy-source" value={text} onChange={(e) => handleTextChange(e.target.value)} rows={10} disabled={readOnly} className="mt-1 w-full rounded-md border bg-black/30 px-3 py-2 font-mono text-xs disabled:opacity-50" spellCheck={false} />
         </div>
 
         {error && (
-          <div className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">
-            {error}
-          </div>
+          <div className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</div>
         )}
 
         <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-md border px-4 py-2 text-sm hover:bg-muted/50"
-          >
-            {readOnly ? "Close" : "Cancel"}
-          </button>
+          <button onClick={onClose} className="rounded-md border px-4 py-2 text-sm hover:bg-muted/50">{readOnly ? "Close" : "Cancel"}</button>
           {!readOnly && (
-            <button
-              onClick={save}
-              disabled={saving || !name}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
+            <button onClick={save} disabled={saving || !name} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
               {saving ? "Saving..." : "Save"}
             </button>
           )}

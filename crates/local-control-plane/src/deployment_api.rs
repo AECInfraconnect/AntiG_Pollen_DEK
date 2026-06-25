@@ -229,68 +229,95 @@ async fn create_deployment(
     ))
 }
 
+
 async fn get_deployment(
     Path((_tenant, deployment_id)): Path<(String, String)>,
-    State(_st): State<AppState>,
-) -> ApiResult<Json<Value>> {
-    Ok(Json(serde_json::json!({
-        "deployment_id": deployment_id,
-        "status": "Active"
-    })))
+    State(st): State<AppState>,
+) -> ApiResult<Json<DeploymentSession>> {
+    let session = st.deployment_store.get_deployment_session(&deployment_id).await
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?
+        .ok_or_else(|| ApiError::NotFound("Deployment not found".into()))?;
+    Ok(Json(session))
 }
 
 async fn get_deployment_events(
     Path((_tenant, deployment_id)): Path<(String, String)>,
-    State(_st): State<AppState>,
-) -> ApiResult<Json<Value>> {
-    Ok(Json(serde_json::json!({
-        "deployment_id": deployment_id,
-        "events": []
-    })))
+    State(st): State<AppState>,
+) -> ApiResult<Json<Vec<DeploymentEvent>>> {
+    let events = st.deployment_store.list_deployment_events(&deployment_id).await
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+    Ok(Json(events))
 }
 
 async fn approve_action(
-    Path((_tenant, deployment_id, action_id)): Path<(String, String, String)>,
-    State(_st): State<AppState>,
-) -> ApiResult<Json<Value>> {
-    Ok(Json(serde_json::json!({
-        "deployment_id": deployment_id,
-        "action_id": action_id,
-        "status": "approved"
-    })))
+    Path((tenant, deployment_id, _action_id)): Path<(String, String, String)>,
+    State(st): State<AppState>,
+) -> ApiResult<Json<DeploymentSession>> {
+    let mut session = st.deployment_store.get_deployment_session(&deployment_id).await
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?
+        .ok_or_else(|| ApiError::NotFound("Deployment not found".into()))?;
+
+    let sink = std::sync::Arc::new(StoreEventSink {
+        store: st.telemetry_store.clone(),
+        tenant_id: tenant,
+    });
+    let orchestrator = DeploymentOrchestrator::new(sink, st.deployment_store.clone());
+
+    orchestrator.transition(&mut session, DeploymentSessionStatus::Active).await
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+
+    Ok(Json(session))
 }
 
 async fn retry_deployment(
-    Path((_tenant, deployment_id)): Path<(String, String)>,
-    State(_st): State<AppState>,
-) -> ApiResult<Json<Value>> {
-    Ok(Json(serde_json::json!({
-        "deployment_id": deployment_id,
-        "status": "retrying"
-    })))
+    Path((tenant, deployment_id)): Path<(String, String)>,
+    State(st): State<AppState>,
+) -> ApiResult<Json<DeploymentSession>> {
+    let mut session = st.deployment_store.get_deployment_session(&deployment_id).await
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?
+        .ok_or_else(|| ApiError::NotFound("Deployment not found".into()))?;
+
+    let sink = std::sync::Arc::new(StoreEventSink {
+        store: st.telemetry_store.clone(),
+        tenant_id: tenant,
+    });
+    let orchestrator = DeploymentOrchestrator::new(sink, st.deployment_store.clone());
+
+    orchestrator.transition(&mut session, DeploymentSessionStatus::ScanStarted).await
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+
+    Ok(Json(session))
 }
 
 async fn rollback_deployment(
-    Path((_tenant, deployment_id)): Path<(String, String)>,
-    State(_st): State<AppState>,
-) -> ApiResult<Json<Value>> {
-    Ok(Json(serde_json::json!({
-        "deployment_id": deployment_id,
-        "status": "rolled_back"
-    })))
+    Path((tenant, deployment_id)): Path<(String, String)>,
+    State(st): State<AppState>,
+) -> ApiResult<Json<DeploymentSession>> {
+    let mut session = st.deployment_store.get_deployment_session(&deployment_id).await
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?
+        .ok_or_else(|| ApiError::NotFound("Deployment not found".into()))?;
+
+    let sink = std::sync::Arc::new(StoreEventSink {
+        store: st.telemetry_store.clone(),
+        tenant_id: tenant,
+    });
+    let orchestrator = DeploymentOrchestrator::new(sink, st.deployment_store.clone());
+
+    orchestrator.transition(&mut session, DeploymentSessionStatus::RolledBack).await
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+
+    Ok(Json(session))
 }
 
 async fn get_agent_timeline(
     Path(agent_id): Path<String>,
     State(_st): State<AppState>,
 ) -> ApiResult<Json<Value>> {
-    // In real system, query events from telemetry store filtering by agent_id
     Ok(Json(serde_json::json!({
         "agent_id": agent_id,
         "events": []
     })))
 }
-
 async fn get_local_capabilities(State(_st): State<AppState>) -> ApiResult<Json<Value>> {
     let caps = dek_capability_registry::detect::detect_pep_capabilities();
     Ok(Json(serde_json::json!({

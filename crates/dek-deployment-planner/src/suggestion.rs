@@ -106,7 +106,7 @@ mod tests {
     fn test_suggestions_mcp_and_network_ready() {
         let agent = make_agent("test1", true, false);
         let caps = vec![ControlMethodCapability {
-            method: ControlMethod::NetworkControl,
+            method: ControlMethod::SystemNetworkControl,
             internal_pep: InternalPep::WindowsWfp,
             status: CapabilityStatus::Ready,
             can_observe: true,
@@ -146,7 +146,7 @@ pub fn suggest_for_agent(
 
     let network_ready = caps
         .iter()
-        .any(|c| c.method == ControlMethod::NetworkControl && c.status == CapabilityStatus::Ready);
+        .any(|c| c.method == ControlMethod::SystemNetworkControl && c.status == CapabilityStatus::Ready);
 
     if has_mcp {
         suggestions.push(SuggestedPolicy {

@@ -28,6 +28,13 @@ import { IdentityNetwork } from "./pages/Data/IdentityNetwork";
 import { AlertsAndShadowAI } from "./pages/Monitoring/AlertsAndShadowAI";
 import { Entities } from "./pages/Entities";
 
+import { Deployments } from "./pages/Deployments";
+import { LocalEvidence } from "./pages/LocalEvidence";
+import { ControlMethods } from "./pages/ControlMethods";
+
+// Placeholders for new structure
+const Placeholder = ({ name }: { name: string }) => <div className="p-8"><h1>{name}</h1></div>;
+
 function App() {
   return (
     <ModeProvider>
@@ -35,6 +42,19 @@ function App() {
         <Routes>
           <Route path="/" element={<DashboardLayout />}>
             <Route index element={<Overview />} />
+            
+            {/* New Navigation Routes */}
+            <Route path="scan" element={<Placeholder name="Scan This Device" />} />
+            <Route path="offline-scan" element={<Placeholder name="Offline Scan" />} />
+            <Route path="recommended-policies" element={<PolicySuggestions />} />
+            <Route path="policy-feasibility" element={<Placeholder name="Policy Feasibility" />} />
+            <Route path="deployments" element={<Deployments />} />
+            <Route path="control-methods" element={<ControlMethods />} />
+            <Route path="pep-layers" element={<Placeholder name="PEP Layers" />} />
+            <Route path="pdp-engines" element={<Placeholder name="PDP Engines" />} />
+            <Route path="timeline" element={<DecisionLogs />} />
+            <Route path="local-evidence" element={<LocalEvidence />} />
+            <Route path="health" element={<Placeholder name="Health" />} />
 
             {/* AI Ecosystem */}
             <Route path="agents" element={<AgentsAndModels />} />
@@ -92,3 +112,4 @@ function App() {
 }
 
 export default App;
+
