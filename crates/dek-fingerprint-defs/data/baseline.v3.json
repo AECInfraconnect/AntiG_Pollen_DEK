@@ -920,100 +920,92 @@
       }
     ]
   },
+  "browser_processes": [
+    { "process_names": ["chrome.exe","chrome"],   "engine": "chromium" },
+    { "process_names": ["msedge.exe","msedge"],   "engine": "chromium" },
+    { "process_names": ["brave.exe","brave"],     "engine": "chromium" },
+    { "process_names": ["opera.exe","opera"],     "engine": "chromium" },
+    { "process_names": ["arc.exe"],               "engine": "chromium" },
+    { "process_names": ["firefox.exe","firefox"], "engine": "firefox" }
+  ],
   "web_ai_signatures": [
     {
+      "id": "chatgpt_web",
       "domain": "chatgpt.com",
       "name": "ChatGPT (Web)",
       "vendor": "OpenAI",
-      "capability_tags": [
-        "llm.chat"
-      ],
+      "title_patterns": ["ChatGPT"],
+      "app_cmdline_patterns": ["--app=*chatgpt.com*", "--app=*chat.openai.com*"],
+      "capability_tags": ["llm.chat"],
       "risk_weight": 0.5
     },
     {
-      "domain": "chat.openai.com",
-      "name": "ChatGPT (Web)",
-      "vendor": "OpenAI",
-      "capability_tags": [
-        "llm.chat"
-      ],
-      "risk_weight": 0.5
-    },
-    {
+      "id": "claude_web",
       "domain": "claude.ai",
       "name": "Claude (Web)",
       "vendor": "Anthropic",
-      "capability_tags": [
-        "llm.chat"
-      ],
+      "title_patterns": ["Claude"],
+      "app_cmdline_patterns": ["--app=*claude.ai*"],
+      "capability_tags": ["llm.chat"],
       "risk_weight": 0.5
     },
     {
+      "id": "gemini_web",
       "domain": "gemini.google.com",
       "name": "Gemini (Web)",
       "vendor": "Google",
-      "capability_tags": [
-        "llm.chat"
-      ],
+      "title_patterns": ["Gemini"],
+      "app_cmdline_patterns": ["--app=*gemini.google.com*"],
+      "capability_tags": ["llm.chat"],
       "risk_weight": 0.5
     },
     {
-      "domain": "aistudio.google.com",
-      "name": "Google AI Studio",
-      "vendor": "Google",
-      "capability_tags": [
-        "llm.chat",
-        "llm.api"
-      ],
-      "risk_weight": 0.5
-    },
-    {
+      "id": "deepseek_web",
       "domain": "chat.deepseek.com",
       "name": "DeepSeek (Web)",
       "vendor": "DeepSeek",
-      "capability_tags": [
-        "llm.chat"
-      ],
+      "title_patterns": ["DeepSeek"],
+      "app_cmdline_patterns": ["--app=*deepseek.com*"],
+      "capability_tags": ["llm.chat"],
       "risk_weight": 0.5
     },
     {
+      "id": "copilot_web",
       "domain": "copilot.microsoft.com",
       "name": "Copilot (Web)",
       "vendor": "Microsoft",
-      "capability_tags": [
-        "llm.chat"
-      ],
+      "title_patterns": ["Copilot"],
+      "app_cmdline_patterns": ["--app=*copilot.microsoft.com*"],
+      "capability_tags": ["llm.chat"],
       "risk_weight": 0.5
     },
     {
+      "id": "perplexity_web",
       "domain": "perplexity.ai",
       "name": "Perplexity (Web)",
       "vendor": "Perplexity",
-      "capability_tags": [
-        "llm.chat",
-        "web.search"
-      ],
+      "title_patterns": ["Perplexity"],
+      "app_cmdline_patterns": ["--app=*perplexity.ai*"],
+      "capability_tags": ["llm.chat", "web.search"],
       "risk_weight": 0.5
     },
     {
+      "id": "manus_web",
       "domain": "manus.im",
       "name": "Manus AI",
       "vendor": "Manus",
-      "capability_tags": [
-        "browser.control"
-      ],
-      "risk_weight": 0.6
-    },
-    {
-      "domain": "manus.ai",
-      "name": "Manus AI",
-      "vendor": "Manus",
-      "capability_tags": [
-        "browser.control"
-      ],
+      "title_patterns": ["Manus"],
+      "app_cmdline_patterns": [],
+      "capability_tags": ["browser.control"],
       "risk_weight": 0.6
     }
   ],
+  "ai_process_hints": {
+    "require_match": true,
+    "name_tokens": ["ollama","lmstudio","llama","gpt4all","jan","openclaw","hiclaw","aider","cline","continue"],
+    "cmd_tokens": ["langchain","llama_index","crewai","autogen","--model","openai","anthropic","mcp-server"],
+    "deny_tokens": ["dell","nvidia","realtek","intel","update","helper","crash","telemetry"]
+  },
   "signatures": [
     {
       "id": "claude_desktop",

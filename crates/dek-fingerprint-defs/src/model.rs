@@ -24,6 +24,10 @@ pub struct FingerprintDefinition {
     pub web_ai_signatures: Vec<WebAiSignatureDef>,
     #[serde(default)]
     pub installed_app_signatures: Vec<InstalledAppSignatureDef>,
+    #[serde(default)]
+    pub browser_processes: Vec<BrowserProcessDef>,
+    #[serde(default)]
+    pub ai_process_hints: AiProcessHints,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,13 +63,38 @@ pub struct InstalledAppMarker {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebAiSignatureDef {
+    #[serde(default)]
+    pub id: String,
     pub domain: String,
     pub name: String,
-    pub vendor: String,
+    pub vendor: Option<String>,
+    #[serde(default)]
+    pub title_patterns: Vec<String>,
+    #[serde(default)]
+    pub app_cmdline_patterns: Vec<String>,
     #[serde(default)]
     pub capability_tags: Vec<String>,
     #[serde(default = "default_web_risk")]
     pub risk_weight: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BrowserProcessDef {
+    #[serde(default)]
+    pub process_names: Vec<String>,
+    pub engine: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AiProcessHints {
+    #[serde(default)]
+    pub require_match: bool,
+    #[serde(default)]
+    pub name_tokens: Vec<String>,
+    #[serde(default)]
+    pub cmd_tokens: Vec<String>,
+    #[serde(default)]
+    pub deny_tokens: Vec<String>,
 }
 
 fn default_web_risk() -> f64 {

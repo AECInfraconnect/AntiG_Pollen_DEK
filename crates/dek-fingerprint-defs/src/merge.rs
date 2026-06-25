@@ -1,4 +1,4 @@
-﻿use crate::model::*;
+use crate::model::*;
 use std::collections::HashMap;
 
 pub struct FingerprintDb {
@@ -136,6 +136,8 @@ mod tests {
             model_classifier: None,
             web_ai_signatures: vec![],
             installed_app_signatures: vec![],
+            ai_process_hints: Default::default(),
+            browser_processes: vec![],
         };
         let mut db = FingerprintDb::from_baseline(base);
         let delta = FingerprintDefinition {
@@ -151,6 +153,8 @@ mod tests {
             model_classifier: None,
             web_ai_signatures: vec![],
             installed_app_signatures: vec![],
+            ai_process_hints: Default::default(),
+            browser_processes: vec![],
         };
         db.apply(delta).unwrap(); //
         assert!(db.by_id.contains_key("goose_cli"));
@@ -179,6 +183,8 @@ mod tests {
             model_classifier: None,
             web_ai_signatures: vec![],
             installed_app_signatures: vec![],
+            ai_process_hints: Default::default(),
+            browser_processes: vec![],
         };
         assert!(db.apply(bad).is_err());
     }

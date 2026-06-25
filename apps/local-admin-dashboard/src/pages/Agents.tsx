@@ -110,8 +110,8 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
           />
         }
         renderCard={(a, selected) => {
-          let status: UiStatus = "idle";
-          let label = a.enforcement_mode || "Unknown";
+          let status: UiStatus = "ok";
+          let label = a.enforcement_mode || "Registered";
 
           if (a.enforcement_mode === "Enforce") {
             status = "ok";
@@ -139,8 +139,8 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
           );
         }}
         renderDetail={(a) => {
-          let status: UiStatus = "idle";
-          let label = a.enforcement_mode || "Unknown";
+          let status: UiStatus = "ok";
+          let label = a.enforcement_mode || "Registered";
 
           if (a.enforcement_mode === "Enforce") {
             status = "ok";
@@ -163,7 +163,7 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
                 {
                   label: "Apply Policy",
                   primary: true,
-                  onClick: () => navigate("/protect"),
+                  onClick: () => navigate(`/protect?agent=${a.agent_id}`),
                 },
                 {
                   label: "Delete",

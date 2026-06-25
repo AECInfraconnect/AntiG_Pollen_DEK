@@ -699,9 +699,12 @@ mod tests {
 
     fn sig(domain: &str) -> dek_fingerprint_defs::model::WebAiSignatureDef {
         dek_fingerprint_defs::model::WebAiSignatureDef {
+            id: "test".into(),
             domain: domain.to_string(),
             name: "Test AI".to_string(),
-            vendor: "Test".to_string(),
+            vendor: Some("Test".to_string()),
+            title_patterns: vec![],
+            app_cmdline_patterns: vec![],
             capability_tags: vec!["llm.chat".to_string()],
             risk_weight: 0.5,
         }

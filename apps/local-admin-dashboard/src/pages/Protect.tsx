@@ -1,16 +1,28 @@
 import { useMode } from "../context/ModeContext";
 import { SimplePolicyWizard } from "../components/simple/SimplePolicyWizard";
 import { ShieldCheck } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { RegistryApi } from "../services/api";
 
 export function Protect() {
   const { mode } = useMode();
+  const [params] = useSearchParams();
+  const agentId = params.get("agent") || undefined;
 
-  // Mock agents for the wizard as an example
-  const agents = [
-    { id: "agent-1", label: "OpenAI Codex" },
-    { id: "agent-2", label: "Claude" },
-    { id: "agent-3", label: "ChatGPT (Web)" },
-  ];
+  const [agents, setAgents] = useState<{ id: string; label: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    RegistryApi.listAgents()
+      .then((res) => {
+        setAgents(
+          res.map((a) => ({ id: a.agent_id, label: a.name || a.agent_id }))
+        );
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -31,7 +43,18 @@ export function Protect() {
       </div>
 
       <div className="mt-8">
-        <SimplePolicyWizard agents={agents} />
+        {!loading && (
+          <SimplePolicyWizard
+            agents={
+              agents.length
+                ? agents
+                : agentId
+                  ? [{ id: agentId, label: "Loading..." }]
+                  : []
+            }
+            initialTarget={agentId}
+          />
+        )}
       </div>
     </div>
   );

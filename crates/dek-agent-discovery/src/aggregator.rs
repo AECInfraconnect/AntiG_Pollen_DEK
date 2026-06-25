@@ -330,7 +330,7 @@ fn aggregate_by_merge_key(
                         for w_sig in sigs {
                             if url.contains(&w_sig.domain) {
                                 name = w_sig.name.clone();
-                                vendor = Some(w_sig.vendor.clone());
+                                vendor = w_sig.vendor.clone();
                                 for cap in &w_sig.capability_tags {
                                     if !capability_tags.contains(cap) {
                                         capability_tags.push(cap.clone());

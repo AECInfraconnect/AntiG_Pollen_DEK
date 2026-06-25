@@ -34,6 +34,10 @@ export function AutoDiscovery() {
   const selectedId = params.get("selected") ?? undefined;
   const [protectTarget, setProtectTarget] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<DiscoveredAgentCandidateV2 | null>(null);
+  const [editName, setEditName] = useState("");
+  const [filter, setFilter] = useState<"all" | "pending" | "registered">("all");
+  const [isScanning, setIsScanning] = useState(false);
 
   const clearHistory = async () => {
     if (
@@ -56,8 +60,23 @@ export function AutoDiscovery() {
 
   const fetchCandidates = () => {
     setLoading(true);
-    RegistryApi.listDiscoveryCandidates()
-      .then(setCandidates)
+    Promise.all([
+      RegistryApi.listDiscoveryCandidates(),
+      RegistryApi.listAgents()
+    ])
+      .then(([discovered, agents]) => {
+        const agentIds = new Set(agents.map(a => a.agent_id));
+        
+        // Update discovered status if they exist in agents
+        const mergedCandidates = discovered.map(c => {
+           if (agentIds.has(c.candidate_id)) {
+              return { ...c, status: "registered" };
+           }
+           return c;
+        });
+
+        setCandidates(mergedCandidates);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   };
@@ -133,16 +152,23 @@ export function AutoDiscovery() {
     ).sort();
   };
 
-  const confirmAgent = async (candidate: DiscoveredAgentCandidateV2) => {
-    setConfirmingId(candidate.candidate_id);
+  const openConfirmDialog = (candidate: DiscoveredAgentCandidateV2) => {
+    setConfirmTarget(candidate);
+    setEditName(candidate.display_name || "");
+  };
+
+  const submitConfirmAgent = async () => {
+    if (!confirmTarget) return;
+    setConfirmingId(confirmTarget.candidate_id);
     try {
       const response = await RegistryApi.registerDiscoveryCandidate(
-        candidate.candidate_id,
+        confirmTarget.candidate_id,
         {
-          agent_name: candidate.display_name,
+          agent_name: editName,
         },
       );
-      toast.success(`Confirmed ${response.agent_name ?? candidate.display_name}`);
+      toast.success(`Confirmed ${response.agent_name ?? editName}`);
+      setConfirmTarget(null);
       fetchCandidates();
     } catch (e) {
       console.error("Failed to confirm agent:", e);
@@ -153,6 +179,8 @@ export function AutoDiscovery() {
   };
 
   const triggerScan = async () => {
+    if (isScanning) return;
+    setIsScanning(true);
     try {
       const result = await RegistryApi.triggerDiscoveryScan({
         sources: [
@@ -185,6 +213,8 @@ export function AutoDiscovery() {
       });
     } catch (e) {
       console.error(e);
+    } finally {
+      setTimeout(() => setIsScanning(false), 500);
     }
   };
 
@@ -209,11 +239,11 @@ export function AutoDiscovery() {
           <button
             onClick={triggerScan}
             disabled={
-              scanJob?.status === "queued" || scanJob?.status === "running"
+              isScanning || scanJob?.status === "queued" || scanJob?.status === "running"
             }
             className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-sm disabled:opacity-50"
           >
-            {scanJob?.status === "queued" || scanJob?.status === "running" ? (
+            {isScanning || scanJob?.status === "queued" || scanJob?.status === "running" ? (
               <Activity className="h-4 w-4 animate-spin" />
             ) : (
               <Search className="h-4 w-4" />
@@ -224,18 +254,39 @@ export function AutoDiscovery() {
       </div>
 
       <MasterDetailLayout
-        items={candidates}
+        items={candidates.filter((c) => {
+          if (filter === "registered") return c.status === "registered";
+          if (filter === "pending") return c.status !== "registered";
+          return true;
+        })}
         loading={loading}
         selectedId={selectedId}
         onSelect={select}
         idSelector={(c) => c.candidate_id}
         toolbar={
-          <div className="flex items-center gap-2 mb-4">
-            <input
-              type="text"
-              placeholder="Search candidates..."
-              className="px-3 py-1.5 text-sm rounded-md border bg-background"
-            />
+          <div className="flex flex-col gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              {(["all", "pending", "registered"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    filter === f
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Search candidates..."
+                className="px-3 py-1.5 text-sm rounded-md border bg-background w-full"
+              />
+            </div>
           </div>
         }
         emptyState={
@@ -284,7 +335,7 @@ export function AutoDiscovery() {
                         icon: CheckCircle,
                         primary: true,
                         disabled: confirmingId === c.candidate_id,
-                        onClick: () => confirmAgent(c),
+                        onClick: () => openConfirmDialog(c),
                       },
                     ]
               }
@@ -317,7 +368,7 @@ export function AutoDiscovery() {
                         primary: true,
                         icon: CheckCircle,
                         disabled: confirmingId === c.candidate_id,
-                        onClick: () => confirmAgent(c),
+                        onClick: () => openConfirmDialog(c),
                       },
                     ]),
                 {
@@ -482,6 +533,50 @@ export function AutoDiscovery() {
                 fetchCandidates();
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {confirmTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity"
+            onClick={() => setConfirmTarget(null)}
+          />
+          <div className="relative z-50 w-full max-w-md rounded-xl border bg-card p-6 shadow-lg">
+            <h3 className="text-lg font-semibold mb-4">Confirm Agent Registration</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-muted-foreground">
+                  Friendly Name
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-md border bg-background"
+                  autoFocus
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This agent will be registered and appear in the Agents & Models inventory.
+              </p>
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  onClick={() => setConfirmTarget(null)}
+                  className="px-4 py-2 text-sm font-medium rounded-md border bg-background hover:bg-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitConfirmAgent}
+                  disabled={confirmingId === confirmTarget.candidate_id}
+                  className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {confirmingId === confirmTarget.candidate_id ? "Confirming..." : "Confirm"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

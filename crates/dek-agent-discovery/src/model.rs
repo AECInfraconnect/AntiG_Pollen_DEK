@@ -73,6 +73,7 @@ pub enum EvidenceSource {
     BrowserExtension,
     LocalModelServer,
     NetworkEgress,
+    BrowserWindow,
     TokenUsage,
     UserConfirmation,
     CliAgent,

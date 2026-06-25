@@ -122,6 +122,25 @@ export function SimplePolicyWizard({
   useEffect(() => {
     if (initialTarget && picked.length === 0) {
       setPicked([initialTarget]);
+      setBusy(true);
+      client
+        .getPolicySuggestions([initialTarget])
+        .then(setSuggestions)
+        .catch(() => {
+          setSuggestions([
+            {
+              id: "pol_observe",
+              title_en: "Observe All Activity",
+              title_th: "สังเกตการณ์ทุกกิจกรรม",
+              domains: ["network"],
+              recommended_level: "observe",
+            },
+          ]);
+        })
+        .finally(() => {
+          setBusy(false);
+          setStep(2);
+        });
     }
   }, [initialTarget]);
 

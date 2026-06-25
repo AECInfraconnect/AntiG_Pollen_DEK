@@ -22,6 +22,8 @@ pub fn embedded_baseline() -> FingerprintDefinition {
         model_classifier: None,
         web_ai_signatures: vec![],
         installed_app_signatures: vec![],
+        ai_process_hints: AiProcessHints::default(),
+        browser_processes: vec![],
     })
 }
 

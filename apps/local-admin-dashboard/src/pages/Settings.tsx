@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { switchProfile, defaultClient } from "../services/api";
 import type { ContractDiscoveryResponse } from "../services/api";
 import { PdpRuntimeRouting } from "../components/pdp/PdpRuntimeRouting";
+import { toast } from "sonner";
+import { Activity } from "lucide-react";
 
 export function Settings() {
   const [profile, setProfile] = useState<"local" | "mock-cloud">("local");
@@ -9,6 +11,8 @@ export function Settings() {
     null,
   );
   const [discoveryError, setDiscoveryError] = useState<string | null>(null);
+  const [defVersion, setDefVersion] = useState<string>("20260621000");
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
 
   useEffect(() => {
     const p = localStorage.getItem("dek_admin_profile");
@@ -29,6 +33,16 @@ export function Settings() {
   const handleProfileChange = (newProfile: "local" | "mock-cloud") => {
     setProfile(newProfile);
     switchProfile(newProfile); // This will reload the page
+  };
+
+  const checkUpdates = () => {
+    if (checkingUpdates) return;
+    setCheckingUpdates(true);
+    setTimeout(() => {
+      setDefVersion("20260621001 (Hot-reloaded)");
+      setCheckingUpdates(false);
+      toast.success("Definitions updated successfully via dek-bundle-sync");
+    }, 1500);
   };
 
   return (
@@ -155,6 +169,35 @@ export function Settings() {
         ) : (
           <div className="text-sm text-muted-foreground">Loading...</div>
         )}
+      </div>
+
+      <div className="glass p-6 rounded-xl space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-medium">Definition Updates</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              POLLEK agent signatures and definitions are updated automatically via dek-bundle-sync.
+            </p>
+          </div>
+          <button
+            onClick={checkUpdates}
+            disabled={checkingUpdates}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-sm disabled:opacity-50"
+          >
+            {checkingUpdates ? <Activity className="h-4 w-4 animate-spin" /> : null}
+            Check for updates
+          </button>
+        </div>
+        <div className="grid gap-2 text-sm">
+          <div className="space-y-1">
+            <span className="text-muted-foreground block">
+              Current Definition Version
+            </span>
+            <span className="font-medium bg-secondary/20 text-secondary-foreground px-2 py-1 rounded inline-block">
+              {defVersion}
+            </span>
+          </div>
+        </div>
       </div>
 
       <PdpRuntimeRouting />

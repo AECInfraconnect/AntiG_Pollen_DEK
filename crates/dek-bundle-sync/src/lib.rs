@@ -201,6 +201,7 @@ impl BundleSyncAgent {
             .context("Missing targets map")?;
 
         let mut merged_payload = json!({});
+        let mut raw_artifacts = Vec::new();
 
         for (filename, target_info) in targets {
             let hash = target_info
@@ -246,6 +247,7 @@ impl BundleSyncAgent {
                     }
                 }
             }
+            raw_artifacts.push((filename.to_string(), bytes.to_vec()));
         }
 
         // Fetch basic device config (tenant baseline)
@@ -300,6 +302,11 @@ impl BundleSyncAgent {
         let payload_string = serde_json::to_string_pretty(&final_merged)?;
         let staging_bundle_path = staging_dir.join("manifest.json");
         fs::write(&staging_bundle_path, &payload_string)?;
+
+        for (filename, bytes) in raw_artifacts {
+            let path = staging_dir.join(filename);
+            fs::write(&path, &bytes)?;
+        }
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;

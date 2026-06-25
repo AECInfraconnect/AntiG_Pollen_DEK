@@ -29,7 +29,7 @@ export function MasterDetailLayout<T>({
     return (
       <div className="space-y-4 flex flex-col h-[calc(100vh-10rem)]">
         {toolbar}
-        <div className="flex-1 min-h-0 grid gap-4 md:grid-cols-[minmax(280px,360px)_1fr]">
+        <div className="flex-1 min-h-0 grid gap-4 md:grid-cols-[320px_1fr]">
           <div className="space-y-2 overflow-y-auto pr-1 pb-4 no-scrollbar">
             {Array.from({ length: 5 }).map((_, i) => (
               <CardSkeleton key={i} />
@@ -67,7 +67,7 @@ export function MasterDetailLayout<T>({
           {toolbar}
         </div>
       )}
-      <div className="flex-1 min-h-0 grid gap-4 md:grid-cols-[minmax(280px,360px)_1fr]">
+      <div className="flex-1 min-h-0 grid gap-4 md:grid-cols-[320px_1fr]">
         <div
           role="listbox"
           aria-label="Items"

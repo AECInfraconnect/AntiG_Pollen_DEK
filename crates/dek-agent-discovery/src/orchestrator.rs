@@ -99,6 +99,15 @@ impl DiscoveryOrchestrator {
                 .unwrap_or(Ok(Ok(vec![])))
                 {
                     for p in processes {
+                        let is_browser = defs.browser_processes.iter().any(|b| {
+                            b.process_names
+                                .iter()
+                                .any(|n| n.eq_ignore_ascii_case(&p.process_name))
+                        });
+                        if is_browser {
+                            continue;
+                        }
+
                         let cmdline = p.cmd_template.join(" ");
                         let facts = crate::fingerprint::ProcessFacts {
                             process_name: &p.process_name,
@@ -112,7 +121,34 @@ impl DiscoveryOrchestrator {
                         );
 
                         let above = resolved.confidence >= config.min_fingerprint_confidence;
-                        if above || resolved.confidence >= config.min_unconfirmed_confidence {
+                        let unconfirmed_above =
+                            resolved.confidence >= config.min_unconfirmed_confidence;
+
+                        if !above {
+                            let is_ai_name = defs
+                                .ai_process_hints
+                                .name_tokens
+                                .iter()
+                                .any(|t| p.process_name.to_lowercase().contains(t));
+                            let is_ai_cmd = defs
+                                .ai_process_hints
+                                .cmd_tokens
+                                .iter()
+                                .any(|t| cmdline.to_lowercase().contains(t));
+                            let is_denied = defs.ai_process_hints.deny_tokens.iter().any(|t| {
+                                p.process_name.to_lowercase().contains(t)
+                                    || cmdline.to_lowercase().contains(t)
+                            });
+
+                            if is_denied {
+                                continue;
+                            }
+                            if defs.ai_process_hints.require_match && !is_ai_name && !is_ai_cmd {
+                                continue;
+                            }
+                        }
+
+                        if above || unconfirmed_above {
                             ev.push(DiscoveryEvidenceV2 {
                                 evidence_id: uuid::Uuid::new_v4().to_string(),
                                 source: EvidenceSource::ProcessScan,
@@ -257,11 +293,19 @@ impl DiscoveryOrchestrator {
                 if let Ok(Ok(mut x)) = tokio::time::timeout(
                     std::time::Duration::from_secs(timeout_secs),
                     tokio::task::spawn_blocking(move || {
-                        crate::web_ai_scan::scan_web_ai(
+                        let mut res = crate::web_ai_scan::scan_web_ai(
                             sni_src.as_deref(),
                             &config,
                             &defs.web_ai_signatures,
                         )
+                        .unwrap_or_default();
+
+                        let mut win_ev = crate::browser_window_scan::scan_browser_windows(
+                            &defs.web_ai_signatures,
+                            &defs.browser_processes,
+                        );
+                        res.append(&mut win_ev);
+                        Ok::<_, anyhow::Error>(res)
                     }),
                 )
                 .await
