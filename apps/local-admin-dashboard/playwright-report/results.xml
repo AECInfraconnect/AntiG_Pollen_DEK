@@ -1,6 +1,65 @@
-<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="5.406878">
-<testsuite name="policy-first.spec.ts" timestamp="2026-06-25T02:53:13.412Z" hostname="chromium" tests="1" failures="0" skipped="0" time="3.81" errors="0">
-<testcase name="Policy-First Navigation › should render sidebar and navigate to simple sections" classname="policy-first.spec.ts" time="3.81">
+<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="1" time="61.462165999999996">
+<testsuite name="policy-first.spec.ts" timestamp="2026-06-25T06:11:58.901Z" hostname="chromium" tests="1" failures="0" skipped="0" time="60.095" errors="1">
+<testcase name="Policy-First Navigation › should render sidebar and navigate to simple sections" classname="policy-first.spec.ts" time="60.095">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\policy-first-Policy-First--43048-navigate-to-simple-sections-chromium\error-context.md]]
+
+[[ATTACHMENT|..\test-results\policy-first-Policy-First--43048-navigate-to-simple-sections-chromium-retry1\error-context.md]]
+
+[[ATTACHMENT|..\test-results\policy-first-Policy-First--43048-navigate-to-simple-sections-chromium-retry1\trace.zip]]
+]]>
+</system-out>
+<error message="Test timeout of 30000ms exceeded." type="Error">
+<![CDATA[  [chromium] › policy-first.spec.ts:10:3 › Policy-First Navigation › should render sidebar and navigate to simple sections 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('link', { name: /protect/i })
+
+
+      13 |
+      14 |     // 2. Protect
+    > 15 |     await page.getByRole("link", { name: /protect/i }).click();
+         |                                                        ^
+      16 |     await expect(page.getByRole("heading", { name: /protect/i, exact: false }).first()).toBeVisible();
+      17 |
+      18 |     // 3. Activity
+        at C:\Projects\AntiG_Pollen_DEK\apps\local-admin-dashboard\e2e\policy-first.spec.ts:15:56
+
+    Error Context: ..\test-results\policy-first-Policy-First--43048-navigate-to-simple-sections-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('link', { name: /protect/i })
+
+
+      13 |
+      14 |     // 2. Protect
+    > 15 |     await page.getByRole("link", { name: /protect/i }).click();
+         |                                                        ^
+      16 |     await expect(page.getByRole("heading", { name: /protect/i, exact: false }).first()).toBeVisible();
+      17 |
+      18 |     // 3. Activity
+        at C:\Projects\AntiG_Pollen_DEK\apps\local-admin-dashboard\e2e\policy-first.spec.ts:15:56
+
+    Error Context: ..\test-results\policy-first-Policy-First--43048-navigate-to-simple-sections-chromium-retry1\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ..\test-results\policy-first-Policy-First--43048-navigate-to-simple-sections-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace ..\test-results\policy-first-Policy-First--43048-navigate-to-simple-sections-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</error>
 </testcase>
 </testsuite>
 </testsuites>
