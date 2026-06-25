@@ -11,6 +11,7 @@ rust-version.workspace = true
 
 [dependencies]
 dek-domain-schema = { path = "../dek-domain-schema" }
+dek-agent-discovery = { path = "../dek-agent-discovery" }
 anyhow.workspace = true
 async-trait = "0.1"
 tokio = { workspace = true, features = ["sync"] }

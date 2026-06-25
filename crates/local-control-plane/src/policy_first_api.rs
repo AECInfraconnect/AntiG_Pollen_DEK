@@ -156,7 +156,7 @@ async fn get_policy_suggestions(
 #[allow(dead_code)]
 #[derive(Deserialize)]
 struct FeasibilityRequest {
-    policy: serde_json::Value,
+    candidate: dek_agent_discovery::model::DiscoveredAgentCandidateV2,
     requested_level: ControlLevel,
 }
 
@@ -164,20 +164,15 @@ async fn evaluate_feasibility(
     Path(_tenant): Path<String>,
     Json(req): Json<FeasibilityRequest>,
 ) -> ApiResult<(StatusCode, Json<PolicyFeasibilityResult>)> {
-    let pol = Policy {
-        id: "mock_pol".into(),
-        requested_level: req.requested_level,
-    };
     let snap = get_current_snapshot();
-    let res = assess_feasibility(&pol, &snap);
+    let res = dek_enforcement_api::feasibility::assess(&req.candidate, req.requested_level, &snap);
     Ok((StatusCode::OK, Json(res)))
 }
 
 #[allow(dead_code)]
 #[derive(Deserialize)]
 struct CreateDeployRequest {
-    policy: serde_json::Value,
-    agents: Vec<String>,
+    candidate: dek_agent_discovery::model::DiscoveredAgentCandidateV2,
     requested_level: ControlLevel,
 }
 
@@ -192,12 +187,8 @@ async fn create_deploy_session(
     Path(_tenant): Path<String>,
     Json(req): Json<CreateDeployRequest>,
 ) -> ApiResult<(StatusCode, Json<DeploySession>)> {
-    let pol = Policy {
-        id: "mock_pol".into(),
-        requested_level: req.requested_level,
-    };
     let snap = get_current_snapshot();
-    let res = assess_feasibility(&pol, &snap);
+    let res = dek_enforcement_api::feasibility::assess(&req.candidate, req.requested_level, &snap);
     Ok((
         StatusCode::OK,
         Json(DeploySession {
@@ -214,12 +205,14 @@ async fn confirm_deploy_session(
     StatusCode,
     Json<dek_enforcement_api::planner::ControlMethodPlan>,
 )> {
-    let pol = Policy {
-        id: "mock_pol".into(),
-        requested_level: ControlLevel::Enforce,
-    };
+    // In a real app we would load the session and candidate from DB.
+    // Here we just mock it for compilation based on previous stub logic.
     let snap = get_current_snapshot();
-    let res = assess_feasibility(&pol, &snap);
+    let pol = dek_enforcement_api::planner::Policy {
+        id: "mock_pol".into(),
+        requested_level: dek_enforcement_api::planner::ControlLevel::Enforce,
+    };
+    let res = dek_enforcement_api::planner::assess_feasibility(&pol, &snap);
     let plan = negotiate(&res);
     Ok((StatusCode::OK, Json(plan)))
 }
