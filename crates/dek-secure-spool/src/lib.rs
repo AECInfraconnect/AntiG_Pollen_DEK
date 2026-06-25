@@ -262,7 +262,7 @@ mod tests {
     #[tokio::test]
     async fn test_spool_enqueue_and_replay() {
         let dir = std::env::temp_dir().join(format!("test_spool_{}", Uuid::new_v4()));
-        let km = key_manager::SpoolKeyManager::new(DummyKeyStore);
+        
         let spool = Spool::new(
             dir.clone(),
             1024 * 1024,
@@ -302,4 +302,70 @@ mod tests {
 
         let _ = fs::remove_dir_all(dir);
     }
+
+    #[tokio::test]
+    async fn test_spool_tamper_quarantine() {
+        let dir = std::env::temp_dir().join(format!("test_spool_{}", Uuid::new_v4()));
+        let km = key_manager::SpoolKeyManager::new(DummyKeyStore);
+        
+        {
+            let spool1 = Spool::new(
+                dir.clone(),
+                1024 * 1024,
+                Some(key_manager::SpoolKeyManager::new(DummyKeyStore)),
+                "test".to_string(),
+                "test".to_string(),
+            );
+            spool1.enqueue(b"event1".to_vec()).await.unwrap();
+        } // spool1 dropped, writer dropped
+
+        {
+            let spool2 = Spool::new(
+                dir.clone(),
+                1024 * 1024,
+                Some(key_manager::SpoolKeyManager::new(DummyKeyStore)),
+                "test".to_string(),
+                "test".to_string(),
+            );
+            spool2.replay().await.unwrap(); // LOAD SEQ!
+            spool2.enqueue(b"event2".to_vec()).await.unwrap();
+        }
+
+        // Now we have 2 files. Delete the first one to break the chain.
+        if let Ok(mut entries) = std::fs::read_dir(&dir) {
+            let mut pds_files = Vec::new();
+            while let Some(Ok(entry)) = entries.next() {
+                if entry.path().extension().and_then(|s| s.to_str()) == Some("pds") {
+                    pds_files.push(entry.path());
+                }
+            }
+            pds_files.sort();
+            if pds_files.len() > 1 {
+                std::fs::remove_file(&pds_files[0]).unwrap();
+            }
+        }
+
+        let spool3 = Spool::new(
+            dir.clone(),
+            1024 * 1024,
+            Some(key_manager::SpoolKeyManager::new(DummyKeyStore)),
+            "test".to_string(),
+            "test".to_string(),
+        );
+
+        let err = spool3.replay().await;
+        assert!(err.is_err(), "Expected tamper error, got {:?}", err);
+        
+        let mut has_quarantine = false;
+        if let Ok(mut entries) = std::fs::read_dir(&dir) {
+            while let Some(Ok(entry)) = entries.next() {
+                if entry.path().extension().and_then(|s| s.to_str()) == Some("quarantine") {
+                    has_quarantine = true;
+                }
+            }
+        }
+        assert!(has_quarantine, "Expected quarantined files");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
 }
