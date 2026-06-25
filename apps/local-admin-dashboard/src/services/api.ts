@@ -119,6 +119,33 @@ export class ControlPlaneClient {
     return res.json();
   }
 
+  async getHostCapabilities(): Promise<any> {
+    return this.fetchApi("/v1/local/capability-snapshot/latest");
+  }
+  async scanAgentsV2(): Promise<{ job_id: string }> {
+    return this.fetchApi("/v1/local/scan", { method: "POST" });
+  }
+  async getScanResultV2(jobId: string) {
+    return this.fetchApi(`/v1/discovery/scan/${jobId}`); // Not used in wizard directly
+  }
+  async getPolicySuggestionsV2(_agentIds: string[]): Promise<any[]> {
+    return this.fetchApi("/v1/policy-suggestions");
+  }
+  async previewFeasibilityV2(_policy: unknown, level: string): Promise<any> {
+    return this.fetchApi("/v1/policies/feasibility", {
+      method: "POST", body: JSON.stringify({ policy_intent: "observe_agent_activity", requested_control_level: level, targets: [], mode: "desktop_simple" }),
+    });
+  }
+  async createDeploySessionV2(_input: { policy: unknown; agents: string[]; requested_level: string }): Promise<any> {
+    return this.fetchApi("/v1/deployment-sessions", { method: "POST" });
+  }
+  async confirmDeploySessionV2(id: string): Promise<any> {
+    return this.fetchApi(`/v1/deployment-sessions/${id}/actions/action-1/approve`, { method: "POST" });
+  }
+  async applyDeploySessionV2(id: string) {
+    return this.fetchApi(`/v1/deployment-sessions/${id}/retry`, { method: "POST" });
+  }
+
   // Registry
   async listAgents(): Promise<AiAgent[]> {
     return this.fetchApi("/registry/agents");
@@ -668,3 +695,15 @@ export const PolicyFirstApi = {
       { method: "POST" },
     ),
 };
+
+export const SimpleWizardApi = {
+  getHostCapabilities: () => defaultClient.getHostCapabilities(),
+  scanAgents: () => defaultClient.scanAgentsV2(),
+  getScanResult: (jobId: string) => defaultClient.getScanResultV2(jobId),
+  getPolicySuggestions: (agentIds: string[]) => defaultClient.getPolicySuggestionsV2(agentIds),
+  previewFeasibility: (policy: unknown, level: string) => defaultClient.previewFeasibilityV2(policy, level),
+  createDeploySession: (input: { policy: unknown; agents: string[]; requested_level: string }) => defaultClient.createDeploySessionV2(input),
+  confirmDeploySession: (id: string) => defaultClient.confirmDeploySessionV2(id),
+  applyDeploySession: (id: string) => defaultClient.applyDeploySessionV2(id),
+};
+

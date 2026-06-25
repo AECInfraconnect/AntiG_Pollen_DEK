@@ -19,6 +19,7 @@ import {
   Puzzle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useMode, type AppMode } from "../../context/ModeContext";
 
 const groups = [
   {
@@ -67,9 +68,18 @@ const groups = [
   },
 ];
 
+const NAV_PER_MODE: Record<AppMode, string[]> = {
+  simple: ["/", "/agents", "/wizard", "/audit", "/policy-suggestions", "/policies"],
+  advanced: ["/", "/agents", "/wizard", "/audit", "/policy-suggestions", "/policies", "/plugin-marketplace", "/integrations"],
+  enterprise: ["/", "/agents", "/integrations", "/plugin-marketplace", "/policy-presets", "/policy-suggestions", "/policies", "/alerts", "/audit", "/cost-ledger", "/identities", "/entities", "/resources", "/simulator", "/bundles", "/discovery", "/settings"],
+};
+
 export function Sidebar() {
   const location = useLocation();
   const { t } = useTranslation();
+  const { mode } = useMode();
+
+  const allowed = new Set(NAV_PER_MODE[mode]);
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-card/50 backdrop-blur-xl">
@@ -86,46 +96,50 @@ export function Sidebar() {
         style={{ msOverflowStyle: "none", scrollbarWidth: "none" }}
       >
         <nav className="space-y-6 px-3">
-          {groups.map((group) => (
-            <div key={group.title}>
-              {group.title !== "Dashboard" && (
-                <h3 className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground/70 mb-2">
-                  {t(group.title)}
-                </h3>
-              )}
-              <div className="space-y-1">
-                {group.items.map((item) => {
-                  const isActive =
-                    location.pathname === item.href ||
-                    (item.href !== "/" &&
-                      location.pathname.startsWith(item.href));
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={cn(
-                        isActive
-                          ? "bg-primary/10 text-primary font-semibold shadow-[0_0_15px_rgba(124,58,237,0.15)]"
-                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground hover-glow",
-                        "group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-300",
-                      )}
-                    >
-                      <item.icon
+          {groups.map((group) => {
+            const visibleItems = group.items.filter((item) => allowed.has(item.href));
+            if (visibleItems.length === 0) return null;
+            return (
+              <div key={group.title}>
+                {group.title !== "Dashboard" && (
+                  <h3 className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground/70 mb-2">
+                    {t(group.title)}
+                  </h3>
+                )}
+                <div className="space-y-1">
+                  {visibleItems.map((item) => {
+                    const isActive =
+                      location.pathname === item.href ||
+                      (item.href !== "/" &&
+                        location.pathname.startsWith(item.href));
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.href}
                         className={cn(
                           isActive
-                            ? "text-primary"
-                            : "text-muted-foreground group-hover:text-foreground",
-                          "mr-3 h-5 w-5 flex-shrink-0 transition-colors",
+                            ? "bg-primary/10 text-primary font-semibold shadow-[0_0_15px_rgba(124,58,237,0.15)]"
+                            : "text-muted-foreground hover:bg-muted/50 hover:text-foreground hover-glow",
+                          "group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-300",
                         )}
-                        aria-hidden="true"
-                      />
-                      {t(item.name)}
-                    </Link>
-                  );
-                })}
+                      >
+                        <item.icon
+                          className={cn(
+                            isActive
+                              ? "text-primary"
+                              : "text-muted-foreground group-hover:text-foreground",
+                            "mr-3 h-5 w-5 flex-shrink-0 transition-colors",
+                          )}
+                          aria-hidden="true"
+                        />
+                        {t(item.name)}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
       </div>
 

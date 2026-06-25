@@ -1,6 +1,7 @@
 import { Bell, Search, Moon, Sun, Languages } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ModeSwitcher } from "./ModeSwitcher";
 
 export function Header() {
   const { i18n } = useTranslation();
@@ -33,6 +34,7 @@ export function Header() {
         </div>
       </div>
       <div className="flex items-center gap-4">
+        <ModeSwitcher />
         <button
           onClick={toggleLanguage}
           className="flex items-center gap-1 rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-xs font-semibold"

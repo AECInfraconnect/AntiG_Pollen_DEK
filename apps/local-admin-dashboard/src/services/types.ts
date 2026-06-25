@@ -611,3 +611,46 @@ export interface DeploymentSession {
   updated_at: string;
   created_by: string;
 }
+
+// V2 Policy-First Types
+export type ControlLevel = "observe" | "warn" | "ask" | "enforce";
+export type FeasibilityVerdict = "fully_enforceable" | "partial_observe" | "observe_only" | "not_applicable";
+export type MethodStatus = "available" | "needs_install" | "needs_permission" | "unsupported";
+
+export interface ControlMethodCap {
+  id: string;
+  domains: string[];
+  max_level: ControlLevel;
+  status: MethodStatus;
+  requires: string[];
+  source: string; maturity: string;
+}
+export interface CapabilityUpgrade {
+  unlocks: string; method_id: string;
+  how_th: string; how_en: string;
+  download_url?: string; auto_installable: boolean; requires_restart: boolean;
+}
+export interface LocalCapabilitySnapshotV2 {
+  os: { name: string; version: string };
+  captured_at: string;
+  control_methods: ControlMethodCap[];
+  install_suggestions: CapabilityUpgrade[];
+  snapshot_hash: string;
+}
+export interface DomainFeasibility {
+  domain: string; chosen_method?: string; level: ControlLevel;
+  reason_th: string; reason_en: string;
+}
+export interface PolicyFeasibilityResultV2 {
+  policy_id: string;
+  requested_level: ControlLevel; achievable_level: ControlLevel;
+  verdict: FeasibilityVerdict;
+  per_domain: DomainFeasibility[];
+  gaps: CapabilityUpgrade[];
+  friendly_th: string; friendly_en: string;
+}
+export interface MethodBinding { domain: string; method_id: string; effective_level: ControlLevel; maturity: string; }
+export interface ControlMethodPlanV2 { policy_id: string; bindings: MethodBinding[]; fallbacks: string[]; auto_selected: boolean; }
+export interface PolicySuggestionV2 { id: string; title_th: string; title_en: string; domains: string[]; recommended_level: ControlLevel; }
+export interface DeploySessionV2 { id: string; feasibility: PolicyFeasibilityResultV2; plan?: ControlMethodPlanV2; status: string; }
+

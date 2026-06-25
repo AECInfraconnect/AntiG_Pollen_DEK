@@ -17,6 +17,7 @@ import { PolicySuggestions } from "./pages/PolicySuggestions";
 import { CostLedger } from "./pages/CostLedger";
 import { PolicyPresets } from "./pages/PolicyPresets";
 import { Wizard } from "./pages/Wizard";
+import { ModeProvider } from "./context/ModeContext";
 
 // Merged composite pages
 import { AgentsAndModels } from "./pages/Ecosystem/AgentsAndModels";
@@ -28,60 +29,62 @@ import { Entities } from "./pages/Entities";
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<DashboardLayout />}>
-          <Route index element={<Overview />} />
+    <ModeProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<DashboardLayout />}>
+            <Route index element={<Overview />} />
 
-          {/* AI Ecosystem */}
-          <Route path="agents" element={<AgentsAndModels />} />
-          <Route path="integrations" element={<Integrations />} />
-          <Route path="plugin-marketplace" element={<PluginMarketplace />} />
+            {/* AI Ecosystem */}
+            <Route path="agents" element={<AgentsAndModels />} />
+            <Route path="integrations" element={<Integrations />} />
+            <Route path="plugin-marketplace" element={<PluginMarketplace />} />
 
-          {/* Data & Context */}
-          <Route path="resources" element={<Resources />} />
-          <Route path="identities" element={<IdentityNetwork />} />
+            {/* Data & Context */}
+            <Route path="resources" element={<Resources />} />
+            <Route path="identities" element={<IdentityNetwork />} />
 
-          {/* Security & Guardrails */}
-          <Route path="policy-presets" element={<PolicyPresets />} />
-          <Route path="policy-suggestions" element={<PolicySuggestions />} />
-          <Route path="policies" element={<Policies />} />
-          <Route path="simulator" element={<Simulator />} />
+            {/* Security & Guardrails */}
+            <Route path="policy-presets" element={<PolicyPresets />} />
+            <Route path="policy-suggestions" element={<PolicySuggestions />} />
+            <Route path="policies" element={<Policies />} />
+            <Route path="simulator" element={<Simulator />} />
 
-          {/* Monitoring & Activity */}
-          <Route path="alerts" element={<AlertsAndShadowAI />} />
-          <Route path="audit" element={<DecisionLogs />} />
-          <Route path="cost-ledger" element={<CostLedger />} />
+            {/* Monitoring & Activity */}
+            <Route path="alerts" element={<AlertsAndShadowAI />} />
+            <Route path="audit" element={<DecisionLogs />} />
+            <Route path="cost-ledger" element={<CostLedger />} />
 
-          {/* System & Settings */}
-          <Route path="bundles" element={<Bundles />} />
-          <Route path="discovery" element={<AutoDiscovery />} />
-          <Route path="settings" element={<Settings />} />
+            {/* System & Settings */}
+            <Route path="bundles" element={<Bundles />} />
+            <Route path="discovery" element={<AutoDiscovery />} />
+            <Route path="settings" element={<Settings />} />
 
-          {/* Legacy redirects */}
-          <Route
-            path="blackbox-ai"
-            element={<Navigate to="/agents" replace />}
-          />
-          <Route
-            path="servers"
-            element={<Navigate to="/integrations" replace />}
-          />
-          <Route
-            path="tools"
-            element={<Navigate to="/integrations" replace />}
-          />
-          <Route path="entities" element={<Entities />} />
-          <Route
-            path="relationships"
-            element={<Navigate to="/identities" replace />}
-          />
-          <Route path="shadow-ai" element={<Navigate to="/alerts" replace />} />
-        </Route>
-        {/* Full screen Wizard outside DashboardLayout */}
-        <Route path="/wizard" element={<Wizard />} />
-      </Routes>
-    </Router>
+            {/* Legacy redirects */}
+            <Route
+              path="blackbox-ai"
+              element={<Navigate to="/agents" replace />}
+            />
+            <Route
+              path="servers"
+              element={<Navigate to="/integrations" replace />}
+            />
+            <Route
+              path="tools"
+              element={<Navigate to="/integrations" replace />}
+            />
+            <Route path="entities" element={<Entities />} />
+            <Route
+              path="relationships"
+              element={<Navigate to="/identities" replace />}
+            />
+            <Route path="shadow-ai" element={<Navigate to="/alerts" replace />} />
+          </Route>
+          {/* Full screen Wizard outside DashboardLayout */}
+          <Route path="/wizard" element={<Wizard />} />
+        </Routes>
+      </Router>
+    </ModeProvider>
   );
 }
 
