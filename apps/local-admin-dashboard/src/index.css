@@ -1,9 +1,40 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
 
 @layer base {
   :root {
@@ -97,31 +128,29 @@
 }
 
 /* Glassmorphism utility */
-.glass {
+@utility glass {
   @apply bg-white/40 backdrop-blur-xl border border-white/20 shadow-xl transition-all duration-300;
+  .dark & {
+    @apply bg-gray-900/40 border-white/10 shadow-2xl backdrop-blur-xl;
+  }
 }
 
-.dark .glass {
-  @apply bg-gray-900/40 border-white/10 shadow-2xl backdrop-blur-xl;
-}
-
-.glass-panel {
+@utility glass-panel {
   @apply bg-white/40 backdrop-blur-xl border border-white/20 shadow-xl transition-all duration-300 rounded-2xl p-6;
+  .dark & {
+    @apply bg-gray-900/40 border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl p-6;
+  }
 }
 
-.dark .glass-panel {
-  @apply bg-gray-900/40 border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl p-6;
-}
-
-.hover-glow {
+@utility hover-glow {
   @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:-translate-y-1;
 }
 
 /* Hide scrollbar utility */
-.no-scrollbar::-webkit-scrollbar {
-  display: none !important;
-}
-.no-scrollbar {
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none !important;
+  }
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
 }
