@@ -19,7 +19,7 @@ import {
   Puzzle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useMode, type AppMode } from "../../context/ModeContext";
+import { useMode } from "../../context/ModeContext";
 
 const groups = [
   {
@@ -68,10 +68,11 @@ const groups = [
   },
 ];
 
-const NAV_PER_MODE: Record<AppMode, string[]> = {
-  simple: ["/", "/agents", "/wizard", "/audit", "/policy-suggestions", "/policies"],
-  advanced: ["/", "/agents", "/wizard", "/audit", "/policy-suggestions", "/policies", "/plugin-marketplace", "/integrations"],
-  enterprise: ["/", "/agents", "/integrations", "/plugin-marketplace", "/policy-presets", "/policy-suggestions", "/policies", "/alerts", "/audit", "/cost-ledger", "/identities", "/entities", "/resources", "/simulator", "/bundles", "/discovery", "/settings"],
+const NAV = {
+  simple:    ["/", "/agents", "/protect", "/activity"],
+  advanced:  ["/", "/agents", "/protect", "/activity", "/capabilities", "/plugin-marketplace"],
+  enterprise:["/", "/agents", "/protect", "/activity", "/capabilities", "/policy-presets",
+              "/settings", "/bundles", "/identities", "/shadow-ai"],
 };
 
 export function Sidebar() {
@@ -79,7 +80,7 @@ export function Sidebar() {
   const { t } = useTranslation();
   const { mode } = useMode();
 
-  const allowed = new Set(NAV_PER_MODE[mode]);
+  const allowed = new Set(NAV[mode]);
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-card/50 backdrop-blur-xl">

@@ -5,6 +5,7 @@ use anyhow::Result;
 use dek_domain_schema::CompiledNetworkRules;
 
 pub mod router;
+pub mod planner;
 
 /// Core interface for OS-level enforcement mechanisms (WFP on Windows, NetworkExtension on macOS, eBPF on Linux).
 pub trait NetworkEnforcer: Send + Sync {
