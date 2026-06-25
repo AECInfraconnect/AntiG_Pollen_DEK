@@ -59,7 +59,6 @@ export const NAV: NavGroup[] = [
         href: "/protect",
         icon: ShieldCheck,
         modes: ALL,
-        primary: true,
       },
       {
         id: "activity",

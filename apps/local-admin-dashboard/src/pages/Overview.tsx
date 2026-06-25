@@ -140,43 +140,54 @@ export function Overview() {
             <div className="space-y-4">
               <div className="flex flex-col gap-2 p-3 bg-secondary/20 rounded-lg">
                 <span className="text-sm font-semibold">
-                  Local Device: {snapshot.device_id}
+                  Local Device: {snapshot.device_id || "local"}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  Agents Found: {snapshot.agents?.length || 0}
+                  Agents Found: {snapshot.agents?.length || metrics.agents || 0}
                 </span>
               </div>
               <div className="flex flex-col gap-2">
                 <h4 className="text-sm font-semibold mt-2">Control Methods</h4>
-                {snapshot.methods?.map((m, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-2 text-sm border-b border-muted/20"
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-medium capitalize">
-                        {m.method.replace(/_/g, " ")}
-                      </span>
-                      {m.next_action && (
-                        <span className="text-xs text-muted-foreground">
-                          {m.next_action.label.en}
-                        </span>
-                      )}
-                    </div>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        m.status === "ready" ||
-                        m.status === "ready_after_approval"
-                          ? "bg-emerald-500/20 text-emerald-400"
-                          : m.status === "installed_inactive"
-                            ? "bg-amber-500/20 text-amber-400"
-                            : "bg-rose-500/20 text-rose-400"
-                      }`}
+                {((snapshot as any).methods || (snapshot as any).control_methods)?.length > 0 ? (
+                  ((snapshot as any).methods || (snapshot as any).control_methods).map((m: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-2 text-sm border-b border-muted/20"
                     >
-                      {m.status.replace(/_/g, " ")}
-                    </span>
-                  </div>
-                ))}
+                      <div className="flex flex-col">
+                        <span className="font-medium capitalize">
+                          {(m.method || m.id || "").replace(/_/g, " ")}
+                        </span>
+                        {m.next_action && (
+                          <span className="text-xs text-muted-foreground">
+                            {m.next_action.label?.en || "Action Required"}
+                          </span>
+                        )}
+                        {m.domains && (
+                          <span className="text-xs text-muted-foreground">
+                            {m.domains.join(", ")}
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          m.status === "ready" ||
+                          m.status === "ready_after_approval" ||
+                          m.status === "Available" ||
+                          m.status === "installed"
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : m.status === "installed_inactive" || m.status === "Degraded"
+                              ? "bg-amber-500/20 text-amber-400"
+                              : "bg-rose-500/20 text-rose-400"
+                        }`}
+                      >
+                        {(m.status || "unknown").replace(/_/g, " ")}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-sm text-muted-foreground p-2">No control methods available</span>
+                )}
               </div>
               <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-2">
                 <Info className="w-4 h-4 text-blue-400 mt-0.5" />
