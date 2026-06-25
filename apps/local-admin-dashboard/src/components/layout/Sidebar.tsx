@@ -35,7 +35,7 @@ const groups = [
     ],
   },
   {
-    title: "Security & Policies",
+    title: "Network Access",
     items: [
       { name: "Protect", href: "/protect", icon: ShieldCheck },
       { name: "Policy Presets", href: "/policy-presets", icon: ShieldCheck },
@@ -48,7 +48,14 @@ const groups = [
     ],
   },
   {
-    title: "Monitoring & Audit",
+    title: "Data Protection",
+    items: [
+      { name: "Resources", href: "/resources", icon: Database },
+      { name: "Identities", href: "/identities", icon: Network },
+    ],
+  },
+  {
+    title: "Reports",
     items: [
       { name: "Activity Timeline", href: "/activity", icon: Activity },
       { name: "Alerts & Shadow AI", href: "/alerts", icon: ShieldAlert },
@@ -59,9 +66,7 @@ const groups = [
   {
     title: "System Settings",
     items: [
-      { name: "Identities", href: "/identities", icon: Network },
       { name: "Entities", href: "/entities", icon: Users },
-      { name: "Data Resources", href: "/resources", icon: Database },
       { name: "Simulator", href: "/simulator", icon: Activity },
       { name: "Bundles & Sync", href: "/bundles", icon: Server },
       { name: "Auto Discovery", href: "/discovery", icon: Search },
@@ -71,9 +76,9 @@ const groups = [
 ];
 
 export const NAV = {
-  simple:    ["/", "/agents", "/protect", "/activity"],
-  advanced:  ["/", "/agents", "/protect", "/activity", "/capabilities", "/plugin-marketplace"],
-  enterprise:["/", "/agents", "/protect", "/activity", "/capabilities", "/policy-presets",
+  simple:    ["/", "/agents", "/protect", "/resources", "/activity"],
+  advanced:  ["/", "/agents", "/protect", "/resources", "/activity", "/capabilities", "/plugin-marketplace"],
+  enterprise:["/", "/agents", "/protect", "/resources", "/activity", "/capabilities", "/policy-presets",
               "/settings", "/bundles", "/identities", "/shadow-ai"],
 };
 

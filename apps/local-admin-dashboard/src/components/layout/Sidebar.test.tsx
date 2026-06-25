@@ -3,11 +3,11 @@ import { NAV } from './Sidebar';
 
 describe('Sidebar Configuration', () => {
   it('should have the correct simple mode routes', () => {
-    expect(NAV.simple).toEqual(["/", "/agents", "/protect", "/activity"]);
+    expect(NAV.simple).toEqual(["/", "/agents", "/protect", "/resources", "/activity"]);
   });
 
   it('should have the correct advanced mode routes', () => {
-    expect(NAV.advanced).toEqual(["/", "/agents", "/protect", "/activity", "/capabilities", "/plugin-marketplace"]);
+    expect(NAV.advanced).toEqual(["/", "/agents", "/protect", "/resources", "/activity", "/capabilities", "/plugin-marketplace"]);
   });
 
   it('should have the correct enterprise mode routes', () => {
