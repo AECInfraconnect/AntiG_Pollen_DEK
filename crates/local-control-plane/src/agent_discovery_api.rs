@@ -327,11 +327,8 @@ async fn register_candidate(
         ));
     }
 
-    let mut agent = dek_agent_discovery::to_registry_agent_v2(&tenant, &candidate, &req)
+    let agent = dek_agent_discovery::to_registry_agent_v2(&tenant, &candidate, &req)
         .map_err(ApiError::Internal)?;
-
-    // Bind stable identity
-    agent.agent_id = candidate.candidate_id.replace("cand_", "agent_");
 
     // Deduplicate: check if this stable identity is already registered
     if let Ok(Some(_)) = st
@@ -427,6 +424,8 @@ async fn register_candidate(
     Ok(Json(serde_json::json!({
         "schema_version": "register-agent-candidate-response.v1",
         "agent_id": registered.agent_id,
+        "agent_name": registered.name,
+        "capabilities": registered.capabilities,
         "status": "registered"
     })))
 }

@@ -42,10 +42,20 @@ pub fn apply_confirmation(
     // 2) อัปเดตตัวตน + เลื่อนสถานะ
     if let Some(name) = &conf.custom_display_name {
         cand.display_name = name.clone();
+        cand.suggested_registration.name = name.clone();
     }
     cand.vendor = conf.custom_vendor.clone().or(cand.vendor.take());
     cand.product = conf.custom_product.clone().or(cand.product.take());
     cand.inferred_agent_type = conf.confirmed_agent_type.clone();
+    cand.suggested_registration.agent_type = format!("{:?}", cand.inferred_agent_type);
+    cand.capability_tags = conf.confirmed_capability_tags.clone();
+    cand.capability_tags.sort();
+    cand.capability_tags.dedup();
+    cand.labels.retain(|k, _| !k.starts_with("capability:"));
+    for tag in &cand.capability_tags {
+        cand.labels
+            .insert(format!("capability:{tag}"), "true".into());
+    }
     cand.confidence = 1.0;
     cand.status = DiscoveryStatus::Registered;
     cand.labels

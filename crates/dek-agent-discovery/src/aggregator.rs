@@ -106,6 +106,7 @@ fn aggregate_by_merge_key(
         let mut product = None;
         let mut matched_signature_id: Option<String> = None;
         let mut capability_tags = Vec::new();
+        let mut matched_signals = Vec::new();
         let mut status = DiscoveryStatus::Discovered;
 
         let has_confirmed = group.iter().any(|e| {
@@ -383,7 +384,11 @@ fn aggregate_by_merge_key(
                     agent_type: am.agent_type,
                     confidence: am.confidence,
                     capability_tags: am.capability_tags,
-                    matched_signals: vec![],
+                    matched_signals: vec![crate::identity::MatchedSignal {
+                        kind: am.matched_by.to_string(),
+                        detail: "signature_match".into(),
+                        weight: am.confidence,
+                    }],
                 });
                 decision.needs_human = false;
             }
@@ -404,6 +409,15 @@ fn aggregate_by_merge_key(
             name = best.display_name.clone();
             vendor = best.vendor.clone();
             product = best.product.clone();
+            matched_signals = best
+                .matched_signals
+                .iter()
+                .map(|s| MatchedSignal {
+                    kind: s.kind.clone(),
+                    detail: s.detail.clone(),
+                    weight: s.weight,
+                })
+                .collect();
             // Map agent_type string to enum
             agent_type = match best.agent_type.as_str() {
                 "desktop_agent" => InferredAgentType::DesktopAgent,
@@ -473,6 +487,11 @@ fn aggregate_by_merge_key(
                             capability_tags.push(cap.clone());
                         }
                     }
+                    matched_signals.push(MatchedSignal {
+                        kind: "identity_hint_signature".into(),
+                        detail: sig.id.clone(),
+                        weight: best_hint.confidence,
+                    });
                     matched_signature_id = Some(sig.id.clone());
                 } else {
                     name = n;
@@ -491,6 +510,11 @@ fn aggregate_by_merge_key(
                             capability_tags.push(cap);
                         }
                     }
+                    matched_signals.push(MatchedSignal {
+                        kind: "identity_hint".into(),
+                        detail: "non-signature discovery hint".into(),
+                        weight: best_hint.confidence,
+                    });
                 }
             }
         }
@@ -568,6 +592,14 @@ fn aggregate_by_merge_key(
         }
         labels.insert("suggested_preset".into(), preset_id.to_string());
 
+        capability_tags.sort();
+        capability_tags.dedup();
+        matched_signals.sort_by(|a, b| {
+            b.weight
+                .partial_cmp(&a.weight)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
         let mut mcp_stdio_paths = vec![];
         let mut mcp_http_urls = vec![];
         let mut local_model_urls = vec![];
@@ -617,6 +649,8 @@ fn aggregate_by_merge_key(
             inferred_agent_type: agent_type.clone(),
             confidence: max_confidence,
             risk_score,
+            capability_tags: capability_tags.clone(),
+            matched_signals,
             first_seen: chrono::Utc::now().to_rfc3339(),
             last_seen: chrono::Utc::now().to_rfc3339(),
             evidence: group,
@@ -680,6 +714,26 @@ fn aggregate_by_merge_key(
             existing
                 .discovered_mcp_servers
                 .extend(cand.discovered_mcp_servers.clone());
+            for cap in cand.capability_tags {
+                if !existing.capability_tags.contains(&cap) {
+                    existing.capability_tags.push(cap);
+                }
+            }
+            existing.capability_tags.sort();
+            existing.capability_tags.dedup();
+            existing
+                .matched_signals
+                .extend(cand.matched_signals.clone());
+            existing.matched_signals.sort_by(|a, b| {
+                b.weight
+                    .partial_cmp(&a.weight)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+            existing.matched_signals.dedup_by(|a, b| {
+                a.kind == b.kind
+                    && a.detail == b.detail
+                    && (a.weight - b.weight).abs() < f64::EPSILON
+            });
             existing
                 .suggested_registration
                 .mcp_stdio_config_paths

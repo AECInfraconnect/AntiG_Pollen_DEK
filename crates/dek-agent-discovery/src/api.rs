@@ -48,6 +48,14 @@ pub async fn run_scan(
                     };
 
                     let agent_type = resolved.inferred_type;
+                    let display_name = resolved
+                        .display_name
+                        .clone()
+                        .unwrap_or_else(|| p.process_name.clone());
+                    let mut labels = BTreeMap::new();
+                    for cap in &resolved.capability_tags {
+                        labels.insert(format!("capability:{cap}"), "true".into());
+                    }
 
                     candidates.push(DiscoveredAgentCandidate {
                         schema_version: "pollen.agent_discovery_candidate.v1".into(),
@@ -55,8 +63,8 @@ pub async fn run_scan(
                         tenant_id: tenant.to_string(),
                         device_id: hostname.clone(),
                         status: DiscoveryStatus::Discovered,
-                        display_name: p.process_name.clone(),
-                        inferred_agent_type: agent_type,
+                        display_name: display_name.clone(),
+                        inferred_agent_type: agent_type.clone(),
                         confidence: resolved.confidence,
                         risk_score: 50,
                         first_seen: chrono::Utc::now().to_rfc3339(),
@@ -64,8 +72,8 @@ pub async fn run_scan(
                         evidence: vec![evidence],
                         suggested_registration: SuggestedAgentRegistration {
                             agent_id: format!("agent_{}", uuid::Uuid::new_v4()),
-                            name: p.process_name,
-                            agent_type: "unknown".into(),
+                            name: display_name,
+                            agent_type: format!("{:?}", agent_type),
                             runtime_name: "native".into(),
                             process_path_hash: p.exe_path_hash,
                             executable_signer: None,
@@ -89,7 +97,7 @@ pub async fn run_scan(
                             collect_raw_response: false,
                             retention_days: config.default_retention_days,
                         },
-                        labels: BTreeMap::new(),
+                        labels,
                     });
                 }
             }
@@ -112,6 +120,8 @@ pub fn to_registry_agent(
         .and_then(|v| v.as_str())
         .unwrap_or(&candidate.suggested_registration.name);
 
+    let mut capabilities = capabilities_from_labels(&candidate.labels);
+
     Ok(AiAgent {
         meta: dek_control_plane_api::registry::ObjectMeta {
             schema_version: "pollen.agent.v1".into(),
@@ -128,7 +138,7 @@ pub fn to_registry_agent(
         },
         agent_id: candidate.suggested_registration.agent_id.clone(),
         name: name.to_string(),
-        agent_type: dek_control_plane_api::registry::AgentType::Unknown,
+        agent_type: registry_agent_type(&candidate.inferred_agent_type, None, name),
         vendor: None,
         runtime: dek_control_plane_api::registry::AgentRuntime {
             runtime_name: candidate.suggested_registration.runtime_name.clone(),
@@ -144,7 +154,7 @@ pub fn to_registry_agent(
             signing_key_fingerprint: None,
         },
         trust_level: dek_control_plane_api::registry::TrustLevel::Medium,
-        capabilities: vec![],
+        capabilities: std::mem::take(&mut capabilities),
         labels: std::collections::HashMap::new(),
     })
 }
@@ -214,20 +224,7 @@ pub fn to_registry_agent_v2(
         }
     }
 
-    let mut capabilities = Vec::new();
-    for k in candidate.labels.keys() {
-        if let Some(cap) = k.strip_prefix("capability:") {
-            capabilities.push(cap.to_string());
-        }
-    }
-    // Also include inferred capabilities from agent type
-    match candidate.inferred_agent_type {
-        InferredAgentType::LocalModelServer => capabilities.push("model.server".into()),
-        InferredAgentType::McpServer => capabilities.push("mcp.server".into()),
-        _ => {}
-    }
-    capabilities.sort();
-    capabilities.dedup();
+    let capabilities = capabilities_for_candidate(candidate);
 
     Ok(AiAgent {
         meta: dek_control_plane_api::registry::ObjectMeta {
@@ -245,7 +242,11 @@ pub fn to_registry_agent_v2(
         },
         agent_id,
         name: name.to_string(),
-        agent_type: dek_control_plane_api::registry::AgentType::Unknown,
+        agent_type: registry_agent_type(
+            &candidate.inferred_agent_type,
+            candidate.vendor.as_deref().or(candidate.product.as_deref()),
+            name,
+        ),
         vendor: candidate.vendor.clone(),
         runtime: dek_control_plane_api::registry::AgentRuntime {
             runtime_name: candidate.suggested_registration.runtime_name.clone(),
@@ -263,7 +264,8 @@ pub fn to_registry_agent_v2(
         trust_level: dek_control_plane_api::registry::TrustLevel::Medium,
         capabilities,
         labels: {
-            let mut l = std::collections::HashMap::new();
+            let mut l: std::collections::HashMap<String, String> =
+                candidate.labels.clone().into_iter().collect();
             for (i, c) in candidate.discovered_configs.iter().enumerate() {
                 l.insert(
                     format!("config_{}_{}", i, c.config_type),
@@ -280,6 +282,9 @@ pub fn to_registry_agent_v2(
                 );
             }
             l.insert("confidence".into(), candidate.confidence.to_string());
+            if let Some(sig) = &candidate.matched_signature_id {
+                l.insert("matched_signature_id".into(), sig.clone());
+            }
             l.insert(
                 "suggested_pep".into(),
                 format!("{:?}", candidate.suggested_observation_profile),
@@ -287,4 +292,163 @@ pub fn to_registry_agent_v2(
             l
         },
     })
+}
+
+fn capabilities_from_labels(labels: &BTreeMap<String, String>) -> Vec<String> {
+    let mut capabilities = labels
+        .keys()
+        .filter_map(|k| k.strip_prefix("capability:").map(ToString::to_string))
+        .collect::<Vec<_>>();
+    capabilities.sort();
+    capabilities.dedup();
+    capabilities
+}
+
+fn capabilities_for_candidate(candidate: &DiscoveredAgentCandidateV2) -> Vec<String> {
+    let mut capabilities = candidate.capability_tags.clone();
+    capabilities.extend(capabilities_from_labels(&candidate.labels));
+    match candidate.inferred_agent_type {
+        InferredAgentType::LocalModelServer => capabilities.push("model.server".into()),
+        InferredAgentType::McpServer => capabilities.push("mcp.server".into()),
+        InferredAgentType::McpClient => capabilities.push("mcp.client".into()),
+        InferredAgentType::CliAgent => capabilities.push("cli.agent".into()),
+        InferredAgentType::BrowserAgent | InferredAgentType::WebAIApp => {
+            capabilities.push("web.chat".into());
+        }
+        _ => {}
+    }
+    capabilities.retain(|c| !c.trim().is_empty());
+    capabilities.sort();
+    capabilities.dedup();
+    capabilities
+}
+
+fn registry_agent_type(
+    inferred: &InferredAgentType,
+    vendor_or_product: Option<&str>,
+    name: &str,
+) -> dek_control_plane_api::registry::AgentType {
+    use dek_control_plane_api::registry::AgentType;
+
+    let identity =
+        format!("{} {}", vendor_or_product.unwrap_or_default(), name).to_ascii_lowercase();
+
+    if identity.contains("claude") {
+        return AgentType::ClaudeDesktop;
+    }
+    if identity.contains("openai") || identity.contains("codex") || identity.contains("chatgpt") {
+        return AgentType::OpenAIAgent;
+    }
+    if identity.contains("langchain") {
+        return AgentType::LangChainAgent;
+    }
+    if identity.contains("llamaindex")
+        || identity.contains("llama_index")
+        || identity.contains("llama index")
+    {
+        return AgentType::LlamaIndexAgent;
+    }
+
+    match inferred {
+        InferredAgentType::McpClient | InferredAgentType::McpServer => AgentType::CustomMcpClient,
+        InferredAgentType::BrowserAgent | InferredAgentType::WebAIApp => AgentType::BrowserAgent,
+        InferredAgentType::CliAgent => AgentType::CliAgent,
+        _ => AgentType::Unknown,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn candidate_fixture() -> DiscoveredAgentCandidateV2 {
+        let now = "2026-06-25T00:00:00Z".to_string();
+        let mut labels = BTreeMap::new();
+        labels.insert("capability:net.egress.llm".into(), "true".into());
+
+        DiscoveredAgentCandidateV2 {
+            schema_version: "pollen.agent_discovery_candidate.v2".into(),
+            candidate_id: "cand_codex".into(),
+            tenant_id: "local".into(),
+            device_id: "device-local".into(),
+            status: DiscoveryStatus::Discovered,
+            instance_count: 1,
+            matched_signature_id: Some("openai_codex_desktop".into()),
+            display_name: "OpenAI Codex (Desktop)".into(),
+            vendor: Some("OpenAI".into()),
+            product: Some("Codex".into()),
+            inferred_agent_type: InferredAgentType::DesktopAgent,
+            confidence: 0.95,
+            risk_score: 70,
+            capability_tags: vec!["code.agentic".into(), "tool.use".into()],
+            matched_signals: vec![MatchedSignal {
+                kind: "process_name".into(),
+                detail: "Codex.exe".into(),
+                weight: 0.9,
+            }],
+            first_seen: now.clone(),
+            last_seen: now,
+            evidence: vec![],
+            discovered_configs: vec![],
+            discovered_endpoints: vec![],
+            discovered_mcp_servers: vec![],
+            suggested_registration: SuggestedAgentRegistration {
+                agent_id: "agent_ignored".into(),
+                name: "OpenAI Codex (Desktop)".into(),
+                agent_type: "DesktopAgent".into(),
+                runtime_name: "native".into(),
+                process_path_hash: Some("hash".into()),
+                executable_signer: None,
+                declared_tools: vec![],
+                declared_resources: vec![],
+                mcp_stdio_config_paths: vec![],
+                mcp_http_urls: vec![],
+                local_model_endpoints: vec![],
+                browser_extension_evidence: vec![],
+                trust_level: "Unknown".into(),
+                initial_status: "pending_approval".into(),
+            },
+            suggested_observation_profile: ObservationProfile {
+                mode: ObservationMode::ObserveOnly,
+                collect_process_metadata: true,
+                collect_network_metadata: true,
+                collect_mcp_tool_metadata: false,
+                collect_token_usage: false,
+                collect_file_metadata: false,
+                collect_raw_prompt: false,
+                collect_raw_response: false,
+                retention_days: 30,
+            },
+            suggested_control_bindings: vec![],
+            telemetry_plan: TelemetryPlan {
+                events_endpoint: "/v1/telemetry/events".into(),
+                metrics_endpoint: "/v1/metrics".into(),
+                capture_tool_calls: true,
+                capture_arguments: true,
+                redact_env_keys: vec![],
+                risk_signals: vec![],
+            },
+            labels,
+        }
+    }
+
+    #[test]
+    fn registry_agent_preserves_discovered_identity_and_capabilities() -> anyhow::Result<()> {
+        let candidate = candidate_fixture();
+        let agent = to_registry_agent_v2("local", &candidate, &serde_json::json!({}))?;
+
+        assert_eq!(agent.name, "OpenAI Codex (Desktop)");
+        assert!(matches!(
+            agent.agent_type,
+            dek_control_plane_api::registry::AgentType::OpenAIAgent
+        ));
+        assert!(agent.capabilities.contains(&"code.agentic".to_string()));
+        assert!(agent.capabilities.contains(&"tool.use".to_string()));
+        assert!(agent.capabilities.contains(&"net.egress.llm".to_string()));
+        assert!(agent
+            .labels
+            .get("matched_signature_id")
+            .is_some_and(|v| v == "openai_codex_desktop"));
+        Ok(())
+    }
 }

@@ -139,6 +139,7 @@ pub struct ResolvedAgent {
     pub vendor: Option<String>,
     pub matched_signature_id: Option<String>,
     pub inferred_type: InferredAgentType,
+    pub capability_tags: Vec<String>,
 }
 
 fn glob_match(pattern: &str, text: &str) -> bool {
@@ -213,6 +214,7 @@ pub fn fingerprint_process_v2(
         vendor: None,
         matched_signature_id: None,
         inferred_type: InferredAgentType::UnknownAiProcess,
+        capability_tags: vec![],
     };
 
     let mut consider = |conf: f64, s: &AgentSignatureV2| {
@@ -223,6 +225,7 @@ pub fn fingerprint_process_v2(
                 vendor: s.vendor.clone(),
                 matched_signature_id: Some(s.id.clone()),
                 inferred_type: map_type(&s.agent_type),
+                capability_tags: s.capability_tags.clone(),
             };
         }
     };
@@ -268,6 +271,7 @@ pub fn fingerprint_process_v2(
                 vendor: Some(a.vendor.clone()),
                 matched_signature_id: Some(a.id.clone()),
                 inferred_type: map_type(&a.agent_type),
+                capability_tags: a.capability_tags.clone(),
             };
         }
     }

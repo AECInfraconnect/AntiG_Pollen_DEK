@@ -218,6 +218,10 @@ pub struct DiscoveredAgentCandidateV2 {
     pub inferred_agent_type: InferredAgentType,
     pub confidence: f64,
     pub risk_score: u32,
+    #[serde(default)]
+    pub capability_tags: Vec<String>,
+    #[serde(default)]
+    pub matched_signals: Vec<MatchedSignal>,
     pub first_seen: String,
     pub last_seen: String,
     pub evidence: Vec<DiscoveryEvidenceV2>,
@@ -229,6 +233,13 @@ pub struct DiscoveredAgentCandidateV2 {
     pub suggested_control_bindings: Vec<ControlBindingPlan>,
     pub telemetry_plan: TelemetryPlan,
     pub labels: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MatchedSignal {
+    pub kind: String,
+    pub detail: String,
+    pub weight: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

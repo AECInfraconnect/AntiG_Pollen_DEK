@@ -116,6 +116,15 @@ export function AutoDiscovery() {
     }
   };
 
+  const capabilityTags = (candidate: DiscoveredAgentCandidateV2) => {
+    const fromLabels = Object.keys(candidate.labels ?? {})
+      .filter((key) => key.startsWith("capability:"))
+      .map((key) => key.slice("capability:".length));
+    return Array.from(
+      new Set([...(candidate.capability_tags ?? []), ...fromLabels]),
+    ).sort();
+  };
+
   const triggerScan = async () => {
     try {
       const result = await RegistryApi.triggerDiscoveryScan({
@@ -215,6 +224,7 @@ export function AutoDiscovery() {
           let status: UiStatus = "idle";
           if (c.status === "registered") status = "ok";
           else if (c.status === "pending_approval") status = "degraded";
+          const caps = capabilityTags(c);
 
           return (
             <EntityCard
@@ -228,6 +238,11 @@ export function AutoDiscovery() {
                   label: "Confidence",
                   value: `${(c.confidence * 100).toFixed(0)}%`,
                 },
+                {
+                  label: "Capabilities",
+                  value:
+                    caps.length > 0 ? caps.slice(0, 3).join(", ") : "Unknown",
+                },
               ]}
               selected={selected}
             />
@@ -237,6 +252,7 @@ export function AutoDiscovery() {
           let status: UiStatus = "idle";
           if (c.status === "registered") status = "ok";
           else if (c.status === "pending_approval") status = "degraded";
+          const caps = capabilityTags(c);
 
           return (
             <DetailPane
@@ -291,6 +307,28 @@ export function AutoDiscovery() {
                           </span>
                           <span>{new Date(c.last_seen).toLocaleString()}</span>
                         </div>
+                      </div>
+
+                      <div className="p-4 bg-muted/30 rounded-xl border">
+                        <h4 className="text-sm font-semibold mb-3">
+                          Detected Capabilities
+                        </h4>
+                        {caps.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {caps.map((cap) => (
+                              <span
+                                key={cap}
+                                className="rounded-md border bg-background px-2 py-1 text-xs font-medium text-foreground/80"
+                              >
+                                {cap}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            No capabilities inferred yet.
+                          </p>
+                        )}
                       </div>
 
                       {c.discovered_mcp_servers &&
