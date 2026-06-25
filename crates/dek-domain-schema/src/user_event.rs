@@ -59,14 +59,14 @@ pub enum EventStatus {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_user_event_serde() {
+    fn test_user_event_serde() -> serde_json::Result<()> {
         let json = r#"{"event_id":"1","correlation_id":"2","category":"discovery","status":"succeeded","title":{"en":"T","th":"T"},"detail":{"en":"D","th":"D"},"created_at":"2026-06-25T00:00:00Z"}"#;
-        let event: UserVisibleEvent = serde_json::from_str(json).unwrap();
+        let event: UserVisibleEvent = serde_json::from_str(json)?;
         assert_eq!(event.category, EventCategory::Discovery);
+        Ok(())
     }
 }

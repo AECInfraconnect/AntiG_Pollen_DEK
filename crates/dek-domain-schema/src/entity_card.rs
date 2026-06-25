@@ -79,13 +79,13 @@ pub struct EntityCardModel {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     #[test]
-    fn test_entity_card_serde() {
+    fn test_entity_card_serde() -> serde_json::Result<()> {
         let json = r#"{"id":"1","kind":"agent","title":"Test Agent","status":"ready","status_label":{"en":"Ready","th":"�������ҹ"},"summary":{"en":"Summary","th":"��ػ"},"chips":[]}"#;
-        let card: EntityCardModel = serde_json::from_str(json).unwrap();
+        let card: EntityCardModel = serde_json::from_str(json)?;
         assert_eq!(card.kind, EntityKind::Agent);
+        Ok(())
     }
 }

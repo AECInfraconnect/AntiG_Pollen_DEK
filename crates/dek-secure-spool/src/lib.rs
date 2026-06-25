@@ -244,10 +244,10 @@ impl<K: key_manager::OsKeyStore> Spool<K> {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use std::fs;
+    use std::path::Path;
 
     struct DummyKeyStore;
     impl crate::key_manager::OsKeyStore for DummyKeyStore {
@@ -259,8 +259,25 @@ mod tests {
         }
     }
 
+    fn segment_contains_audit_seq(path: &Path, seq: u64) -> Result<bool, SpoolError> {
+        let key = key_manager::SpoolKeyManager::new(DummyKeyStore)
+            .active_aead_key()
+            .map_err(|e| SpoolError::KeyManager(e.to_string()))?;
+        for record in segment::read_encrypted_records(path)? {
+            let plaintext = key
+                .decrypt_record(&record)
+                .map_err(|_| SpoolError::Crypto)?;
+            let event: segment::TelemetryEvent = serde_json::from_slice(&plaintext)?;
+            let audit_entry: audit::AuditEntry = serde_json::from_value(event.body)?;
+            if audit_entry.seq == seq {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
     #[tokio::test]
-    async fn test_spool_enqueue_and_replay() {
+    async fn test_spool_enqueue_and_replay() -> Result<(), SpoolError> {
         let dir = std::env::temp_dir().join(format!("test_spool_{}", Uuid::new_v4()));
         let km = key_manager::SpoolKeyManager::new(DummyKeyStore);
         let spool = Spool::new(
@@ -271,15 +288,16 @@ mod tests {
             "test".to_string(),
         );
 
-        spool.enqueue(b"event1".to_vec()).await.unwrap();
-        spool.enqueue(b"event2".to_vec()).await.unwrap();
+        spool.enqueue(b"event1".to_vec()).await?;
+        spool.enqueue(b"event2".to_vec()).await?;
 
-        let replays = spool.replay().await.unwrap();
+        let replays = spool.replay().await?;
         assert_eq!(replays.len(), 2);
         assert_eq!(replays[0].payload_json, "event1");
         assert_eq!(replays[1].payload_json, "event2");
 
         let _ = fs::remove_dir_all(dir);
+        Ok(())
     }
 
     #[tokio::test]
@@ -304,7 +322,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_spool_tamper_quarantine() {
+    async fn test_spool_tamper_quarantine() -> Result<(), SpoolError> {
         let dir = std::env::temp_dir().join(format!("test_spool_{}", Uuid::new_v4()));
         let _km = key_manager::SpoolKeyManager::new(DummyKeyStore);
 
@@ -316,7 +334,7 @@ mod tests {
                 "test".to_string(),
                 "test".to_string(),
             );
-            spool1.enqueue(b"event1".to_vec()).await.unwrap();
+            spool1.enqueue(b"event1".to_vec()).await?;
         } // spool1 dropped, writer dropped
 
         {
@@ -327,21 +345,24 @@ mod tests {
                 "test".to_string(),
                 "test".to_string(),
             );
-            spool2.replay().await.unwrap(); // LOAD SEQ!
-            spool2.enqueue(b"event2".to_vec()).await.unwrap();
+            spool2.replay().await?;
+            spool2.enqueue(b"event2".to_vec()).await?;
         }
 
         // Now we have 2 files. Delete the first one to break the chain.
         if let Ok(mut entries) = std::fs::read_dir(&dir) {
-            let mut pds_files = Vec::new();
+            let mut first_audit_segment = None;
             while let Some(Ok(entry)) = entries.next() {
-                if entry.path().extension().and_then(|s| s.to_str()) == Some("pds") {
-                    pds_files.push(entry.path());
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("pds")
+                    && segment_contains_audit_seq(&path, 1)?
+                {
+                    first_audit_segment = Some(path);
+                    break;
                 }
             }
-            pds_files.sort();
-            if pds_files.len() > 1 {
-                std::fs::remove_file(&pds_files[0]).unwrap();
+            if let Some(path) = first_audit_segment {
+                std::fs::remove_file(path)?;
             }
         }
 
@@ -366,5 +387,6 @@ mod tests {
         }
         assert!(has_quarantine, "Expected quarantined files");
         let _ = std::fs::remove_dir_all(dir);
+        Ok(())
     }
 }

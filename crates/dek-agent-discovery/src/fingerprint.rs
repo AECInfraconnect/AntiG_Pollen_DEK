@@ -288,8 +288,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(clippy::unwrap_used, clippy::expect_used)]
-    fn codex_desktop_passes_threshold() {
+    fn codex_desktop_passes_threshold() -> anyhow::Result<()> {
         let facts = ProcessFacts {
             process_name: "Codex.exe",
             exe_path: "C:/Program Files/WindowsApps/OpenAI.Codex_26.616.3767.0_x64__2p2nqsd0c76g0/app/Codex.exe",
@@ -317,12 +316,13 @@ mod tests {
             "config_parsers": [],
             "ports": [],
             "control_strategies": []
-        })).expect("valid sig json");
+        }))?;
         sigs.push(sig);
 
         let r = fingerprint_process_v2(&facts, &sigs, &apps);
         assert!(r.confidence >= 0.9, "Codex must clear threshold");
         assert_eq!(r.display_name.as_deref(), Some("OpenAI Codex (Desktop)"));
+        Ok(())
     }
 
     #[test]
