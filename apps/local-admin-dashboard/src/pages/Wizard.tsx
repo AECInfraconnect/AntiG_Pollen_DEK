@@ -12,6 +12,8 @@ import {
   Check,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ControlLevelSelector } from "../components/simple/ControlLevelSelector";
+import { FeasibilityPreview } from "../components/simple/FeasibilityPreview";
 
 export function Wizard() {
   const [searchParams] = useSearchParams();
@@ -217,43 +219,10 @@ export function Wizard() {
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
           <h3 className="text-xl font-semibold">3. Set Control Level & Deploy</h3>
 
-          <div className="grid grid-cols-1 gap-3">
-            {levels.map((l) => (
-              <label
-                key={l.val}
-                className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${controlLevel === l.val ? "border-primary bg-primary/5" : "hover:bg-muted/30"}`}
-              >
-                <input
-                  type="radio"
-                  name="level"
-                  value={l.val}
-                  checked={controlLevel === l.val}
-                  onChange={() => handleLevelChange(l.val)}
-                  className="mt-1"
-                />
-                <div>
-                  <div className="font-medium">{l.label}</div>
-                  <div className="text-xs text-muted-foreground">{l.desc}</div>
-                </div>
-              </label>
-            ))}
-          </div>
+          <ControlLevelSelector value={controlLevel} onChange={handleLevelChange} />
 
-          <div
-            className={`p-4 border rounded-xl mt-6 ${feasibility.verdict === "fully_enforceable" ? "bg-emerald-500/10 border-emerald-500/30" : "bg-amber-500/10 border-amber-500/30"}`}
-          >
-            <div className="flex items-start gap-3">
-              {feasibility.verdict === "fully_enforceable" ? (
-                <ShieldCheck className="w-6 h-6 text-emerald-500 mt-0.5" />
-              ) : (
-                <AlertTriangle className="w-6 h-6 text-amber-500 mt-0.5" />
-              )}
-              <div>
-                <h4 className="font-semibold text-lg">
-                   {i18n.language === "th" ? feasibility.friendly_th : feasibility.friendly_en}
-                </h4>
-              </div>
-            </div>
+          <div className="mt-6">
+            <FeasibilityPreview result={feasibility} />
           </div>
 
           <div className="flex justify-between pt-6 border-t mt-8">
