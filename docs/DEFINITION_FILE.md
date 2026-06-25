@@ -7,7 +7,9 @@ The definition file is the core intelligence base for POLLEK's Auto Discovery sy
 The file uses a self-describing JSON format designed for hot-reloading and synchronization via `dek-bundle-sync`.
 
 ### 1. `browser_processes`
+
 Defines known browser executables. Processes listed here will be **ignored** by the generic process scanner and delegated to the `browser_window_scan`.
+
 ```json
 {
   "process_names": ["chrome.exe", "chrome"],
@@ -16,7 +18,9 @@ Defines known browser executables. Processes listed here will be **ignored** by 
 ```
 
 ### 2. `web_ai_signatures`
+
 Defines Web-based AIs. These signatures are matched against open browser window titles and `--app` command line arguments.
+
 ```json
 {
   "id": "chatgpt_web",
@@ -31,7 +35,9 @@ Defines Web-based AIs. These signatures are matched against open browser window 
 ```
 
 ### 3. `ai_process_hints`
+
 Heuristics to identify potential AI processes that lack formal signatures, while aggressively dropping non-AI bloatware (e.g., `Dell.*`, `Intel.*`).
+
 ```json
 {
   "require_match": true,
@@ -42,6 +48,7 @@ Heuristics to identify potential AI processes that lack formal signatures, while
 ```
 
 ### 4. `signatures`
+
 Standard app signatures for desktop and CLI agents (e.g., `Claude Desktop`, `Cursor`).
 
 ## How to Add a New Web AI

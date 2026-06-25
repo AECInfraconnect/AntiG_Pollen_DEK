@@ -21,8 +21,7 @@ This document provides the Single Source of Truth for the Desktop Flow and Frien
 
 | Event / Status | EN Message | TH Message |
 | --- | --- | --- |
-| Agent Discovered | "New AI Agent discovered: {name}" | "พบ AI Agent ใหม่: {name}" |
-| Policy Enforced | "Policy successfully enforced on {name}." | "บังคับใช้นโยบายกับ {name} สำเร็จ" |
-| Capability Degraded | "Enforcement capability degraded. Falling back to Observe Mode." | "ความสามารถในการบังคับใช้ลดลง เปลี่ยนเป็นโหมดสังเกตการณ์" |
-| Action Blocked | "Blocked action {action} by {name} due to policy." | "ระงับการกระทำ {action} โดย {name} ตามนโยบาย" |
-
+| Agent Discovered | "New AI Agent discovered: {name}" | "๏ฟฝ๏ฟฝ AI Agent ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ: {name}" |
+| Policy Enforced | "Policy successfully enforced on {name}." | "๏ฟฝัง๏ฟฝับ๏ฟฝ๏ฟฝ๏ฟฝยบ๏ฟฝยกับ {name} ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ" |
+| Capability Degraded | "Enforcement capability degraded. Falling back to Observe Mode." | "๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝรถในก๏ฟฝรบัง๏ฟฝับ๏ฟฝ๏ฟฝลดลง ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝยน๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝังเกต๏ฟฝ๏ฟฝรณ๏ฟฝ" |
+| Action Blocked | "Blocked action {action} by {name} due to policy." | "๏ฟฝะงับ๏ฟฝ๏ฟฝรก๏ฟฝะท๏ฟฝ {action} ๏ฟฝ๏ฟฝ {name} ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝยบ๏ฟฝ๏ฟฝ" |

@@ -168,27 +168,6 @@ fn enumerate_browser_windows(browsers: &[BrowserProcessDef]) -> Vec<BrowserWindo
 #[cfg(target_os = "macos")]
 mod macos_impl {
     use super::*;
-    use core_graphics::window::{
-        kCGNullWindowID, kCGWindowListOptionOnScreenOnly, CGWindowListCopyWindowInfo,
-    };
-
-    pub fn enumerate(browsers: &[BrowserProcessDef]) -> Vec<BrowserWindow> {
-        let mut out = vec![];
-        use sysinfo::System;
-        let mut sys = System::new();
-        sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
-
-        let window_info =
-            unsafe { CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID) };
-        if window_info.is_null() {
-            return out;
-        }
-
-        for (pid, process) in sys.processes() {
-            let pname = process.name().to_string_lossy().to_ascii_lowercase();
-            let is_browser = browsers.iter().any(|b| {
-                b.process_names
-                    .iter()
                     .any(|n| n.eq_ignore_ascii_case(&pname))
             });
             if is_browser {

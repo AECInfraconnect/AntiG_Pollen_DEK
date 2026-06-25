@@ -6,6 +6,7 @@ policy bundles produced by a control plane — either the local-first **Local
 Control Plane** or **Pollek Cloud** — over one shared contract.
 
 ## Local Flow (Policy-First / PEP-Transparent)
+
 The core workflow on the desktop is designed so the user never configures a PEP directly. The process flows through the Control Plane and Enforcement API seamlessly:
 
 ```mermaid
