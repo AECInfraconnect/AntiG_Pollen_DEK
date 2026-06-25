@@ -41,6 +41,18 @@ fn main() {
             "routing-plan.schema.json",
             schema_for!(dek_domain_schema::RoutingPlan),
         ),
+        (
+            "policy-feasibility-result.schema.json",
+            schema_for!(dek_domain_schema::feasibility::PolicyFeasibilityResult),
+        ),
+        (
+            "entity-card-model.schema.json",
+            schema_for!(dek_domain_schema::entity_card::EntityCardModel),
+        ),
+        (
+            "user-visible-event.schema.json",
+            schema_for!(dek_domain_schema::user_event::UserVisibleEvent),
+        ),
     ];
 
     for (filename, schema) in schemas {
