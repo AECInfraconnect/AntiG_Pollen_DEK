@@ -76,10 +76,19 @@ export function AutoDiscovery() {
             .map((c) => c.evidence?.[0]?.merge_key || c.display_name),
         );
 
-        // Update discovered status if they exist in agents or share a fingerprint
         const mergedCandidates = discovered.map((c) => {
           const fp = c.evidence?.[0]?.merge_key || c.display_name;
-          if (agentIds.has(c.candidate_id) || registeredFingerprints.has(fp)) {
+          if (agentIds.has(c.candidate_id)) {
+            return { ...c, status: "registered", _agent_id: c.candidate_id };
+          }
+          const registeredPeer = discovered.find(peer => 
+              agentIds.has(peer.candidate_id) && 
+              (peer.evidence?.[0]?.merge_key || peer.display_name) === fp
+          );
+          if (registeredPeer) {
+              return { ...c, status: "registered", _agent_id: registeredPeer.candidate_id };
+          }
+          if (registeredFingerprints.has(fp)) {
             return { ...c, status: "registered" };
           }
           return c;
@@ -135,23 +144,33 @@ export function AutoDiscovery() {
       return p;
     });
 
-  const deleteCandidate = async (id: string) => {
+  const deleteCandidate = async (c: any) => {
     if (
       !(await confirm({
-        title: "Confirm Action",
-        description: "Are you sure you want to delete this candidate?",
+        title: c.status === "registered" ? "Delete Registered Agent" : "Confirm Action",
+        description: c.status === "registered" 
+          ? "Are you sure you want to delete this AI Agent? This will unregister the agent and delete its discovery candidate."
+          : "Are you sure you want to delete this candidate?",
         danger: true,
       }))
     )
       return;
     try {
-      await RegistryApi.deleteDiscoveryCandidate(id);
-      if (selectedId === id) {
+      if (c.status === "registered" && c._agent_id) {
+        try {
+          await RegistryApi.deleteAgent(c._agent_id);
+        } catch (e) {
+          console.error("Failed to delete agent", e);
+        }
+      }
+      await RegistryApi.deleteDiscoveryCandidate(c.candidate_id);
+      if (selectedId === c.candidate_id) {
         setParams((p) => {
           p.delete("selected");
           return p;
         });
       }
+      toast.success("Deleted successfully");
       fetchCandidates();
     } catch (e) {
       console.error("Failed to delete candidate:", e);
@@ -425,7 +444,7 @@ export function AutoDiscovery() {
                 {
                   label: "Delete",
                   danger: true,
-                  onClick: () => deleteCandidate(c.candidate_id),
+                  onClick: () => deleteCandidate(c),
                 },
               ]}
               tabs={[
