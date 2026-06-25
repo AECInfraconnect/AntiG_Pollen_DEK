@@ -107,6 +107,16 @@ fn aggregate_by_merge_key(
         let mut capability_tags = Vec::new();
         let mut status = DiscoveryStatus::Discovered;
 
+        let has_confirmed = group.iter().any(|e| {
+            e.data
+                .get("confirmed")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(true)
+        });
+        if !has_confirmed {
+            status = DiscoveryStatus::Unconfirmed;
+        }
+
         let mut process_hash = None;
         let mut mcp_servers = Vec::new();
         let mut endpoints = Vec::new();
@@ -128,8 +138,9 @@ fn aggregate_by_merge_key(
 
             match ev.source {
                 EvidenceSource::ProcessScan => {
+                    let process_data = ev.data.get("process").unwrap_or(&ev.data);
                     if let Ok(p) = serde_json::from_value::<crate::process_scan::ProcessEvidence>(
-                        ev.data.clone(),
+                        process_data.clone(),
                     ) {
                         ctx.process_name = p.process_name.clone();
                         ctx.cmd_redacted = p.cmd_template.join(" ");

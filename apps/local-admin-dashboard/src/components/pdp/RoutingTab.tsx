@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { PdpRoutingApi } from "../../services/api";
 import type { PdpRouteRule } from "../../services/api";
+import { useConfirm } from "../ui/ConfirmDialog";
 
 export function RoutingTab() {
   const [routes, setRoutes] = useState<PdpRouteRule[]>([]);
   const [loading, setLoading] = useState(true);
+  const { confirm } = useConfirm();
 
   // New Route form state
   const [newRouteName, setNewRouteName] = useState("");
@@ -69,12 +72,21 @@ export function RoutingTab() {
   };
 
   const handleDeleteRoute = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this route?")) return;
+    if (
+      !(await confirm({
+        title: "Delete Route",
+        description: "Are you sure you want to delete this route?",
+        danger: true,
+      }))
+    )
+      return;
     try {
       await PdpRoutingApi.delete(id);
       reload();
+      toast.success("Route deleted successfully");
     } catch (e) {
       console.error(e);
+      toast.error("Failed to delete route");
     }
   };
 

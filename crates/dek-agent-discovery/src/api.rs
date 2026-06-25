@@ -17,25 +17,37 @@ pub async fn run_scan(
     // 1. Process Scan
     match scan_processes() {
         Ok(processes) => {
-            let sigs = dek_fingerprint_defs::load_latest_baseline().signatures;
+            let defs = dek_fingerprint_defs::load_latest_baseline();
+            let sigs = defs.signatures;
+            let apps = defs.installed_app_signatures;
             for p in processes {
-                let conf = crate::fingerprint::fingerprint_process(&p, &sigs);
-                if conf > config.min_fingerprint_confidence {
+                let cmdline = p.cmd_template.join(" ");
+                let facts = crate::fingerprint::ProcessFacts {
+                    process_name: &p.process_name,
+                    exe_path: p.exe_path_redacted.as_deref().unwrap_or(""),
+                    cmdline: &cmdline,
+                };
+                let resolved = crate::fingerprint::fingerprint_process_v2(&facts, &sigs, &apps);
+
+                let above = resolved.confidence >= config.min_fingerprint_confidence;
+                if above || resolved.confidence >= config.min_unconfirmed_confidence {
                     let evidence = DiscoveryEvidence {
                         evidence_id: uuid::Uuid::new_v4().to_string(),
                         source: EvidenceSource::ProcessScan,
-                        confidence: conf,
+                        confidence: resolved.confidence,
                         observed_at: chrono::Utc::now().to_rfc3339(),
                         privacy_class: PrivacyClass::InternalMetadata,
                         redacted: true,
-                        data: serde_json::to_value(&p).unwrap_or_else(|e| {
-                            tracing::error!("Failed to serialize process scan data: {}", e);
-                            metrics::counter!("pollek_discovery_serialize_drop_total", "source" => "process_scan").increment(1);
-                            serde_json::json!({})
+                        data: serde_json::json!({
+                            "process": p,
+                            "resolved_name": resolved.display_name,
+                            "vendor": resolved.vendor,
+                            "matched_signature_id": resolved.matched_signature_id,
+                            "confirmed": above,
                         }),
                     };
 
-                    let agent_type = InferredAgentType::UnknownAiProcess;
+                    let agent_type = resolved.inferred_type;
 
                     candidates.push(DiscoveredAgentCandidate {
                         schema_version: "pollen.agent_discovery_candidate.v1".into(),
@@ -45,7 +57,7 @@ pub async fn run_scan(
                         status: DiscoveryStatus::Discovered,
                         display_name: p.process_name.clone(),
                         inferred_agent_type: agent_type,
-                        confidence: conf,
+                        confidence: resolved.confidence,
                         risk_score: 50,
                         first_seen: chrono::Utc::now().to_rfc3339(),
                         last_seen: chrono::Utc::now().to_rfc3339(),

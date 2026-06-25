@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { Wrench, Plus, FileKey, Info } from "lucide-react";
+import { Wrench, Info, FileKey } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { RegistryApi } from "../services/api";
 import type { Tool } from "../services/api";
@@ -8,14 +8,16 @@ import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayo
 import { EntityCard } from "../components/master-detail/EntityCard";
 import { DetailPane } from "../components/master-detail/DetailPane";
 import { EmptyState } from "../components/master-detail/EmptyState";
-import type { UiStatus } from "../lib/status";
 import { RegisterControlBar } from "../components/RegisterControlBar";
+import type { UiStatus } from "../lib/status";
+import { useConfirm } from "../components/ui/ConfirmDialog";
 
 export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [params, setParams] = useSearchParams();
   const selectedId = params.get("selected") ?? undefined;
+  const { confirm } = useConfirm();
 
   const fetchTools = () => {
     setLoading(true);
@@ -37,9 +39,11 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
 
   const deleteTool = async (id: string) => {
     if (
-      !confirm(
-        "Are you sure you want to delete this tool? Note: Make sure no active policies depend on it.",
-      )
+      !(await confirm({
+        title: "Delete Tool",
+        description: "Are you sure you want to delete this tool?",
+        danger: true,
+      }))
     )
       return;
     try {
@@ -50,9 +54,10 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
           return p;
         });
       }
+      toast.success("Tool deleted successfully");
       fetchTools();
-    } catch (err) {
-      console.error("Failed to delete tool:", err);
+    } catch (e) {
+      console.error("Failed to delete tool:", e);
       toast.error("Failed to delete tool");
     }
   };
@@ -62,24 +67,20 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
       {!hideHeader && (
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">MCP Tools</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">Tools</h2>
             <p className="text-sm text-muted-foreground">
-              View registered capabilities provided by connected MCP servers.
+              Manage function-calling definitions available to AI Agents.
             </p>
           </div>
-          <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-sm">
-            <Plus className="h-4 w-4" />
-            Add Tool
-          </button>
         </div>
       )}
 
       <MasterDetailLayout
-        idSelector={(x: any) => x.tool_id || x.id}
         items={tools}
         loading={loading}
         selectedId={selectedId}
         onSelect={select}
+        idSelector={(t: any) => t.tool_id}
         toolbar={
           <div className="flex items-center gap-2 mb-4">
             <input
@@ -92,9 +93,8 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
         emptyState={
           <EmptyState
             icon={Wrench}
-            title="No tools registered"
-            description="Register tools exposed by MCP servers to use them in policies."
-            actionLabel="Add Tool"
+            title="No tools found"
+            description="Register JSON schemas for tools that your agents can invoke."
           />
         }
         renderCard={(t, selected) => {
@@ -173,17 +173,22 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
                           onSuccess={() => fetchTools()}
                         />
                       </div>
-
-                      <div>
-                        <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
-                          <Info className="h-4 w-4" /> Schema
-                        </h4>
-                        <pre className="text-[10px] font-mono bg-muted/50 p-4 rounded-lg overflow-x-auto border">
-                          {JSON.stringify((t as any).schema, null, 2)}
-                        </pre>
-                      </div>
                     </div>
                   ),
+                },
+                {
+                  id: "schema",
+                  label: "Schema",
+                  content: (
+                    <div>
+                      <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
+                        <Info className="h-4 w-4" /> JSON Schema
+                      </h4>
+                      <pre className="text-[10px] font-mono bg-muted/50 p-4 rounded-lg overflow-x-auto border">
+                        {JSON.stringify((t as any).schema, null, 2)}
+                      </pre>
+                    </div>
+                  )
                 },
                 {
                   id: "policies",

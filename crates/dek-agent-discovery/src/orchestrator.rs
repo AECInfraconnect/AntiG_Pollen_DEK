@@ -93,25 +93,39 @@ impl DiscoveryOrchestrator {
                 let mut ev = Vec::new();
                 if let Ok(Ok(processes)) = tokio::time::timeout(
                     std::time::Duration::from_secs(config.source_timeout_secs),
-                    tokio::task::spawn_blocking(crate::process_scan::scan_processes)
+                    tokio::task::spawn_blocking(crate::process_scan::scan_processes),
                 )
                 .await
                 .unwrap_or(Ok(Ok(vec![])))
                 {
                     for p in processes {
-                        let conf = crate::fingerprint::fingerprint_process(&p, &defs.signatures);
-                        if conf > config.min_fingerprint_confidence {
+                        let cmdline = p.cmd_template.join(" ");
+                        let facts = crate::fingerprint::ProcessFacts {
+                            process_name: &p.process_name,
+                            exe_path: p.exe_path_redacted.as_deref().unwrap_or(""),
+                            cmdline: &cmdline,
+                        };
+                        let resolved = crate::fingerprint::fingerprint_process_v2(
+                            &facts,
+                            &defs.signatures,
+                            &defs.installed_app_signatures,
+                        );
+
+                        let above = resolved.confidence >= config.min_fingerprint_confidence;
+                        if above || resolved.confidence >= config.min_unconfirmed_confidence {
                             ev.push(DiscoveryEvidenceV2 {
                                 evidence_id: uuid::Uuid::new_v4().to_string(),
                                 source: EvidenceSource::ProcessScan,
-                                confidence: conf,
+                                confidence: resolved.confidence,
                                 observed_at: chrono::Utc::now().to_rfc3339(),
                                 privacy_class: PrivacyClass::InternalMetadata,
                                 redacted: true,
-                                data: serde_json::to_value(&p).unwrap_or_else(|e| {
-                                    tracing::error!("Failed to serialize process scan data: {}", e);
-                                    metrics::counter!("pollek_discovery_serialize_drop_total", "source" => "process_scan").increment(1);
-                                    serde_json::json!({})
+                                data: serde_json::json!({
+                                    "process": p,
+                                    "resolved_name": resolved.display_name,
+                                    "vendor": resolved.vendor,
+                                    "matched_signature_id": resolved.matched_signature_id,
+                                    "confirmed": above,
                                 }),
                                 merge_key: Some(format!(
                                     "{:?}:{}",

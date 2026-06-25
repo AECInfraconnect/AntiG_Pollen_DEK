@@ -167,10 +167,10 @@ export function Overview() {
                       className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                         m.status === "ready" ||
                         m.status === "ready_after_approval"
-                          ? "bg-green-500/20 text-green-400"
+                          ? "bg-emerald-500/20 text-emerald-400"
                           : m.status === "installed_inactive"
-                            ? "bg-yellow-500/20 text-yellow-400"
-                            : "bg-red-500/20 text-red-400"
+                            ? "bg-amber-500/20 text-amber-400"
+                            : "bg-rose-500/20 text-rose-400"
                       }`}
                     >
                       {m.status.replace(/_/g, " ")}

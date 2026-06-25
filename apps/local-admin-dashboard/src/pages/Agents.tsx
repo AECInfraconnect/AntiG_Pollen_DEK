@@ -9,6 +9,7 @@ import { EntityCard } from "../components/master-detail/EntityCard";
 import { DetailPane } from "../components/master-detail/DetailPane";
 import { EmptyState } from "../components/master-detail/EmptyState";
 import type { UiStatus } from "../lib/status";
+import { useConfirm } from "../components/ui/ConfirmDialog";
 
 export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
   const [agents, setAgents] = useState<AiAgent[]>([]);
@@ -16,6 +17,7 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const selectedAgentId = params.get("selected") ?? undefined;
+  const { confirm } = useConfirm();
 
   const fetchAgents = () => {
     setLoading(true);
@@ -37,9 +39,11 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
 
   const deleteAgent = async (id: string) => {
     if (
-      !confirm(
-        "Are you sure you want to delete this agent? Note: Make sure no active policies depend on it.",
-      )
+      !(await confirm({
+        title: "Delete Agent",
+        description: "Are you sure you want to delete this agent? Note: Make sure no active policies depend on it.",
+        danger: true,
+      }))
     )
       return;
     try {
@@ -50,6 +54,7 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
           return p;
         });
       }
+      toast.success("Agent deleted successfully");
       fetchAgents();
     } catch (e) {
       console.error("Failed to delete agent:", e);
@@ -62,23 +67,25 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
       {!hideHeader && (
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">AI Agents</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Authorized Agents
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Manage authorized AI agents and client identities in the local
-              workspace.
+              Manage local AI instances connected to the PEP.
             </p>
           </div>
           <button
             onClick={() => navigate("/discovery")}
             className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-sm"
           >
-            <Plus className="h-4 w-4" /> Discover & Register
+            <Plus className="h-4 w-4" />
+            Add Agent
           </button>
         </div>
       )}
 
       <MasterDetailLayout
-        idSelector={(x: any) => x.id || x.id}
+        idSelector={(x: any) => x.agent_id || x.id}
         items={agents}
         loading={loading}
         selectedId={selectedAgentId}
@@ -95,17 +102,26 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
         emptyState={
           <EmptyState
             icon={Users}
-            title="No agents registered"
-            description="Discover or manually register AI agents to govern their access."
-            actionLabel="Discover Agents"
+            title="No agents found"
+            description="Register a local AI agent to start managing its policies."
+            actionLabel="Add Agent"
             onAction={() => navigate("/discovery")}
           />
         }
         renderCard={(a, selected) => {
           let status: UiStatus = "idle";
-          if (a.enforcement_mode === "Enforce") status = "ok";
-          else if (a.enforcement_mode === "Observe") status = "info";
-          else if (a.enforcement_mode === "Shadow") status = "degraded";
+          let label = a.enforcement_mode || "Unknown";
+          
+          if (a.enforcement_mode === "Enforce") {
+            status = "ok";
+            label = "🛡️ Protected";
+          } else if (a.enforcement_mode === "Observe") {
+            status = "info";
+            label = "👁️ Observing";
+          } else if (a.enforcement_mode === "Shadow") {
+            status = "degraded";
+            label = "🔧 Shadow AI";
+          }
 
           return (
             <EntityCard
@@ -113,7 +129,7 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
               subtitle={a.runtime.runtime_name || "Unknown"}
               icon={Cpu}
               status={status}
-              statusLabel={a.enforcement_mode || "Unknown"}
+              statusLabel={label}
               meta={[
                 { label: "Version", value: a.runtime.version || "Unknown" },
               ]}
@@ -123,16 +139,25 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
         }}
         renderDetail={(a) => {
           let status: UiStatus = "idle";
-          if (a.enforcement_mode === "Enforce") status = "ok";
-          else if (a.enforcement_mode === "Observe") status = "info";
-          else if (a.enforcement_mode === "Shadow") status = "degraded";
+          let label = a.enforcement_mode || "Unknown";
+          
+          if (a.enforcement_mode === "Enforce") {
+            status = "ok";
+            label = "🛡️ Protected";
+          } else if (a.enforcement_mode === "Observe") {
+            status = "info";
+            label = "👁️ Observing";
+          } else if (a.enforcement_mode === "Shadow") {
+            status = "degraded";
+            label = "🔧 Shadow AI";
+          }
 
           return (
             <DetailPane
               title={a.name}
               subtitle={a.runtime.runtime_name || "Unknown"}
               status={status}
-              statusLabel={a.enforcement_mode || "Unknown"}
+              statusLabel={label}
               actions={[
                 {
                   label: "Apply Policy",

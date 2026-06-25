@@ -103,11 +103,11 @@ export function LocalEnginesTab() {
                     <span
                       className={`px-2 py-1 rounded text-xs ${
                         (r.status || "").toLowerCase() === "ready"
-                          ? "bg-green-500/10 text-green-500"
+                          ? "bg-emerald-500/10 text-emerald-500"
                           : (r.status || "").toLowerCase() === "error"
-                            ? "bg-red-500/10 text-red-500"
+                            ? "bg-rose-500/10 text-rose-500"
                             : (r.status || "").toLowerCase() === "degraded"
-                              ? "bg-yellow-500/10 text-yellow-500"
+                              ? "bg-amber-500/10 text-amber-500"
                               : "bg-secondary text-secondary-foreground"
                       }`}
                     >

@@ -169,7 +169,8 @@ export class ControlPlaneClient {
 
   // Registry
   async listAgents(): Promise<AiAgent[]> {
-    return this.fetchApi("/registry/agents");
+    const data = await this.fetchApi("/registry/agents");
+    return data.items ?? data.agents ?? data;
   }
 
   async deleteAgent(agentId: string): Promise<void> {
@@ -178,7 +179,13 @@ export class ControlPlaneClient {
 
   async listMcpServers(): Promise<McpServer[]> {
     const data = await this.fetchApi("/registry/mcp-servers");
-    return data.mcp_servers ?? data;
+    return data.items ?? data.mcp_servers ?? data;
+  }
+  async registerMcpServer(payload: any): Promise<McpServer> {
+    return this.fetchApi("/registry/mcp-servers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
   }
 
   async deleteMcpServer(serverId: string): Promise<void> {
@@ -189,7 +196,7 @@ export class ControlPlaneClient {
 
   async listTools(): Promise<Tool[]> {
     const data = await this.fetchApi("/registry/tools");
-    return data.tools ?? data;
+    return data.items ?? data.tools ?? data;
   }
 
   async deleteTool(toolId: string): Promise<void> {
@@ -198,50 +205,49 @@ export class ControlPlaneClient {
 
   async listResources(): Promise<Resource[]> {
     const data = await this.fetchApi("/registry/resources");
-    return data.resources ?? data;
+    return data.items ?? data.resources ?? data;
   }
 
-  async deleteResource(resourceId: string): Promise<void> {
-    return this.fetchApi(`/registry/resources/${resourceId}`, {
+  async deleteResource(id: string): Promise<void> {
+    return this.fetchApi(`/registry/resources/${id}`, {
       method: "DELETE",
     });
   }
   async listEntities(): Promise<Entity[]> {
     const data = await this.fetchApi("/registry/entities");
-    return data.entities ?? data;
+    return data.items ?? data.entities ?? data;
   }
 
-  async deleteEntity(entityId: string): Promise<void> {
-    return this.fetchApi(`/registry/entities/${entityId}`, {
+  async deleteEntity(id: string): Promise<void> {
+    return this.fetchApi(`/registry/entities/${id}`, {
       method: "DELETE",
     });
   }
 
   async listRelationships(): Promise<Relationship[]> {
     const data = await this.fetchApi("/registry/relationships");
-    return data.relationships ?? data;
+    return data.items ?? data.relationships ?? data;
   }
 
-  async deleteRelationship(relId: string): Promise<void> {
-    return this.fetchApi(`/registry/relationships/${relId}`, {
+  async deleteRelationship(id: string): Promise<void> {
+    return this.fetchApi(`/registry/relationships/${id}`, {
       method: "DELETE",
     });
   }
 
   async listBlackboxAiProviders(): Promise<BlackboxAiProvider[]> {
     const data = await this.fetchApi("/registry/blackbox-ai");
-    return data.providers ?? data;
+    return data.items ?? data.providers ?? data;
   }
 
-  async deleteBlackboxAi(providerId: string): Promise<void> {
-    return this.fetchApi(`/registry/blackbox-ai/${providerId}`, {
-      method: "DELETE",
-    });
+  async deleteBlackboxAi(id: string): Promise<void> {
+    return this.fetchApi(`/registry/blackbox-ai/${id}`, { method: "DELETE" });
   }
 
   // Policies
   async listPolicies(): Promise<PolicyDraft[]> {
-    return this.fetchApi("/policies");
+    const data = await this.fetchApi("/policies");
+    return data.items ?? data.policies ?? data;
   }
   async createPolicy(draft: PolicyDraft): Promise<PolicyDraft> {
     return this.fetchApi("/policies", {
@@ -279,7 +285,8 @@ export class ControlPlaneClient {
 
   // Connectors (Legacy)
   async listConnectors(): Promise<ConnectorConfig[]> {
-    return this.fetchApi("/connectors");
+    const data = await this.fetchApi("/connectors");
+    return data.items ?? data.connectors ?? data;
   }
   async upsertConnector(cfg: ConnectorConfig): Promise<ConnectorConfig> {
     return this.fetchApi("/connectors", {
@@ -293,7 +300,8 @@ export class ControlPlaneClient {
 
   // PDP Runtimes
   async listPdpRuntimes(): Promise<PdpRuntime[]> {
-    return this.fetchApi("/pdp/runtimes");
+    const data = await this.fetchApi("/pdp/runtimes");
+    return data.items ?? data.runtimes ?? data;
   }
   async getPdpRuntime(id: string): Promise<PdpRuntime> {
     return this.fetchApi(`/pdp/runtimes/${id}`);
@@ -397,7 +405,7 @@ export class ControlPlaneClient {
   // Shadow AI & Discovery
   async listDiscoveryCandidates(): Promise<DiscoveredAgentCandidateV2[]> {
     return this.fetchApi("/discovery/candidates")
-      .then((data: any) => data.candidates ?? data)
+      .then((data: any) => data.items ?? data.candidates ?? data)
       .catch(() => []); // Mock fallback if endpoint not exist
   }
 
@@ -430,7 +438,7 @@ export class ControlPlaneClient {
 
   async listDiscoveryScans(): Promise<DiscoveryScanJob[]> {
     return this.fetchApi("/discovery/scans")
-      .then((data: any) => data.scans ?? data)
+      .then((data: any) => data.items ?? data.scans ?? data)
       .catch(() => []);
   }
 
@@ -699,7 +707,7 @@ export const PolicyFirstApi = {
   scan: () => defaultClient.fetchApi("/local/scan", { method: "POST" }),
   getLatestSnapshot: () =>
     defaultClient.fetchApi("/local/capability-snapshot/latest"),
-  getPolicySuggestions: () => defaultClient.fetchApi("/policy-suggestions"),
+  getPolicySuggestions: () => defaultClient.listPolicySuggestions(),
   evaluateFeasibility: (req: any) =>
     defaultClient.fetchApi("/policies/feasibility", {
       method: "POST",

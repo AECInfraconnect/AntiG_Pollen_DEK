@@ -1,16 +1,19 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { PdpRuntimeApi } from "../../services/api";
 import type { PdpRuntime } from "../../services/api";
 import { LocalEnginesTab } from "./LocalEnginesTab";
 import { CloudPdpTab } from "./CloudPdpTab";
 import { RoutingTab } from "./RoutingTab";
 import { OpenFgaWizard } from "./OpenFgaWizard";
+import { useConfirm } from "../ui/ConfirmDialog";
 
 export function PdpRuntimeRouting() {
   const [activeTab, setActiveTab] = useState<
     "local" | "remote" | "cloud" | "routing"
   >("local");
   const [runtimes, setRuntimes] = useState<PdpRuntime[]>([]);
+  const { confirm } = useConfirm();
   const [testResults, setTestResults] = useState<Record<string, any>>({});
   const [newRemoteName, setNewRemoteName] = useState("");
   const [newRemoteKind, setNewRemoteKind] = useState<
@@ -74,13 +77,21 @@ export function PdpRuntimeRouting() {
   };
 
   const handleDeleteRuntime = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this remote connector?"))
+    if (
+      !(await confirm({
+        title: "Delete Connector",
+        description: "Are you sure you want to delete this remote connector?",
+        danger: true,
+      }))
+    )
       return;
     try {
       await PdpRuntimeApi.delete(id);
       loadData();
+      toast.success("Connector deleted successfully");
     } catch (e) {
       console.error(e);
+      toast.error("Failed to delete connector");
     }
   };
 
