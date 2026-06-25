@@ -707,6 +707,7 @@ export const PolicyFirstApi = {
   scan: () => defaultClient.fetchApi("/scan", { method: "POST" }),
   getLatestSnapshot: () => defaultClient.fetchApi("/capability-snapshot"),
   getPolicySuggestions: () => defaultClient.listPolicySuggestions(),
+  generatePolicySuggestions: () => defaultClient.generatePolicySuggestions(),
   evaluateFeasibility: (req: any) =>
     defaultClient.fetchApi("/policies/feasibility", {
       method: "POST",

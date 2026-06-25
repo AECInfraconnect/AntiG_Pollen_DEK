@@ -202,7 +202,7 @@
       "id": "manus_ai",
       "display_name": "Manus AI",
       "agent_type": "desktop_agent",
-      "process_names": ["manus", "manus.exe", "Manus", "lsalso", "lsalso.exe", "manus ai browser opera", "manus ai browser opera.exe", "manus_ai_browser_opera", "manus ai browser operator", "manus ai browser operator.exe"],
+      "process_names": ["manus", "manus.exe", "Manus"],
       "control_strategies": ["network_egress_pep", "observe_only"]
     },
     {
@@ -210,7 +210,45 @@
       "display_name": "Gemini Pro ใน Antigravity",
       "agent_type": "ide_extension_agent",
       "process_names": ["antigravity", "antigravity.exe"],
+      "exe_path_patterns": ["**/*antigravity*/**"],
+      "cli_binaries": ["antigravity"],
       "control_strategies": ["network_egress_pep", "observe_only"]
+    },
+    {
+      "id": "codex_desktop",
+      "display_name": "OpenAI Codex",
+      "agent_type": "desktop_agent",
+      "process_names": ["codex", "codex.exe"],
+      "exe_path_patterns": ["**/*Codex*/**"],
+      "cli_binaries": ["codex"],
+      "control_strategies": ["observe_only"]
+    },
+    {
+      "id": "cursor_desktop",
+      "display_name": "Cursor IDE",
+      "agent_type": "ide_agent",
+      "process_names": ["cursor", "cursor.exe"],
+      "exe_path_patterns": ["**/*Cursor*/**"],
+      "cli_binaries": ["cursor"],
+      "control_strategies": ["observe_only"]
+    },
+    {
+      "id": "openclaw_agent",
+      "display_name": "OpenClaw Agent",
+      "agent_type": "desktop_agent",
+      "process_names": ["openclaw", "openclaw.exe"],
+      "exe_path_patterns": ["**/*openclaw*/**"],
+      "cli_binaries": ["openclaw"],
+      "control_strategies": ["observe_only"]
+    },
+    {
+      "id": "hiclaw_agent",
+      "display_name": "HiClaw Agent",
+      "agent_type": "desktop_agent",
+      "process_names": ["hiclaw", "hiclaw.exe"],
+      "exe_path_patterns": ["**/*hiclaw*/**"],
+      "cli_binaries": ["hiclaw"],
+      "control_strategies": ["observe_only"]
     },
     {
       "id": "chatgpt_web",
@@ -260,6 +298,34 @@
       "domain": "gemini.google.com",
       "name": "Gemini Pro ใน Antigravity",
       "vendor": "Google",
+      "capability_tags": ["LLM", "Chat"],
+      "risk_weight": 0.4
+    },
+    {
+      "domain": "chat.openai.com",
+      "name": "ChatGPT in Browser",
+      "vendor": "OpenAI",
+      "capability_tags": ["LLM", "Chat"],
+      "risk_weight": 0.4
+    },
+    {
+      "domain": "chat.deepseek.com",
+      "name": "Deepseek in Browser",
+      "vendor": "Deepseek",
+      "capability_tags": ["LLM", "Chat"],
+      "risk_weight": 0.4
+    },
+    {
+      "domain": "copilot.microsoft.com",
+      "name": "Microsoft Copilot",
+      "vendor": "Microsoft",
+      "capability_tags": ["LLM", "Chat"],
+      "risk_weight": 0.4
+    },
+    {
+      "domain": "perplexity.ai",
+      "name": "Perplexity AI",
+      "vendor": "Perplexity",
       "capability_tags": ["LLM", "Chat"],
       "risk_weight": 0.4
     }

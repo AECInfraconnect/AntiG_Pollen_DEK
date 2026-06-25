@@ -23,8 +23,13 @@ export function PolicySuggestions() {
   }, []);
 
   const generateSuggestions = async () => {
-    // This could call a trigger endpoint, for now just fetch
-    await fetchSuggestions();
+    try {
+      setLoading(true);
+      await PolicyFirstApi.generatePolicySuggestions();
+      await fetchSuggestions();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
