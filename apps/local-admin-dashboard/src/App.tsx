@@ -138,6 +138,7 @@ function App() {
                 />
                 <Route path="alerts" element={<AlertsAndShadowAI />} />
                 <Route path="audit" element={<DecisionLogs />} />
+                <Route path="decision-logs" element={<DecisionLogs />} />
                 <Route path="cost-ledger" element={<CostLedger />} />
 
                 {/* System & Settings */}
