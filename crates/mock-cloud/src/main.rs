@@ -361,7 +361,7 @@ async fn dashboard_data_api(State(state): State<AppState>) -> impl IntoResponse 
     let telemetry_events: Vec<serde_json::Value> = state
         .telemetry_events
         .lock()
-        .unwrap()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
         .iter()
         .cloned()
         .collect(); //

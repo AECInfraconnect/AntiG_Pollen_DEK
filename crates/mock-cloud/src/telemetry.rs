@@ -256,7 +256,10 @@ async fn list_observations(
     State(s): State<AppState>,
     Query(query): Query<ObservationsQuery>,
 ) -> impl IntoResponse {
-    let logs = s.telemetry_events.lock().unwrap();
+    let logs = s
+        .telemetry_events
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut filtered = Vec::new();
     for v in logs.iter() {
         if let Some(event_type) = v.get("event_type").and_then(|t| t.as_str()) {
@@ -318,7 +321,10 @@ async fn list_resources(
     State(s): State<AppState>,
     Query(query): Query<InventoryQuery>,
 ) -> impl IntoResponse {
-    let logs = s.telemetry_events.lock().unwrap();
+    let logs = s
+        .telemetry_events
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut payloads = Vec::new();
     for v in logs.iter() {
         if let Some(event_type) = v.get("event_type").and_then(|t| t.as_str()) {
@@ -356,7 +362,10 @@ async fn list_tools(
     State(s): State<AppState>,
     Query(query): Query<InventoryQuery>,
 ) -> impl IntoResponse {
-    let logs = s.telemetry_events.lock().unwrap();
+    let logs = s
+        .telemetry_events
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut payloads = Vec::new();
     for v in logs.iter() {
         if let Some(event_type) = v.get("event_type").and_then(|t| t.as_str()) {
@@ -389,7 +398,10 @@ async fn list_identities(
     State(s): State<AppState>,
     Query(query): Query<InventoryQuery>,
 ) -> impl IntoResponse {
-    let logs = s.telemetry_events.lock().unwrap();
+    let logs = s
+        .telemetry_events
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut payloads = Vec::new();
     for v in logs.iter() {
         if let Some(event_type) = v.get("event_type").and_then(|t| t.as_str()) {
