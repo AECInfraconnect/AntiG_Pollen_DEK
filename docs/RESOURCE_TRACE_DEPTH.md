@@ -91,6 +91,6 @@ Sources:
 - PostgreSQL `pg_stat_statements`:
   <https://www.postgresql.org/docs/current/pgstatstatements.html>
 - MySQL Performance Schema statement event tables:
-  <https://dev.mysql.com/doc/refman/8.4/en/performance-schema-statement-tables.html>
+  <https://docs.oracle.com/cd/E17952_01/mysql-8.4-en/performance-schema-statement-tables.html>
 - OpenTelemetry database semantic conventions:
   <https://opentelemetry.io/docs/specs/semconv/db/database-spans/>
