@@ -2267,11 +2267,13 @@ name = "dek-guard-pipeline"
 version = "1.0.0-beta.10"
 dependencies = [
  "async-trait",
+ "base64 0.22.1",
  "dek-plugin-sdk",
  "once_cell",
  "regex",
  "serde",
  "serde_json",
+ "unicode-normalization",
 ]
 
 [[package]]
