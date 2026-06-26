@@ -24,6 +24,7 @@ pub fn embedded_baseline() -> FingerprintDefinition {
         installed_app_signatures: vec![],
         browser_processes: vec![],
         ai_process_hints: AiProcessHints::default(),
+        cloud_resource_signatures: vec![],
     })
 }
 

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.pollen.dev/schemas/tool-usage.v1.schema.json",
+  "title": "ToolUsagePayload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agent_id",
+    "agent_label",
+    "tool_kind",
+    "tool_name",
+    "decision",
+    "enforced_for_real",
+    "observed_at"
+  ],
+  "properties": {
+    "agent_id": { "type": "string" },
+    "agent_label": { "type": "string" },
+    "tool_kind": {
+      "type": "string",
+      "enum": ["mcp_tool", "function_call", "http_api", "a2a_skill", "shell_command", "browser_action"]
+    },
+    "tool_name": { "type": "string" },
+    "server": { "type": "string" },
+    "decision": {
+      "type": "string",
+      "enum": ["allow", "deny", "redact", "warn", "observed"]
+    },
+    "enforced_for_real": { "type": "boolean" },
+    "args_redacted": { "type": "string" },
+    "observed_at": { "type": "string", "format": "date-time" }
+  }
+}

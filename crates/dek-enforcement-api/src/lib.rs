@@ -4,10 +4,13 @@
 use anyhow::Result;
 use dek_domain_schema::CompiledNetworkRules;
 
-pub mod planner;
-pub mod router;
-pub mod control_method;
 pub mod backends;
+pub mod control_method;
+pub mod egress_observer;
+pub mod feasibility;
+pub mod planner;
+pub mod resource_observer;
+pub mod router;
 
 /// Core interface for OS-level enforcement mechanisms (WFP on Windows, NetworkExtension on macOS, eBPF on Linux).
 pub trait NetworkEnforcer: Send + Sync {
@@ -23,6 +26,3 @@ pub trait NetworkEnforcer: Send + Sync {
     /// Clears all currently applied network rules.
     fn clear_rules(&self) -> Result<()>;
 }
-
-pub mod feasibility;
-pub mod warm_check;

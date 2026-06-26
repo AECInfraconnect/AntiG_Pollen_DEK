@@ -3813,5 +3813,43 @@
         "open_webui.main"
       ]
     }
+  ],
+  "cloud_resource_signatures": [
+    {
+      "host_pattern": "api.openai.com",
+      "kind": "api",
+      "name": "OpenAI API",
+      "classification": "api"
+    },
+    {
+      "host_pattern": "api.anthropic.com",
+      "kind": "api",
+      "name": "Anthropic API",
+      "classification": "api"
+    },
+    {
+      "host_pattern": "drive.google.com",
+      "kind": "cloud_drive",
+      "name": "Google Drive",
+      "classification": "restricted"
+    },
+    {
+      "host_pattern": "smtp",
+      "kind": "email",
+      "name": "Email Service",
+      "classification": "internal"
+    },
+    {
+      "host_pattern": "imap",
+      "kind": "email",
+      "name": "Email Service",
+      "classification": "internal"
+    },
+    {
+      "host_pattern": "github.com",
+      "kind": "saas",
+      "name": "GitHub",
+      "classification": "code"
+    }
   ]
 }

@@ -86,6 +86,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/telemetry/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TelemetryApi_resources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/telemetry/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TelemetryApi_tools"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/local/capability-snapshot": {
         parameters: {
             query?: never;
@@ -943,6 +975,10 @@ export interface components {
             status: string;
             reason?: string;
         };
+        /** @enum {string} */
+        AccessMode: "read" | "write" | "execute" | "delete" | "connect" | "invoke";
+        /** @enum {string} */
+        AccessScope: "local" | "cloud";
         AgentObservationEvent: {
             event_id: string;
             tenant_id: string;
@@ -1185,6 +1221,34 @@ export interface components {
             /** Format: int32 */
             limit?: number;
         };
+        ObservedResource: {
+            resource_id: string;
+            scope: components["schemas"]["AccessScope"];
+            kind: components["schemas"]["ResourceKind"];
+            target_redacted: string;
+            classification?: string;
+            agents: string[];
+            modes: components["schemas"]["AccessMode"][];
+            /** Format: date-time */
+            last_access: string;
+            /** Format: int64 */
+            access_count: number;
+            governed: boolean;
+            registered: boolean;
+        };
+        ObservedTool: {
+            tool_id: string;
+            tool_kind: components["schemas"]["ToolKind"];
+            tool_name: string;
+            server?: string;
+            agents: string[];
+            /** Format: date-time */
+            last_used: string;
+            /** Format: int64 */
+            use_count: number;
+            governed: boolean;
+            registered: boolean;
+        };
         /** @enum {string} */
         PdpFailureBehavior: "deny" | "fallback" | "last_known_good" | "allow" | "not_applicable";
         /** @enum {string} */
@@ -1331,6 +1395,33 @@ export interface components {
             violation_count_24h: number;
             cost_relevant: boolean;
         };
+        ResourceAccessPayload: {
+            agent_id: string;
+            agent_label: string;
+            scope: components["schemas"]["AccessScope"];
+            kind: components["schemas"]["ResourceKind"];
+            target_redacted: string;
+            target_hash: string;
+            mode: components["schemas"]["AccessMode"];
+            decision: components["schemas"]["DecisionOutcome"];
+            control_method?: components["schemas"]["ControlMethod"];
+            enforced_for_real: boolean;
+            /** Format: int64 */
+            bytes?: number;
+            /** Format: int32 */
+            count?: number;
+            classification?: string;
+            /** Format: date-time */
+            observed_at: string;
+        };
+        ResourceInventoryPage: {
+            /** @enum {string} */
+            schema_version: "resource-inventory.v1";
+            items: components["schemas"]["ObservedResource"][];
+            next_cursor?: string;
+        };
+        /** @enum {string} */
+        ResourceKind: "file" | "folder" | "database_local" | "os_syscall" | "config" | "process" | "clipboard" | "web" | "email" | "cloud_drive" | "database_cloud" | "data_source" | "api" | "saas";
         ResourceListResponse: {
             items: components["schemas"]["Resource"][];
         };
@@ -1403,7 +1494,7 @@ export interface components {
             }[];
         };
         /** @enum {string} */
-        TelemetryEventType: "agent_observation" | "enforcement_result" | "control_binding_changed" | "health";
+        TelemetryEventType: "agent_observation" | "enforcement_result" | "control_binding_changed" | "health" | "resource_access" | "tool_usage";
         TelemetryIngestResponse: {
             /** @enum {string} */
             schema_version: "telemetry-ingest-response.v1";
@@ -1452,8 +1543,28 @@ export interface components {
             /** Format: int64 */
             allow_count_24h: number;
         };
+        ToolInventoryPage: {
+            /** @enum {string} */
+            schema_version: "tool-inventory.v1";
+            items: components["schemas"]["ObservedTool"][];
+            next_cursor?: string;
+        };
+        /** @enum {string} */
+        ToolKind: "mcp_tool" | "function_call" | "http_api" | "a2a_skill" | "shell_command" | "browser_action";
         ToolListResponse: {
             items: components["schemas"]["Tool"][];
+        };
+        ToolUsagePayload: {
+            agent_id: string;
+            agent_label: string;
+            tool_kind: components["schemas"]["ToolKind"];
+            tool_name: string;
+            server?: string;
+            decision: components["schemas"]["DecisionOutcome"];
+            enforced_for_real: boolean;
+            args_redacted?: string;
+            /** Format: date-time */
+            observed_at: string;
         };
     };
     responses: never;
@@ -1634,6 +1745,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ObservationPage"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    TelemetryApi_resources: {
+        parameters: {
+            query?: {
+                agent_id?: string;
+                scope?: components["schemas"]["AccessScope"];
+            };
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceInventoryPage"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    TelemetryApi_tools: {
+        parameters: {
+            query?: {
+                agent_id?: string;
+            };
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolInventoryPage"];
                 };
             };
             /** @description An unexpected error response. */

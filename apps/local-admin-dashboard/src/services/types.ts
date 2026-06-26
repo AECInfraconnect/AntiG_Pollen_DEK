@@ -757,3 +757,29 @@ export interface EntityCardModel {
   tags: string[];
   last_updated_at: string;
 }
+
+export interface ObservedResource {
+  resource_id: string;
+  scope: string;
+  kind: string;
+  target_redacted: string;
+  classification?: string;
+  agents: string[];
+  modes: string[];
+  last_access: string;
+  access_count: number;
+  governed: boolean;
+  registered: boolean;
+}
+
+export interface ObservedTool {
+  tool_id: string;
+  tool_kind: string;
+  tool_name: string;
+  server?: string;
+  agents: string[];
+  last_used: string;
+  use_count: number;
+  governed: boolean;
+  registered: boolean;
+}

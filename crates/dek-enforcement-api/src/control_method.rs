@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 use pollen_contract::{
-    AgentObservationPayload, EnforcementResultPayload, PollenTelemetryEnvelopeV1,
-    AgentObservationPayloadDomain, AgentObservationPayloadControlMethod, AgentObservationPayloadDecision,
-    EnforcementResultPayloadDomain, EnforcementResultPayloadControlMethod, EnforcementResultPayloadRequestedLevel, EnforcementResultPayloadEffectiveLevel, EnforcementResultPayloadPlaneState
+    AgentObservationPayload, AgentObservationPayloadControlMethod, AgentObservationPayloadDecision,
+    AgentObservationPayloadDomain, EnforcementResultPayload, EnforcementResultPayloadControlMethod,
+    EnforcementResultPayloadDomain, EnforcementResultPayloadEffectiveLevel,
+    EnforcementResultPayloadPlaneState, EnforcementResultPayloadRequestedLevel,
+    PollenTelemetryEnvelopeV1, ResourceAccessPayload, ToolUsagePayload,
 };
 use serde_json::Value;
 
@@ -54,12 +56,33 @@ pub struct TelemetrySink {
 
 impl TelemetrySink {
     pub async fn observe(&self, p: AgentObservationPayload) {
-        let env = self.ctx.envelope("agent_observation", serde_json::to_value(p).unwrap_or_default());
+        let env = self.ctx.envelope(
+            "agent_observation",
+            serde_json::to_value(p).unwrap_or_default(),
+        );
         let _ = self.tx.send(env).await;
     }
-    
+
     pub async fn enforcement(&self, p: EnforcementResultPayload) {
-        let env = self.ctx.envelope("enforcement_result", serde_json::to_value(p).unwrap_or_default());
+        let env = self.ctx.envelope(
+            "enforcement_result",
+            serde_json::to_value(p).unwrap_or_default(),
+        );
+        let _ = self.tx.send(env).await;
+    }
+
+    pub async fn resource(&self, p: ResourceAccessPayload) {
+        let env = self.ctx.envelope(
+            "resource_access",
+            serde_json::to_value(p).unwrap_or_default(),
+        );
+        let _ = self.tx.send(env).await;
+    }
+
+    pub async fn tool(&self, p: ToolUsagePayload) {
+        let env = self
+            .ctx
+            .envelope("tool_usage", serde_json::to_value(p).unwrap_or_default());
         let _ = self.tx.send(env).await;
     }
 }
@@ -67,7 +90,7 @@ impl TelemetrySink {
 #[async_trait]
 pub trait ControlMethod: Send + Sync {
     fn get_method_id(&self) -> AgentObservationPayloadControlMethod;
-    
+
     /// Binds an agent to this control method
     async fn bind(&self, agent: &AgentRef) -> Result<(), anyhow::Error>;
 

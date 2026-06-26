@@ -15,7 +15,7 @@ export function IdentityNetwork() {
   const [params, setParams] = useSearchParams();
   const selectedId = params.get("selected") ?? undefined;
 
-  useEffect(() => {
+  const loadData = () => {
     setLoading(true);
     Promise.all([RegistryApi.listEntities(), RegistryApi.listRelationships()])
       .then(([ents, rels]) => {
@@ -24,6 +24,23 @@ export function IdentityNetwork() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadData();
+
+    const source = new EventSource("/v1/telemetry/observations/stream");
+    source.onmessage = () => {
+      // Refresh identity graph on telemetry update
+      Promise.all([RegistryApi.listEntities(), RegistryApi.listRelationships()])
+        .then(([ents, rels]) => {
+          setEntities(ents);
+          setRelationships(rels);
+        })
+        .catch(console.error);
+    };
+
+    return () => source.close();
   }, []);
 
   const select = (id: string) =>

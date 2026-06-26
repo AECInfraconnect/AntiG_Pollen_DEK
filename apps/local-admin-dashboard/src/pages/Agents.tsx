@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { Plus, Users, Cpu, FileKey, Activity, Info } from "lucide-react";
+import { Plus, Users, Cpu, Info } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { RegistryApi } from "../services/api";
 import type { AiAgent } from "../services/api";

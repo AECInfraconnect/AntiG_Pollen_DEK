@@ -28,6 +28,17 @@ pub struct FingerprintDefinition {
     pub browser_processes: Vec<BrowserProcessDef>,
     #[serde(default)]
     pub ai_process_hints: AiProcessHints,
+    #[serde(default)]
+    pub cloud_resource_signatures: Vec<CloudResourceSignatureDef>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CloudResourceSignatureDef {
+    pub host_pattern: String,
+    pub kind: String,
+    pub name: String,
+    #[serde(default)]
+    pub classification: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

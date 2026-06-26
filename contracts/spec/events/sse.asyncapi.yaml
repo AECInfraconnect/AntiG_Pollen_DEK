@@ -22,6 +22,16 @@ channels:
     messages:
       AgentObservation:
         $ref: "#/components/messages/AgentObservation"
+  inventoryResources:
+    address: /v1/tenants/{tenantId}/telemetry/resources/stream
+    messages:
+      ResourceAccess:
+        $ref: "#/components/messages/ResourceAccess"
+  inventoryTools:
+    address: /v1/tenants/{tenantId}/telemetry/tools/stream
+    messages:
+      ToolUsage:
+        $ref: "#/components/messages/ToolUsage"
 operations:
   receiveBundleEvents:
     action: receive
@@ -31,6 +41,14 @@ operations:
     action: receive
     channel:
       $ref: "#/channels/telemetryObservations"
+  receiveInventoryResources:
+    action: receive
+    channel:
+      $ref: "#/channels/inventoryResources"
+  receiveInventoryTools:
+    action: receive
+    channel:
+      $ref: "#/channels/inventoryTools"
 components:
   messages:
     BundleReady:
@@ -48,8 +66,24 @@ components:
       title: AgentObservation
       payload:
         $ref: "#/components/schemas/AgentObservationPayload"
+    ResourceAccess:
+      name: ResourceAccess
+      title: ResourceAccess
+      payload:
+        $ref: "#/components/schemas/ResourceAccessPayload"
+    ToolUsage:
+      name: ToolUsage
+      title: ToolUsage
+      payload:
+        $ref: "#/components/schemas/ToolUsagePayload"
   schemas:
     AgentObservationPayload:
+      type: object
+      additionalProperties: true
+    ResourceAccessPayload:
+      type: object
+      additionalProperties: true
+    ToolUsagePayload:
       type: object
       additionalProperties: true
     BundleReadyPayload:

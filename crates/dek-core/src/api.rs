@@ -345,19 +345,50 @@ async fn batch_check(
 }
 
 async fn a2a_message(
-    State(_state): State<ApiState>,
+    State(state): State<ApiState>,
     Json(msg): Json<dek_a2a_mediator::A2AMessage>,
 ) -> impl IntoResponse {
     let broker = dek_a2a_mediator::IATPBroker::new();
 
-    // Mock Trust Score check (in the future, read from `dek-agent-observer` DB)
     let sender_trust = dek_agent_observer::trust::TrustScore {
         agent_id: msg.sender_id.clone(),
         score: 1.0,
         reasons: vec![],
     };
 
-    match broker.route_message(&msg, &sender_trust) {
+    let result = broker.route_message(&msg, &sender_trust);
+
+    // --- Emit ToolUsagePayload ---
+    if let Some(telemetry) = &state.telemetry {
+        let decision_outcome = match &result {
+            Ok(_) => "allow",
+            Err(_) => "deny",
+        };
+        let tool_payload = serde_json::json!({
+            "agent_id": msg.sender_id.clone(),
+            "agent_label": msg.sender_id.clone(),
+            "tool_kind": "a2a_skill",
+            "tool_name": format!("a2a.send_to_{}", msg.receiver_id),
+            "server": "a2a-mediator",
+            "decision": decision_outcome,
+            "enforced_for_real": true,
+            "args_redacted": "<redacted>",
+            "observed_at": chrono::Utc::now().to_rfc3339()
+        });
+        let env = serde_json::json!({
+            "schema_version": "telemetry-envelope.v1",
+            "event_id": uuid::Uuid::new_v4().to_string(),
+            "event_type": "tool_usage",
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "tenant_id": "local",
+            "device_id": "dek-local",
+            "redaction_applied": false,
+            "payload": tool_payload
+        });
+        telemetry.emit_async(env, dek_telemetry::spooler::Priority::Normal);
+    }
+
+    match result {
         Ok(_) => (
             StatusCode::OK,
             Json(serde_json::json!({ "status": "delivered" })),

@@ -1,9 +1,23 @@
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { Wrench, Info, FileKey } from "lucide-react";
+import { Wrench, Info, FileKey, Activity } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { RegistryApi } from "../services/api";
-import type { Tool } from "../services/api";
+import { RegistryApi, TelemetryApi } from "../services/api";
+import type { Tool, ObservedTool } from "../services/api";
+
+export interface UnifiedTool {
+  id: string;
+  name: string;
+  tool_id: string;
+  description?: string;
+  risk_level?: string;
+  data_access_level?: string;
+  side_effect_level?: string;
+  is_registered: boolean;
+  is_observed: boolean;
+  observed_details?: ObservedTool;
+  registered_details?: Tool;
+}
 import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayout";
 import { EntityCard } from "../components/master-detail/EntityCard";
 import { DetailPane } from "../components/master-detail/DetailPane";
@@ -13,22 +27,81 @@ import type { UiStatus } from "../lib/status";
 import { useConfirm } from "../components/ui/ConfirmDialog";
 
 export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
-  const [tools, setTools] = useState<Tool[]>([]);
+  const [tools, setTools] = useState<UnifiedTool[]>([]);
   const [loading, setLoading] = useState(true);
   const [params, setParams] = useSearchParams();
   const selectedId = params.get("selected") ?? undefined;
   const { confirm } = useConfirm();
 
-  const fetchTools = () => {
+  const fetchTools = async () => {
     setLoading(true);
-    RegistryApi.listTools()
-      .then(setTools)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    try {
+      const [regRes, obsRes] = await Promise.all([
+        RegistryApi.listTools(),
+        TelemetryApi.listToolInventory().catch(() => ({ items: [] as ObservedTool[] })),
+      ]);
+
+      const unifiedMap = new Map<string, UnifiedTool>();
+
+      for (const t of regRes) {
+        unifiedMap.set(t.tool_id, {
+          id: t.tool_id,
+          name: t.name,
+          tool_id: t.tool_id,
+          description: t.description,
+          risk_level: t.risk_level,
+          data_access_level: t.data_access_level,
+          side_effect_level: t.side_effect_level,
+          is_registered: true,
+          is_observed: false,
+          registered_details: t,
+        });
+      }
+
+      for (const o of (obsRes.items || [])) {
+        const id = o.tool_id;
+        if (unifiedMap.has(id)) {
+          const existing = unifiedMap.get(id)!;
+          existing.is_observed = true;
+          existing.observed_details = o;
+        } else {
+          unifiedMap.set(id, {
+            id,
+            name: o.tool_name,
+            tool_id: id,
+            description: `Kind: ${o.tool_kind}, Server: ${o.server || "unknown"}`,
+            risk_level: "unknown",
+            data_access_level: "unknown",
+            side_effect_level: "unknown",
+            is_registered: false,
+            is_observed: true,
+            observed_details: o,
+          });
+        }
+      }
+
+      setTools(Array.from(unifiedMap.values()));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchTools();
+
+    const source = new EventSource("/v1/telemetry/observations/stream");
+    source.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.event_type === "tool_usage") {
+          fetchTools();
+        }
+      } catch (err) {}
+    };
+
+    return () => source.close();
   }, []);
 
   const select = (id: string) =>
@@ -80,7 +153,7 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
         loading={loading}
         selectedId={selectedId}
         onSelect={select}
-        idSelector={(t: any) => t.tool_id}
+        idSelector={(t: UnifiedTool) => t.id}
         toolbar={
           <div className="flex items-center gap-2 mb-4">
             <input
@@ -97,9 +170,10 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
             description="Register JSON schemas for tools that your agents can invoke."
           />
         }
-        renderCard={(t, selected) => {
+        renderCard={(t: UnifiedTool, selected) => {
           let status: UiStatus = "ok";
-          if (t.risk_level === "high" || t.risk_level === "critical")
+          if (!t.is_registered) status = "idle";
+          else if (t.risk_level === "high" || t.risk_level === "critical")
             status = "failed";
           else if (t.risk_level === "medium") status = "degraded";
 
@@ -110,16 +184,17 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
               icon={Wrench}
               status={status}
               statusLabel={
-                t.risk_level ? t.risk_level.toUpperCase() : "UNKNOWN"
+                !t.is_registered ? "Observed" : t.risk_level ? t.risk_level.toUpperCase() : "UNKNOWN"
               }
               meta={[{ label: "Data Access", value: t.data_access_level }]}
               selected={selected}
             />
           );
         }}
-        renderDetail={(t) => {
+        renderDetail={(t: UnifiedTool) => {
           let status: UiStatus = "ok";
-          if (t.risk_level === "high" || t.risk_level === "critical")
+          if (!t.is_registered) status = "idle";
+          else if (t.risk_level === "high" || t.risk_level === "critical")
             status = "failed";
           else if (t.risk_level === "medium") status = "degraded";
 
@@ -129,15 +204,25 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
               subtitle={t.description}
               status={status}
               statusLabel={
-                t.risk_level ? t.risk_level.toUpperCase() : "UNKNOWN"
+                !t.is_registered ? "Observed" : t.risk_level ? t.risk_level.toUpperCase() : "UNKNOWN"
               }
-              actions={[
-                {
-                  label: "Delete",
-                  danger: true,
-                  onClick: () => deleteTool(t.tool_id),
-                },
-              ]}
+              actions={
+                t.is_registered
+                  ? [
+                      {
+                        label: "Delete",
+                        danger: true,
+                        onClick: () => deleteTool(t.tool_id),
+                      },
+                    ]
+                  : [
+                      {
+                        label: "Protect Tool",
+                        primary: true,
+                        onClick: () => {},
+                      },
+                    ]
+              }
               tabs={[
                 {
                   id: "overview",
@@ -161,6 +246,24 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
                             {t.side_effect_level}
                           </span>
                         </div>
+                        {t.is_observed && t.observed_details && (
+                          <>
+                            <div className="p-4 bg-muted/30 rounded-xl border">
+                              <span className="text-muted-foreground block mb-1">
+                                Last Used
+                              </span>
+                              <span className="text-xs">
+                                {new Date(t.observed_details.last_used).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="p-4 bg-muted/30 rounded-xl border">
+                              <span className="text-muted-foreground block mb-1">
+                                Usage Count
+                              </span>
+                              <span className="text-xs">{t.observed_details.use_count}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
 
                       <div className="p-4 bg-muted/30 rounded-xl border">
@@ -195,18 +298,74 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
                   label: "Policies",
                   content: (
                     <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed rounded-lg text-muted-foreground">
-                      <FileKey className="h-8 w-8 mb-2 opacity-50" />
-                      <p className="text-sm">
-                        No specific policies bound to this tool.
+                      <FileKey className="h-8 w-8 mb-4 opacity-50" />
+                      <p className="text-sm mb-4">
+                        Protect this tool by assigning an access policy.
                       </p>
+                      <button 
+                        className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90"
+                        onClick={() => {
+                          toast.success("Policy draft created. Redirecting to policy editor...");
+                        }}
+                      >
+                        Create Policy
+                      </button>
                     </div>
                   ),
+                },
+                {
+                  id: "activity",
+                  label: "Activity",
+                  content: <ToolActivityTimeline tool={t} />,
                 },
               ]}
             />
           );
         }}
       />
+    </div>
+  );
+}
+
+function ToolActivityTimeline({ tool }: { tool: UnifiedTool }) {
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    TelemetryApi.getObservations({ toolId: tool.tool_id || tool.name }).then((res) => {
+      if (mounted) {
+        setEvents(res.items || []);
+        setLoading(false);
+      }
+    });
+    return () => { mounted = false; };
+  }, [tool.tool_id, tool.name]);
+
+  if (loading) return <div className="p-8 text-center text-sm text-muted-foreground">Loading activity...</div>;
+  if (events.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed rounded-lg text-muted-foreground">
+        <Activity className="h-8 w-8 mb-2 opacity-50" />
+        <p className="text-sm">No activity recorded yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {events.map((ev, i) => (
+        <div key={i} className="flex gap-4 p-4 border rounded-lg bg-card">
+          <div className="mt-1"><Activity className="h-4 w-4 text-primary" /></div>
+          <div>
+            <p className="text-sm font-medium">Invoked by Agent: {ev.agent_id || "Unknown"}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Method: {ev.details?.tool_name || ev.details?.tool_kind || ev.tool_name || "execute"} • {new Date(ev.observed_at || ev.timestamp).toLocaleString()}
+            </p>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -11,6 +11,7 @@ Runtime updates can also be loaded from the signed definition bundle path used b
 - `web_ai_signatures`: browser-hosted AI surfaces such as ChatGPT, Claude, Gemini, DeepSeek, Copilot, and Perplexity.
 - `browser_processes`: browser executables that should not be emitted as agents by themselves.
 - `ai_process_hints`: allowlist and denylist tokens for unknown AI-like process candidates.
+- `cloud_resource_signatures`: mapped domains and host patterns to classify egress resources (drive/email/api/db/saas).
 
 ## Browser AI Signatures
 
@@ -66,6 +67,24 @@ candidate.
 
 This protects users from false positives such as generic Dell, NVIDIA, Intel, Realtek,
 update, helper, or telemetry processes.
+
+## Cloud Resource Signatures
+
+`cloud_resource_signatures` defines network destinations that should be classified as
+specific types of remote data resources. The telemetry observer engine parses egress
+traffic and maps domains against these signatures.
+
+```json
+{
+  "host_pattern": "drive.google.com",
+  "kind": "cloud_drive",
+  "name": "Google Drive",
+  "classification": "restricted"
+}
+```
+
+This ensures that network access by agents to known cloud services correctly logs
+under the right category and severity.
 
 ## Adding A New AI
 

@@ -1,5 +1,37 @@
 use crate::model::AgentObservationEvent;
+use pollen_contract::{ResourceAccessPayload, ToolUsagePayload};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObservedResource {
+    pub resource_id: String,
+    pub scope: String,
+    pub kind: String,
+    pub target_redacted: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub classification: Option<String>,
+    pub agents: Vec<String>,
+    pub modes: Vec<String>,
+    pub last_access: chrono::DateTime<chrono::Utc>,
+    pub access_count: u64,
+    pub governed: bool,
+    pub registered: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObservedTool {
+    pub tool_id: String,
+    pub tool_kind: String,
+    pub tool_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub server: Option<String>,
+    pub agents: Vec<String>,
+    pub last_used: chrono::DateTime<chrono::Utc>,
+    pub use_count: u64,
+    pub governed: bool,
+    pub registered: bool,
+}
 
 pub struct AgentStats {
     pub total_events: u64,
@@ -37,4 +69,62 @@ pub fn aggregate_events(events: &[AgentObservationEvent]) -> HashMap<String, Age
     }
 
     stats
+}
+
+fn push_unique<T: PartialEq>(vec: &mut Vec<T>, item: T) {
+    if !vec.contains(&item) {
+        vec.push(item);
+    }
+}
+
+pub fn aggregate_resources(events: &[ResourceAccessPayload]) -> Vec<ObservedResource> {
+    let mut map: HashMap<String, ObservedResource> = HashMap::new();
+    for e in events {
+        let r = map
+            .entry(e.target_hash.clone())
+            .or_insert_with(|| ObservedResource {
+                resource_id: uuid::Uuid::new_v4().to_string(),
+                scope: e.scope.to_string(),
+                kind: e.kind.to_string(),
+                target_redacted: e.target_redacted.clone(),
+                classification: e.classification.clone(),
+                agents: vec![],
+                modes: vec![],
+                last_access: e.observed_at.clone(),
+                access_count: 0,
+                governed: false,
+                registered: false,
+            });
+        r.access_count += 1;
+        if r.last_access < e.observed_at {
+            r.last_access = e.observed_at.clone();
+        }
+        push_unique(&mut r.agents, e.agent_id.clone());
+        push_unique(&mut r.modes, e.mode.to_string());
+    }
+    map.into_values().collect()
+}
+
+pub fn aggregate_tools(events: &[ToolUsagePayload]) -> Vec<ObservedTool> {
+    let mut map: HashMap<String, ObservedTool> = HashMap::new();
+    for e in events {
+        let tool_id = format!("{}:{}", e.server.as_deref().unwrap_or(""), e.tool_name);
+        let t = map.entry(tool_id.clone()).or_insert_with(|| ObservedTool {
+            tool_id: tool_id.clone(),
+            tool_kind: e.tool_kind.to_string(),
+            tool_name: e.tool_name.clone(),
+            server: e.server.clone(),
+            agents: vec![],
+            last_used: e.observed_at.clone(),
+            use_count: 0,
+            governed: false,
+            registered: false,
+        });
+        t.use_count += 1;
+        if t.last_used < e.observed_at {
+            t.last_used = e.observed_at.clone();
+        }
+        push_unique(&mut t.agents, e.agent_id.clone());
+    }
+    map.into_values().collect()
 }

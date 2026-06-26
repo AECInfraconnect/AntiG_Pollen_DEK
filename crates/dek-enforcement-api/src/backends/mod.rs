@@ -1,14 +1,11 @@
+use crate::control_method::{AgentRef, CompiledRules, ControlMethod, TelemetrySink};
 use async_trait::async_trait;
 use pollen_contract::{
-    EnforcementResultPayload,
-    AgentObservationPayloadControlMethod,
-    EnforcementResultPayloadControlMethod,
-    EnforcementResultPayloadDomain,
-    EnforcementResultPayloadEffectiveLevel,
-    EnforcementResultPayloadPlaneState,
+    AgentObservationPayloadControlMethod, EnforcementResultPayload,
+    EnforcementResultPayloadControlMethod, EnforcementResultPayloadDomain,
+    EnforcementResultPayloadEffectiveLevel, EnforcementResultPayloadPlaneState,
     EnforcementResultPayloadRequestedLevel,
 };
-use crate::control_method::{AgentRef, CompiledRules, ControlMethod, TelemetrySink};
 
 macro_rules! define_backend {
     ($name:ident, $obs_id:ident, $enf_id:ident, $domain:ident, $max_level:ident) => {
@@ -24,7 +21,11 @@ macro_rules! define_backend {
                 Ok(())
             }
 
-            async fn apply(&self, agent: &AgentRef, _rules: &CompiledRules) -> EnforcementResultPayload {
+            async fn apply(
+                &self,
+                agent: &AgentRef,
+                _rules: &CompiledRules,
+            ) -> EnforcementResultPayload {
                 EnforcementResultPayload {
                     agent_id: agent.id.clone(),
                     policy_id: "default-policy".to_string(), // placeholder
@@ -54,13 +55,37 @@ define_backend!(McpStdioBackend, McpStdio, McpStdio, McpTool, Observe);
 define_backend!(McpHttpBackend, McpHttp, McpHttp, McpTool, Observe);
 
 // Windows
-define_backend!(WindowsWfpUmBackend, WindowsWfpUm, WindowsWfpUm, Network, Warn);
+define_backend!(
+    WindowsWfpUmBackend,
+    WindowsWfpUm,
+    WindowsWfpUm,
+    Network,
+    Warn
+);
 define_backend!(WindowsEtwBackend, WindowsEtw, WindowsEtw, Process, Observe);
 
 // Linux
-define_backend!(LinuxLandlockBackend, LinuxLandlock, LinuxLandlock, FileSystem, Enforce);
+define_backend!(
+    LinuxLandlockBackend,
+    LinuxLandlock,
+    LinuxLandlock,
+    FileSystem,
+    Enforce
+);
 define_backend!(LinuxEbpfBackend, LinuxEbpf, LinuxEbpf, Network, Warn);
 
 // macOS
-define_backend!(MacosNetextBackend, MacosNetext, MacosNetext, Network, Enforce);
-define_backend!(MacosEndpointSecurityBackend, MacosEndpointSecurity, MacosEndpointSecurity, Process, Warn);
+define_backend!(
+    MacosNetextBackend,
+    MacosNetext,
+    MacosNetext,
+    Network,
+    Enforce
+);
+define_backend!(
+    MacosEndpointSecurityBackend,
+    MacosEndpointSecurity,
+    MacosEndpointSecurity,
+    Process,
+    Warn
+);

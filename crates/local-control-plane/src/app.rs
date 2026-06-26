@@ -10,7 +10,7 @@ use tower_http::services::{ServeDir, ServeFile};
 
 use crate::{
     activity_api, agent_discovery_api, agent_inventory_api, auth, bundle, connectors, consent_api,
-    deployment_api, discovery, enforcement_plan_api, observation_api, pdp_cloud_api,
+    deployment_api, discovery, enforcement_plan_api, inventory_api, observation_api, pdp_cloud_api,
     pdp_routing_api, pdp_runtime_api, pep_capabilities_api, plugin_api, policy, policy_deploy_api,
     policy_first_api, policy_presets_api, policy_suggestions_api, preset_deploy_api,
     preset_deploy_wizard_api, push, recommendation_api, registry, state::AppState, telemetry,
@@ -63,6 +63,7 @@ pub fn create_app(state: AppState, static_dir: &str, metrics_handle: PrometheusH
         .merge(recommendation_api::router())
         .merge(policy_suggestions_api::router())
         .merge(observation_api::router())
+        .merge(inventory_api::router())
         .merge(policy::router())
         .merge(telemetry::router())
         .merge(bundle::router())

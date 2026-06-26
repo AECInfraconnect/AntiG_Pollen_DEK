@@ -156,6 +156,68 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ObservationQuery'
+  /v1/telemetry/resources:
+    get:
+      operationId: TelemetryApi_resources
+      parameters:
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+        - name: agent_id
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+        - name: scope
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/AccessScope'
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceInventoryPage'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - Telemetry
+  /v1/telemetry/tools:
+    get:
+      operationId: TelemetryApi_tools
+      parameters:
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+        - name: agent_id
+          in: query
+          required: false
+          schema:
+            type: string
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolInventoryPage'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - Telemetry
   /v1/tenants/local/capability-snapshot:
     get:
       operationId: LocalDashboardApi_getLocalCapabilitySnapshot
@@ -1850,6 +1912,20 @@ components:
           type: string
         reason:
           type: string
+    AccessMode:
+      type: string
+      enum:
+        - read
+        - write
+        - execute
+        - delete
+        - connect
+        - invoke
+    AccessScope:
+      type: string
+      enum:
+        - local
+        - cloud
     AgentObservationEvent:
       type: object
       required:
@@ -2483,6 +2559,82 @@ components:
         limit:
           type: integer
           format: int32
+    ObservedResource:
+      type: object
+      required:
+        - resource_id
+        - scope
+        - kind
+        - target_redacted
+        - agents
+        - modes
+        - last_access
+        - access_count
+        - governed
+        - registered
+      properties:
+        resource_id:
+          type: string
+        scope:
+          $ref: '#/components/schemas/AccessScope'
+        kind:
+          $ref: '#/components/schemas/ResourceKind'
+        target_redacted:
+          type: string
+        classification:
+          type: string
+        agents:
+          type: array
+          items:
+            type: string
+        modes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessMode'
+        last_access:
+          type: string
+          format: date-time
+        access_count:
+          type: integer
+          format: int64
+        governed:
+          type: boolean
+        registered:
+          type: boolean
+    ObservedTool:
+      type: object
+      required:
+        - tool_id
+        - tool_kind
+        - tool_name
+        - agents
+        - last_used
+        - use_count
+        - governed
+        - registered
+      properties:
+        tool_id:
+          type: string
+        tool_kind:
+          $ref: '#/components/schemas/ToolKind'
+        tool_name:
+          type: string
+        server:
+          type: string
+        agents:
+          type: array
+          items:
+            type: string
+        last_used:
+          type: string
+          format: date-time
+        use_count:
+          type: integer
+          format: int64
+        governed:
+          type: boolean
+        registered:
+          type: boolean
     PdpFailureBehavior:
       type: string
       enum:
@@ -2912,6 +3064,84 @@ components:
           format: int64
         cost_relevant:
           type: boolean
+    ResourceAccessPayload:
+      type: object
+      required:
+        - agent_id
+        - agent_label
+        - scope
+        - kind
+        - target_redacted
+        - target_hash
+        - mode
+        - decision
+        - enforced_for_real
+        - observed_at
+      properties:
+        agent_id:
+          type: string
+        agent_label:
+          type: string
+        scope:
+          $ref: '#/components/schemas/AccessScope'
+        kind:
+          $ref: '#/components/schemas/ResourceKind'
+        target_redacted:
+          type: string
+        target_hash:
+          type: string
+        mode:
+          $ref: '#/components/schemas/AccessMode'
+        decision:
+          $ref: '#/components/schemas/DecisionOutcome'
+        control_method:
+          $ref: '#/components/schemas/ControlMethod'
+        enforced_for_real:
+          type: boolean
+        bytes:
+          type: integer
+          format: int64
+        count:
+          type: integer
+          format: int32
+        classification:
+          type: string
+        observed_at:
+          type: string
+          format: date-time
+    ResourceInventoryPage:
+      type: object
+      required:
+        - schema_version
+        - items
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - resource-inventory.v1
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObservedResource'
+        next_cursor:
+          type: string
+    ResourceKind:
+      type: string
+      enum:
+        - file
+        - folder
+        - database_local
+        - os_syscall
+        - config
+        - process
+        - clipboard
+        - web
+        - email
+        - cloud_drive
+        - database_cloud
+        - data_source
+        - api
+        - saas
     ResourceListResponse:
       type: object
       required:
@@ -3111,6 +3341,8 @@ components:
         - enforcement_result
         - control_binding_changed
         - health
+        - resource_access
+        - tool_usage
     TelemetryIngestResponse:
       type: object
       required:
@@ -3227,6 +3459,31 @@ components:
         allow_count_24h:
           type: integer
           format: int64
+    ToolInventoryPage:
+      type: object
+      required:
+        - schema_version
+        - items
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - tool-inventory.v1
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObservedTool'
+        next_cursor:
+          type: string
+    ToolKind:
+      type: string
+      enum:
+        - mcp_tool
+        - function_call
+        - http_api
+        - a2a_skill
+        - shell_command
+        - browser_action
     ToolListResponse:
       type: object
       required:
@@ -3236,6 +3493,36 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Tool'
+    ToolUsagePayload:
+      type: object
+      required:
+        - agent_id
+        - agent_label
+        - tool_kind
+        - tool_name
+        - decision
+        - enforced_for_real
+        - observed_at
+      properties:
+        agent_id:
+          type: string
+        agent_label:
+          type: string
+        tool_kind:
+          $ref: '#/components/schemas/ToolKind'
+        tool_name:
+          type: string
+        server:
+          type: string
+        decision:
+          $ref: '#/components/schemas/DecisionOutcome'
+        enforced_for_real:
+          type: boolean
+        args_redacted:
+          type: string
+        observed_at:
+          type: string
+          format: date-time
 servers:
   - url: http://127.0.0.1:17891
     description: Local Control Plane / Mock Cloud

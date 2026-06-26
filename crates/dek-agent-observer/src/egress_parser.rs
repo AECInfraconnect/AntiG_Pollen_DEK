@@ -125,6 +125,28 @@ pub fn llm_call_event(
     })
 }
 
+/// Classify an egress destination using cloud_resource_signatures definition
+pub fn classify_cloud_egress(host: &str) -> Option<(String, String)> {
+    let baseline = dek_fingerprint_defs::load_latest_baseline();
+    for sig in &baseline.cloud_resource_signatures {
+        if host.contains(&sig.host_pattern) {
+            return Some((sig.kind.clone(), sig.name.clone()));
+        }
+    }
+    // Fallbacks
+    if host.contains("api.openai.com") || host.contains("api.anthropic.com") {
+        Some(("api".to_string(), "LLM API".to_string()))
+    } else if host.contains("drive.google.com") {
+        Some(("cloud_drive".to_string(), "Google Drive".to_string()))
+    } else if host.contains("smtp") || host.contains("imap") {
+        Some(("email".to_string(), "Email Service".to_string()))
+    } else if host.contains("github.com") {
+        Some(("saas".to_string(), "GitHub".to_string()))
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

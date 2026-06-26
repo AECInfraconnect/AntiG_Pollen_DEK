@@ -900,6 +900,57 @@ async fn handle_mcp_request(
                 // ensure the spooler treats it correctly
                 event_json["event_type"] = serde_json::json!("agent_observation");
                 telemetry.emit_async(event_json, dek_telemetry::spooler::Priority::Normal);
+
+                if !is_resource {
+                    let tool_payload = serde_json::json!({
+                        "agent_id": obs.agent_id.clone().unwrap_or_default(),
+                        "agent_label": obs.agent_id.clone().unwrap_or_default(),
+                        "tool_kind": "mcp_tool",
+                        "tool_name": normalized.tool_name.clone().unwrap_or_default(),
+                        "server": "mcp-proxy",
+                        "decision": if decision.allow { "allow" } else { "deny" },
+                        "enforced_for_real": true,
+                        "args_redacted": "<redacted>",
+                        "observed_at": chrono::Utc::now().to_rfc3339()
+                    });
+                    let env = serde_json::json!({
+                        "schema_version": "telemetry-envelope.v1",
+                        "event_id": uuid::Uuid::new_v4().to_string(),
+                        "event_type": "tool_usage",
+                        "timestamp": chrono::Utc::now().to_rfc3339(),
+                        "tenant_id": final_tenant_id.clone(),
+                        "device_id": metadata.device_id.clone(),
+                        "redaction_applied": false,
+                        "payload": tool_payload
+                    });
+                    telemetry.emit_async(env, dek_telemetry::spooler::Priority::Normal);
+                }
+
+                if is_resource {
+                    let res_payload = serde_json::json!({
+                        "agent_id": obs.agent_id.clone().unwrap_or_default(),
+                        "agent_label": obs.agent_id.clone().unwrap_or_default(),
+                        "scope": "local",
+                        "kind": "file",
+                        "target_redacted": normalized.resource_uri.clone().unwrap_or_default(),
+                        "target_hash": normalized.resource_uri.clone().unwrap_or_default(),
+                        "mode": "read",
+                        "decision": if decision.allow { "allow" } else { "deny" },
+                        "enforced_for_real": true,
+                        "observed_at": chrono::Utc::now().to_rfc3339()
+                    });
+                    let env = serde_json::json!({
+                        "schema_version": "telemetry-envelope.v1",
+                        "event_id": uuid::Uuid::new_v4().to_string(),
+                        "event_type": "resource_access",
+                        "timestamp": chrono::Utc::now().to_rfc3339(),
+                        "tenant_id": final_tenant_id.clone(),
+                        "device_id": metadata.device_id.clone(),
+                        "redaction_applied": false,
+                        "payload": res_payload
+                    });
+                    telemetry.emit_async(env, dek_telemetry::spooler::Priority::Normal);
+                }
             }
 
             let _ = state.observer.append(obs).await;

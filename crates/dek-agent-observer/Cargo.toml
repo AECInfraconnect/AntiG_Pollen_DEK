@@ -12,7 +12,9 @@ uuid = { version = "1", features = ["v4", "serde"] }
 chrono.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
+pollen-contract = { path = "../../contracts/generated/rust/pollen-contract" }
 dek-agent-binding = { path = "../dek-agent-binding" }
+dek-fingerprint-defs = { path = "../dek-fingerprint-defs" }
 opentelemetry = "0.21"
 rusqlite = { version = "0.32", features = ["bundled"] }
 async-trait = "0.1"

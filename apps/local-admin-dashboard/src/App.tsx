@@ -13,6 +13,7 @@ import { Simulator } from "./pages/Simulator";
 import { Bundles } from "./pages/Bundles";
 import { DecisionLogs } from "./pages/DecisionLogs";
 import { Settings } from "./pages/Settings";
+import { PdpRoutingPage } from "./pages/PdpRoutingPage";
 import { AutoDiscovery } from "./pages/AutoDiscovery";
 import { PolicySuggestions } from "./pages/PolicySuggestions";
 import { CostLedger } from "./pages/CostLedger";
@@ -145,6 +146,7 @@ function App() {
                 <Route path="bundles" element={<Bundles />} />
                 <Route path="discovery" element={<AutoDiscovery />} />
                 <Route path="settings" element={<Settings />} />
+                <Route path="settings/pdp" element={<PdpRoutingPage />} />
 
                 {/* Legacy redirects */}
                 <Route

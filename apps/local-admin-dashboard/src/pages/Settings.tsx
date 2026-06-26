@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { switchProfile, defaultClient } from "../services/api";
 import type { ContractDiscoveryResponse } from "../services/api";
-import { PdpRuntimeRouting } from "../components/pdp/PdpRuntimeRouting";
 import { toast } from "sonner";
 import { Activity } from "lucide-react";
 
@@ -199,8 +198,6 @@ export function Settings() {
           </div>
         </div>
       </div>
-
-      <PdpRuntimeRouting />
     </div>
   );
 }

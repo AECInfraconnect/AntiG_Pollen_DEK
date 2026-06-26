@@ -8,6 +8,7 @@ pub struct FingerprintDb {
     pub installed_apps: HashMap<String, InstalledAppSignatureDef>,
     pub browser_processes: Vec<BrowserProcessDef>,
     pub ai_process_hints: AiProcessHints,
+    pub cloud_resource_signatures: HashMap<String, CloudResourceSignatureDef>,
 }
 
 impl FingerprintDb {
@@ -34,6 +35,11 @@ impl FingerprintDb {
             installed_apps,
             browser_processes: base.browser_processes,
             ai_process_hints: base.ai_process_hints,
+            cloud_resource_signatures: base
+                .cloud_resource_signatures
+                .into_iter()
+                .map(|s| (s.name.clone(), s))
+                .collect(),
         }
     }
 
@@ -57,6 +63,11 @@ impl FingerprintDb {
                     .collect();
                 self.browser_processes = def.browser_processes;
                 self.ai_process_hints = def.ai_process_hints;
+                self.cloud_resource_signatures = def
+                    .cloud_resource_signatures
+                    .into_iter()
+                    .map(|s| (s.name.clone(), s))
+                    .collect();
             }
             DefinitionKind::Delta => {
                 if def.base_version != Some(self.version) {
@@ -75,6 +86,9 @@ impl FingerprintDb {
                 for sig in def.installed_app_signatures {
                     self.installed_apps.insert(sig.id.clone(), sig);
                 }
+                for sig in def.cloud_resource_signatures {
+                    self.cloud_resource_signatures.insert(sig.name.clone(), sig);
+                }
                 for browser in def.browser_processes {
                     upsert_browser_process(&mut self.browser_processes, browser);
                 }
@@ -89,6 +103,7 @@ impl FingerprintDb {
                     self.by_id.remove(id);
                     self.web_ai.remove(id);
                     self.installed_apps.remove(id);
+                    self.cloud_resource_signatures.remove(id);
                     self.browser_processes.retain(|b| {
                         !b.process_names
                             .iter()
@@ -183,6 +198,7 @@ mod tests {
             installed_app_signatures: vec![],
             browser_processes: vec![],
             ai_process_hints: AiProcessHints::default(),
+            cloud_resource_signatures: vec![],
         };
         let mut db = FingerprintDb::from_baseline(base);
         let delta = FingerprintDefinition {
@@ -200,6 +216,7 @@ mod tests {
             installed_app_signatures: vec![],
             browser_processes: vec![],
             ai_process_hints: AiProcessHints::default(),
+            cloud_resource_signatures: vec![],
         };
         db.apply(delta)?;
         assert!(db.by_id.contains_key("goose_cli"));
@@ -217,6 +234,7 @@ mod tests {
             installed_apps: std::collections::HashMap::new(),
             browser_processes: vec![],
             ai_process_hints: AiProcessHints::default(),
+            cloud_resource_signatures: std::collections::HashMap::new(),
         };
         let bad = FingerprintDefinition {
             schema_version: "v2".into(),
@@ -233,6 +251,7 @@ mod tests {
             installed_app_signatures: vec![],
             browser_processes: vec![],
             ai_process_hints: AiProcessHints::default(),
+            cloud_resource_signatures: vec![],
         };
         assert!(db.apply(bad).is_err());
     }

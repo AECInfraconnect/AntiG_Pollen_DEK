@@ -37,6 +37,7 @@ impl FingerprintService {
                 installed_apps: cur.installed_apps.clone(),
                 browser_processes: cur.browser_processes.clone(),
                 ai_process_hints: cur.ai_process_hints.clone(),
+                cloud_resource_signatures: cur.cloud_resource_signatures.clone(),
             }
         };
 
@@ -62,6 +63,7 @@ impl FingerprintService {
                     installed_apps: w.installed_apps.clone(),
                     browser_processes: w.browser_processes.clone(),
                     ai_process_hints: w.ai_process_hints.clone(),
+                    cloud_resource_signatures: w.cloud_resource_signatures.clone(),
                 });
             }
 

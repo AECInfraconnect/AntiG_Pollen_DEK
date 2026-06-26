@@ -12,9 +12,14 @@ pub struct A2AMessage {
 }
 
 use dek_control_plane_api::capability::{CapabilityMaturity, RuntimeCapability};
+use dek_telemetry::CloudTelemetrySink;
+use std::sync::Arc;
 
 pub struct IATPBroker {
     pub is_active: bool,
+    pub telemetry: Option<Arc<CloudTelemetrySink>>,
+    pub tenant_id: String,
+    pub device_id: String,
 }
 
 impl IATPBroker {
@@ -38,7 +43,12 @@ impl Default for IATPBroker {
 
 impl IATPBroker {
     pub fn new() -> Self {
-        Self { is_active: true }
+        Self {
+            is_active: true,
+            telemetry: None,
+            tenant_id: "local".into(),
+            device_id: "dev-01".into(),
+        }
     }
 
     /// Process an A2A message intercepting it via the DEK mediator.
@@ -102,6 +112,31 @@ impl IATPBroker {
             TrustAction::Normal => {
                 tracing::info!("A2A Allowed: Routing message to {}", msg.receiver_id);
             }
+        }
+
+        if let Some(telemetry) = &self.telemetry {
+            let tool_payload = serde_json::json!({
+                "agent_id": msg.sender_id,
+                "agent_label": msg.sender_id,
+                "tool_kind": "a2a_skill",
+                "tool_name": format!("route_to_{}", msg.receiver_id),
+                "server": "a2a-mediator",
+                "decision": "allow",
+                "enforced_for_real": true,
+                "args_redacted": "<redacted>",
+                "observed_at": chrono::Utc::now().to_rfc3339()
+            });
+            let env = serde_json::json!({
+                "schema_version": "telemetry-envelope.v1",
+                "event_id": uuid::Uuid::new_v4().to_string(),
+                "event_type": "tool_usage",
+                "timestamp": chrono::Utc::now().to_rfc3339(),
+                "tenant_id": self.tenant_id,
+                "device_id": self.device_id,
+                "redaction_applied": false,
+                "payload": tool_payload
+            });
+            telemetry.emit_async(env, dek_telemetry::spooler::Priority::Normal);
         }
 
         // Mocking the successful routing

@@ -3,8 +3,8 @@ use aes_gcm::{
     Aes256Gcm, Key,
 };
 use rusqlite::{params, Connection};
-use std::sync::Mutex;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 pub const DEFAULT_MAX_ROWS: i64 = 10_000;
 
@@ -23,7 +23,11 @@ pub struct SqliteSpool {
 }
 
 impl SqliteSpool {
-    pub fn new(db_path: &PathBuf, key_bytes: &[u8; 32], max_rows: i64) -> Result<Self, anyhow::Error> {
+    pub fn new(
+        db_path: &PathBuf,
+        key_bytes: &[u8; 32],
+        max_rows: i64,
+    ) -> Result<Self, anyhow::Error> {
         let conn = Connection::open(db_path)?;
 
         conn.execute_batch(
@@ -60,7 +64,9 @@ impl SqliteSpool {
 
     pub fn push(&self, priority: Priority, payload: &[u8]) -> Result<(), anyhow::Error> {
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-        let ciphertext = self.cipher.encrypt(&nonce, payload)
+        let ciphertext = self
+            .cipher
+            .encrypt(&nonce, payload)
             .map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;
 
         let conn = self.conn.lock().unwrap();
@@ -78,7 +84,7 @@ impl SqliteSpool {
              )",
             params![self.max_rows],
         )?;
-        
+
         Ok(())
     }
 
@@ -124,9 +130,8 @@ impl SqliteSpool {
 
     pub fn peek_recent(&self, limit: usize) -> Result<Vec<Vec<u8>>, anyhow::Error> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare(
-            "SELECT payload, nonce FROM events ORDER BY id DESC LIMIT ?1",
-        )?;
+        let mut stmt =
+            conn.prepare("SELECT payload, nonce FROM events ORDER BY id DESC LIMIT ?1")?;
 
         let rows = stmt.query_map([limit as i64], |row| {
             let payload_blob: Vec<u8> = row.get(0)?;

@@ -82,52 +82,58 @@ pub struct EnforcementStatusList {
     items: Vec<pollen_contract::PollenTelemetryEnvelopeV1>,
 }
 
-async fn list_observations_v2(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+async fn list_observations_v2(State(state): State<AppState>) -> impl IntoResponse {
     let mut items = Vec::new();
     if let Ok(records) = state.secure_spool.peek_recent(100) {
         for bytes in records {
-            if let Ok(env) = serde_json::from_slice::<pollen_contract::PollenTelemetryEnvelopeV1>(&bytes) {
+            if let Ok(env) =
+                serde_json::from_slice::<pollen_contract::PollenTelemetryEnvelopeV1>(&bytes)
+            {
                 if env.event_type == "agent_observation" {
                     items.push(env);
                 }
             }
         }
     }
-    
-    (StatusCode::OK, Json(ObservationPage {
-        schema_version: "observation-page.v1".to_string(),
-        items,
-        next_cursor: None,
-    }))
+
+    (
+        StatusCode::OK,
+        Json(ObservationPage {
+            schema_version: "observation-page.v1".to_string(),
+            items,
+            next_cursor: None,
+        }),
+    )
 }
 
-async fn enforcement_status(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+async fn enforcement_status(State(state): State<AppState>) -> impl IntoResponse {
     let mut items = Vec::new();
     if let Ok(records) = state.secure_spool.peek_recent(100) {
         for bytes in records {
-            if let Ok(env) = serde_json::from_slice::<pollen_contract::PollenTelemetryEnvelopeV1>(&bytes) {
+            if let Ok(env) =
+                serde_json::from_slice::<pollen_contract::PollenTelemetryEnvelopeV1>(&bytes)
+            {
                 if env.event_type == "enforcement_result" {
                     items.push(env);
                 }
             }
         }
     }
-    
-    (StatusCode::OK, Json(EnforcementStatusList {
-        schema_version: "enforcement-status.v1".to_string(),
-        items,
-    }))
+
+    (
+        StatusCode::OK,
+        Json(EnforcementStatusList {
+            schema_version: "enforcement-status.v1".to_string(),
+            items,
+        }),
+    )
 }
 
 use axum::response::sse::{Event, Sse};
 use futures_util::stream::Stream;
+use futures_util::StreamExt;
 use std::convert::Infallible;
 use tokio_stream::wrappers::BroadcastStream;
-use futures_util::StreamExt;
 
 async fn telemetry_stream(
     State(state): State<AppState>,
@@ -145,7 +151,7 @@ async fn telemetry_stream(
             Err(_) => None,
         }
     });
-    
+
     Sse::new(stream).keep_alive(axum::response::sse::KeepAlive::new())
 }
 

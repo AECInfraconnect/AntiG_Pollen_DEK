@@ -668,6 +668,25 @@ export const BundleApi = {
 export const TelemetryApi = {
   listDecisionLogs: () => defaultClient.listDecisionLogs(),
   clearDecisionLogs: () => defaultClient.clearDecisionLogs(),
+  getObservations: (params?: { agentId?: string, target?: string, toolId?: string }) => {
+    let url = `/telemetry/observations?`;
+    if (params?.agentId) url += `agent_id=${params.agentId}&`;
+    if (params?.target) url += `target_redacted=${encodeURIComponent(params.target)}&`;
+    if (params?.toolId) url += `tool_id=${encodeURIComponent(params.toolId)}&`;
+    return defaultClient.fetchApi(url).catch(() => ({ items: [] }));
+  },
+  getEnforcementStatus: (agentId?: string) => {
+    const url = agentId ? `/v1/telemetry/enforcement-status?agent_id=${agentId}` : `/v1/telemetry/enforcement-status`;
+    return defaultClient.fetchRootApi(url);
+  },
+  listResourceInventory: async (agentId?: string) => {
+    const url = agentId ? `/telemetry/resources?agent_id=${agentId}` : `/telemetry/resources`;
+    return defaultClient.fetchApi(url);
+  },
+  listToolInventory: async (agentId?: string) => {
+    const url = agentId ? `/telemetry/tools?agent_id=${agentId}` : `/telemetry/tools`;
+    return defaultClient.fetchApi(url);
+  },
 };
 
 export const ConnectorApi = {
@@ -742,13 +761,4 @@ export const SimpleWizardApi = {
   applyDeploySession: (id: string) => defaultClient.applyDeploySession(id),
 };
 
-export const TelemetryApi = {
-  getObservations: (agentId?: string) => {
-    const url = agentId ? `/v1/telemetry/observations?agent_id=${agentId}` : `/v1/telemetry/observations`;
-    return fetch(url).then((res) => res.json()).catch(() => ({ items: [] }));
-  },
-  getEnforcementStatus: (agentId?: string) => {
-    const url = agentId ? `/v1/telemetry/enforcement-status?agent_id=${agentId}` : `/v1/telemetry/enforcement-status`;
-    return fetch(url).then((res) => res.json()).catch(() => ({ items: [] }));
-  },
-};
+

@@ -18,8 +18,17 @@
 //! buffer the UI/decision-logs view reads) so nothing regresses.
 
 use crate::state::AppState;
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
+use axum::{
+    extract::Query,
+    extract::State,
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{get, post},
+    Json, Router,
+};
+use dek_agent_observer::aggregate::{aggregate_resources, aggregate_tools};
 use dek_domain_schema::TelemetryEvent;
+use pollen_contract::{ResourceAccessPayload, ToolUsagePayload};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -34,6 +43,9 @@ pub fn router() -> Router<AppState> {
         .route("/v1/telemetry/ebpf-events", post(ingest_ebpf_events))
         .route("/v1/metrics", post(ingest_metrics))
         .route("/v1/telemetry/batches", post(ingest_batches))
+        .route("/v1/telemetry/resources", get(list_resources))
+        .route("/v1/telemetry/tools", get(list_tools))
+        .route("/v1/telemetry/observations", get(list_observations))
         // legacy/tenant-scoped alias kept for back-compat
         .route(
             "/v1/tenants/:tenant_id/telemetry/events",
@@ -59,7 +71,7 @@ fn ingest(state: &AppState, events: Vec<serde_json::Value>, kind: &str) -> Resul
                 return Err("Unredacted secrets detected in telemetry payload".into());
             }
         }
-        
+
         if let Some(action) = event_val.pointer("/action").and_then(|a| a.as_str()) {
             if event_val.get("event_type").and_then(|e| e.as_str()) == Some("Audit") {
                 state.audit_push(
@@ -204,6 +216,132 @@ async fn ingest_device_status(
             "status": "recorded",
             "device_id": p.device_id,
             "bundle_id": p.bundle_id
+        })),
+    )
+}
+
+#[derive(serde::Deserialize)]
+pub struct ObservationsQuery {
+    pub target_redacted: Option<String>,
+    pub tool_id: Option<String>,
+}
+
+async fn list_observations(
+    State(s): State<AppState>,
+    Query(query): Query<ObservationsQuery>,
+) -> impl IntoResponse {
+    let logs = s.telemetry_events.lock().unwrap();
+    let mut filtered = Vec::new();
+    for v in logs.iter() {
+        if let Some(event_type) = v.get("event_type").and_then(|t| t.as_str()) {
+            if event_type == "resource_access" {
+                if let Some(target) = query.target_redacted.as_ref() {
+                    let mut matched = false;
+                    if let Some(redacted) = v
+                        .pointer("/details/target_redacted")
+                        .and_then(|t| t.as_str())
+                    {
+                        if target == redacted {
+                            matched = true;
+                        }
+                    } else if let Some(redacted) = v.get("target_redacted").and_then(|t| t.as_str())
+                    {
+                        if target == redacted {
+                            matched = true;
+                        }
+                    }
+                    if matched {
+                        filtered.push(v.clone());
+                    }
+                } else if query.tool_id.is_none() {
+                    filtered.push(v.clone());
+                }
+            } else if event_type == "tool_usage" {
+                if let Some(tool_id) = query.tool_id.as_ref() {
+                    let mut matched = false;
+                    if let Some(tid) = v.pointer("/details/tool_id").and_then(|t| t.as_str()) {
+                        if tool_id == tid {
+                            matched = true;
+                        }
+                    } else if let Some(tid) = v.get("tool_id").and_then(|t| t.as_str()) {
+                        if tool_id == tid {
+                            matched = true;
+                        }
+                    }
+                    if matched {
+                        filtered.push(v.clone());
+                    }
+                } else if query.target_redacted.is_none() {
+                    filtered.push(v.clone());
+                }
+            }
+        }
+    }
+    drop(logs);
+
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "schema_version": "observations.v1",
+            "items": filtered
+        })),
+    )
+}
+
+async fn list_resources(State(s): State<AppState>) -> impl IntoResponse {
+    let logs = s.telemetry_events.lock().unwrap();
+    let mut payloads = Vec::new();
+    for v in logs.iter() {
+        if let Some(event_type) = v.get("event_type").and_then(|t| t.as_str()) {
+            if event_type == "resource_access" {
+                let payload = if v.get("details").is_some() {
+                    v.get("details").unwrap().clone()
+                } else {
+                    v.clone()
+                };
+                if let Ok(p) = serde_json::from_value::<ResourceAccessPayload>(payload) {
+                    payloads.push(p);
+                }
+            }
+        }
+    }
+    drop(logs);
+
+    let items = aggregate_resources(&payloads);
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "schema_version": "resource-inventory.v1",
+            "items": items
+        })),
+    )
+}
+
+async fn list_tools(State(s): State<AppState>) -> impl IntoResponse {
+    let logs = s.telemetry_events.lock().unwrap();
+    let mut payloads = Vec::new();
+    for v in logs.iter() {
+        if let Some(event_type) = v.get("event_type").and_then(|t| t.as_str()) {
+            if event_type == "tool_usage" {
+                let payload = if v.get("details").is_some() {
+                    v.get("details").unwrap().clone()
+                } else {
+                    v.clone()
+                };
+                if let Ok(p) = serde_json::from_value::<ToolUsagePayload>(payload) {
+                    payloads.push(p);
+                }
+            }
+        }
+    }
+    drop(logs);
+
+    let items = aggregate_tools(&payloads);
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "schema_version": "tool-inventory.v1",
+            "items": items
         })),
     )
 }

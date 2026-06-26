@@ -78,8 +78,9 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Spawn TelemetrySink Background Loop
-    let (telemetry_mpsc_tx, mut telemetry_mpsc_rx) = tokio::sync::mpsc::channel::<pollen_contract::PollenTelemetryEnvelopeV1>(1000);
-    
+    let (telemetry_mpsc_tx, mut telemetry_mpsc_rx) =
+        tokio::sync::mpsc::channel::<pollen_contract::PollenTelemetryEnvelopeV1>(1000);
+
     let spool = state.secure_spool.clone();
     let sse_tx = state.telemetry_tx.clone();
     tokio::spawn(async move {
@@ -95,13 +96,25 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    let _telemetry_sink = dek_enforcement_api::control_method::TelemetrySink {
+    let telemetry_sink = dek_enforcement_api::control_method::TelemetrySink {
         tx: telemetry_mpsc_tx,
         ctx: Arc::new(dek_enforcement_api::control_method::EmitCtx {
             tenant_id: "local".to_string(),
             device_id: "default".to_string(),
         }),
     };
+
+    // Spawn Egress Simulator
+    let sim_sink = telemetry_sink.clone();
+    tokio::spawn(async move {
+        use dek_enforcement_api::egress_observer::EgressEventSource;
+        let source = local_control_plane::egress_simulator::SimulatorEgressSource {
+            deterministic: false, // Set to true for tests later if needed
+        };
+        if let Err(e) = source.start_observing(sim_sink).await {
+            tracing::error!("SimulatorEgressSource error: {}", e);
+        }
+    });
 
     // Spawn Anomaly Detector (P2)
     tokio::spawn(local_control_plane::anomaly_detector::start_anomaly_detector(state.clone()));

@@ -24,3 +24,12 @@ chrono = "0.4"
 
 [lints]
 workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Diagnostics_Etw", "Win32_Security"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"

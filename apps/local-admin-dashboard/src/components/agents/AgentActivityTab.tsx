@@ -8,7 +8,7 @@ export function AgentActivityTab({ agentId }: { agentId: string }) {
 
   useEffect(() => {
     // Initial fetch of observations
-    TelemetryApi.getObservations(agentId)
+    TelemetryApi.getObservations({ agentId })
       .then((res) => {
         const sorted = (res.items || []).sort((a: any, b: any) => 
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()

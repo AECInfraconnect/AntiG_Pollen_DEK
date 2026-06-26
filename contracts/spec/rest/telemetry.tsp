@@ -17,7 +17,7 @@ model TelemetryEnvelope<T> {
   payload: T;
 }
 
-enum TelemetryEventType { agent_observation, enforcement_result, control_binding_changed, health }
+enum TelemetryEventType { agent_observation, enforcement_result, control_binding_changed, health, resource_access, tool_usage }
 
 enum ControlLevel { observe, warn, ask, enforce }
 enum ControlDomain { network, file_system, process, mcp_tool, dns }
@@ -29,6 +29,11 @@ enum ControlMethod {
 }
 enum DecisionOutcome { allow, deny, redact, warn, observed }
 enum EnforcePlaneState { enforcing, observing, degraded, failed }
+
+enum ResourceKind { file, folder, database_local, os_syscall, config, process, clipboard, web, email, cloud_drive, database_cloud, data_source, api, saas }
+enum ToolKind { mcp_tool, function_call, http_api, a2a_skill, shell_command, browser_action }
+enum AccessMode { read, write, execute, delete, connect, invoke }
+enum AccessScope { local, cloud }
 
 model AgentObservationPayload {
   agent_id: string;
@@ -85,6 +90,42 @@ model EnforcementStatusList {
   items: TelemetryEnvelope<EnforcementResultPayload>[];
 }
 
+model ResourceAccessPayload {
+  agent_id: string; agent_label: string;
+  scope: AccessScope; kind: ResourceKind;
+  target_redacted: string; target_hash: string;
+  mode: AccessMode;
+  decision: DecisionOutcome;
+  control_method?: ControlMethod;
+  enforced_for_real: boolean;
+  bytes?: int64; count?: int32; classification?: string;
+  observed_at: utcDateTime;
+}
+
+model ToolUsagePayload {
+  agent_id: string; agent_label: string;
+  tool_kind: ToolKind; tool_name: string; server?: string;
+  decision: DecisionOutcome; enforced_for_real: boolean;
+  args_redacted?: string; observed_at: utcDateTime;
+}
+
+model ObservedResource {
+  resource_id: string; scope: AccessScope; kind: ResourceKind;
+  target_redacted: string; classification?: string;
+  agents: string[]; modes: AccessMode[];
+  last_access: utcDateTime; access_count: int64;
+  governed: boolean; registered: boolean;
+}
+
+model ObservedTool {
+  tool_id: string; tool_kind: ToolKind; tool_name: string; server?: string;
+  agents: string[]; last_used: utcDateTime; use_count: int64;
+  governed: boolean; registered: boolean;
+}
+
+model ResourceInventoryPage { schema_version: "resource-inventory.v1"; items: ObservedResource[]; next_cursor?: string; }
+model ToolInventoryPage     { schema_version: "tool-inventory.v1";     items: ObservedTool[];     next_cursor?: string; }
+
 @tag("Telemetry")
 interface TelemetryApi {
   @route("/v1/telemetry/batches") @post
@@ -95,4 +136,10 @@ interface TelemetryApi {
 
   @route("/v1/telemetry/enforcement-status") @get
   enforcementStatus(...PollenHeaders, @query agent_id?: string): EnforcementStatusList | PollenError;
+
+  @route("/v1/telemetry/resources") @get
+  resources(...PollenHeaders, @query agent_id?: string, @query scope?: AccessScope): ResourceInventoryPage | PollenError;
+
+  @route("/v1/telemetry/tools") @get
+  tools(...PollenHeaders, @query agent_id?: string): ToolInventoryPage | PollenError;
 }

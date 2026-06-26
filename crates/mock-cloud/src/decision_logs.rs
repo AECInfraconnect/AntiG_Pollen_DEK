@@ -75,24 +75,80 @@ pub async fn view_decision_logs(State(state): State<AppState>) -> impl IntoRespo
         .filter_map(|e| {
             if let Some(decision_obj) = e.get("Decision") {
                 Some(DecisionLogEntry {
-                    timestamp: decision_obj.get("timestamp").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    device_id: decision_obj.get("device_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    principal: decision_obj.get("principal_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    action: decision_obj.get("action").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    resource: decision_obj.get("resource_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    decision: decision_obj.get("decision").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    reason: decision_obj.get("reason").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                    timestamp: decision_obj
+                        .get("timestamp")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    device_id: decision_obj
+                        .get("device_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    principal: decision_obj
+                        .get("principal_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    action: decision_obj
+                        .get("action")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    resource: decision_obj
+                        .get("resource_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    decision: decision_obj
+                        .get("decision")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    reason: decision_obj
+                        .get("reason")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
                 })
             } else if e.get("event_type").and_then(|v| v.as_str()) == Some("enforcement_result") {
                 let payload = e.get("payload");
                 Some(DecisionLogEntry {
-                    timestamp: e.get("timestamp").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    device_id: e.get("device_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    principal: e.get("tenant_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    action: payload.and_then(|p| p.get("action")).and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    resource: payload.and_then(|p| p.get("resource")).and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    decision: payload.and_then(|p| p.get("decision")).and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                    reason: payload.and_then(|p| p.get("reason")).and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                    timestamp: e
+                        .get("timestamp")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    device_id: e
+                        .get("device_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    principal: e
+                        .get("tenant_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    action: payload
+                        .and_then(|p| p.get("action"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    resource: payload
+                        .and_then(|p| p.get("resource"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    decision: payload
+                        .and_then(|p| p.get("decision"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    reason: payload
+                        .and_then(|p| p.get("reason"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
                 })
             } else {
                 None
