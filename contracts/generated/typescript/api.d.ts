@@ -55,6 +55,193 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/local/capability-snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get latest local capability snapshot */
+        get: operations["LocalDashboardApi_getLocalCapabilitySnapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/local/deployment-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create a deployment session */
+        post: operations["LocalDashboardApi_createLocalDeploymentSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/local/deployment-sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get deployment session */
+        get: operations["LocalDashboardApi_getLocalDeploymentSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/local/deployment-sessions/{id}/actions/{action_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Approve an action in a deployment session */
+        post: operations["LocalDashboardApi_approveLocalDeploymentAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/local/deployment-sessions/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Stream deployment session events (SSE) */
+        get: operations["LocalDashboardApi_streamLocalDeploymentSessionEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/local/health/local-enforcement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get health of local enforcement layer */
+        get: operations["LocalDashboardApi_getLocalEnforcementHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/local/policies/feasibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Check policy feasibility */
+        post: operations["LocalDashboardApi_checkLocalPolicyFeasibility"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/local/policy-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List suggested policies based on capabilities and discovered agents */
+        get: operations["LocalDashboardApi_listLocalPolicySuggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/local/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Start Local Scan Session */
+        post: operations["LocalDashboardApi_startLocalScanSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/local/scans/{scan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get Local Scan Session by ID */
+        get: operations["LocalDashboardApi_getLocalScanSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/local/scans/{scan_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Stream Local Scan Session Events (SSE) */
+        get: operations["LocalDashboardApi_streamLocalScanSessionEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/{tenant_id}/agent-discovery/candidates": {
         parameters: {
             query?: never;
@@ -740,6 +927,7 @@ export interface components {
             timestamp: string;
             payload_json: string;
             token_usage?: components["schemas"]["TokenUsage"];
+            browser_scope?: components["schemas"]["BrowserAiObservationScope"];
         };
         AgentObservationEventListResponse: {
             items: components["schemas"]["AgentObservationEvent"][];
@@ -751,6 +939,20 @@ export interface components {
             /** Format: float */
             score: number;
             reasons: string[];
+        };
+        AgentUsageSummary: {
+            /** Format: float */
+            cost: number;
+            /** Format: int64 */
+            tokens: number;
+        };
+        BrowserAiObservationScope: {
+            base_name?: string;
+            display_name?: string;
+            browser_id?: string;
+            browser_name?: string;
+            candidate_id?: string;
+            discovery_candidate_id?: string;
         };
         BudgetPolicy: {
             /** @enum {string} */
@@ -821,6 +1023,8 @@ export interface components {
             total_tokens: number;
             provider_breakdown: Record<string, never>;
             agent_breakdown: Record<string, never>;
+            agent_token_breakdown: Record<string, never>;
+            agent_usage_breakdown: Record<string, never>;
         };
         DiscoveryCandidate: {
             candidate_id: string;
@@ -1217,6 +1421,380 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TelemetryIngestResponse"];
                 };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    LocalDashboardApi_getLocalCapabilitySnapshot: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    LocalDashboardApi_createLocalDeploymentSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    LocalDashboardApi_getLocalDeploymentSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    LocalDashboardApi_approveLocalDeploymentAction: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                id: string;
+                action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    LocalDashboardApi_streamLocalDeploymentSessionEvents: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    LocalDashboardApi_getLocalEnforcementHealth: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    LocalDashboardApi_checkLocalPolicyFeasibility: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    LocalDashboardApi_listLocalPolicySuggestions: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    LocalDashboardApi_startLocalScanSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    LocalDashboardApi_getLocalScanSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollenError"];
+                };
+            };
+        };
+    };
+    LocalDashboardApi_streamLocalScanSessionEvents: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollen-Contract-Version": components["parameters"]["PollenHeaders.contractVersion"];
+                "X-Pollen-Device-Id"?: components["parameters"]["PollenHeaders.deviceId"];
+                "X-Pollen-Tenant-Id"?: components["parameters"]["PollenHeaders.tenantId"];
+            };
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An unexpected error response. */
             default: {

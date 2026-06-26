@@ -191,7 +191,7 @@ async fn start_scan(
         let tenant3 = tenant2.clone();
 
         // Spawn a receiver to handle incremental candidates
-        tokio::spawn(async move {
+        let receiver_task = tokio::spawn(async move {
             while let Some(mut candidate) = rx.recv().await {
                 if let Ok(Some(existing_raw)) = st3
                     .registry_store
@@ -228,7 +228,7 @@ async fn start_scan(
             }
         });
 
-        match dek_agent_discovery::run_scan_v2(
+        let scan_result = dek_agent_discovery::run_scan_v2(
             &tenant2,
             &scan_id2,
             &req,
@@ -236,8 +236,10 @@ async fn start_scan(
             Some(tx),
             st2.def_store.get(),
         )
-        .await
-        {
+        .await;
+        let _ = receiver_task.await;
+
+        match scan_result {
             Ok((job, _candidates)) => {
                 let job_val = serde_json::to_value(&job).unwrap_or_default();
                 let _ = st2

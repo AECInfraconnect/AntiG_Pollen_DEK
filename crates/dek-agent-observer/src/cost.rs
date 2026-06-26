@@ -129,6 +129,7 @@ mod tests {
                 output_tokens: Some(2_000_000),
                 total_tokens: Some(3_000_000),
             }),
+            browser_scope: None,
             event_kind: EventKind::Generic,
             decision: None,
             tool_call: None,
@@ -142,5 +143,61 @@ mod tests {
         assert_eq!(cost.output_cost, 30.0);
         assert_eq!(cost.total_cost, 35.0);
         Ok(())
+    }
+
+    #[test]
+    fn budget_checks_are_agent_scoped_for_multiple_browsers() {
+        let entries = vec![
+            CostLedgerEntry {
+                event_id: "evt_chrome".into(),
+                agent_id: "cand_chatgpt_chrome".into(),
+                provider: "openai".into(),
+                model: Some("gpt-4o".into()),
+                input_tokens: 400,
+                output_tokens: 200,
+                total_tokens: 600,
+                input_cost: 0.01,
+                output_cost: 0.02,
+                total_cost: 0.03,
+                currency: "USD".into(),
+                estimated: true,
+                timestamp: "2026-06-26T00:00:00Z".into(),
+            },
+            CostLedgerEntry {
+                event_id: "evt_edge".into(),
+                agent_id: "cand_chatgpt_edge".into(),
+                provider: "openai".into(),
+                model: Some("gpt-4o".into()),
+                input_tokens: 10_000,
+                output_tokens: 10_000,
+                total_tokens: 20_000,
+                input_cost: 1.0,
+                output_cost: 1.0,
+                total_cost: 2.0,
+                currency: "USD".into(),
+                estimated: true,
+                timestamp: "2026-06-26T00:00:00Z".into(),
+            },
+        ];
+
+        let chrome_policy = BudgetPolicy {
+            agent_id: "cand_chatgpt_chrome".into(),
+            daily_cost_cap_usd: 1.0,
+            daily_token_cap: 1_000,
+        };
+        let edge_policy = BudgetPolicy {
+            agent_id: "cand_chatgpt_edge".into(),
+            daily_cost_cap_usd: 1.0,
+            daily_token_cap: 30_000,
+        };
+
+        assert_eq!(
+            check_budget(&chrome_policy, &entries),
+            BudgetDecision::WithinBudget
+        );
+        assert_eq!(
+            check_budget(&edge_policy, &entries),
+            BudgetDecision::CostExceeded
+        );
     }
 }

@@ -30,10 +30,13 @@ async fn ingest_observation(
     let mut ev = event;
     ev.tenant_id = tenant.clone();
 
-    // 1. Correlate Shadow Candidates
+    // 1. Scope browser-hosted AI events to the same candidate id discovery uses.
+    dek_agent_observer::browser_scope::apply_browser_scoped_agent_id(&mut ev);
+
+    // 2. Correlate Shadow Candidates
     dek_agent_observer::correlate::correlate_shadow_candidate(&mut ev);
 
-    // 2. Insert to DB
+    // 3. Insert to DB
     if let Err(e) = state
         .observability_store
         .insert_observation_event(&ev)
@@ -46,7 +49,7 @@ async fn ingest_observation(
         );
     }
 
-    // 3. Calculate Cost Ledger Entry
+    // 4. Calculate Cost Ledger Entry
     let catalog_path = std::path::PathBuf::from("pollen-local-data/price_catalog.v1.json");
     let catalog: dek_agent_observer::cost::PriceCatalog = if catalog_path.exists() {
         let content = std::fs::read_to_string(&catalog_path).unwrap_or_default();
@@ -95,7 +98,7 @@ async fn ingest_observation(
     // OTel metrics
     dek_agent_observer::otel::emit_span(&ev);
 
-    // 4. Generate Policy Suggestions
+    // 5. Generate Policy Suggestions
     // We mock passing all events by just passing this one event
     if let Ok(suggestions) =
         dek_policy_suggester::api::generate_suggestions(&tenant, &[], &[ev.clone()])
@@ -142,13 +145,23 @@ async fn cost_summary(
     }
 
     let mut agent_breakdown = std::collections::HashMap::new();
+    let mut agent_token_breakdown = std::collections::HashMap::new();
+    let mut agent_usage_breakdown = serde_json::Map::new();
     if let Ok(agent_costs) = state
         .observability_store
         .cost_breakdown_by_agent(&tenant, "1970-01-01")
         .await
     {
         for ac in agent_costs {
-            agent_breakdown.insert(ac.agent_id, ac.cost);
+            agent_breakdown.insert(ac.agent_id.clone(), ac.cost);
+            agent_token_breakdown.insert(ac.agent_id.clone(), ac.tokens);
+            agent_usage_breakdown.insert(
+                ac.agent_id,
+                json!({
+                    "cost": ac.cost,
+                    "tokens": ac.tokens,
+                }),
+            );
         }
     }
 
@@ -159,7 +172,9 @@ async fn cost_summary(
         "total_estimated_cost_usd": total_cost,
         "total_tokens": total_tokens,
         "provider_breakdown": provider_costs,
-        "agent_breakdown": agent_breakdown
+        "agent_breakdown": agent_breakdown,
+        "agent_token_breakdown": agent_token_breakdown,
+        "agent_usage_breakdown": agent_usage_breakdown
     });
 
     (StatusCode::OK, Json(result))

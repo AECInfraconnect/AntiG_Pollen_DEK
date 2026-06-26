@@ -838,6 +838,7 @@ async fn handle_mcp_request(
                 timestamp: chrono::Utc::now().to_rfc3339(),
                 payload_json: "{}".into(),
                 token_usage: None,
+                browser_scope: None,
                 event_kind: if is_resource {
                     dek_agent_observer::model::EventKind::ResourceAccess
                 } else {

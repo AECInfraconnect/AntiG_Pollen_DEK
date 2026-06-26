@@ -42,11 +42,9 @@ pub(crate) fn evidence_from_browser_windows(
                     || window.cmdline.to_ascii_lowercase().contains(&domain_l)
             });
             let matched_domain = matched_domain.unwrap_or(sig.domain.as_str());
-            let key = format!(
-                "webai:{}:{}",
-                sig.stable_id(),
-                window.process_name.to_ascii_lowercase()
-            );
+            let browser_name = browser_display_name(&window.process_name);
+            let browser_id = browser_id(&window.process_name);
+            let key = format!("webai:{}:{}", sig.stable_id(), browser_id);
 
             if !seen.insert(key.clone()) {
                 continue;
@@ -68,11 +66,14 @@ pub(crate) fn evidence_from_browser_windows(
                 redacted: true,
                 data: serde_json::json!({
                     "origin": format!("https://{}", matched_domain),
-                    "name": sig.name.clone(),
+                    "name": browser_scoped_ai_name(&sig.name, browser_name),
+                    "base_name": sig.name.clone(),
                     "vendor": sig.vendor.clone(),
                     "domain": sig.domain.clone(),
                     "matched_domain": matched_domain,
                     "browser": window.process_name.clone(),
+                    "browser_id": browser_id,
+                    "browser_name": browser_name,
                     "pid": window.pid,
                     "detected_via": detected_via,
                     "capability_tags": sig.capability_tags.clone(),
@@ -117,6 +118,42 @@ pub fn is_browser_process(process_name: &str, browsers: &[BrowserProcessDef]) ->
             .iter()
             .any(|name| normalize_process_name(name) == normalized)
     })
+}
+
+pub fn browser_display_name(process_name: &str) -> &'static str {
+    match browser_id(process_name) {
+        "chrome" => "Chrome",
+        "edge" => "Edge",
+        "brave" => "Brave",
+        "opera" => "Opera",
+        "vivaldi" => "Vivaldi",
+        "chromium" => "Chromium",
+        "arc" => "Arc",
+        "firefox" => "Firefox",
+        "safari" => "Safari",
+        _ => "Browser",
+    }
+}
+
+pub fn browser_id(process_name: &str) -> &'static str {
+    let normalized = normalize_process_name(process_name);
+    match normalized.as_str() {
+        "chrome" | "google chrome" => "chrome",
+        "msedge" | "microsoft edge" => "edge",
+        "brave" | "brave browser" => "brave",
+        "opera" | "opera gx" => "opera",
+        "vivaldi" => "vivaldi",
+        "chromium" => "chromium",
+        "arc" => "arc",
+        "firefox" => "firefox",
+        "safari" => "safari",
+        _ => "browser",
+    }
+}
+
+pub fn browser_scoped_ai_name(base_name: &str, browser_name: &str) -> String {
+    let base = base_name.strip_suffix(" (Web)").unwrap_or(base_name).trim();
+    format!("{base} ({browser_name})")
 }
 
 fn browser(engine: &str, process_names: &[&str]) -> BrowserProcessDef {
@@ -386,10 +423,50 @@ mod tests {
             .collect::<HashSet<_>>();
 
         assert_eq!(names.len(), 4);
-        assert!(names.contains("ChatGPT (Web)"));
-        assert!(names.contains("Claude (Web)"));
-        assert!(names.contains("Gemini (Web)"));
-        assert!(names.contains("DeepSeek (Web)"));
+        assert!(names.contains("ChatGPT (Chrome)"));
+        assert!(names.contains("Claude (Chrome)"));
+        assert!(names.contains("Gemini (Chrome)"));
+        assert!(names.contains("DeepSeek (Edge)"));
+    }
+
+    #[test]
+    fn same_web_ai_in_multiple_browsers_creates_browser_scoped_evidence() {
+        let catalog = vec![web_sig(
+            "chatgpt_web",
+            "chatgpt.com",
+            "ChatGPT (Web)",
+            &["ChatGPT"],
+        )];
+        let windows = vec![
+            BrowserWindow {
+                pid: 1,
+                process_name: "chrome.exe".into(),
+                title: "ChatGPT - Google Chrome".into(),
+                cmdline: "chrome.exe https://chatgpt.com".into(),
+            },
+            BrowserWindow {
+                pid: 2,
+                process_name: "msedge.exe".into(),
+                title: "ChatGPT - Microsoft Edge".into(),
+                cmdline: "msedge.exe https://chatgpt.com".into(),
+            },
+        ];
+
+        let evidence = evidence_from_browser_windows(&windows, &catalog);
+        let names = evidence
+            .iter()
+            .filter_map(|ev| ev.data.get("name").and_then(|v| v.as_str()))
+            .collect::<HashSet<_>>();
+        let merge_keys = evidence
+            .iter()
+            .filter_map(|ev| ev.merge_key.as_deref())
+            .collect::<HashSet<_>>();
+
+        assert_eq!(evidence.len(), 2);
+        assert!(names.contains("ChatGPT (Chrome)"));
+        assert!(names.contains("ChatGPT (Edge)"));
+        assert!(merge_keys.contains("webai:chatgpt_web:chrome"));
+        assert!(merge_keys.contains("webai:chatgpt_web:edge"));
     }
 
     #[test]

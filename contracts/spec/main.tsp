@@ -9,6 +9,7 @@ import "./rest/registry.tsp";
 import "./rest/enrollment.tsp";
 import "./rest/a2a.tsp";
 import "./rest/pdp-routing.tsp";
+import "./rest/local-dashboard.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.Rest;

@@ -18,109 +18,8 @@ tags:
   - name: PepCapabilities
   - name: A2A Mediator
   - name: PDPConfig
+  - name: LocalDashboard
 paths:
-
-  /v1/tenants/local/scan:
-    post:
-      summary: Start Local Scan Session
-      responses:
-        "200":
-          description: OK
-  /v1/tenants/local/scans/{scan_id}:
-    get:
-      summary: Get Local Scan Session by ID
-      parameters:
-        - in: path
-          name: scan_id
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: OK
-  /v1/tenants/local/scans/{scan_id}/events:
-    get:
-      summary: Stream Local Scan Session Events (SSE)
-      parameters:
-        - in: path
-          name: scan_id
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: OK
-  /v1/tenants/local/capability-snapshot:
-    get:
-      summary: Get latest local capability snapshot
-      responses:
-        "200":
-          description: OK
-  /v1/tenants/local/policy-suggestions:
-    get:
-      summary: List suggested policies based on capabilities and discovered agents
-      responses:
-        "200":
-          description: OK
-  /v1/tenants/local/policies/feasibility:
-    post:
-      summary: Check policy feasibility
-      responses:
-        "200":
-          description: OK
-  /v1/tenants/local/deployment-sessions:
-    post:
-      summary: Create a deployment session
-      responses:
-        "200":
-          description: OK
-  /v1/tenants/local/deployment-sessions/{id}:
-    get:
-      summary: Get deployment session
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: OK
-  /v1/tenants/local/deployment-sessions/{id}/events:
-    get:
-      summary: Stream deployment session events (SSE)
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: OK
-  /v1/tenants/local/deployment-sessions/{id}/actions/{action_id}/approve:
-    post:
-      summary: Approve an action in a deployment session
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-        - in: path
-          name: action_id
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: OK
-  /v1/tenants/local/health/local-enforcement:
-    get:
-      summary: Get health of local enforcement layer
-      responses:
-        "200":
-          description: OK
   /.well-known/pollen-contract:
     get:
       operationId: ContractDiscoveryApi_getDiscovery
@@ -202,6 +101,276 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/TelemetryBatchRequest'
+  /v1/tenants/local/capability-snapshot:
+    get:
+      operationId: LocalDashboardApi_getLocalCapabilitySnapshot
+      description: Get latest local capability snapshot
+      parameters:
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema: {}
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - LocalDashboard
+  /v1/tenants/local/deployment-sessions:
+    post:
+      operationId: LocalDashboardApi_createLocalDeploymentSession
+      description: Create a deployment session
+      parameters:
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema: {}
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - LocalDashboard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {}
+  /v1/tenants/local/deployment-sessions/{id}:
+    get:
+      operationId: LocalDashboardApi_getLocalDeploymentSession
+      description: Get deployment session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema: {}
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - LocalDashboard
+  /v1/tenants/local/deployment-sessions/{id}/actions/{action_id}/approve:
+    post:
+      operationId: LocalDashboardApi_approveLocalDeploymentAction
+      description: Approve an action in a deployment session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: action_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - LocalDashboard
+  /v1/tenants/local/deployment-sessions/{id}/events:
+    get:
+      operationId: LocalDashboardApi_streamLocalDeploymentSessionEvents
+      description: Stream deployment session events (SSE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - LocalDashboard
+  /v1/tenants/local/health/local-enforcement:
+    get:
+      operationId: LocalDashboardApi_getLocalEnforcementHealth
+      description: Get health of local enforcement layer
+      parameters:
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema: {}
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - LocalDashboard
+  /v1/tenants/local/policies/feasibility:
+    post:
+      operationId: LocalDashboardApi_checkLocalPolicyFeasibility
+      description: Check policy feasibility
+      parameters:
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema: {}
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - LocalDashboard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {}
+  /v1/tenants/local/policy-suggestions:
+    get:
+      operationId: LocalDashboardApi_listLocalPolicySuggestions
+      description: List suggested policies based on capabilities and discovered agents
+      parameters:
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema: {}
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - LocalDashboard
+  /v1/tenants/local/scan:
+    post:
+      operationId: LocalDashboardApi_startLocalScanSession
+      description: Start Local Scan Session
+      parameters:
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - LocalDashboard
+  /v1/tenants/local/scans/{scan_id}:
+    get:
+      operationId: LocalDashboardApi_getLocalScanSession
+      description: Get Local Scan Session by ID
+      parameters:
+        - name: scan_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema: {}
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - LocalDashboard
+  /v1/tenants/local/scans/{scan_id}/events:
+    get:
+      operationId: LocalDashboardApi_streamLocalScanSessionEvents
+      description: Stream Local Scan Session Events (SSE)
+      parameters:
+        - name: scan_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollenHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollenHeaders.deviceId'
+        - $ref: '#/components/parameters/PollenHeaders.tenantId'
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollenError'
+      tags:
+        - LocalDashboard
   /v1/tenants/{tenant_id}/agent-discovery/candidates:
     get:
       operationId: DiscoveryApi_listCandidates
@@ -1665,6 +1834,8 @@ components:
           type: string
         token_usage:
           $ref: '#/components/schemas/TokenUsage'
+        browser_scope:
+          $ref: '#/components/schemas/BrowserAiObservationScope'
     AgentObservationEventListResponse:
       type: object
       required:
@@ -1695,6 +1866,33 @@ components:
           type: array
           items:
             type: string
+    AgentUsageSummary:
+      type: object
+      required:
+        - cost
+        - tokens
+      properties:
+        cost:
+          type: number
+          format: float
+        tokens:
+          type: integer
+          format: int64
+    BrowserAiObservationScope:
+      type: object
+      properties:
+        base_name:
+          type: string
+        display_name:
+          type: string
+        browser_id:
+          type: string
+        browser_name:
+          type: string
+        candidate_id:
+          type: string
+        discovery_candidate_id:
+          type: string
     BudgetPolicy:
       type: object
       required:
@@ -1847,6 +2045,8 @@ components:
         - total_tokens
         - provider_breakdown
         - agent_breakdown
+        - agent_token_breakdown
+        - agent_usage_breakdown
       properties:
         schema_version:
           type: string
@@ -1872,6 +2072,15 @@ components:
           unevaluatedProperties:
             type: number
             format: float
+        agent_token_breakdown:
+          type: object
+          unevaluatedProperties:
+            type: integer
+            format: int64
+        agent_usage_breakdown:
+          type: object
+          unevaluatedProperties:
+            $ref: '#/components/schemas/AgentUsageSummary'
     DiscoveryCandidate:
       type: object
       required:

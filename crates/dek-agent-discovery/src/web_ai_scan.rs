@@ -1,5 +1,6 @@
 use crate::model::*;
 use anyhow::Result;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -57,12 +58,14 @@ fn scan_history(
     catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef],
 ) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
+    let mut seen = HashSet::new();
     let history_paths = get_browser_history_paths();
 
     for path in history_paths {
         if !path.exists() {
             continue;
         }
+        let (browser_id, browser_name) = browser_from_path(&path);
 
         let temp_path = path.with_extension(format!("temp_{}", uuid::Uuid::new_v4()));
         // Copy to avoid SQLite lock
@@ -86,6 +89,11 @@ fn scan_history(
                                     if let Some(matched_domain) = host_matches_signature(host, sig)
                                     {
                                         let origin = format!("{}://{}", parsed_url.scheme(), host);
+                                        let merge_key = web_ai_merge_key(sig, browser_id);
+
+                                        if !seen.insert(merge_key.clone()) {
+                                            continue;
+                                        }
 
                                         evidence.push(DiscoveryEvidenceV2 {
                                             evidence_id: uuid::Uuid::new_v4().to_string(),
@@ -96,11 +104,15 @@ fn scan_history(
                                             redacted: true,
                                             data: serde_json::json!({
                                                 "origin": origin,
-                                                "name": sig.name.clone(),
+                                                "name": web_ai_display_name(sig, browser_name),
+                                                "base_name": sig.name.clone(),
                                                 "vendor": sig.vendor.clone(),
+                                                "browser_id": browser_id,
+                                                "browser_name": browser_name,
+                                                "matched_domain": matched_domain.clone(),
                                                 "capability_tags": sig.capability_tags.clone(),
                                             }),
-                                            merge_key: Some(format!("webai:{}", sig.stable_id())),
+                                            merge_key: Some(merge_key),
                                             source_path_hash: Some(
                                                 crate::redaction::sha256_string(
                                                     &path.to_string_lossy(),
@@ -132,6 +144,7 @@ fn scan_sessions(
     catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef],
 ) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
+    let mut seen = HashSet::new();
     let mut session_paths = get_browser_session_paths();
     session_paths.extend(crate::browser_session_reader::firefox_session_paths());
     session_paths.sort();
@@ -176,8 +189,15 @@ fn scan_sessions(
                     continue;
                 }
             };
+            let (browser_id, browser_name) = browser_from_path(&file_path);
             for sig in catalog {
                 if let Some(matched_domain) = bytes_match_signature(&bytes, sig) {
+                    let merge_key = web_ai_merge_key(sig, browser_id);
+
+                    if !seen.insert(merge_key.clone()) {
+                        continue;
+                    }
+
                     evidence.push(DiscoveryEvidenceV2 {
                         evidence_id: uuid::Uuid::new_v4().to_string(),
                         source: EvidenceSource::BrowserSession,
@@ -187,13 +207,16 @@ fn scan_sessions(
                         redacted: true,
                         data: serde_json::json!({
                             "origin": format!("https://{}", matched_domain),
-                            "name": sig.name.clone(),
+                            "name": web_ai_display_name(sig, browser_name),
+                            "base_name": sig.name.clone(),
                             "vendor": sig.vendor.clone(),
+                            "browser_id": browser_id,
+                            "browser_name": browser_name,
                             "capability_tags": sig.capability_tags.clone(),
                             "detected_via": "browser_session_open_tab",
                             "matched_domain": matched_domain,
                         }),
-                        merge_key: Some(format!("webai:{}", sig.stable_id())),
+                        merge_key: Some(merge_key),
                         source_path_hash: Some(crate::redaction::sha256_string(
                             &file_path.to_string_lossy(),
                         )),
@@ -201,7 +224,6 @@ fn scan_sessions(
                             &file_path.to_string_lossy(),
                         )),
                     });
-                    break;
                 }
             }
         }
@@ -215,6 +237,7 @@ fn scan_network_sni(
     catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef],
 ) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
+    let mut seen = HashSet::new();
 
     // Query recent flows from the injected source (e.g., from spool or eBPF directly)
     let recent_snis = source.recent_flows(Duration::from_secs(3600));
@@ -222,6 +245,12 @@ fn scan_network_sni(
     for flow in recent_snis {
         for sig in catalog {
             if let Some(matched_domain) = host_matches_signature(&flow.sni_host, sig) {
+                let merge_key = web_ai_merge_key(sig, "network");
+
+                if !seen.insert(merge_key.clone()) {
+                    continue;
+                }
+
                 evidence.push(DiscoveryEvidenceV2 {
                     evidence_id: uuid::Uuid::new_v4().to_string(),
                     source: EvidenceSource::NetworkSni,
@@ -231,14 +260,17 @@ fn scan_network_sni(
                     redacted: true,
                     data: serde_json::json!({
                         "origin": format!("https://{}", matched_domain),
-                        "sni": flow.sni_host,
-                        "name": sig.name.clone(),
+                        "sni": flow.sni_host.clone(),
+                        "name": web_ai_display_name(sig, "Browser"),
+                        "base_name": sig.name.clone(),
                         "vendor": sig.vendor.clone(),
+                        "browser_id": "network",
+                        "browser_name": "Browser",
                         "capability_tags": sig.capability_tags.clone(),
                         "browser_pid": flow.browser_pid,
                         "matched_domain": matched_domain,
                     }),
-                    merge_key: Some(format!("webai:{}", sig.stable_id())),
+                    merge_key: Some(merge_key),
                     source_path_hash: None,
                     source_path_redacted: Some("network:sni".to_string()),
                 });
@@ -253,12 +285,14 @@ fn scan_bookmarks(
     catalog: &[dek_fingerprint_defs::model::WebAiSignatureDef],
 ) -> Result<Vec<DiscoveryEvidenceV2>> {
     let mut evidence = Vec::new();
+    let mut seen = HashSet::new();
     let bookmark_paths = get_browser_bookmark_paths();
 
     for path in bookmark_paths {
         if !path.exists() {
             continue;
         }
+        let (browser_id, browser_name) = browser_from_path(&path);
 
         if let Ok(data) = std::fs::read_to_string(&path) {
             if let Ok(json) = serde_json::from_str::<serde_json::Value>(&data) {
@@ -267,6 +301,12 @@ fn scan_bookmarks(
                 let json_str = json.to_string();
                 for sig in catalog {
                     if let Some(matched_domain) = bytes_match_signature(json_str.as_bytes(), sig) {
+                        let merge_key = web_ai_merge_key(sig, browser_id);
+
+                        if !seen.insert(merge_key.clone()) {
+                            continue;
+                        }
+
                         evidence.push(DiscoveryEvidenceV2 {
                             evidence_id: uuid::Uuid::new_v4().to_string(),
                             source: EvidenceSource::BrowserHistory, // close enough or new source
@@ -276,12 +316,15 @@ fn scan_bookmarks(
                             redacted: true,
                             data: serde_json::json!({
                                 "origin": format!("https://{}", matched_domain),
-                                "name": sig.name.clone(),
+                                "name": web_ai_display_name(sig, browser_name),
+                                "base_name": sig.name.clone(),
                                 "vendor": sig.vendor.clone(),
+                                "browser_id": browser_id,
+                                "browser_name": browser_name,
                                 "capability_tags": sig.capability_tags.clone(),
                                 "matched_domain": matched_domain,
                             }),
-                            merge_key: Some(format!("webai:{}", sig.stable_id())),
+                            merge_key: Some(merge_key),
                             source_path_hash: Some(crate::redaction::sha256_string(
                                 &path.to_string_lossy(),
                             )),
@@ -296,6 +339,61 @@ fn scan_bookmarks(
     }
 
     Ok(evidence)
+}
+
+fn web_ai_display_name(
+    sig: &dek_fingerprint_defs::model::WebAiSignatureDef,
+    browser_name: &str,
+) -> String {
+    crate::browser_window_scan::browser_scoped_ai_name(&sig.name, browser_name)
+}
+
+fn web_ai_merge_key(
+    sig: &dek_fingerprint_defs::model::WebAiSignatureDef,
+    browser_id: &str,
+) -> String {
+    format!("webai:{}:{browser_id}", sig.stable_id())
+}
+
+fn browser_from_path(path: &Path) -> (&'static str, &'static str) {
+    let normalized = path
+        .to_string_lossy()
+        .replace('\\', "/")
+        .to_ascii_lowercase();
+
+    if normalized.contains("microsoft/edge")
+        || normalized.contains("microsoft edge")
+        || normalized.contains("microsoft-edge")
+    {
+        ("edge", "Edge")
+    } else if normalized.contains("google/chrome")
+        || normalized.contains("google chrome")
+        || normalized.contains("google-chrome")
+    {
+        ("chrome", "Chrome")
+    } else if normalized.contains("bravesoftware/brave-browser")
+        || normalized.contains("brave-browser")
+    {
+        ("brave", "Brave")
+    } else if normalized.contains("opera software")
+        || normalized.contains("opera stable")
+        || normalized.contains("opera gx")
+    {
+        ("opera", "Opera")
+    } else if normalized.contains("vivaldi") {
+        ("vivaldi", "Vivaldi")
+    } else if normalized.contains("chromium") {
+        ("chromium", "Chromium")
+    } else if normalized.contains("mozilla/firefox")
+        || normalized.contains(".mozilla/firefox")
+        || normalized.contains("/firefox/")
+    {
+        ("firefox", "Firefox")
+    } else if normalized.contains("safari") {
+        ("safari", "Safari")
+    } else {
+        ("browser", "Browser")
+    }
 }
 
 fn get_browser_bookmark_paths() -> Vec<PathBuf> {
@@ -743,6 +841,26 @@ mod tests {
         assert_eq!(
             host_matches_signature("bard.google.com", &gemini).as_deref(),
             Some("bard.google.com")
+        );
+    }
+
+    #[test]
+    fn browser_paths_scope_web_ai_display_name() {
+        let (browser_id, browser_name) = browser_from_path(Path::new(
+            r"C:\Users\me\AppData\Local\Microsoft\Edge\User Data\Default\Sessions",
+        ));
+        let mut signature = sig("chatgpt.com");
+        signature.name = "ChatGPT (Web)".to_string();
+
+        assert_eq!(browser_id, "edge");
+        assert_eq!(browser_name, "Edge");
+        assert_eq!(
+            web_ai_display_name(&signature, browser_name),
+            "ChatGPT (Edge)"
+        );
+        assert_eq!(
+            web_ai_merge_key(&signature, browser_id),
+            "webai:chatgpt_com:edge"
         );
     }
 }

@@ -16,6 +16,8 @@ pub struct AgentObservationEvent {
     pub timestamp: String,
     pub payload_json: String,
     pub token_usage: Option<TokenUsage>,
+    #[serde(default)]
+    pub browser_scope: Option<BrowserAiObservationScope>,
 
     // Unified Event fields
     #[serde(default)]
@@ -30,6 +32,16 @@ pub struct AgentObservationEvent {
     pub latency_ms: Option<i64>,
     #[serde(default)]
     pub provider: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct BrowserAiObservationScope {
+    pub base_name: Option<String>,
+    pub display_name: Option<String>,
+    pub browser_id: Option<String>,
+    pub browser_name: Option<String>,
+    pub candidate_id: Option<String>,
+    pub discovery_candidate_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]

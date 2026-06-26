@@ -359,7 +359,8 @@ fn aggregate_by_merge_key(
                 | EvidenceSource::BrowserWindow
                 | EvidenceSource::BrowserHistory
                 | EvidenceSource::NetworkSni => {
-                    if let Some(evidence_name) = ev.data.get("name").and_then(|v| v.as_str()) {
+                    let evidence_name = ev.data.get("name").and_then(|v| v.as_str());
+                    if let Some(evidence_name) = evidence_name {
                         name = evidence_name.to_string();
                         vendor = ev
                             .data
@@ -401,8 +402,20 @@ fn aggregate_by_merge_key(
                         let mut found = false;
                         for w_sig in sigs {
                             if url.contains(&w_sig.domain) {
-                                name = w_sig.name.clone();
-                                vendor = Some(w_sig.vendor.clone());
+                                if evidence_name.is_none() {
+                                    let browser_name = ev
+                                        .data
+                                        .get("browser_name")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("Browser");
+                                    name = crate::browser_window_scan::browser_scoped_ai_name(
+                                        &w_sig.name,
+                                        browser_name,
+                                    );
+                                }
+                                if vendor.is_none() {
+                                    vendor = Some(w_sig.vendor.clone());
+                                }
                                 for cap in &w_sig.capability_tags {
                                     if !capability_tags.contains(cap) {
                                         capability_tags.push(cap.clone());
@@ -419,7 +432,9 @@ fn aggregate_by_merge_key(
                             }
                         }
                         if !found {
-                            name = url.to_string();
+                            if evidence_name.is_none() {
+                                name = url.to_string();
+                            }
                             agent_type = InferredAgentType::WebAIApp;
                         }
                     }
@@ -691,6 +706,12 @@ fn aggregate_by_merge_key(
 
         capability_tags.sort();
         capability_tags.dedup();
+        let should_collect_token_usage = capability_tags.iter().any(|cap| {
+            matches!(
+                cap.as_str(),
+                "llm.call" | "llm.chat" | "net.egress.llm" | "web.chat" | "model.server"
+            )
+        });
         matched_signals.sort_by(|a, b| {
             b.weight
                 .partial_cmp(&a.weight)
@@ -775,7 +796,7 @@ fn aggregate_by_merge_key(
                 collect_process_metadata: true,
                 collect_network_metadata: true,
                 collect_mcp_tool_metadata: false,
-                collect_token_usage: false,
+                collect_token_usage: should_collect_token_usage,
                 collect_file_metadata: false,
                 collect_raw_prompt: false,
                 collect_raw_response: false,
@@ -800,7 +821,8 @@ fn aggregate_by_merge_key(
         let key = cand
             .matched_signature_id
             .clone()
-            .unwrap_or_else(|| cand.candidate_id.clone());
+            .or_else(|| cand.evidence.first().and_then(|ev| ev.merge_key.clone()))
+            .unwrap_or_else(|| format!("name:{}", cand.display_name.to_lowercase()));
         if let Some(existing) = final_candidates.get_mut(&key) {
             existing.evidence.extend(cand.evidence.clone());
             existing.confidence = f64::max(existing.confidence, cand.confidence);
@@ -924,12 +946,14 @@ mod tests {
                 redacted: true,
                 data: serde_json::json!({
                     "origin": "https://chatgpt.com",
-                    "name": "ChatGPT (Web)",
+                    "name": "ChatGPT (Chrome)",
                     "vendor": "OpenAI",
+                    "browser_id": "chrome",
+                    "browser_name": "Chrome",
                     "capability_tags": ["llm.chat"],
                     "detected_via": "browser_session_open_tab"
                 }),
-                merge_key: Some("webai:chatgpt.com".into()),
+                merge_key: Some("webai:chatgpt_web:chrome".into()),
                 source_path_hash: Some("hash".into()),
                 source_path_redacted: Some("<browser session>".into()),
             }],
@@ -937,7 +961,7 @@ mod tests {
 
         assert_eq!(candidates.len(), 1);
         let candidate = &candidates[0];
-        assert_eq!(candidate.display_name, "ChatGPT (Web)");
+        assert_eq!(candidate.display_name, "ChatGPT (Chrome)");
         assert!(matches!(
             candidate.inferred_agent_type,
             InferredAgentType::WebAIApp
@@ -960,8 +984,10 @@ mod tests {
                 redacted: true,
                 data: serde_json::json!({
                     "origin": "https://claude.ai",
-                    "name": "Claude (Web)",
+                    "name": "Claude (Chrome)",
                     "vendor": "Anthropic",
+                    "browser_id": "chrome",
+                    "browser_name": "Chrome",
                     "capability_tags": ["llm.chat", "web.chat"],
                     "detected_via": "browser_window_title"
                 }),
@@ -973,11 +999,75 @@ mod tests {
 
         assert_eq!(candidates.len(), 1);
         let candidate = &candidates[0];
-        assert_eq!(candidate.display_name, "Claude (Web)");
+        assert_eq!(candidate.display_name, "Claude (Chrome)");
         assert!(matches!(
             candidate.inferred_agent_type,
             InferredAgentType::WebAIApp
         ));
         assert!(candidate.capability_tags.contains(&"llm.chat".to_string()));
+    }
+
+    #[test]
+    fn same_web_ai_in_multiple_browsers_remains_separate_candidates() {
+        let candidates = aggregate_evidence(
+            "local",
+            "device-local",
+            vec![
+                DiscoveryEvidenceV2 {
+                    evidence_id: "ev_chatgpt_chrome".into(),
+                    source: EvidenceSource::BrowserSession,
+                    confidence: 0.85,
+                    observed_at: "2026-06-25T00:00:00Z".into(),
+                    privacy_class: PrivacyClass::InternalMetadata,
+                    redacted: true,
+                    data: serde_json::json!({
+                        "origin": "https://chatgpt.com",
+                        "name": "ChatGPT (Chrome)",
+                        "vendor": "OpenAI",
+                        "browser_id": "chrome",
+                        "browser_name": "Chrome",
+                        "capability_tags": ["llm.chat", "web.chat"],
+                        "detected_via": "browser_session_open_tab"
+                    }),
+                    merge_key: Some("webai:chatgpt_web:chrome".into()),
+                    source_path_hash: Some("hash_chrome".into()),
+                    source_path_redacted: Some("<chrome session>".into()),
+                },
+                DiscoveryEvidenceV2 {
+                    evidence_id: "ev_chatgpt_edge".into(),
+                    source: EvidenceSource::BrowserSession,
+                    confidence: 0.85,
+                    observed_at: "2026-06-25T00:00:00Z".into(),
+                    privacy_class: PrivacyClass::InternalMetadata,
+                    redacted: true,
+                    data: serde_json::json!({
+                        "origin": "https://chatgpt.com",
+                        "name": "ChatGPT (Edge)",
+                        "vendor": "OpenAI",
+                        "browser_id": "edge",
+                        "browser_name": "Edge",
+                        "capability_tags": ["llm.chat", "web.chat"],
+                        "detected_via": "browser_session_open_tab"
+                    }),
+                    merge_key: Some("webai:chatgpt_web:edge".into()),
+                    source_path_hash: Some("hash_edge".into()),
+                    source_path_redacted: Some("<edge session>".into()),
+                },
+            ],
+        );
+
+        let names = candidates
+            .iter()
+            .map(|candidate| candidate.display_name.as_str())
+            .collect::<std::collections::HashSet<_>>();
+        let ids = candidates
+            .iter()
+            .map(|candidate| candidate.candidate_id.as_str())
+            .collect::<std::collections::HashSet<_>>();
+
+        assert_eq!(candidates.len(), 2);
+        assert_eq!(ids.len(), 2);
+        assert!(names.contains("ChatGPT (Chrome)"));
+        assert!(names.contains("ChatGPT (Edge)"));
     }
 }

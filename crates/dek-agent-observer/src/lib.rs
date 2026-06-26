@@ -3,6 +3,7 @@
 pub mod activity;
 pub mod aggregate;
 pub mod binding_store;
+pub mod browser_scope;
 pub mod correlate;
 pub mod cost;
 pub mod coverage;

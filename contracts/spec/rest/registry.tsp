@@ -26,6 +26,15 @@ model TokenUsage {
   "model"?: string;
 }
 
+model BrowserAiObservationScope {
+  base_name?: string;
+  display_name?: string;
+  browser_id?: string;
+  browser_name?: string;
+  candidate_id?: string;
+  discovery_candidate_id?: string;
+}
+
 model AgentObservationEvent {
   event_id: string;
   tenant_id: string;
@@ -41,6 +50,7 @@ model AgentObservationEvent {
   timestamp: string;
   payload_json: string;
   token_usage?: TokenUsage;
+  browser_scope?: BrowserAiObservationScope;
 }
 
 enum SuggestionType {
@@ -153,6 +163,11 @@ model CostLedgerListResponse {
   items: CostLedgerEntry[];
 }
 
+model AgentUsageSummary {
+  cost: float32;
+  tokens: int64;
+}
+
 model CostSummaryResponse {
   schema_version: "cost-summary.v1";
   tenant_id: string;
@@ -161,6 +176,8 @@ model CostSummaryResponse {
   total_tokens: int64;
   provider_breakdown: Record<float32>;
   agent_breakdown: Record<float32>;
+  agent_token_breakdown: Record<int64>;
+  agent_usage_breakdown: Record<AgentUsageSummary>;
 }
 
 model PolicySuggestionListResponse {

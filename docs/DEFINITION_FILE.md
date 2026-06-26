@@ -42,7 +42,18 @@ Discovery uses these fields across multiple sources:
 `browser_processes` describes processes such as `chrome.exe`, `msedge.exe`, `firefox.exe`,
 and `safari`. Process scanning skips these entries, because a browser is only a container
 for web AI surfaces. Browser-specific sources then emit named candidates such as
-`ChatGPT (Web)` or `Claude (Web)`.
+`ChatGPT (Chrome)` or `Claude (Edge)`.
+
+Definition names may still keep a provider-level suffix such as `(Web)` for backward
+compatibility, but discovery evidence should scope the visible name with the actual
+browser when it is known. The emitted evidence should include `browser_id`,
+`browser_name`, and `base_name` so UI and policy code can distinguish the web AI
+surface from the browser container. Observation and policy events should carry
+the same data in the shared contract's `browser_scope` field, with legacy
+`payload_json.web_ai` accepted as a compatibility alias. The same web AI opened in multiple browsers
+must produce multiple candidates, for example `ChatGPT (Chrome)` and
+`ChatGPT (Edge)`, so observation, cost, token, and enforcement policy state does
+not collapse across browser boundaries.
 
 ## Unknown Process Hints
 

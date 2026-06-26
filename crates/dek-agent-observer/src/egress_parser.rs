@@ -3,10 +3,26 @@
 use crate::model::{AgentObservationEvent, EventKind, TokenUsage};
 
 fn provider_from_host(host: &str) -> String {
+    let host = host.to_ascii_lowercase();
+
     if host.contains("api.openai.com") {
         "openai".into()
     } else if host.contains("api.anthropic.com") {
         "anthropic".into()
+    } else if host.contains("generativelanguage.googleapis.com")
+        || host.contains("aiplatform.googleapis.com")
+    {
+        "google".into()
+    } else if host.contains("api.mistral.ai") {
+        "mistral".into()
+    } else if host.contains("api.deepseek.com") {
+        "deepseek".into()
+    } else if host.contains("api.x.ai") {
+        "xai".into()
+    } else if host.contains("api.cohere.com") {
+        "cohere".into()
+    } else if host.contains("openrouter.ai") {
+        "openrouter".into()
     } else if host.contains("11434") {
         "ollama".into()
     } else {
@@ -14,48 +30,67 @@ fn provider_from_host(host: &str) -> String {
     }
 }
 
-/// detect provider + parse usage จาก response body (รองรับ OpenAI/Anthropic/Ollama schema)
+fn token_i64(value: &serde_json::Value, key: &str) -> Option<i64> {
+    value.get(key).and_then(|v| v.as_i64())
+}
+
+fn nested_token_i64(value: &serde_json::Value, parent: &str, key: &str) -> Option<i64> {
+    value.get(parent).and_then(|v| token_i64(v, key))
+}
+
+fn has_ollama_usage(body: &serde_json::Value) -> bool {
+    body.get("prompt_eval_count").is_some() || body.get("eval_count").is_some()
+}
+
+fn usage_object(body: &serde_json::Value) -> Option<&serde_json::Value> {
+    body.get("usage")
+        .or_else(|| body.get("usageMetadata"))
+        .or_else(|| body.get("message_delta").and_then(|m| m.get("usage")))
+        .or_else(|| has_ollama_usage(body).then_some(body))
+}
+
+/// Detect provider and parse token usage from common LLM response schemas.
 pub fn parse_llm_usage(host: &str, body: &serde_json::Value) -> Option<(String, TokenUsage)> {
     let provider = provider_from_host(host);
-    let model = body.get("model").and_then(|m| m.as_str()).map(String::from);
+    let model = body
+        .get("model")
+        .or_else(|| body.get("modelVersion"))
+        .and_then(|m| m.as_str())
+        .map(String::from);
 
-    // If streaming SSE chunk, usage might be inside chunk directly (Ollama)
-    // or inside Anthropic's message_delta
-    let usage = body
-        .get("usage")
-        .or_else(|| body.get("message_delta").and_then(|m| m.get("usage")))?;
+    let usage = usage_object(body)?;
 
-    // OpenAI/Ollama/vLLM/NIM: prompt_tokens/completion_tokens
-    let (input, output) = if let Some(p) = usage.get("prompt_tokens") {
-        (
-            p.as_i64(),
-            usage.get("completion_tokens").and_then(|v| v.as_i64()),
-        )
-    // Anthropic: input_tokens/output_tokens
-    } else if let Some(i) = usage.get("input_tokens") {
-        (
-            i.as_i64(),
-            usage.get("output_tokens").and_then(|v| v.as_i64()),
-        )
-    } else {
-        (None, None)
-    };
+    let input = token_i64(usage, "prompt_tokens")
+        .or_else(|| token_i64(usage, "input_tokens"))
+        .or_else(|| token_i64(usage, "promptTokenCount"))
+        .or_else(|| token_i64(usage, "prompt_eval_count"))
+        .or_else(|| nested_token_i64(usage, "tokens", "input_tokens"))
+        .or_else(|| nested_token_i64(usage, "billed_units", "input_tokens"));
+
+    let output = token_i64(usage, "completion_tokens")
+        .or_else(|| token_i64(usage, "output_tokens"))
+        .or_else(|| token_i64(usage, "candidatesTokenCount"))
+        .or_else(|| token_i64(usage, "eval_count"))
+        .or_else(|| nested_token_i64(usage, "tokens", "output_tokens"))
+        .or_else(|| nested_token_i64(usage, "billed_units", "output_tokens"));
+
+    let total = token_i64(usage, "total_tokens")
+        .or_else(|| token_i64(usage, "totalTokenCount"))
+        .or_else(|| input.zip(output).map(|(i, o)| i + o))
+        .or_else(|| Some(input.unwrap_or(0) + output.unwrap_or(0)));
 
     Some((
         provider,
         TokenUsage {
             input_tokens: input,
             output_tokens: output,
-            total_tokens: usage
-                .get("total_tokens")
-                .and_then(|v| v.as_i64())
-                .or_else(|| Some(input.unwrap_or(0) + output.unwrap_or(0))),
+            total_tokens: total,
             model,
         },
     ))
 }
 
-/// สร้าง observation event จากการเรียก LLM หนึ่งครั้ง (เส้นทาง egress)
+/// Build an observation event from one observed LLM egress response.
 pub fn llm_call_event(
     tenant: &str,
     trace_id: &str,
@@ -80,6 +115,7 @@ pub fn llm_call_event(
         timestamp: chrono::Utc::now().to_rfc3339(),
         payload_json: "{}".into(),
         token_usage: Some(usage),
+        browser_scope: None,
         event_kind: EventKind::LlmCall,
         decision: None,
         tool_call: None,
@@ -87,4 +123,122 @@ pub fn llm_call_event(
         latency_ms: Some(latency_ms),
         provider: Some(provider),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn parses_openai_compatible_usage() -> Result<(), String> {
+        let (_, usage) = parse_llm_usage(
+            "api.deepseek.com",
+            &json!({
+                "model": "deepseek-chat",
+                "usage": {
+                    "prompt_tokens": 12,
+                    "completion_tokens": 8,
+                    "total_tokens": 20
+                }
+            }),
+        )
+        .ok_or("usage".to_string())?;
+
+        assert_eq!(usage.model.as_deref(), Some("deepseek-chat"));
+        assert_eq!(usage.input_tokens, Some(12));
+        assert_eq!(usage.output_tokens, Some(8));
+        assert_eq!(usage.total_tokens, Some(20));
+        Ok(())
+    }
+
+    #[test]
+    fn parses_anthropic_usage() -> Result<(), String> {
+        let (provider, usage) = parse_llm_usage(
+            "api.anthropic.com",
+            &json!({
+                "model": "claude-sonnet-4-5",
+                "usage": {
+                    "input_tokens": 31,
+                    "output_tokens": 9
+                }
+            }),
+        )
+        .ok_or("usage".to_string())?;
+
+        assert_eq!(provider, "anthropic");
+        assert_eq!(usage.input_tokens, Some(31));
+        assert_eq!(usage.output_tokens, Some(9));
+        assert_eq!(usage.total_tokens, Some(40));
+        Ok(())
+    }
+
+    #[test]
+    fn parses_gemini_usage_metadata() -> Result<(), String> {
+        let (provider, usage) = parse_llm_usage(
+            "generativelanguage.googleapis.com",
+            &json!({
+                "modelVersion": "gemini-2.5-pro",
+                "usageMetadata": {
+                    "promptTokenCount": 17,
+                    "candidatesTokenCount": 23,
+                    "totalTokenCount": 40
+                }
+            }),
+        )
+        .ok_or("usage".to_string())?;
+
+        assert_eq!(provider, "google");
+        assert_eq!(usage.model.as_deref(), Some("gemini-2.5-pro"));
+        assert_eq!(usage.input_tokens, Some(17));
+        assert_eq!(usage.output_tokens, Some(23));
+        assert_eq!(usage.total_tokens, Some(40));
+        Ok(())
+    }
+
+    #[test]
+    fn parses_ollama_final_response_counters() -> Result<(), String> {
+        let (provider, usage) = parse_llm_usage(
+            "127.0.0.1:11434",
+            &json!({
+                "model": "llama3.1",
+                "prompt_eval_count": 44,
+                "eval_count": 11
+            }),
+        )
+        .ok_or("usage".to_string())?;
+
+        assert_eq!(provider, "ollama");
+        assert_eq!(usage.input_tokens, Some(44));
+        assert_eq!(usage.output_tokens, Some(11));
+        assert_eq!(usage.total_tokens, Some(55));
+        Ok(())
+    }
+
+    #[test]
+    fn parses_cohere_token_usage() -> Result<(), String> {
+        let (provider, usage) = parse_llm_usage(
+            "api.cohere.com",
+            &json!({
+                "model": "command-r-plus",
+                "usage": {
+                    "tokens": {
+                        "input_tokens": 101,
+                        "output_tokens": 19
+                    },
+                    "billed_units": {
+                        "input_tokens": 100,
+                        "output_tokens": 20
+                    }
+                }
+            }),
+        )
+        .ok_or("usage".to_string())?;
+
+        assert_eq!(provider, "cohere");
+        assert_eq!(usage.input_tokens, Some(101));
+        assert_eq!(usage.output_tokens, Some(19));
+        assert_eq!(usage.total_tokens, Some(120));
+        Ok(())
+    }
 }

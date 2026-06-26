@@ -39,6 +39,19 @@ export function AutoDiscovery() {
   const [editName, setEditName] = useState("");
   const [filter, setFilter] = useState<"all" | "pending" | "registered">("all");
   const [isScanning, setIsScanning] = useState(false);
+  const [isFinalizingScan, setIsFinalizingScan] = useState(false);
+
+  const scanBusy =
+    isScanning ||
+    isFinalizingScan ||
+    scanJob?.status === "queued" ||
+    scanJob?.status === "running";
+
+  const scanButtonLabel = isFinalizingScan
+    ? "Updating Results"
+    : scanBusy
+      ? "Scanning"
+      : "Deep Scan";
 
   const clearHistory = async () => {
     if (
@@ -51,7 +64,7 @@ export function AutoDiscovery() {
       return;
     try {
       await RegistryApi.clearDiscoveryCandidates();
-      fetchCandidates();
+      void fetchCandidates();
       toast.success("Discovery history cleared");
     } catch (e) {
       console.error(e);
@@ -59,59 +72,102 @@ export function AutoDiscovery() {
     }
   };
 
-  const fetchCandidates = () => {
-    setLoading(true);
-    Promise.all([
-      RegistryApi.listDiscoveryCandidates(),
-      RegistryApi.listAgents(),
-    ])
-      .then(([discovered, agents]) => {
-        const agentIds = new Set(agents.map((a) => a.agent_id));
+  const fetchCandidates = async (
+    options: { showLoading?: boolean } = {},
+  ): Promise<DiscoveredAgentCandidateV2[]> => {
+    const showLoading = options.showLoading ?? true;
+    if (showLoading) setLoading(true);
+    try {
+      const [discovered, agents] = await Promise.all([
+        RegistryApi.listDiscoveryCandidates(),
+        RegistryApi.listAgents(),
+      ]);
+      const agentIds = new Set(agents.map((a) => a.agent_id));
 
-        const registeredFingerprints = new Set(
-          discovered
-            .filter(
-              (c) => agentIds.has(c.candidate_id) || c.status === "registered",
-            )
-            .map((c) => c.evidence?.[0]?.merge_key || c.display_name),
+      const registeredFingerprints = new Set(
+        discovered
+          .filter(
+            (c) => agentIds.has(c.candidate_id) || c.status === "registered",
+          )
+          .map((c) => c.evidence?.[0]?.merge_key || c.display_name),
+      );
+
+      const mergedCandidates = discovered.map((c) => {
+        const fp = c.evidence?.[0]?.merge_key || c.display_name;
+        if (agentIds.has(c.candidate_id)) {
+          return { ...c, status: "registered", _agent_id: c.candidate_id };
+        }
+        const registeredPeer = discovered.find(
+          (peer) =>
+            agentIds.has(peer.candidate_id) &&
+            (peer.evidence?.[0]?.merge_key || peer.display_name) === fp,
         );
+        if (registeredPeer) {
+          return {
+            ...c,
+            status: "registered",
+            _agent_id: registeredPeer.candidate_id,
+          };
+        }
+        if (registeredFingerprints.has(fp)) {
+          return { ...c, status: "registered" };
+        }
+        return c;
+      });
 
-        const mergedCandidates = discovered.map((c) => {
-          const fp = c.evidence?.[0]?.merge_key || c.display_name;
-          if (agentIds.has(c.candidate_id)) {
-            return { ...c, status: "registered", _agent_id: c.candidate_id };
-          }
-          const registeredPeer = discovered.find(peer => 
-              agentIds.has(peer.candidate_id) && 
-              (peer.evidence?.[0]?.merge_key || peer.display_name) === fp
-          );
-          if (registeredPeer) {
-              return { ...c, status: "registered", _agent_id: registeredPeer.candidate_id };
-          }
-          if (registeredFingerprints.has(fp)) {
-            return { ...c, status: "registered" };
-          }
-          return c;
-        });
+      mergedCandidates.sort(
+        (a, b) =>
+          new Date(b.first_seen).getTime() - new Date(a.first_seen).getTime(),
+      );
 
-        // Sort by first_seen descending (Latest Discover on top)
-        mergedCandidates.sort(
-          (a, b) =>
-            new Date(b.first_seen).getTime() - new Date(a.first_seen).getTime(),
-        );
-
-        setCandidates(mergedCandidates);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      setCandidates(mergedCandidates);
+      return mergedCandidates;
+    } catch (e) {
+      console.error(e);
+      return [];
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchCandidates();
+    void fetchCandidates();
   }, []);
 
+  const settleScanResults = async () => {
+    setIsFinalizingScan(true);
+    let previousDigest = "";
+    let stableReads = 0;
+
+    try {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const next = await fetchCandidates({ showLoading: attempt === 0 });
+        const digest = next
+          .map(
+            (c) =>
+              `${c.candidate_id}:${c.status}:${c.last_seen}:${c.evidence?.length ?? 0}`,
+          )
+          .sort()
+          .join("|");
+
+        if (attempt > 0 && digest === previousDigest) {
+          stableReads += 1;
+        } else {
+          stableReads = 0;
+        }
+        previousDigest = digest;
+
+        if (stableReads >= 1) break;
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      }
+    } finally {
+      setIsFinalizingScan(false);
+    }
+  };
+
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
+    let interval: ReturnType<typeof setInterval> | undefined;
+    let cancelled = false;
     if (
       scanJob &&
       (scanJob.status === "queued" || scanJob.status === "running")
@@ -127,15 +183,20 @@ export function AutoDiscovery() {
             status.status === "partial" ||
             status.status === "failed"
           ) {
-            fetchCandidates();
-            clearInterval(interval);
+            if (interval) clearInterval(interval);
+            if (!cancelled) {
+              await settleScanResults();
+            }
           }
         } catch (e) {
           console.error(e);
         }
       }, 2000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+    };
   }, [scanJob]);
 
   const select = (id: string) =>
@@ -147,10 +208,14 @@ export function AutoDiscovery() {
   const deleteCandidate = async (c: any) => {
     if (
       !(await confirm({
-        title: c.status === "registered" ? "Delete Registered Agent" : "Confirm Action",
-        description: c.status === "registered" 
-          ? "Are you sure you want to delete this AI Agent? This will unregister the agent and delete its discovery candidate."
-          : "Are you sure you want to delete this candidate?",
+        title:
+          c.status === "registered"
+            ? "Delete Registered Agent"
+            : "Confirm Action",
+        description:
+          c.status === "registered"
+            ? "Are you sure you want to delete this AI Agent? This will unregister the agent and delete its discovery candidate."
+            : "Are you sure you want to delete this candidate?",
         danger: true,
       }))
     )
@@ -171,7 +236,7 @@ export function AutoDiscovery() {
         });
       }
       toast.success("Deleted successfully");
-      fetchCandidates();
+      void fetchCandidates();
     } catch (e) {
       console.error("Failed to delete candidate:", e);
       toast.error("Failed to delete candidate");
@@ -187,9 +252,20 @@ export function AutoDiscovery() {
     ).sort();
   };
 
+  const displayNameForCandidate = (candidate: DiscoveredAgentCandidateV2) => {
+    const browserName = candidate.evidence
+      ?.map((e) => e.data?.browser_name)
+      .find((name) => typeof name === "string" && name.length > 0);
+
+    return (candidate.display_name || "AI Agent").replace(
+      /\s+\(Web\)$/i,
+      ` (${browserName || "Browser"})`,
+    );
+  };
+
   const openConfirmDialog = (candidate: DiscoveredAgentCandidateV2) => {
     setConfirmTarget(candidate);
-    setEditName(candidate.display_name || "");
+    setEditName(displayNameForCandidate(candidate));
   };
 
   const submitConfirmAgent = async () => {
@@ -204,7 +280,7 @@ export function AutoDiscovery() {
       );
       toast.success(`Confirmed ${response.agent_name ?? editName}`);
       setConfirmTarget(null);
-      fetchCandidates();
+      void fetchCandidates();
     } catch (e) {
       console.error("Failed to confirm agent:", e);
       toast.error("Failed to confirm agent");
@@ -214,7 +290,7 @@ export function AutoDiscovery() {
   };
 
   const triggerScan = async () => {
-    if (isScanning) return;
+    if (scanBusy) return;
     setIsScanning(true);
     try {
       const result = await RegistryApi.triggerDiscoveryScan({
@@ -275,21 +351,15 @@ export function AutoDiscovery() {
           </button>
           <button
             onClick={triggerScan}
-            disabled={
-              isScanning ||
-              scanJob?.status === "queued" ||
-              scanJob?.status === "running"
-            }
+            disabled={scanBusy}
             className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-sm disabled:opacity-50"
           >
-            {isScanning ||
-            scanJob?.status === "queued" ||
-            scanJob?.status === "running" ? (
+            {scanBusy ? (
               <Activity className="h-4 w-4 animate-spin" />
             ) : (
               <Search className="h-4 w-4" />
             )}
-            Deep Scan
+            {scanButtonLabel}
           </button>
         </div>
       </div>
@@ -363,7 +433,7 @@ export function AutoDiscovery() {
 
           return (
             <EntityCard
-              title={c.display_name}
+              title={displayNameForCandidate(c)}
               subtitle={c.inferred_agent_type}
               icon={ShieldAlert}
               status={status}
@@ -417,7 +487,7 @@ export function AutoDiscovery() {
 
           return (
             <DetailPane
-              title={c.display_name}
+              title={displayNameForCandidate(c)}
               subtitle={c.inferred_agent_type}
               status={status}
               statusLabel={isRegistered ? "Registered" : "Pending"}
@@ -589,13 +659,13 @@ export function AutoDiscovery() {
             <SimplePolicyWizard
               agents={candidates.map((c) => ({
                 id: c.candidate_id,
-                label: c.display_name,
+                label: displayNameForCandidate(c),
               }))}
               initialTarget={protectTarget}
               onComplete={() => {
                 setProtectTarget(null);
                 toast.success("Protection applied successfully");
-                fetchCandidates();
+                void fetchCandidates();
               }}
               onCancel={() => setProtectTarget(null)}
             />
