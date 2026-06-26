@@ -241,6 +241,7 @@ impl GraphBuilder {
         });
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn add_edge(
         &mut self,
         source_type: &str,
@@ -1017,11 +1018,9 @@ fn filter_graph(mut graph: EntityGraphResponse, query: &GraphQuery) -> EntityGra
         .take(limit)
         .collect();
     let keep: BTreeSet<_> = graph.nodes.iter().map(|node| node.id.clone()).collect();
-    graph.edges = graph
+    graph
         .edges
-        .into_iter()
-        .filter(|edge| keep.contains(&edge.source) && keep.contains(&edge.target))
-        .collect();
+        .retain(|edge| keep.contains(&edge.source) && keep.contains(&edge.target));
     graph.summaries = summaries_from_nodes_edges(&graph.nodes, &graph.edges);
     graph.warnings = coverage_warnings(&graph.nodes, &graph.edges);
     graph
