@@ -45,8 +45,10 @@ rustls.workspace = true
 hyper-util = { version = "0.1", features = ["tokio"] }
 dek-agent-observer = { version = "1.0.0-beta.7", path = "../dek-agent-observer" }
 content-guard = { version = "1.0.0-beta.7", path = "../../plugins/content-guard" }
+dek-guard-pipeline = { path = "../dek-guard-pipeline" }
 dek-execution-sandbox = { path = "../dek-execution-sandbox" }
 dek-secure-spool = { version = "0.1.0", path = "../dek-secure-spool" }
+pii-redactor-plugin = { path = "../../plugins/pii-redactor" }
 sha2 = "0.11.0"
 hex = "0.4"
 serde_jcs = "0.2.0"

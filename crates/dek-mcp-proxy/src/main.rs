@@ -12,6 +12,7 @@ use axum::{
     Json, Router as AxumRouter,
 };
 
+use dek_guard_pipeline::{GuardAction, GuardOutcome};
 use dek_mcp_normalizer::{http::HttpTransportAdapter, TransportAdapter};
 use dek_openfga::OpenFgaAdapter;
 use dek_policy_router::PolicyRouter;
@@ -34,6 +35,19 @@ fn extract_tool_params(normalized: &dek_mcp_normalizer::NormalizedMcpEvent) -> s
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde::Deserialize;
+
+    const RESPONSE_CORPUS: &str = include_str!("../tests/corpus/response.jsonl");
+
+    #[derive(Debug, Deserialize)]
+    struct ResponseCorpusCase {
+        id: String,
+        text: String,
+        expected_marker: String,
+        gap: String,
+        status: String,
+    }
+
     #[test]
     fn test_extract_tool_params() {
         let mut payload = serde_json::Map::new();
@@ -60,6 +74,67 @@ mod tests {
             runtime: json!({}),
         };
         assert_eq!(extract_tool_params(&event), json!({"key": "value"}));
+    }
+
+    #[test]
+    fn merge_obligations_keeps_guard_obligations_enforceable() {
+        let merged = merge_obligation_kinds(
+            vec!["redact_content".to_string(), "require_approval".to_string()],
+            vec!["redact_content".to_string(), "step_up_mfa".to_string()],
+        );
+
+        assert_eq!(
+            merged,
+            vec![
+                "redact_content".to_string(),
+                "require_approval".to_string(),
+                "step_up_mfa".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn response_payload_pii_is_redacted_from_golden_corpus() -> Result<(), serde_json::Error> {
+        for line in RESPONSE_CORPUS
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+        {
+            let case: ResponseCorpusCase = serde_json::from_str(line)?;
+            if case.status != "active" {
+                continue;
+            }
+            let response_payload = json!({
+                "tool_result": case.text,
+                "decision": {
+                    "allow": true,
+                    "reason": "OK"
+                }
+            });
+
+            let (redacted, changed) = redact_pii_with_native_plugin(response_payload);
+            let rendered = redacted.to_string();
+
+            assert!(case.id.starts_with("rt-pr3-"));
+            assert_eq!(case.gap, "G-01");
+            assert!(changed);
+            assert!(rendered.contains(&case.expected_marker));
+            assert!(!rendered.contains("alice@example.com"));
+            assert!(rendered.contains("\"decision\""));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn redact_content_transform_changes_response_payload() {
+        let response_payload = json!({
+            "tool_result": "tool echoed sk-test-token-value"
+        });
+
+        let redacted = redact_guarded_value(response_payload);
+        let rendered = redacted.to_string();
+
+        assert!(rendered.contains("[REDACTED_BY_POLLEK_OUTPUT_GUARD]"));
+        assert!(!rendered.contains("sk-test-token-value"));
     }
 }
 
@@ -580,23 +655,34 @@ async fn handle_mcp_request(
     policy_input["principal"] = json!(principal.clone());
 
     let tool_params = extract_tool_params(&normalized);
-    policy_input["params"] = tool_params.clone();
-    policy_input["tool"] = serde_json::json!(normalized.tool_name.clone().unwrap_or_default());
-
-    // Phase 5: Content Guard (Prompt Injection / PII Leakage)
-    let scan_target = tool_params.to_string();
-    let guard_input = content_guard::GuardInput { text: scan_target };
-    let guard_result = content_guard::scan(&guard_input);
-    if guard_result.injection_detected && guard_result.recommended == "deny" {
-        metrics::counter!("dek_proxy_requests_total", "decision" => "deny", "reason" => "content_guard").increment(1);
-        tracing::error!("Content Guard detected malicious content or prompt injection");
-        let body = serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": payload.get("id").unwrap_or(&serde_json::Value::Null),
-            "error": { "code": -32000, "message": "Access Denied: Malicious content detected" }
-        });
-        return (axum::http::StatusCode::FORBIDDEN, axum::Json(body)).into_response();
+    let request_guard = state.guard_pipeline.scan_request(&tool_params);
+    let mut extra_obligations = Vec::new();
+    match request_guard.action {
+        GuardAction::Deny => {
+            metrics::counter!("dek_proxy_requests_total", "decision" => "deny", "reason" => "guard_pipeline").increment(1);
+            tracing::warn!(
+                tenant = %final_tenant_id,
+                agent = %normalized.agent_id.as_deref().unwrap_or("unknown"),
+                "request denied by guard pipeline"
+            );
+            let body = guard_json_rpc_error(
+                payload.get("id").unwrap_or(&serde_json::Value::Null),
+                "Access Denied: Prompt injection or policy override detected",
+                &request_guard,
+            );
+            return (axum::http::StatusCode::FORBIDDEN, axum::Json(body)).into_response();
+        }
+        GuardAction::Redact => {
+            extra_obligations.push("redact_content".to_string());
+        }
+        GuardAction::Allow => {}
     }
+    let guarded_tool_params = request_guard
+        .redacted_payload
+        .clone()
+        .unwrap_or_else(|| tool_params.clone());
+    policy_input["params"] = guarded_tool_params.clone();
+    policy_input["tool"] = serde_json::json!(normalized.tool_name.clone().unwrap_or_default());
     let decision_req = dek_decision::DecisionRequestV1 {
         decision_id: uuid::Uuid::new_v4().to_string(),
         request_id: uuid::Uuid::new_v4().to_string(),
@@ -632,8 +718,6 @@ async fn handle_mcp_request(
         normalized.agent_id.as_deref().unwrap_or("unknown"),
         normalized.tool_name.as_deref().unwrap_or("unknown")
     );
-
-    let mut extra_obligations = Vec::new();
 
     // Compute real trust score via observer baseline
     let agent_id_str = normalized
@@ -701,31 +785,6 @@ async fn handle_mcp_request(
     }
     // โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 
-    // Phase 2: Content Guard (Prompt Injection / DLP)
-    let scan_target = policy_input
-        .get("params")
-        .unwrap_or(&serde_json::Value::Null)
-        .to_string();
-    let guard = content_guard::scan(&content_guard::GuardInput { text: scan_target });
-    if guard.injection_detected {
-        match guard.recommended.as_str() {
-            "deny" => {
-                metrics::counter!("dek_proxy_requests_total", "decision" => "deny", "reason" => "prompt_injection").increment(1);
-                tracing::warn!(tenant = %final_tenant_id, agent = %normalized.agent_id.as_deref().unwrap_or("unknown"), "request denied by content guard (prompt injection)");
-                let body = serde_json::json!({
-                    "jsonrpc": "2.0",
-                    "id": payload.get("id").unwrap_or(&serde_json::Value::Null),
-                    "error": { "code": -32000, "message": "Access Denied: Prompt injection or policy override detected" }
-                });
-                return (axum::http::StatusCode::FORBIDDEN, axum::Json(body)).into_response();
-            }
-            "redact" => {
-                extra_obligations.push("redact_content".to_string());
-            }
-            _ => {}
-        }
-    }
-
     let decision_result = snapshot.router.authorize(decision_input.clone()).await;
 
     let duration = start_time.elapsed().as_secs_f64();
@@ -749,6 +808,8 @@ async fn handle_mcp_request(
 
     match decision_result {
         Ok(decision) => {
+            let enforced_obligations =
+                merge_obligation_kinds(extra_obligations.clone(), decision.obligations.clone());
             if decision.allow {
                 metrics::counter!("dek_proxy_requests_total", "decision" => "allow").increment(1);
             } else {
@@ -767,13 +828,7 @@ async fn handle_mcp_request(
                 reason: decision.reason.clone(),
                 obligations: {
                     let mut obs = Vec::new();
-                    for ext_ob in extra_obligations {
-                        obs.push(dek_decision::Obligation {
-                            kind: ext_ob,
-                            parameters: serde_json::json!({}),
-                        });
-                    }
-                    for o in decision.obligations.clone() {
+                    for o in enforced_obligations.clone() {
                         obs.push(dek_decision::Obligation {
                             kind: o,
                             parameters: serde_json::json!({}),
@@ -791,9 +846,10 @@ async fn handle_mcp_request(
             let mut require_approval = false;
             let mut require_mfa = false;
             let mut require_sandbox = false;
+            let mut redact_content = false;
             let mut compliance_tags = vec![];
 
-            for ob in &decision.obligations {
+            for ob in &enforced_obligations {
                 let ob_type = ob.as_str();
                 metrics::counter!("dek_obligation_enforced_total", "type" => ob_type.to_string())
                     .increment(1);
@@ -807,6 +863,9 @@ async fn handle_mcp_request(
                 } else if ob_type == "require_sandbox" {
                     require_sandbox = true;
                     compliance_tags.push("ASI05".to_string());
+                } else if ob_type == "redact_content" {
+                    redact_content = true;
+                    compliance_tags.push("OWASP-LLM01".to_string());
                 }
             }
             compliance_tags.sort();
@@ -851,7 +910,7 @@ async fn handle_mcp_request(
                     } else {
                         "DENY".into()
                     },
-                    obligations: decision.obligations.clone(),
+                    obligations: enforced_obligations.clone(),
                     matched_policy_ids: vec![],
                     compliance_tags: compliance_tags.clone(),
                     pep_plane: Some("McpProxy".into()),
@@ -1010,27 +1069,25 @@ async fn handle_mcp_request(
                     "decision": response
                 });
 
-                // Apply PII redaction plugin if required
-                if let Ok(redacted_bytes) = snapshot
-                    .plugin_host
-                    .invoke(
-                        "default:pii-redactor:1.0:dev",
-                        uuid::Uuid::new_v4().to_string(),
-                        final_response.to_string().as_bytes(),
-                        100_000_000,
-                    )
-                    .await
-                {
-                    info!("Applied PII redaction plugin successfully.");
-                    if let Ok(redacted_val) =
-                        serde_json::from_slice::<serde_json::Value>(&redacted_bytes)
-                    {
-                        (StatusCode::OK, Json(redacted_val)).into_response()
-                    } else {
-                        (StatusCode::OK, Json(final_response)).into_response()
-                    }
+                let outcome =
+                    filter_response_payload(state.as_ref(), final_response, redact_content).await;
+                if outcome.action == GuardAction::Deny {
+                    let body = json!({
+                        "jsonrpc": "2.0",
+                        "id": payload.get("id").unwrap_or(&serde_json::Value::Null),
+                        "error": {
+                            "code": -32000,
+                            "message": format!("Access Denied: {}", outcome.reason),
+                            "data": {
+                                "status": "denied",
+                                "reason": outcome.reason,
+                                "guard": outcome.guard
+                            }
+                        }
+                    });
+                    (StatusCode::FORBIDDEN, Json(body)).into_response()
                 } else {
-                    (StatusCode::OK, Json(final_response)).into_response()
+                    (StatusCode::OK, Json(outcome.payload)).into_response()
                 }
             } else {
                 let (reason, code) = if mfa_failed {
@@ -1164,45 +1221,117 @@ fn redact_guarded_value(value: Value) -> Value {
     }
 }
 
-async fn handle_filter_response(
-    State(state): State<Arc<AppState>>,
-    Json(payload): Json<Value>,
-) -> Response {
-    let snapshot = state.snapshot.load();
-    let guard = content_guard::scan_output(&content_guard::GuardInput {
-        text: payload.to_string(),
-    });
-    if guard.injection_detected {
-        match guard.recommended.as_str() {
-            "deny" => {
-                metrics::counter!("dek_proxy_responses_total", "decision" => "deny", "reason" => "output_guard").increment(1);
-                let body = json!({
-                    "status": "denied",
-                    "reason": "output_guard_blocked_unsafe_tool_response",
-                    "guard": guard,
-                });
-                return (StatusCode::FORBIDDEN, Json(body)).into_response();
-            }
-            "redact" => {
-                metrics::counter!("dek_proxy_responses_total", "decision" => "redact", "reason" => "output_guard").increment(1);
-                let redacted = redact_guarded_value(payload);
-                return (
-                    StatusCode::OK,
-                    Json(json!({
-                        "status": "filtered",
-                        "reason": "output_guard_redacted_tool_response",
-                        "guard": guard,
-                        "payload": redacted
-                    })),
-                )
-                    .into_response();
-            }
-            _ => {}
+#[derive(Debug)]
+struct ResponseFilterOutcome {
+    action: GuardAction,
+    payload: Value,
+    reason: String,
+    guard: Value,
+}
+
+fn merge_obligation_kinds(mut extra: Vec<String>, decision: Vec<String>) -> Vec<String> {
+    for obligation in decision {
+        if !extra.iter().any(|existing| existing == &obligation) {
+            extra.push(obligation);
         }
     }
+    extra
+}
 
-    // Apply redaction plugin
-    if let Ok(redacted_bytes) = snapshot
+fn guard_action_label(action: GuardAction) -> &'static str {
+    match action {
+        GuardAction::Allow => "allow",
+        GuardAction::Redact => "redact",
+        GuardAction::Deny => "deny",
+    }
+}
+
+fn guard_metadata(outcome: &GuardOutcome) -> Value {
+    json!({
+        "plugin_id": "dek.guard-pipeline",
+        "action": guard_action_label(outcome.action),
+        "injection_score": outcome.injection_score,
+        "categories": outcome.categories,
+        "normalization_steps": outcome.normalization_steps,
+        "confidence": outcome.confidence,
+        "findings_count": outcome.findings.len(),
+    })
+}
+
+fn guard_json_rpc_error(id: &Value, message: &str, outcome: &GuardOutcome) -> Value {
+    json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "error": {
+            "code": -32000,
+            "message": message,
+            "data": {
+                "guard": guard_metadata(outcome)
+            }
+        }
+    })
+}
+
+async fn filter_response_payload(
+    state: &AppState,
+    payload: Value,
+    force_redact: bool,
+) -> ResponseFilterOutcome {
+    let guard = state.guard_pipeline.scan_response(&payload);
+    if guard.action == GuardAction::Deny {
+        return ResponseFilterOutcome {
+            action: GuardAction::Deny,
+            payload,
+            reason: "output_guard_blocked_risky_tool_response".to_string(),
+            guard: guard_metadata(&guard),
+        };
+    }
+
+    let mut filtered_payload = payload;
+    let mut reasons = Vec::new();
+    let mut redaction_applied = false;
+
+    if force_redact || guard.action == GuardAction::Redact {
+        filtered_payload = redact_guarded_value(filtered_payload);
+        redaction_applied = true;
+        reasons.push("redact_content".to_string());
+    }
+
+    let (pii_redacted_payload, pii_redacted) = apply_pii_redaction(state, filtered_payload).await;
+    filtered_payload = pii_redacted_payload;
+    if pii_redacted {
+        redaction_applied = true;
+        reasons.push("pii_redacted".to_string());
+    }
+
+    if redaction_applied {
+        ResponseFilterOutcome {
+            action: GuardAction::Redact,
+            payload: filtered_payload,
+            reason: reasons.join(","),
+            guard: guard_metadata(&guard),
+        }
+    } else {
+        ResponseFilterOutcome {
+            action: GuardAction::Allow,
+            payload: filtered_payload,
+            reason: "allow".to_string(),
+            guard: guard_metadata(&guard),
+        }
+    }
+}
+
+async fn apply_pii_redaction(state: &AppState, payload: Value) -> (Value, bool) {
+    if let Some(redacted) = invoke_wasm_pii_redactor(state, &payload).await {
+        let changed = redacted != payload;
+        return (redacted, changed);
+    }
+    redact_pii_with_native_plugin(payload)
+}
+
+async fn invoke_wasm_pii_redactor(state: &AppState, payload: &Value) -> Option<Value> {
+    let snapshot = state.snapshot.load();
+    let bytes = snapshot
         .plugin_host
         .invoke(
             "default:pii-redactor:1.0:dev",
@@ -1211,12 +1340,52 @@ async fn handle_filter_response(
             100_000_000,
         )
         .await
-    {
-        if let Ok(redacted_val) = serde_json::from_slice::<serde_json::Value>(&redacted_bytes) {
-            tracing::info!("Applied PII redaction successfully.");
-            return (StatusCode::OK, Json(redacted_val)).into_response();
-        }
-    }
+        .ok()?;
+    serde_json::from_slice::<serde_json::Value>(&bytes).ok()
+}
 
-    (StatusCode::OK, Json(payload)).into_response()
+fn redact_pii_with_native_plugin(mut payload: Value) -> (Value, bool) {
+    let detector = match pii_redactor_plugin::DeterministicDetector::new() {
+        Ok(detector) => detector,
+        Err(err) => {
+            tracing::warn!("failed to initialize native pii redactor: {}", err);
+            return (payload, false);
+        }
+    };
+    let original = payload.clone();
+    pii_redactor_plugin::process_json(&mut payload, &detector);
+    let changed = payload != original;
+    (payload, changed)
+}
+
+async fn handle_filter_response(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<Value>,
+) -> Response {
+    let outcome = filter_response_payload(state.as_ref(), payload, false).await;
+    match outcome.action {
+        GuardAction::Deny => {
+            metrics::counter!("dek_proxy_responses_total", "decision" => "deny", "reason" => "output_guard").increment(1);
+            let body = json!({
+                "status": "denied",
+                "reason": outcome.reason,
+                "guard": outcome.guard,
+            });
+            (StatusCode::FORBIDDEN, Json(body)).into_response()
+        }
+        GuardAction::Redact => {
+            metrics::counter!("dek_proxy_responses_total", "decision" => "redact", "reason" => "output_guard").increment(1);
+            (
+                StatusCode::OK,
+                Json(json!({
+                    "status": "filtered",
+                    "reason": outcome.reason,
+                    "guard": outcome.guard,
+                    "payload": outcome.payload
+                })),
+            )
+                .into_response()
+        }
+        GuardAction::Allow => (StatusCode::OK, Json(outcome.payload)).into_response(),
+    }
 }

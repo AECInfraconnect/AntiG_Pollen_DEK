@@ -16,6 +16,7 @@
 use arc_swap::{ArcSwap, ArcSwapOption};
 use dek_activation::snapshot::RuntimeSnapshot;
 use dek_agent_observer::ingest::ObservationStore;
+use dek_guard_pipeline::GuardPipeline;
 use dek_mcp_normalizer::http::HttpTransportAdapter;
 use dek_resilience::admission::AdmissionControl;
 use dek_resilience::rate_limit::RateLimiter;
@@ -36,6 +37,8 @@ pub struct AppState {
     pub rate_limiter: Arc<RateLimiter>,
     /// Observer persistence and trust store
     pub observer: Arc<dyn ObservationStore>,
+    /// Shared prompt/output guard pipeline used by /mcp and /v1/filter/*.
+    pub guard_pipeline: Arc<GuardPipeline>,
 }
 
 impl AppState {
@@ -55,6 +58,7 @@ impl AppState {
             admission,
             rate_limiter,
             observer,
+            guard_pipeline: Arc::new(GuardPipeline::default()),
         })
     }
 
@@ -104,7 +108,7 @@ impl AppState {
 //     // normalize -> route using snap.router (no lock held; snap is an Arc)
 //     let decision = snap.router.route_and_evaluate(/* normalized event */).await;
 //     // ... unchanged from here ...
-//     todo!()
+//     // continue handling request with the active snapshot
 // }
 //
 // ---------------------------------------------------------------------------
