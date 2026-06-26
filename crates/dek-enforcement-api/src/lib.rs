@@ -6,6 +6,8 @@ use dek_domain_schema::CompiledNetworkRules;
 
 pub mod planner;
 pub mod router;
+pub mod control_method;
+pub mod backends;
 
 /// Core interface for OS-level enforcement mechanisms (WFP on Windows, NetworkExtension on macOS, eBPF on Linux).
 pub trait NetworkEnforcer: Send + Sync {

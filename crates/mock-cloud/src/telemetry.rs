@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 //! telemetry.rs โ€” R3: full contract telemetry surface (ยง5).
@@ -52,36 +52,24 @@ fn ingest(state: &AppState, events: Vec<serde_json::Value>, kind: &str) -> Resul
     let mut logs = state.telemetry_events.lock().unwrap(); //
     let mut n = 0;
     for event_val in events {
-        let event: TelemetryEvent = match serde_json::from_value(event_val.clone()) {
-            Ok(e) => e,
-            Err(e) => {
-                tracing::error!(
-                    "Failed to deserialize TelemetryEvent: {} for payload: {}",
-                    e,
-                    serde_json::to_string(&event_val).unwrap_or_default()
-                );
-                continue;
-            }
-        };
-
         // Redaction validation: assert no raw credentials leak into telemetry.
-        if let TelemetryEvent::Decision { reason, .. } = &event {
+        if let Some(reason) = event_val.pointer("/reason").and_then(|r| r.as_str()) {
             let r = reason.to_lowercase();
             if r.contains("bearer") || r.contains("password") || r.contains("authorization:") {
                 return Err("Unredacted secrets detected in telemetry payload".into());
             }
         }
-        if let TelemetryEvent::Audit {
-            action, details, ..
-        } = &event
-        {
-            state.audit_push(
-                "dek",
-                action,
-                &serde_json::to_string(details).unwrap_or_default(),
-            );
+        
+        if let Some(action) = event_val.pointer("/action").and_then(|a| a.as_str()) {
+            if event_val.get("event_type").and_then(|e| e.as_str()) == Some("Audit") {
+                state.audit_push(
+                    "dek",
+                    action,
+                    &serde_json::to_string(&event_val.get("details")).unwrap_or_default(),
+                );
+            }
         }
-        logs.push_front(event);
+        logs.push_front(event_val);
         if logs.len() > 2000 {
             logs.pop_back();
         }
@@ -165,10 +153,10 @@ async fn ingest_events_tenant(
 #[derive(serde::Deserialize)]
 pub struct TelemetryBatchRequest {
     pub schema_version: String,
-    pub tenant_id: String,
-    pub device_id: String,
-    pub batch_id: String,
-    pub events: Vec<dek_domain_schema::TelemetryEvent>,
+    pub tenant_id: Option<String>,
+    pub device_id: Option<String>,
+    pub batch_id: Option<String>,
+    pub items: Vec<serde_json::Value>,
 }
 
 async fn ingest_batches(
@@ -177,7 +165,7 @@ async fn ingest_batches(
 ) -> impl IntoResponse {
     let mut logs = s.telemetry_events.lock().unwrap(); //
     let mut n = 0;
-    for event in p.events {
+    for event in p.items {
         logs.push_front(event);
         if logs.len() > 2000 {
             logs.pop_back();

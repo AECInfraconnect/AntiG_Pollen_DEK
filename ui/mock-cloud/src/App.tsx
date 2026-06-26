@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
+import type { components } from "../../../contracts/generated/typescript/api";
+
+type TelemetryBatch = components["schemas"]["PollenTelemetryBatchV1"];
+type Envelope = components["schemas"]["PollenTelemetryEnvelopeV1"];
+
+interface DashboardData {
+  devices: { id: string; tenant_id: string; revoked: boolean }[];
+  telemetry_count: number;
+  current_version: string;
+  audits: any[];
+}
 
 function App() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
     // In a real scenario we'd fetch from /api/admin/dashboard

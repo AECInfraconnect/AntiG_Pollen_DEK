@@ -741,3 +741,14 @@ export const SimpleWizardApi = {
   confirmDeploySession: (id: string) => defaultClient.confirmDeploySession(id),
   applyDeploySession: (id: string) => defaultClient.applyDeploySession(id),
 };
+
+export const TelemetryApi = {
+  getObservations: (agentId?: string) => {
+    const url = agentId ? `/v1/telemetry/observations?agent_id=${agentId}` : `/v1/telemetry/observations`;
+    return fetch(url).then((res) => res.json()).catch(() => ({ items: [] }));
+  },
+  getEnforcementStatus: (agentId?: string) => {
+    const url = agentId ? `/v1/telemetry/enforcement-status?agent_id=${agentId}` : `/v1/telemetry/enforcement-status`;
+    return fetch(url).then((res) => res.json()).catch(() => ({ items: [] }));
+  },
+};

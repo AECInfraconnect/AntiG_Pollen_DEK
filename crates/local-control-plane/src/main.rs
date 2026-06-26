@@ -4,6 +4,8 @@ use tokio::net::TcpListener;
 use tracing::info;
 
 use dek_control_plane_api::identity::ControlPlaneIdentity;
+use dek_enforcement_api::control_method::{EmitCtx, TelemetrySink};
+use pollen_contract::PollenTelemetryEnvelopeV1;
 
 use local_control_plane::app;
 use local_control_plane::auth;
@@ -67,6 +69,38 @@ async fn main() -> anyhow::Result<()> {
             None,
         )),
         latest_snapshot: Arc::new(tokio::sync::RwLock::new(None)),
+        secure_spool: Arc::new(dek_secure_spool::sqlite_spool::SqliteSpool::new(
+            &cfg.data_dir.join("telemetry_spool.db"),
+            &[0u8; 32], // TODO: load key from keyring like in dek-telemetry
+            dek_secure_spool::sqlite_spool::DEFAULT_MAX_ROWS,
+        )?),
+        telemetry_tx: tokio::sync::broadcast::channel(100).0,
+    };
+
+    // Spawn TelemetrySink Background Loop
+    let (telemetry_mpsc_tx, mut telemetry_mpsc_rx) = tokio::sync::mpsc::channel::<pollen_contract::PollenTelemetryEnvelopeV1>(1000);
+    
+    let spool = state.secure_spool.clone();
+    let sse_tx = state.telemetry_tx.clone();
+    tokio::spawn(async move {
+        while let Some(env) = telemetry_mpsc_rx.recv().await {
+            if let Ok(bytes) = serde_json::to_vec(&env) {
+                let priority = dek_secure_spool::sqlite_spool::Priority::Normal;
+                if let Err(e) = spool.push(priority, &bytes) {
+                    tracing::error!("Failed to spool telemetry: {}", e);
+                }
+            }
+            // Broadcast to SSE clients
+            let _ = sse_tx.send(env);
+        }
+    });
+
+    let _telemetry_sink = dek_enforcement_api::control_method::TelemetrySink {
+        tx: telemetry_mpsc_tx,
+        ctx: Arc::new(dek_enforcement_api::control_method::EmitCtx {
+            tenant_id: "local".to_string(),
+            device_id: "default".to_string(),
+        }),
     };
 
     // Spawn Anomaly Detector (P2)

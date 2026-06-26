@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
 use std::collections::{HashMap, VecDeque};
@@ -66,7 +66,7 @@ pub struct AppState {
     /// device_id -> DeviceStatus
     pub devices: Arc<Mutex<HashMap<String, DeviceStatus>>>,
     /// telemetry events buffer
-    pub telemetry_events: Arc<Mutex<VecDeque<TelemetryEvent>>>,
+    pub telemetry_events: Arc<Mutex<VecDeque<serde_json::Value>>>,
     /// rollout config
     pub rollout: Arc<Mutex<RolloutConfig>>,
     /// admin audit logs

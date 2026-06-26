@@ -9,6 +9,7 @@ repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 
+
 [dependencies]
 dek-domain-schema = { path = "../dek-domain-schema" }
 dek-agent-discovery = { path = "../dek-agent-discovery" }
@@ -16,6 +17,10 @@ anyhow.workspace = true
 async-trait = "0.1"
 tokio = { workspace = true, features = ["sync"] }
 serde = { version = "1.0", features = ["derive"] }
+pollen-contract = { path = "../../contracts/generated/rust/pollen-contract" }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4"] }
+chrono = "0.4"
 
 [lints]
 workspace = true

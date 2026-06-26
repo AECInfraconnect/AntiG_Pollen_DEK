@@ -63,7 +63,90 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/telemetry/export",
             get(export_telemetry),
         )
+        .route("/v1/telemetry/observations", get(list_observations_v2))
+        .route("/v1/telemetry/observations/stream", get(telemetry_stream))
+        .route("/v1/telemetry/enforcement-status", get(enforcement_status))
         .route("/v1/decisions/:id/explain", get(explain_decision))
+}
+
+#[derive(serde::Serialize)]
+pub struct ObservationPage {
+    schema_version: String,
+    items: Vec<pollen_contract::PollenTelemetryEnvelopeV1>,
+    next_cursor: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+pub struct EnforcementStatusList {
+    schema_version: String,
+    items: Vec<pollen_contract::PollenTelemetryEnvelopeV1>,
+}
+
+async fn list_observations_v2(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let mut items = Vec::new();
+    if let Ok(records) = state.secure_spool.peek_recent(100) {
+        for bytes in records {
+            if let Ok(env) = serde_json::from_slice::<pollen_contract::PollenTelemetryEnvelopeV1>(&bytes) {
+                if env.event_type == "agent_observation" {
+                    items.push(env);
+                }
+            }
+        }
+    }
+    
+    (StatusCode::OK, Json(ObservationPage {
+        schema_version: "observation-page.v1".to_string(),
+        items,
+        next_cursor: None,
+    }))
+}
+
+async fn enforcement_status(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let mut items = Vec::new();
+    if let Ok(records) = state.secure_spool.peek_recent(100) {
+        for bytes in records {
+            if let Ok(env) = serde_json::from_slice::<pollen_contract::PollenTelemetryEnvelopeV1>(&bytes) {
+                if env.event_type == "enforcement_result" {
+                    items.push(env);
+                }
+            }
+        }
+    }
+    
+    (StatusCode::OK, Json(EnforcementStatusList {
+        schema_version: "enforcement-status.v1".to_string(),
+        items,
+    }))
+}
+
+use axum::response::sse::{Event, Sse};
+use futures_util::stream::Stream;
+use std::convert::Infallible;
+use tokio_stream::wrappers::BroadcastStream;
+use futures_util::StreamExt;
+
+async fn telemetry_stream(
+    State(state): State<AppState>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let rx = state.telemetry_tx.subscribe();
+    let stream = BroadcastStream::new(rx).filter_map(|res| async move {
+        match res {
+            Ok(env) => {
+                if let Ok(json_str) = serde_json::to_string(&env) {
+                    Some(Ok(Event::default().data(json_str)))
+                } else {
+                    None
+                }
+            }
+            Err(_) => None,
+        }
+    });
+    
+    Sse::new(stream).keep_alive(axum::response::sse::KeepAlive::new())
 }
 
 async fn explain_decision(

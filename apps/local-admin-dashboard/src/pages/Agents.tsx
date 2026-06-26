@@ -10,6 +10,8 @@ import { DetailPane } from "../components/master-detail/DetailPane";
 import { EmptyState } from "../components/master-detail/EmptyState";
 import type { UiStatus } from "../lib/status";
 import { useConfirm } from "../components/ui/ConfirmDialog";
+import { AgentEnforcementTab } from "../components/agents/AgentEnforcementTab";
+import { AgentActivityTab } from "../components/agents/AgentActivityTab";
 
 export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
   const [agents, setAgents] = useState<AiAgent[]>([]);
@@ -201,24 +203,14 @@ export function Agents({ hideHeader = false }: { hideHeader?: boolean }) {
                   ),
                 },
                 {
-                  id: "policies",
-                  label: "Policies",
-                  content: (
-                    <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed rounded-lg text-muted-foreground">
-                      <FileKey className="h-8 w-8 mb-2 opacity-50" />
-                      <p className="text-sm">No policies explicitly bound.</p>
-                    </div>
-                  ),
+                  id: "enforcement",
+                  label: "Enforcement",
+                  content: <AgentEnforcementTab agentId={a.agent_id} />,
                 },
                 {
                   id: "activity",
-                  label: "Timeline",
-                  content: (
-                    <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed rounded-lg text-muted-foreground">
-                      <Activity className="h-8 w-8 mb-2 opacity-50" />
-                      <p className="text-sm">No activity recorded yet.</p>
-                    </div>
-                  ),
+                  label: "Activity (Live)",
+                  content: <AgentActivityTab agentId={a.agent_id} />,
                 },
               ]}
             />

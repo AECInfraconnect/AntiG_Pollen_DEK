@@ -205,6 +205,54 @@ pub async fn start_cloud_registry_sync_loop(state: AppState) -> anyhow::Result<(
                 }
             }
 
+            // Phase 6.5: Push Telemetry Batches
+            if let Ok(records) = state.secure_spool.pop_batch(100) {
+                if !records.is_empty() {
+                    info!("Cloud Sync Loop: Pushing {} telemetry events", records.len());
+                    
+                    let mut envelopes = Vec::new();
+                    let mut ids_to_delete = Vec::new();
+                    for (id, bytes) in records {
+                        if let Ok(env) = serde_json::from_slice::<serde_json::Value>(&bytes) {
+                            envelopes.push(env);
+                            ids_to_delete.push(id);
+                        }
+                    }
+                    
+                    if !envelopes.is_empty() {
+                        let telemetry_endpoint = format!(
+                            "{}/v1/telemetry/batches",
+                            cloud_url.trim_end_matches('/')
+                        );
+                        
+                        let batch_payload = serde_json::json!({
+                            "schema_version": "telemetry-batch.v1",
+                            "items": envelopes
+                        });
+
+                        let mut push_req = client.post(&telemetry_endpoint).json(&batch_payload);
+                        if !api_key.is_empty() {
+                            push_req = push_req.bearer_auth(&api_key);
+                        }
+
+                        match push_req.send().await {
+                            Ok(resp) if resp.status().is_success() => {
+                                info!("Cloud Sync Loop: Successfully pushed telemetry batch");
+                                if let Err(e) = state.secure_spool.delete_batch(&ids_to_delete) {
+                                    warn!("Cloud Sync Loop: Failed to delete spooled telemetry: {}", e);
+                                }
+                            }
+                            Ok(resp) => {
+                                warn!("Cloud Sync Loop: Failed to push telemetry, status: {}", resp.status());
+                            }
+                            Err(e) => {
+                                warn!("Cloud Sync Loop: Error pushing telemetry: {}", e);
+                            }
+                        }
+                    }
+                }
+            }
+
             // Phase 7: Pull managed policy bundles
             let bundles_endpoint = format!(
                 "{}/v1/tenants/{}/bundles/latest",

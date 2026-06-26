@@ -2145,10 +2145,14 @@ version = "1.0.0-beta.10"
 dependencies = [
  "anyhow",
  "async-trait",
+ "chrono",
  "dek-agent-discovery",
  "dek-domain-schema",
+ "pollen-contract",
  "serde",
+ "serde_json",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -2664,11 +2668,15 @@ name = "dek-secure-spool"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
+ "anyhow",
  "base64 0.22.1",
  "bytes",
  "chrono",
  "crc32c",
+ "dek-config",
+ "pollen-contract",
  "rand 0.8.6",
+ "rusqlite",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -4669,6 +4677,7 @@ dependencies = [
  "dek-policy-runtime",
  "dek-policy-suggester",
  "dek-recommend",
+ "dek-secure-spool",
  "dek-telemetry",
  "ed25519-dalek",
  "futures-util",

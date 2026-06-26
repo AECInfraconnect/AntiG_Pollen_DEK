@@ -365,11 +365,14 @@ export function AutoDiscovery() {
       </div>
 
       <MasterDetailLayout
-        items={candidates.filter((c) => {
-          if (filter === "registered") return c.status === "registered";
-          if (filter === "pending") return c.status !== "registered";
-          return true;
-        })}
+        items={candidates
+          .filter((c) => {
+            if (filter === "registered") return c.status === "registered";
+            if (filter === "pending") return c.status !== "registered";
+            return true;
+          })
+          .sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime())
+        }
         loading={loading}
         selectedId={selectedId}
         onSelect={select}

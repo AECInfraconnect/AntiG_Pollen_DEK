@@ -3,6 +3,7 @@ pub mod crypto;
 pub mod key_manager;
 pub mod os;
 pub mod segment;
+pub mod sqlite_spool;
 
 use std::path::PathBuf;
 use thiserror::Error;
