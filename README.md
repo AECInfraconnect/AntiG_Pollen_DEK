@@ -56,13 +56,22 @@ Pollek is designed for humans. Users simply state their **Policy** (e.g., "Block
 - **Trust Scoring** — calculates real-time Agent Trust Scores via `AgentBaseline`,
   enabling dynamic `KillSwitch` or `RequireApproval` obligations on anomaly.
 - **Content Guard** — inspects payloads for prompt injection, PII leakage, and
-  malicious content before policy evaluation triggers.
+  malicious content before policy evaluation triggers. The current local guard
+  also normalizes encoded/obfuscated text, uses weighted scoring, and checks
+  tool responses before returning them to an agent.
 - **Rate Limiting** — token-bucket rate limiters per agent protect downstream
   endpoints from overuse and abuse.
 - **Tamper-Evident Audit** — all decisions are securely queued locally with a
   SHA-256 hash chain before shipping, proving audit log integrity.
 - **Kernel-grade network control** — eBPF on Linux (with DNS LRU caching and
-  runtime modes); Windows WFP / macOS System Extension in progress.
+  runtime modes); Windows WFP / macOS NetworkExtension are beta and report real
+  `Enforce` only after the installed component and warm-check prove readiness.
+- **Capability honesty** - Local capability snapshots separate real host
+  readiness from opt-in demo fixtures, so production-like tests do not mix with
+  demo output.
+- **Isolated local demo profiles** - optional fixture snapshots can demonstrate
+  Windows, Linux, and macOS readiness without changing the real host capability
+  path. See [Local Demo Profiles](docs/local_demo_profiles.md).
 
 ### Platform
 
@@ -140,6 +149,25 @@ cd apps/local-admin-dashboard && npm run dev
 ```
 
 See **[docs/quickstart_local_en.md](docs/quickstart_local_en.md)** (TH: `_th`).
+
+### Optional cross-OS demo profiles
+
+The Local Dashboard can demonstrate Windows, Linux, and macOS readiness from one
+development host without changing real host detection. Demo profiles are off by
+default and must be explicitly enabled:
+
+```bash
+export POLLEK_ENABLE_DEMO_PROFILES=1
+```
+
+```powershell
+$env:POLLEK_ENABLE_DEMO_PROFILES="1"
+```
+
+Then open **Capabilities** and choose a demo OS, or call
+`/v1/tenants/local/devices/local/capability-snapshot-v2?demo_os=windows&demo_profile=ready`.
+Demo snapshots are marked with `contract.reason_code=demo_fixture` and
+`device_id=demo_*`; they do not replace the latest real capability snapshot.
 
 ### Pollek Cloud mode
 

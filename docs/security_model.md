@@ -45,4 +45,23 @@ Local Enforcement Kit stores its bootstrap identity and telemetry spool locally.
 ## 6. Known Beta Scope Limitations
 
 - During the `v1.0.0-beta` phase, mock keys are used for testing scenarios. To deploy securely, ensure you do not use `--dev-fixed-keys` in production environments.
-- Windows and macOS network-level egress enforcement remains opt-in (via proxies) rather than transparent kernel-level enforcement.
+- Windows WFP and macOS NetworkExtension enforcement are beta. They are reported
+  as real `Enforce` only when the local component is installed, approved/elevated,
+  and the active warm-check passes.
+- Browser AI session enforcement requires the Pollek browser extension. Window,
+  title, process, or SNI signals are observation evidence only.
+- Cross-OS demo profiles are fixture data only. They are disabled by default,
+  marked with `contract.reason_code=demo_fixture`, and must not be used as
+  compliance evidence.
+
+## 7. Local Content and Output Guarding
+
+The local MCP proxy applies request-side and response-side content guard checks:
+
+- Request-side checks focus on prompt injection, policy override attempts, and
+  sensitive-data exfiltration indicators.
+- Response-side checks focus on LLM05 improper output handling, including secret
+  echo, unsafe HTML/Markdown injection, and hidden prompt leakage before a tool
+  response is returned to an agent.
+- Guard output includes score, confidence, categories, and normalization steps
+  while retaining the legacy allow/redact/deny recommendation.

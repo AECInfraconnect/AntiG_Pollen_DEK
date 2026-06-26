@@ -22,6 +22,9 @@ import { statusToken, type UiStatus } from "../lib/status";
 import { cn } from "@/lib/utils";
 import { useMode } from "../context/ModeContext";
 
+type DemoTarget = "host" | "windows" | "linux" | "macos";
+type DemoProfile = "ready" | "observe_only" | "needs_setup";
+
 function readinessStatus(status: MethodReadinessV2): UiStatus {
   if (status === "available") return "ok";
   if (status === "simulator_only") return "info";
@@ -188,13 +191,19 @@ export function Capabilities() {
     null,
   );
   const [loading, setLoading] = useState(true);
+  const [demoTarget, setDemoTarget] = useState<DemoTarget>("host");
+  const [demoProfile, setDemoProfile] = useState<DemoProfile>("ready");
 
   const load = async (refresh = false) => {
     setLoading(true);
     try {
+      const demo =
+        demoTarget === "host"
+          ? undefined
+          : { os: demoTarget, profile: demoProfile };
       const data = refresh
-        ? await CapabilityApi.refreshSnapshotV2(runtimeMode)
-        : await CapabilityApi.getSnapshotV2(runtimeMode);
+        ? await CapabilityApi.refreshSnapshotV2(runtimeMode, demo)
+        : await CapabilityApi.getSnapshotV2(runtimeMode, demo);
       setSnapshot(data);
     } catch (error) {
       console.error(error);
@@ -206,7 +215,7 @@ export function Capabilities() {
 
   useEffect(() => {
     load(false);
-  }, [runtimeMode]);
+  }, [runtimeMode, demoTarget, demoProfile]);
 
   const counts = useMemo(() => {
     const methods = snapshot?.control_methods ?? [];
@@ -228,21 +237,60 @@ export function Capabilities() {
           <h2 className="text-2xl font-semibold tracking-tight">
             Capabilities
           </h2>
-          <p className="text-sm text-muted-foreground">
-            {snapshot
-              ? `${snapshot.os.family} ${snapshot.os.version} / ${snapshot.device_id}`
-              : "Local capability snapshot"}
-          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>
+              {snapshot
+                ? `${snapshot.os.family} ${snapshot.os.version} / ${snapshot.device_id}`
+                : "Local capability snapshot"}
+            </span>
+            {snapshot?.contract.reason_code === "demo_fixture" && (
+              <span className="rounded-md border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-600">
+                Demo Fixture
+              </span>
+            )}
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => load(true)}
-          disabled={loading}
-          className="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm hover:bg-muted disabled:opacity-50"
-        >
-          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-          Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex h-9 overflow-hidden rounded-md border bg-background">
+            {(["host", "windows", "linux", "macos"] as DemoTarget[]).map(
+              (target) => (
+                <button
+                  key={target}
+                  type="button"
+                  onClick={() => setDemoTarget(target)}
+                  className={cn(
+                    "px-3 text-sm capitalize hover:bg-muted",
+                    demoTarget === target && "bg-muted text-foreground",
+                  )}
+                >
+                  {target}
+                </button>
+              ),
+            )}
+          </div>
+          {demoTarget !== "host" && (
+            <select
+              value={demoProfile}
+              onChange={(event) =>
+                setDemoProfile(event.target.value as DemoProfile)
+              }
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="ready">Ready</option>
+              <option value="observe_only">Observe</option>
+              <option value="needs_setup">Setup</option>
+            </select>
+          )}
+          <button
+            type="button"
+            onClick={() => load(true)}
+            disabled={loading}
+            className="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm hover:bg-muted disabled:opacity-50"
+          >
+            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">

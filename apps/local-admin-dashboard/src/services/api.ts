@@ -135,16 +135,26 @@ export class ControlPlaneClient {
   }
   async getHostCapabilitiesV2(
     mode: RuntimeModeV2 = "desktop_advanced",
+    demo?: { os: "windows" | "linux" | "macos"; profile?: "ready" | "observe_only" | "needs_setup" },
   ): Promise<LocalCapabilitySnapshotV2> {
     const params = new URLSearchParams({ mode });
+    if (demo) {
+      params.set("demo_os", demo.os);
+      params.set("demo_profile", demo.profile ?? "ready");
+    }
     return this.fetchRootApi(
       `/v1/tenants/${this.tenantId}/devices/local/capability-snapshot-v2?${params}`,
     );
   }
   async refreshHostCapabilitiesV2(
     mode: RuntimeModeV2 = "desktop_advanced",
+    demo?: { os: "windows" | "linux" | "macos"; profile?: "ready" | "observe_only" | "needs_setup" },
   ): Promise<LocalCapabilitySnapshotV2> {
     const params = new URLSearchParams({ mode });
+    if (demo) {
+      params.set("demo_os", demo.os);
+      params.set("demo_profile", demo.profile ?? "ready");
+    }
     return this.fetchRootApi(
       `/v1/tenants/${this.tenantId}/devices/local/capability-refresh?${params}`,
       { method: "POST" },
@@ -633,10 +643,14 @@ export const DeploymentApi = {
 };
 
 export const CapabilityApi = {
-  getSnapshotV2: (mode?: RuntimeModeV2) =>
-    defaultClient.getHostCapabilitiesV2(mode),
-  refreshSnapshotV2: (mode?: RuntimeModeV2) =>
-    defaultClient.refreshHostCapabilitiesV2(mode),
+  getSnapshotV2: (
+    mode?: RuntimeModeV2,
+    demo?: { os: "windows" | "linux" | "macos"; profile?: "ready" | "observe_only" | "needs_setup" },
+  ) => defaultClient.getHostCapabilitiesV2(mode, demo),
+  refreshSnapshotV2: (
+    mode?: RuntimeModeV2,
+    demo?: { os: "windows" | "linux" | "macos"; profile?: "ready" | "observe_only" | "needs_setup" },
+  ) => defaultClient.refreshHostCapabilitiesV2(mode, demo),
 };
 
 export const LogApi = {

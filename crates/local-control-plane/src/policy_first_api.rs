@@ -111,6 +111,79 @@ pub fn router() -> Router<AppState> {
 #[derive(Deserialize)]
 struct ModeQuery {
     mode: Option<String>,
+    demo_os: Option<String>,
+    demo_profile: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct DemoProfile {
+    os_family: String,
+    profile: String,
+}
+
+fn demo_profiles_enabled() -> bool {
+    std::env::var("POLLEK_ENABLE_DEMO_PROFILES")
+        .map(|value| value == "1" || value.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+}
+
+fn demo_profile_from_parts(
+    demo_os: Option<&str>,
+    demo_profile: Option<&str>,
+) -> Option<DemoProfile> {
+    if !demo_profiles_enabled() {
+        return None;
+    }
+
+    let os_family = match demo_os?.to_ascii_lowercase().as_str() {
+        "windows" | "win" => "windows",
+        "macos" | "darwin" | "mac" => "macos",
+        "linux" => "linux",
+        _ => return None,
+    };
+    let profile = match demo_profile
+        .unwrap_or("ready")
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "ready" | "enforce" => "ready",
+        "observe" | "observe_only" => "observe_only",
+        "needs_setup" | "setup" => "needs_setup",
+        _ => return None,
+    };
+
+    Some(DemoProfile {
+        os_family: os_family.into(),
+        profile: profile.into(),
+    })
+}
+
+fn demo_profile_from_query(query: &ModeQuery) -> Option<DemoProfile> {
+    demo_profile_from_parts(query.demo_os.as_deref(), query.demo_profile.as_deref())
+}
+
+impl DemoProfile {
+    fn device_id(&self) -> String {
+        format!("demo_{}_{}", self.os_family, self.profile)
+    }
+
+    fn readiness(&self) -> MethodReadiness {
+        match self.profile.as_str() {
+            "ready" => MethodReadiness::Available,
+            "observe_only" => MethodReadiness::Degraded,
+            "needs_setup" => MethodReadiness::NeedsInstall,
+            _ => MethodReadiness::NeedsConfiguration,
+        }
+    }
+
+    fn warm_check(&self) -> WarmCheckStatus {
+        match self.profile.as_str() {
+            "ready" => WarmCheckStatus::Passed,
+            "observe_only" => WarmCheckStatus::Failed,
+            "needs_setup" => WarmCheckStatus::NotRun,
+            _ => WarmCheckStatus::NotRun,
+        }
+    }
 }
 
 fn parse_mode(value: Option<&str>) -> RuntimeMode {
@@ -155,7 +228,7 @@ fn is_elevated() -> bool {
     }
 }
 
-fn os_info_v2() -> OsInfoV2 {
+fn os_info_v2_for(demo: Option<&DemoProfile>) -> OsInfoV2 {
     let family = match std::env::consts::OS {
         "macos" => "macos",
         "windows" => "windows",
@@ -163,12 +236,21 @@ fn os_info_v2() -> OsInfoV2 {
         other => other,
     }
     .to_string();
+    let family = demo
+        .map(|profile| profile.os_family.clone())
+        .unwrap_or(family);
     OsInfoV2 {
         family,
-        version: std::env::var("POLLEK_OS_VERSION").unwrap_or_else(|_| "unknown".into()),
+        version: demo
+            .map(|profile| format!("demo-{}", profile.profile))
+            .unwrap_or_else(|| {
+                std::env::var("POLLEK_OS_VERSION").unwrap_or_else(|_| "unknown".into())
+            }),
         arch: std::env::consts::ARCH.to_string(),
         is_server: std::env::var("POLLEK_SERVER_MODE").ok().as_deref() == Some("1"),
-        elevated: is_elevated(),
+        elevated: demo
+            .map(|profile| profile.profile == "ready")
+            .unwrap_or_else(is_elevated),
     }
 }
 
@@ -235,7 +317,16 @@ fn build_capability_snapshot_v2(
     device_id: &str,
     mode: RuntimeMode,
 ) -> LocalCapabilitySnapshotV2 {
-    let os = os_info_v2();
+    build_capability_snapshot_v2_for(tenant_id, device_id, mode, None)
+}
+
+fn build_capability_snapshot_v2_for(
+    tenant_id: &str,
+    device_id: &str,
+    mode: RuntimeMode,
+    demo: Option<&DemoProfile>,
+) -> LocalCapabilitySnapshotV2 {
+    let os = os_info_v2_for(demo);
     let mut setup_actions = vec![
         setup_action(
             "approve_mcp_config_wrapper",
@@ -455,7 +546,7 @@ fn build_capability_snapshot_v2(
         _ => {}
     }
 
-    let observation_sources = vec![
+    let mut observation_sources = vec![
         ObservationSourceCapability {
             source_id: "process_metadata".into(),
             display_name_en: "Process metadata scan".into(),
@@ -488,6 +579,10 @@ fn build_capability_snapshot_v2(
         },
     ];
 
+    if let Some(profile) = demo {
+        apply_demo_profile(profile, &mut methods, &mut observation_sources);
+    }
+
     LocalCapabilitySnapshotV2 {
         schema_version: "local-capability-snapshot.v2".into(),
         tenant_id: tenant_id.to_string(),
@@ -502,8 +597,51 @@ fn build_capability_snapshot_v2(
             local_contract_version: "2026.06.26".into(),
             compatible_cloud_contracts: vec![">=2026.06.01 <2026.09.00".into()],
             status: "compatible".into(),
-            reason_code: None,
+            reason_code: demo.map(|_| "demo_fixture".into()),
         },
+    }
+}
+
+fn apply_demo_profile(
+    profile: &DemoProfile,
+    methods: &mut [ControlMethodCapabilityV2],
+    observation_sources: &mut [ObservationSourceCapability],
+) {
+    let readiness = profile.readiness();
+    let warm_check = profile.warm_check();
+    let demo_note = format!(
+        "Demo fixture for {} {}. Not evidence of the current host capability.",
+        profile.os_family, profile.profile
+    );
+
+    for method in methods {
+        if matches!(
+            method.method_id.as_str(),
+            "mcp_stdio_wrapper"
+                | "mcp_http_proxy"
+                | "linux_ebpf"
+                | "linux_fanotify"
+                | "windows_wfp"
+                | "windows_etw_process_observer"
+                | "macos_network_extension"
+                | "macos_endpoint_security"
+        ) {
+            method.status = readiness.clone();
+            method.warm_check = Some(warm_check.clone());
+            if profile.profile == "ready" && method.maturity == MethodMaturity::Preview {
+                method.maturity = MethodMaturity::Beta;
+            }
+            method.limitations_en.push(demo_note.clone());
+            method.limitations_th.push(demo_note.clone());
+        }
+    }
+
+    for source in observation_sources {
+        if source.source_id == "browser_extension" {
+            source.status = readiness.clone();
+            source.privacy_note_en = format!("{} Browser AI data is simulated.", demo_note);
+            source.privacy_note_th = source.privacy_note_en.clone();
+        }
     }
 }
 
@@ -579,14 +717,21 @@ async fn get_host_capabilities_v2(
     Query(query): Query<ModeQuery>,
     State(state): State<AppState>,
 ) -> ApiResult<(StatusCode, Json<LocalCapabilitySnapshotV2>)> {
-    let device_id = if device == "local" {
+    let demo_profile = demo_profile_from_query(&query);
+    let device_id = if let Some(profile) = &demo_profile {
+        profile.device_id()
+    } else if device == "local" {
         local_device_id()
     } else {
         device
     };
-    let snapshot =
-        build_capability_snapshot_v2(&tenant, &device_id, parse_mode(query.mode.as_deref()));
-    {
+    let snapshot = build_capability_snapshot_v2_for(
+        &tenant,
+        &device_id,
+        parse_mode(query.mode.as_deref()),
+        demo_profile.as_ref(),
+    );
+    if demo_profile.is_none() {
         let mut guard = state.latest_snapshot.write().await;
         *guard = Some(dek_capability_registry::LocalCapabilitySnapshot {
             snapshot_id: format!("snap_{}", uuid::Uuid::new_v4()),
@@ -1021,6 +1166,10 @@ struct SecurityCoverageRequest {
     mode: Option<String>,
     #[serde(default)]
     local_cloud_profile: Option<String>,
+    #[serde(default)]
+    demo_os: Option<String>,
+    #[serde(default)]
+    demo_profile: Option<String>,
 }
 
 async fn evaluate_security_coverage(
@@ -1030,7 +1179,13 @@ async fn evaluate_security_coverage(
 ) -> ApiResult<(StatusCode, Json<dek_domain_schema::PolicyCoverageReport>)> {
     let device_id = local_device_id();
     let mode = parse_mode(req.mode.as_deref());
-    let snapshot = build_capability_snapshot_v2(&tenant, &device_id, mode.clone());
+    let demo_profile = demo_profile_from_parts(req.demo_os.as_deref(), req.demo_profile.as_deref());
+    let device_id = demo_profile
+        .as_ref()
+        .map(DemoProfile::device_id)
+        .unwrap_or(device_id);
+    let snapshot =
+        build_capability_snapshot_v2_for(&tenant, &device_id, mode.clone(), demo_profile.as_ref());
     let policy_id = req
         .policy_ids
         .first()

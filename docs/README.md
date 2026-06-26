@@ -18,6 +18,7 @@ Welcome to the Pollek Local Enforcement Kit documentation.
 
 - [Developer Guide](DEVELOPER_GUIDE.md)
 - [Security Model](security_model.md)
+- [Local Demo Profiles](local_demo_profiles.md)
 - [Release Verification](release_verification.md)
 - [Release Process](RELEASE_PROCESS.md)
 - [Release Checklist](RELEASE_CHECKLIST_v1_beta.md)
@@ -25,6 +26,8 @@ Welcome to the Pollek Local Enforcement Kit documentation.
 ## Architecture & Design
 
 - [Architecture](../ARCHITECTURE.md)
+- [Policy-First OS Observe/Enforce and WASM](design/POLICY_FIRST_OS_OBSERVE_ENFORCE_WASM.md)
+- [Auto Discovery Coverage Expansion](design/AUTO_DISCOVERY_COVERAGE_EXPANSION.md)
 - [Design Documents](design/)
 
 ## Compliance

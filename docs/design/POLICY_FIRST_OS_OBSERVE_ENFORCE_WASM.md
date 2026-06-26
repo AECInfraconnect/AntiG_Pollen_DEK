@@ -36,6 +36,12 @@ Cross-platform fallback:
 - MCP stdio wrapper and MCP HTTP proxy are the practical first enforcement points for agent tool calls.
 - Browser extension is the practical browser AI session observation/enforcement point.
 - Egress simulator is always labeled `simulator_only` and never produces `enforced_for_real = true`.
+- Cross-OS demo profiles are fixture-only and opt-in. They are disabled unless
+  `POLLEK_ENABLE_DEMO_PROFILES=1` is set and the request explicitly asks for a
+  `demo_os`. Fixture snapshots are marked with `contract.reason_code=demo_fixture`
+  and `device_id=demo_*`.
+- Real host capability snapshots never use demo profiles unless explicitly
+  requested, and demo reads do not replace the latest real host snapshot.
 
 ## WASM Usage
 
@@ -48,6 +54,26 @@ WASM is a good fit for deterministic, portable policy evaluation and plugin-styl
 WASM is not a direct replacement for OS PEPs. It can decide; OS/MCP/browser control methods enforce.
 
 The current capability snapshot advertises `wasm_policy_evaluator` as `warn` level unless paired with an enforcement-capable method. This avoids overstating sandboxed PDP evaluation as syscall or network blocking.
+
+The current security coverage evidence maps `decision_engine` from the selected
+control method instead of assuming OPA for every real enforcement path. MCP tool
+control maps to Cedar-style authorization evidence, prompt/content transforms map
+to plugin/WASM evidence, relationship engines map to OpenFGA, and network plans
+remain OPA/WASM-precomputed unless a more specific engine is wired.
+
+## LLM01 and LLM05 Guardrails
+
+Content Guard now has two local paths:
+
+- Request-side scan for LLM01 prompt injection and sensitive-data exfiltration.
+- Response-side scan for LLM05 improper output handling before a tool result is
+  returned to an agent.
+
+The local guard performs bounded normalization: zero-width stripping, casefolding
+with common homoglyph folding, HTML/entity decoding, percent decoding, and
+bounded base64 candidate decoding. Rules are weighted and produce `score`,
+`confidence`, `categories`, and `normalization_steps` while keeping the legacy
+`injection_detected` and `recommended` fields for compatibility.
 
 ## Identity Binding
 

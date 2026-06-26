@@ -1151,11 +1151,56 @@ async fn handle_filter_request(
         .into_response()
 }
 
+fn redact_guarded_value(value: Value) -> Value {
+    match value {
+        Value::String(text) => Value::String(content_guard::redact_text(&text)),
+        Value::Array(items) => Value::Array(items.into_iter().map(redact_guarded_value).collect()),
+        Value::Object(map) => Value::Object(
+            map.into_iter()
+                .map(|(key, value)| (key, redact_guarded_value(value)))
+                .collect(),
+        ),
+        other => other,
+    }
+}
+
 async fn handle_filter_response(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
 ) -> Response {
     let snapshot = state.snapshot.load();
+    let guard = content_guard::scan_output(&content_guard::GuardInput {
+        text: payload.to_string(),
+    });
+    if guard.injection_detected {
+        match guard.recommended.as_str() {
+            "deny" => {
+                metrics::counter!("dek_proxy_responses_total", "decision" => "deny", "reason" => "output_guard").increment(1);
+                let body = json!({
+                    "status": "denied",
+                    "reason": "output_guard_blocked_unsafe_tool_response",
+                    "guard": guard,
+                });
+                return (StatusCode::FORBIDDEN, Json(body)).into_response();
+            }
+            "redact" => {
+                metrics::counter!("dek_proxy_responses_total", "decision" => "redact", "reason" => "output_guard").increment(1);
+                let redacted = redact_guarded_value(payload);
+                return (
+                    StatusCode::OK,
+                    Json(json!({
+                        "status": "filtered",
+                        "reason": "output_guard_redacted_tool_response",
+                        "guard": guard,
+                        "payload": redacted
+                    })),
+                )
+                    .into_response();
+            }
+            _ => {}
+        }
+    }
+
     // Apply redaction plugin
     if let Ok(redacted_bytes) = snapshot
         .plugin_host

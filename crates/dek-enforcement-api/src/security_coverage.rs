@@ -91,6 +91,18 @@ fn policy_profile(policy_id: &str) -> PolicyProfile {
             domains: vec![ControlDomainV2::PromptContent, ControlDomainV2::McpToolCall],
         };
     }
+    if id.contains("output") || id.contains("llm05") || id.contains("response") {
+        return PolicyProfile {
+            title_en: "Guard AI Tool Output".into(),
+            title_th: "Guard AI tool output".into(),
+            risks: vec![
+                OwaspRiskId::Llm05ImproperOutputHandling,
+                OwaspRiskId::Llm02SensitiveInformationDisclosure,
+                OwaspRiskId::Llm07SystemPromptLeakage,
+            ],
+            domains: vec![ControlDomainV2::McpToolCall, ControlDomainV2::PromptContent],
+        };
+    }
     if id.contains("shadow") || id.contains("network") || id.contains("egress") {
         return PolicyProfile {
             title_en: "Block Shadow AI Cloud APIs".into(),
@@ -222,6 +234,7 @@ fn method_item(
         .filter_map(|id| find_setup_action(snapshot, id))
         .collect::<Vec<_>>();
     let friendly = friendly_for(&reason, &domain, method);
+    let decision_engine = enforce_real.then(|| decision_engine_for_method(method, &domain));
 
     SecurityCoverageItem {
         risk_id,
@@ -235,7 +248,7 @@ fn method_item(
         enforce_capable: enforce_real,
         enforced_for_real: enforce_real,
         chosen_control_method: Some(method.method_id.clone()),
-        decision_engine: enforce_real.then(|| "opa_wasm".to_string()),
+        decision_engine,
         reason_code: reason,
         friendly_en: friendly.0,
         friendly_th: friendly.1,
@@ -271,6 +284,29 @@ fn no_method_item(
         friendly_th: format!("Pollek ยังไม่สามารถมองเห็นหรือควบคุม {domain:?} ของ Agent นี้บนเครื่องนี้ได้"),
         setup_actions: actions,
         evidence_ids: req.evidence_ids.clone(),
+    }
+}
+
+fn decision_engine_for_method(
+    method: &ControlMethodCapabilityV2,
+    domain: &ControlDomainV2,
+) -> String {
+    match method.method_id.as_str() {
+        "wasm_policy_evaluator" => "opa_wasm".into(),
+        "mcp_stdio_wrapper" | "mcp_http_proxy" => match domain {
+            ControlDomainV2::PromptContent | ControlDomainV2::TokenCost => "plugin_wasm".into(),
+            ControlDomainV2::IdentityUse
+            | ControlDomainV2::FileAccess
+            | ControlDomainV2::McpToolCall
+            | ControlDomainV2::SkillInstall
+            | ControlDomainV2::SkillRuntime => "cedar".into(),
+            _ => "opa_wasm".into(),
+        },
+        "linux_ebpf" | "windows_wfp" | "macos_network_extension" => "opa_wasm".into(),
+        method_id if method_id.contains("openfga") => "openfga".into(),
+        method_id if method_id.contains("cedar") => "cedar".into(),
+        method_id if method_id.contains("wasm") => "opa_wasm".into(),
+        _ => "cedar".into(),
     }
 }
 
@@ -558,5 +594,77 @@ mod tests {
         assert!(report.items.iter().any(|item| {
             item.reason_code == CapabilityReasonCode::SimulatorOnly && !item.enforced_for_real
         }));
+    }
+
+    #[test]
+    fn mcp_tool_control_reports_cedar_decision_path() {
+        let snap = snapshot(ControlMethodCapabilityV2 {
+            method_id: "mcp_stdio_wrapper".into(),
+            display_name_en: "Agent tool control".into(),
+            display_name_th: "Tool control".into(),
+            domains: vec![ControlDomainV2::McpToolCall],
+            max_level: ControlLevelV2::Enforce,
+            status: MethodReadiness::Available,
+            maturity: MethodMaturity::Beta,
+            install_state: InstallState::Installed,
+            warm_check: Some(WarmCheckStatus::Passed),
+            setup_action_ids: vec![],
+            limitations_en: vec![],
+            limitations_th: vec![],
+        });
+        let report = assess_policy_coverage(
+            CoverageRequest {
+                tenant_id: "local".into(),
+                device_id: "dev_test".into(),
+                agent_id: Some("agent".into()),
+                entity_id: None,
+                policy_id: "tool.require_approval".into(),
+                requested_level: ControlLevelV2::Enforce,
+                mode: RuntimeMode::DesktopSimple,
+                local_cloud_profile: "local_only".into(),
+                evidence_ids: vec![],
+            },
+            &snap,
+        );
+        assert!(report.items.iter().any(|item| {
+            item.chosen_control_method.as_deref() == Some("mcp_stdio_wrapper")
+                && item.decision_engine.as_deref() == Some("cedar")
+        }));
+    }
+
+    #[test]
+    fn output_policy_maps_to_llm05() {
+        let snap = snapshot(ControlMethodCapabilityV2 {
+            method_id: "mcp_http_proxy".into(),
+            display_name_en: "Agent HTTP tool proxy".into(),
+            display_name_th: "HTTP tool proxy".into(),
+            domains: vec![ControlDomainV2::McpToolCall, ControlDomainV2::PromptContent],
+            max_level: ControlLevelV2::Enforce,
+            status: MethodReadiness::Available,
+            maturity: MethodMaturity::Beta,
+            install_state: InstallState::Installed,
+            warm_check: Some(WarmCheckStatus::Passed),
+            setup_action_ids: vec![],
+            limitations_en: vec![],
+            limitations_th: vec![],
+        });
+        let report = assess_policy_coverage(
+            CoverageRequest {
+                tenant_id: "local".into(),
+                device_id: "dev_test".into(),
+                agent_id: Some("agent".into()),
+                entity_id: None,
+                policy_id: "llm05.output_guard".into(),
+                requested_level: ControlLevelV2::Enforce,
+                mode: RuntimeMode::DesktopSimple,
+                local_cloud_profile: "local_only".into(),
+                evidence_ids: vec![],
+            },
+            &snap,
+        );
+        assert!(report
+            .items
+            .iter()
+            .any(|item| item.risk_id == OwaspRiskId::Llm05ImproperOutputHandling));
     }
 }

@@ -150,6 +150,41 @@ View them in the dashboard under **Audit & Decision Logs**. You can also explore
 - **Blackbox AI Providers** — manage registered external AI providers
 - **Alerts** — system-wide security and compliance notifications
 
+## Optional: cross-OS dashboard demo
+
+Demo profiles are off by default and do not change real host capability
+detection. They are useful when you want to demonstrate Windows, Linux, and
+macOS readiness from one development machine.
+
+```bash
+export POLLEK_ENABLE_DEMO_PROFILES=1
+```
+
+```powershell
+$env:POLLEK_ENABLE_DEMO_PROFILES="1"
+```
+
+Then open **Capabilities** and select `Windows`, `Linux`, or `macOS`, or call:
+
+```bash
+curl "http://127.0.0.1:3000/v1/tenants/local/devices/local/capability-snapshot-v2?mode=desktop_advanced&demo_os=windows&demo_profile=ready"
+```
+
+Demo snapshots are marked with `contract.reason_code=demo_fixture` and
+`device_id=demo_*`; they do not replace the latest real capability snapshot.
+
+## Optional: response-side output guard check
+
+The MCP proxy can scan tool output before it returns to an agent:
+
+```bash
+curl -s -X POST http://127.0.0.1:43890/v1/filter/response \
+  -H 'content-type: application/json' \
+  -d '{"result":"tool returned sk-test and <script>alert(1)</script>"}'
+```
+
+Unsafe output is denied or redacted before the agent sees it.
+
 ## What just happened
 
 1. The Local Control Plane **signed** the bundle with its own key.

@@ -33,6 +33,12 @@ sequenceDiagram
 5. **Warm Check**: Tests if the PEP is actually healthy (e.g. dummy MCP ping) before marking `Active`.
 6. **Observe**: If enforcement fails, it explicitly degrades to `ObserveOnly` rather than silently failing.
 
+Native OS controls are intentionally conservative. Windows WFP and macOS
+NetworkExtension are reported as real `Enforce` only when the relevant local
+component is installed, approved/elevated, and the active warm-check has passed.
+If any of those facts are missing, the system advertises observe/degraded/setup
+states instead of overstating enforcement.
+
 ## Dual-mode design
 
 |            | Local (OSS)                     | Cloud (commercial)                           |
@@ -96,6 +102,15 @@ sequenceDiagram
 - `apps/local-admin-dashboard` — React/Vite UI with 19 pages: registry (agents, servers, tools, resources, entities, relationships, blackbox AI), policies (enforcer, presets, simulator), observability (auto discovery, shadow AI, suggestions, cost ledger, alerts), and operations (bundles, decision logs, settings).
 - `mock-cloud` — reference Cloud implementing the same contract for offline testing.
 
+**Demo isolation**
+
+The Local Control Plane supports opt-in cross-OS demo capability profiles for
+trade-show, QA, and dashboard testing. They are disabled unless
+`POLLEK_ENABLE_DEMO_PROFILES=1` is set and the request explicitly includes
+`demo_os`. Demo snapshots use `device_id=demo_*`,
+`contract.reason_code=demo_fixture`, and method limitations that say they are
+fixture data. They do not update the latest real host capability snapshot.
+
 **Interop & Preview**
 
 - `dek-a2a-mediator` — Inter-Agent Trust Protocol (IATP) mediator for Google A2A protocol communication between trusted agents. Manages trust negotiation, capability exchange, and secure message routing.
@@ -105,10 +120,10 @@ sequenceDiagram
 ## Decision data flow
 
 1. App sends a `DecisionRequest` to the Local Enforcement Kit PEP on `127.0.0.1:43890`.
-2. Content Guard scans tool parameters for prompt-injection or PII leakage, then Rate + Trust limiters enforce quotas and calculate anomaly scores.
+2. Content Guard normalizes encoded/obfuscated tool parameters and scores prompt-injection or PII leakage risk, then Rate + Trust limiters enforce quotas and calculate anomaly scores.
 3. `dek-policy-router` matches a route; if no engine is pinned, `engine_selector` picks one (Cedar/OPA/OpenFGA/eBPF) by decision kind — choosing only engines compiled into this build. Parameter-level data is loaded into the decision context.
 4. The selected evaluator(s) run (behind circuit breakers + admission control).
-5. Transform plugins (e.g. PII redaction) apply to obligations/effects.
+5. Transform plugins (e.g. PII redaction) apply to obligations/effects. The response filter path also scans tool output for secret echo, unsafe HTML/Markdown injection, and prompt leakage before returning it to the agent.
 6. The decision is enforced and emitted as a signed telemetry envelope; network rules are split across kernel and user-mode planes by the complexity guard.
 7. Observer records the decision and suggests new policies via the governance loop.
 
