@@ -225,6 +225,10 @@ pub struct DiscoveredAgentCandidateV2 {
     pub matched_signals: Vec<MatchedSignal>,
     pub first_seen: String,
     pub last_seen: String,
+    #[serde(default)]
+    pub scan_ids: Vec<String>,
+    #[serde(default)]
+    pub last_scan_id: Option<String>,
     pub evidence: Vec<DiscoveryEvidenceV2>,
     pub discovered_configs: Vec<DiscoveredConfigRef>,
     pub discovered_endpoints: Vec<DiscoveredEndpointRef>,

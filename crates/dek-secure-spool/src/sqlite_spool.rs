@@ -69,13 +69,16 @@ impl SqliteSpool {
             .encrypt(&nonce, payload)
             .map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;
 
-        let conn = self.conn.lock().unwrap();
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("spool database lock poisoned: {e}"))?;
         conn.execute(
             "INSERT INTO events (priority, payload, nonce) VALUES (?1, ?2, ?3)",
             params![priority as i32, ciphertext, nonce.as_slice()],
         )?;
 
-        let evicted = conn.execute(
+        let _evicted = conn.execute(
             "DELETE FROM events
              WHERE id NOT IN (
                  SELECT id FROM events
@@ -89,7 +92,10 @@ impl SqliteSpool {
     }
 
     pub fn pop_batch(&self, limit: usize) -> Result<Vec<(i64, Vec<u8>)>, anyhow::Error> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("spool database lock poisoned: {e}"))?;
         let mut stmt = conn.prepare(
             "SELECT id, payload, nonce FROM events ORDER BY priority DESC, id ASC LIMIT ?1",
         )?;
@@ -121,7 +127,10 @@ impl SqliteSpool {
         if ids.is_empty() {
             return Ok(());
         }
-        let conn = self.conn.lock().unwrap();
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("spool database lock poisoned: {e}"))?;
         let id_list: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
         let query = format!("DELETE FROM events WHERE id IN ({})", id_list.join(","));
         conn.execute(&query, [])?;
@@ -129,7 +138,10 @@ impl SqliteSpool {
     }
 
     pub fn peek_recent(&self, limit: usize) -> Result<Vec<Vec<u8>>, anyhow::Error> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("spool database lock poisoned: {e}"))?;
         let mut stmt =
             conn.prepare("SELECT payload, nonce FROM events ORDER BY id DESC LIMIT ?1")?;
 

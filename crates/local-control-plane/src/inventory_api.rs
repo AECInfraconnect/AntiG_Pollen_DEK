@@ -12,7 +12,6 @@ use dek_agent_observer::aggregate::{
 use pollen_contract::{ResourceAccessPayload, ToolUsagePayload};
 use serde::Deserialize;
 use serde::Serialize;
-use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceInventoryPage {
@@ -50,14 +49,11 @@ async fn list_resources(
     Query(query): Query<InventoryQuery>,
 ) -> impl IntoResponse {
     let tenant = "local".to_string();
-    let events_json = match state
+    let events_json = state
         .telemetry_store
         .list_telemetry(&tenant, "resource_access")
         .await
-    {
-        Ok(evs) => evs,
-        Err(_) => vec![],
-    };
+        .unwrap_or_default();
 
     let mut payloads = Vec::new();
     for ev in events_json {
@@ -87,14 +83,11 @@ async fn list_tools(
     Query(query): Query<InventoryQuery>,
 ) -> impl IntoResponse {
     let tenant = "local".to_string();
-    let events_json = match state
+    let events_json = state
         .telemetry_store
         .list_telemetry(&tenant, "tool_usage")
         .await
-    {
-        Ok(evs) => evs,
-        Err(_) => vec![],
-    };
+        .unwrap_or_default();
 
     let mut payloads = Vec::new();
     for ev in events_json {

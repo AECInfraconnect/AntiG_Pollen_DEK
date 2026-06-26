@@ -398,6 +398,8 @@ mod tests {
             }],
             first_seen: now.clone(),
             last_seen: now,
+            scan_ids: Vec::new(),
+            last_scan_id: None,
             evidence: vec![],
             discovered_configs: vec![],
             discovered_endpoints: vec![],

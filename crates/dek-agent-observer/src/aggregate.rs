@@ -90,14 +90,14 @@ pub fn aggregate_resources(events: &[ResourceAccessPayload]) -> Vec<ObservedReso
                 classification: e.classification.clone(),
                 agents: vec![],
                 modes: vec![],
-                last_access: e.observed_at.clone(),
+                last_access: e.observed_at,
                 access_count: 0,
                 governed: false,
                 registered: false,
             });
         r.access_count += 1;
         if r.last_access < e.observed_at {
-            r.last_access = e.observed_at.clone();
+            r.last_access = e.observed_at;
         }
         push_unique(&mut r.agents, e.agent_id.clone());
         push_unique(&mut r.modes, e.mode.to_string());
@@ -115,14 +115,14 @@ pub fn aggregate_tools(events: &[ToolUsagePayload]) -> Vec<ObservedTool> {
             tool_name: e.tool_name.clone(),
             server: e.server.clone(),
             agents: vec![],
-            last_used: e.observed_at.clone(),
+            last_used: e.observed_at,
             use_count: 0,
             governed: false,
             registered: false,
         });
         t.use_count += 1;
         if t.last_used < e.observed_at {
-            t.last_used = e.observed_at.clone();
+            t.last_used = e.observed_at;
         }
         push_unique(&mut t.agents, e.agent_id.clone());
     }

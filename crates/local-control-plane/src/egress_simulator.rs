@@ -18,7 +18,7 @@ impl EgressEventSource for SimulatorEgressSource {
     }
 
     async fn start_observing(&self, sink: TelemetrySink) -> anyhow::Result<()> {
-        let fixtures = vec![
+        let fixtures = [
             "api.openai.com",
             "api.anthropic.com",
             "huggingface.co",

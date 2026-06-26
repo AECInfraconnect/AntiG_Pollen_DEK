@@ -40,6 +40,7 @@ export function AutoDiscovery() {
   const [filter, setFilter] = useState<"all" | "pending" | "registered">("all");
   const [isScanning, setIsScanning] = useState(false);
   const [isFinalizingScan, setIsFinalizingScan] = useState(false);
+  const [scans, setScans] = useState<DiscoveryScanJob[]>([]);
 
   const scanBusy =
     isScanning ||
@@ -130,17 +131,41 @@ export function AutoDiscovery() {
     }
   };
 
+  const fetchScans = async (): Promise<DiscoveryScanJob[]> => {
+    try {
+      const nextScans = await RegistryApi.listDiscoveryScans();
+      nextScans.sort(
+        (a, b) =>
+          new Date(b.started_at || b.finished_at || 0).getTime() -
+          new Date(a.started_at || a.finished_at || 0).getTime(),
+      );
+      setScans(nextScans);
+
+      const active = nextScans.find(
+        (scan) => scan.status === "queued" || scan.status === "running",
+      );
+      if (active) {
+        setScanJob(active);
+      }
+      return nextScans;
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  };
+
   useEffect(() => {
     void fetchCandidates();
+    void fetchScans();
   }, []);
 
-  const settleScanResults = async () => {
+  const settleScanResults = async (expectedCount = 0) => {
     setIsFinalizingScan(true);
     let previousDigest = "";
     let stableReads = 0;
 
     try {
-      for (let attempt = 0; attempt < 5; attempt += 1) {
+      for (let attempt = 0; attempt < 10; attempt += 1) {
         const next = await fetchCandidates({ showLoading: attempt === 0 });
         const digest = next
           .map(
@@ -150,15 +175,17 @@ export function AutoDiscovery() {
           .sort()
           .join("|");
 
-        if (attempt > 0 && digest === previousDigest) {
+        const hasExpectedCount =
+          expectedCount === 0 || next.length >= expectedCount;
+        if (attempt > 0 && digest === previousDigest && hasExpectedCount) {
           stableReads += 1;
         } else {
           stableReads = 0;
         }
         previousDigest = digest;
 
-        if (stableReads >= 1) break;
-        await new Promise((resolve) => setTimeout(resolve, 700));
+        if (stableReads >= 2) break;
+        await new Promise((resolve) => setTimeout(resolve, 900));
       }
     } finally {
       setIsFinalizingScan(false);
@@ -185,7 +212,8 @@ export function AutoDiscovery() {
           ) {
             if (interval) clearInterval(interval);
             if (!cancelled) {
-              await settleScanResults();
+              await settleScanResults(status.candidates_found);
+              await fetchScans();
             }
           }
         } catch (e) {
@@ -253,15 +281,75 @@ export function AutoDiscovery() {
   };
 
   const displayNameForCandidate = (candidate: DiscoveredAgentCandidateV2) => {
-    const browserName = candidate.evidence
-      ?.map((e) => e.data?.browser_name)
-      .find((name) => typeof name === "string" && name.length > 0);
+    const browserName = browserNameForCandidate(candidate);
 
     return (candidate.display_name || "AI Agent").replace(
-      /\s+\(Web\)$/i,
+      /\s+\((Web|Browser)\)$/i,
       ` (${browserName || "Browser"})`,
     );
   };
+
+  const browserNameForCandidate = (candidate: DiscoveredAgentCandidateV2) =>
+    candidate.evidence
+      ?.map((e) => e.data?.browser_name)
+      .find(
+        (name) =>
+          typeof name === "string" && name.length > 0 && name !== "Browser",
+      );
+
+  const evidenceSourcesForCandidate = (candidate: DiscoveredAgentCandidateV2) =>
+    Array.from(new Set(candidate.evidence?.map((e) => e.source) ?? []))
+      .map((source) => source.replace(/_/g, " "))
+      .join(", ");
+
+  const scanIdForCandidate = (candidate: DiscoveredAgentCandidateV2) =>
+    candidate.last_scan_id ||
+    candidate.scan_ids?.[candidate.scan_ids.length - 1] ||
+    candidate.evidence
+      ?.map((e) => e.data?.scan_id)
+      .find((id) => typeof id === "string" && id.length > 0);
+
+  const scanForCandidate = (candidate: DiscoveredAgentCandidateV2) => {
+    const scanId = scanIdForCandidate(candidate);
+    return scans.find((scan) => scan.scan_id === scanId);
+  };
+
+  const scanLabelForCandidate = (candidate: DiscoveredAgentCandidateV2) => {
+    const scan = scanForCandidate(candidate);
+    if (!scan) {
+      return "Previous scan";
+    }
+
+    const startedAt = scan.started_at || scan.finished_at;
+    const timeLabel = startedAt
+      ? new Date(startedAt).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : scan.scan_id.slice(0, 12);
+    return `${timeLabel} • ${scan.status}`;
+  };
+
+  const scanSortTime = (candidate: DiscoveredAgentCandidateV2) => {
+    const scan = scanForCandidate(candidate);
+    return new Date(
+      scan?.started_at || scan?.finished_at || candidate.last_seen,
+    ).getTime();
+  };
+
+  const visibleCandidates = candidates
+    .filter((c) => {
+      if (filter === "registered") return c.status === "registered";
+      if (filter === "pending") return c.status !== "registered";
+      return true;
+    })
+    .sort((a, b) => {
+      const scanDelta = scanSortTime(b) - scanSortTime(a);
+      if (scanDelta !== 0) return scanDelta;
+      return new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime();
+    });
 
   const openConfirmDialog = (candidate: DiscoveredAgentCandidateV2) => {
     setConfirmTarget(candidate);
@@ -324,6 +412,7 @@ export function AutoDiscovery() {
         ],
         candidates_found: 0,
       });
+      void fetchScans();
     } catch (e) {
       console.error(e);
     } finally {
@@ -365,14 +454,7 @@ export function AutoDiscovery() {
       </div>
 
       <MasterDetailLayout
-        items={candidates
-          .filter((c) => {
-            if (filter === "registered") return c.status === "registered";
-            if (filter === "pending") return c.status !== "registered";
-            return true;
-          })
-          .sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime())
-        }
+        items={visibleCandidates}
         loading={loading}
         selectedId={selectedId}
         onSelect={select}
@@ -413,19 +495,15 @@ export function AutoDiscovery() {
           />
         }
         renderGroupHeader={(c, _, prev) => {
-          const d1 = new Date(c.first_seen).toLocaleDateString();
-          const d2 = prev
-            ? new Date(prev.first_seen).toLocaleDateString()
-            : null;
-          if (d1 !== d2) {
-            const isToday = d1 === new Date().toLocaleDateString();
-            return (
-              <div className="px-2 py-1 mt-4 first:mt-0 mb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                {isToday ? "Today (Latest)" : d1}
-              </div>
-            );
-          }
-          return null;
+          const scanId = scanIdForCandidate(c) || "legacy";
+          const prevScanId = prev ? scanIdForCandidate(prev) || "legacy" : null;
+          if (scanId === prevScanId) return null;
+          const isLatest = scanId === scanIdForCandidate(visibleCandidates[0]);
+          return (
+            <div className="px-2 py-1 mt-4 first:mt-0 mb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              {isLatest ? "Latest Scan" : "Scan"} · {scanLabelForCandidate(c)}
+            </div>
+          );
         }}
         renderCard={(c, selected) => {
           let status: UiStatus = "idle";
@@ -433,6 +511,7 @@ export function AutoDiscovery() {
           else if (c.status === "pending_approval") status = "degraded";
           const caps = capabilityTags(c);
           const isRegistered = c.status === "registered";
+          const browserName = browserNameForCandidate(c);
 
           return (
             <EntityCard
@@ -460,6 +539,14 @@ export function AutoDiscovery() {
                   value:
                     caps.length > 0 ? caps.slice(0, 3).join(", ") : "Unknown",
                 },
+                ...(browserName
+                  ? [
+                      {
+                        label: "Browser",
+                        value: browserName,
+                      },
+                    ]
+                  : []),
               ]}
               actions={
                 isRegistered
@@ -487,6 +574,8 @@ export function AutoDiscovery() {
           else if (c.status === "pending_approval") status = "degraded";
           const caps = capabilityTags(c);
           const isRegistered = c.status === "registered";
+          const browserName = browserNameForCandidate(c);
+          const sourceSummary = evidenceSourcesForCandidate(c);
 
           return (
             <DetailPane
@@ -526,6 +615,46 @@ export function AutoDiscovery() {
                   label: "Overview",
                   content: (
                     <div className="space-y-6">
+                      <div className="p-4 bg-muted/30 rounded-xl border">
+                        <h4 className="text-sm font-semibold mb-3">
+                          Friendly Details
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="text-muted-foreground block">
+                              Provider
+                            </span>
+                            <span className="font-medium">
+                              {c.vendor || "Unknown"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground block">
+                              Runtime
+                            </span>
+                            <span className="font-medium">
+                              {browserName || c.inferred_agent_type}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground block">
+                              Detected Via
+                            </span>
+                            <span className="font-medium">
+                              {sourceSummary || "Discovery evidence"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground block">
+                              Scan
+                            </span>
+                            <span className="font-medium">
+                              {scanLabelForCandidate(c)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="p-4 bg-muted/30 rounded-xl border">
                           <span className="text-muted-foreground block mb-1">
@@ -660,7 +789,7 @@ export function AutoDiscovery() {
               </svg>
             </button>
             <SimplePolicyWizard
-              agents={candidates.map((c) => ({
+              agents={visibleCandidates.map((c) => ({
                 id: c.candidate_id,
                 label: displayNameForCandidate(c),
               }))}

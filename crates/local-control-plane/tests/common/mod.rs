@@ -50,7 +50,10 @@ impl LocalControlPlaneHarness {
                 None, // No verification needed in testing
             )),
             latest_snapshot: Arc::new(tokio::sync::RwLock::new(None)),
-            secure_spool: Arc::new(dek_secure_spool::sqlite_spool::SqliteSpool::new(&db_path, &[0u8; 32], 1000).unwrap()),
+            secure_spool: Arc::new(
+                dek_secure_spool::sqlite_spool::SqliteSpool::new(&db_path, &[0u8; 32], 1000)
+                    .unwrap(),
+            ),
             telemetry_tx: tokio::sync::broadcast::channel(100).0,
         };
 

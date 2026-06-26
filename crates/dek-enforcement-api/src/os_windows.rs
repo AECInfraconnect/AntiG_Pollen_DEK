@@ -19,7 +19,9 @@ impl ResourceObserver for WindowsEtwObserver {
 
 #[cfg(target_os = "windows")]
 pub mod ffi {
-    use windows_sys::Win32::System::Diagnostics::Etw::{StartTraceW, EVENT_TRACE_PROPERTIES};
+    use windows_sys::Win32::System::Diagnostics::Etw::{
+        StartTraceW, CONTROLTRACE_HANDLE, EVENT_TRACE_PROPERTIES,
+    };
 
     // FFI Definitions for ETW (Event Tracing for Windows) mapping
     pub const EVENT_TRACE_CONTROL_QUERY: u32 = 0;
@@ -36,12 +38,16 @@ pub mod ffi {
         pub props: *mut EVENT_TRACE_PROPERTIES,
     }
 
+    /// # Safety
+    ///
+    /// `session_name` must be a valid null-terminated UTF-16 pointer and
+    /// `properties` must point to a valid writable `EVENT_TRACE_PROPERTIES`
+    /// buffer for the lifetime of the call.
     pub unsafe fn start_etw_trace(
         session_name: *const u16,
         properties: *mut EVENT_TRACE_PROPERTIES,
     ) -> u32 {
-        // StartTraceW requires CONTROLTRACE_HANDLE which varies in bitness
-        // Just provide the signature here
-        unimplemented!()
+        let mut handle = CONTROLTRACE_HANDLE { Value: 0 };
+        unsafe { StartTraceW(&mut handle, session_name, properties) }
     }
 }

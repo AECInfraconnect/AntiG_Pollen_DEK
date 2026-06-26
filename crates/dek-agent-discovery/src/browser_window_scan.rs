@@ -151,6 +151,48 @@ pub fn browser_id(process_name: &str) -> &'static str {
     }
 }
 
+pub fn browser_scope_for_pid(pid: u32) -> Option<(&'static str, &'static str, String)> {
+    let mut sys = sysinfo::System::new_all();
+    sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+
+    sys.processes().iter().find_map(|(process_pid, process)| {
+        if process_pid.as_u32() != pid {
+            return None;
+        }
+        let process_name = process.name().to_string_lossy().to_string();
+        let browser_id = browser_id(&process_name);
+        if browser_id == "browser" {
+            return None;
+        }
+        Some((
+            browser_id,
+            browser_display_name(&process_name),
+            process_name,
+        ))
+    })
+}
+
+pub fn single_running_browser_scope() -> Option<(&'static str, &'static str)> {
+    let mut sys = sysinfo::System::new_all();
+    sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+
+    let mut found: Option<(&'static str, &'static str)> = None;
+    for process in sys.processes().values() {
+        let process_name = process.name().to_string_lossy();
+        let id = browser_id(&process_name);
+        if id == "browser" {
+            continue;
+        }
+        let name = browser_display_name(&process_name);
+        match found {
+            None => found = Some((id, name)),
+            Some((existing_id, _)) if existing_id == id => {}
+            Some(_) => return None,
+        }
+    }
+    found
+}
+
 pub fn browser_scoped_ai_name(base_name: &str, browser_name: &str) -> String {
     let base = base_name.strip_suffix(" (Web)").unwrap_or(base_name).trim();
     format!("{base} ({browser_name})")
@@ -207,6 +249,21 @@ fn merge_platform_window_titles(windows: &mut Vec<BrowserWindow>, browsers: &[Br
         if !is_browser_process(&title.process_name, browsers) {
             continue;
         }
+        if title.is_tab {
+            let already_present = windows
+                .iter()
+                .any(|window| window.pid == title.pid && window.title == title.title);
+            if !already_present {
+                windows.push(BrowserWindow {
+                    pid: title.pid,
+                    process_name: title.process_name,
+                    title: title.title,
+                    cmdline: String::new(),
+                });
+            }
+            continue;
+        }
+
         if let Some(idx) = by_pid.get(&title.pid).copied() {
             if windows[idx].title.is_empty() {
                 windows[idx].title = title.title;
@@ -238,6 +295,8 @@ struct WinProcessTitle {
     id: u32,
     process_name: String,
     main_window_title: Option<String>,
+    #[serde(default)]
+    is_tab: bool,
 }
 
 #[cfg(target_os = "windows")]
@@ -245,11 +304,48 @@ struct WindowTitle {
     pid: u32,
     process_name: String,
     title: String,
+    is_tab: bool,
 }
 
 #[cfg(target_os = "windows")]
 fn powershell_window_titles() -> Vec<WindowTitle> {
-    let script = "Get-Process | Where-Object {$_.MainWindowTitle} | Select-Object Id,ProcessName,MainWindowTitle | ConvertTo-Json -Compress";
+    let script = r#"
+$rows = @()
+Get-Process | Where-Object {$_.MainWindowTitle} | ForEach-Object {
+  $rows += [pscustomobject]@{
+    Id = $_.Id
+    ProcessName = $_.ProcessName
+    MainWindowTitle = $_.MainWindowTitle
+    IsTab = $false
+  }
+}
+try {
+  Add-Type -AssemblyName UIAutomationClient | Out-Null
+  Add-Type -AssemblyName UIAutomationTypes | Out-Null
+  $root = [System.Windows.Automation.AutomationElement]::RootElement
+  $condition = New-Object System.Windows.Automation.PropertyCondition(
+    [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+    [System.Windows.Automation.ControlType]::TabItem
+  )
+  $tabs = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
+  foreach ($tab in $tabs) {
+    $name = $tab.Current.Name
+    $pid = $tab.Current.ProcessId
+    if (-not [string]::IsNullOrWhiteSpace($name) -and $pid -gt 0) {
+      $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+      if ($proc) {
+        $rows += [pscustomobject]@{
+          Id = $pid
+          ProcessName = $proc.ProcessName
+          MainWindowTitle = $name
+          IsTab = $true
+        }
+      }
+    }
+  }
+} catch {}
+$rows | ConvertTo-Json -Compress
+"#;
     let output = std::process::Command::new("powershell")
         .args(["-NoProfile", "-Command", script])
         .output();
@@ -283,6 +379,7 @@ fn powershell_window_titles() -> Vec<WindowTitle> {
                     pid: row.id,
                     process_name: row.process_name,
                     title,
+                    is_tab: row.is_tab,
                 })
             }
         })
@@ -467,6 +564,56 @@ mod tests {
         assert!(names.contains("ChatGPT (Edge)"));
         assert!(merge_keys.contains("webai:chatgpt_web:chrome"));
         assert!(merge_keys.contains("webai:chatgpt_web:edge"));
+    }
+
+    #[test]
+    fn tab_titles_from_one_browser_process_create_multiple_web_ai_candidates() {
+        let catalog = vec![
+            web_sig("claude_web", "claude.ai", "Claude (Web)", &["Claude"]),
+            web_sig(
+                "deepseek_web",
+                "chat.deepseek.com",
+                "DeepSeek (Web)",
+                &["DeepSeek"],
+            ),
+            web_sig(
+                "gemini_web",
+                "gemini.google.com",
+                "Gemini (Web)",
+                &["Gemini", "Google Gemini"],
+            ),
+        ];
+        let windows = vec![
+            BrowserWindow {
+                pid: 42,
+                process_name: "msedge.exe".into(),
+                title: "Claude - private research".into(),
+                cmdline: String::new(),
+            },
+            BrowserWindow {
+                pid: 42,
+                process_name: "msedge.exe".into(),
+                title: "DeepSeek - Into the unknown".into(),
+                cmdline: String::new(),
+            },
+            BrowserWindow {
+                pid: 42,
+                process_name: "msedge.exe".into(),
+                title: "Google Gemini".into(),
+                cmdline: String::new(),
+            },
+        ];
+
+        let evidence = evidence_from_browser_windows(&windows, &catalog);
+        let names = evidence
+            .iter()
+            .filter_map(|ev| ev.data.get("name").and_then(|v| v.as_str()))
+            .collect::<HashSet<_>>();
+
+        assert_eq!(evidence.len(), 3);
+        assert!(names.contains("Claude (Edge)"));
+        assert!(names.contains("DeepSeek (Edge)"));
+        assert!(names.contains("Gemini (Edge)"));
     }
 
     #[test]

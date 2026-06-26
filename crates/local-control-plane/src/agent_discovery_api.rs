@@ -203,6 +203,11 @@ async fn start_scan(
                     >(existing_raw)
                     {
                         candidate.first_seen = existing.first_seen;
+                        for scan_id in existing.scan_ids {
+                            if !candidate.scan_ids.iter().any(|id| id == &scan_id) {
+                                candidate.scan_ids.push(scan_id);
+                            }
+                        }
                         if matches!(
                             existing.status,
                             dek_agent_discovery::model::DiscoveryStatus::Registered

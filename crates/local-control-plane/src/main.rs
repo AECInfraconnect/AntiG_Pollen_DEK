@@ -4,8 +4,6 @@ use tokio::net::TcpListener;
 use tracing::info;
 
 use dek_control_plane_api::identity::ControlPlaneIdentity;
-use dek_enforcement_api::control_method::{EmitCtx, TelemetrySink};
-use pollen_contract::PollenTelemetryEnvelopeV1;
 
 use local_control_plane::app;
 use local_control_plane::auth;

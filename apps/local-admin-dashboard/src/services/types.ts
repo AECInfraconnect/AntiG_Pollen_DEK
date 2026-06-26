@@ -414,6 +414,8 @@ export interface DiscoveredAgentCandidateV2 {
   risk_score: number;
   first_seen: string;
   last_seen: string;
+  scan_ids?: string[];
+  last_scan_id?: string;
   evidence: DiscoveryEvidenceV2[];
   matched_signals?: MatchedSignal[];
   capability_tags?: string[];

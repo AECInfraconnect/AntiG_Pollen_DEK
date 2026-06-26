@@ -116,6 +116,8 @@ model DiscoveryCandidate {
   inferred_name?: string;
   inferred_provider?: string;
   status: string;
+  scan_ids?: string[];
+  last_scan_id?: string;
 }
 
 model AgentObservationEventListResponse {

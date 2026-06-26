@@ -206,7 +206,7 @@ fn scan_sessions(
                         privacy_class: PrivacyClass::InternalMetadata,
                         redacted: true,
                         data: serde_json::json!({
-                            "origin": format!("https://{}", matched_domain),
+                        "origin": format!("https://{}", matched_domain),
                             "name": web_ai_display_name(sig, browser_name),
                             "base_name": sig.name.clone(),
                             "vendor": sig.vendor.clone(),
@@ -243,9 +243,22 @@ fn scan_network_sni(
     let recent_snis = source.recent_flows(Duration::from_secs(3600));
 
     for flow in recent_snis {
+        let browser_scope = flow
+            .browser_pid
+            .and_then(crate::browser_window_scan::browser_scope_for_pid)
+            .map(|(browser_id, browser_name, process_name)| {
+                (browser_id, browser_name, Some(process_name))
+            })
+            .or_else(|| {
+                crate::browser_window_scan::single_running_browser_scope()
+                    .map(|(browser_id, browser_name)| (browser_id, browser_name, None))
+            });
+        let (browser_id, browser_name, browser_process) =
+            browser_scope.unwrap_or(("network", "Browser", None));
+
         for sig in catalog {
             if let Some(matched_domain) = host_matches_signature(&flow.sni_host, sig) {
-                let merge_key = web_ai_merge_key(sig, "network");
+                let merge_key = web_ai_merge_key(sig, browser_id);
 
                 if !seen.insert(merge_key.clone()) {
                     continue;
@@ -261,11 +274,12 @@ fn scan_network_sni(
                     data: serde_json::json!({
                         "origin": format!("https://{}", matched_domain),
                         "sni": flow.sni_host.clone(),
-                        "name": web_ai_display_name(sig, "Browser"),
+                        "name": web_ai_display_name(sig, browser_name),
                         "base_name": sig.name.clone(),
                         "vendor": sig.vendor.clone(),
-                        "browser_id": "network",
-                        "browser_name": "Browser",
+                        "browser_id": browser_id,
+                        "browser_name": browser_name,
+                        "browser": browser_process,
                         "capability_tags": sig.capability_tags.clone(),
                         "browser_pid": flow.browser_pid,
                         "matched_domain": matched_domain,

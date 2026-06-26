@@ -771,6 +771,8 @@ fn aggregate_by_merge_key(
             matched_signals,
             first_seen: chrono::Utc::now().to_rfc3339(),
             last_seen: chrono::Utc::now().to_rfc3339(),
+            scan_ids: Vec::new(),
+            last_scan_id: None,
             evidence: group,
             discovered_configs: vec![],
             discovered_endpoints: endpoints,

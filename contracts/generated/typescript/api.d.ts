@@ -1133,6 +1133,8 @@ export interface components {
             inferred_name?: string;
             inferred_provider?: string;
             status: string;
+            scan_ids?: string[];
+            last_scan_id?: string;
         };
         DiscoveryCandidateListResponse: {
             items: components["schemas"]["DiscoveryCandidate"][];

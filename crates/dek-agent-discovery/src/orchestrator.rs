@@ -341,15 +341,19 @@ impl DiscoveryOrchestrator {
 
         let tenant_id = self.tenant_id.clone();
         let device_id = "device-local".to_string();
+        let scan_id_for_candidates = scan_id.to_string();
 
         let rx_loop = async move {
             while let Some(mut evs) = ev_rx.recv().await {
                 all_evidence.append(&mut evs);
-                let candidates = crate::aggregator::aggregate_evidence(
+                let mut candidates = crate::aggregator::aggregate_evidence(
                     &tenant_id,
                     &device_id,
                     all_evidence.clone(),
                 );
+                for cand in &mut candidates {
+                    tag_candidate_with_scan(cand, &scan_id_for_candidates);
+                }
 
                 if let Some(sender) = &tx {
                     for cand in &candidates {
@@ -383,5 +387,18 @@ impl DiscoveryOrchestrator {
         job.candidates_found = candidates.len() as u32;
 
         Ok((job, candidates))
+    }
+}
+
+fn tag_candidate_with_scan(candidate: &mut DiscoveredAgentCandidateV2, scan_id: &str) {
+    candidate.last_scan_id = Some(scan_id.to_string());
+    if !candidate.scan_ids.iter().any(|id| id == scan_id) {
+        candidate.scan_ids.push(scan_id.to_string());
+    }
+
+    for evidence in &mut candidate.evidence {
+        if let Some(data) = evidence.data.as_object_mut() {
+            data.insert("scan_id".to_string(), serde_json::json!(scan_id));
+        }
     }
 }

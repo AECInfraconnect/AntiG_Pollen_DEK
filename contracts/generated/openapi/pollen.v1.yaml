@@ -2334,6 +2334,12 @@ components:
           type: string
         status:
           type: string
+        scan_ids:
+          type: array
+          items:
+            type: string
+        last_scan_id:
+          type: string
     DiscoveryCandidateListResponse:
       type: object
       required:
