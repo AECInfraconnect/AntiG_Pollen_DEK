@@ -120,6 +120,73 @@ model DiscoveryCandidate {
   last_scan_id?: string;
 }
 
+model CanonicalDiscoveryCapability {
+  capability_id: string;
+  candidate_id: string;
+  capability_kind: string;
+  name: string;
+  description?: string;
+  input_schema?: unknown;
+  output_schema?: unknown;
+  modality: string[];
+  actions: string[];
+  source: string;
+  confidence: float32;
+  risk_tags: string[];
+  evidence_ids: string[];
+  privacy_class: string;
+}
+
+model DiscoveredDiscoveryRelationship {
+  relationship_id: string;
+  subject_candidate_id: string;
+  relation: string;
+  object_candidate_id: string;
+  confidence: float32;
+  evidence_ids: string[];
+}
+
+model DiscoveryEntityCandidateV1 {
+  schema_version: "pollek.discovery_entity_candidate.v1";
+  candidate_id: string;
+  tenant_id: string;
+  device_id: string;
+  entity_kind: string;
+  display_name: string;
+  vendor?: string;
+  product?: string;
+  confidence: float32;
+  risk_score: int32;
+  status: string;
+  capabilities: CanonicalDiscoveryCapability[];
+  evidence: unknown[];
+  relationships: DiscoveredDiscoveryRelationship[];
+  suggested_registration: unknown;
+  suggested_control_bindings: unknown[];
+  privacy_profile: string;
+  performance_cost_class: string;
+  first_seen: string;
+  last_seen: string;
+}
+
+model DiscoveryCapabilityInventoryResponse {
+  schema_version: "discovery-capability-inventory.v1";
+  candidate_id: string;
+  entity: DiscoveryEntityCandidateV1;
+  capabilities: CanonicalDiscoveryCapability[];
+  relationships: DiscoveredDiscoveryRelationship[];
+  retrieval_status: string;
+  source: string;
+  privacy_note?: string;
+}
+
+model DiscoveryEntityListResponse {
+  schema_version: "discovery-entity-list.v1";
+  entities: DiscoveryEntityCandidateV1[];
+  next_cursor?: int64;
+  total: int64;
+}
+
 model AgentObservationEventListResponse {
   items: AgentObservationEvent[];
 }
@@ -336,15 +403,27 @@ interface ObservationApi {
 }
 
 @tag("Discovery")
-@route("/v1/tenants/{tenant_id}/agent-discovery")
+@route("/v1/tenants/{tenant_id}/discovery")
 interface DiscoveryApi {
   @doc("Start a discovery scan")
-  @route("scan")
-  @post scan(@path tenant_id: string, ...PollekHeaders): void | PollekError;
+  @route("scans")
+  @post scan(@path tenant_id: string, ...PollekHeaders, @body body: unknown): unknown | PollekError;
 
   @doc("List discovery candidates")
   @route("candidates")
   @get listCandidates(@path tenant_id: string, ...PollekHeaders): DiscoveryCandidateListResponse | PollekError;
+
+  @doc("List canonical discovery entities derived from discovered candidates.")
+  @route("entities")
+  @get listDiscoveryEntities(@path tenant_id: string, ...PollekHeaders): DiscoveryEntityListResponse | PollekError;
+
+  @doc("Get canonical capabilities for a discovery candidate without invoking tools or reading resources.")
+  @route("candidates/{candidate_id}/capabilities")
+  @get getCandidateCapabilities(@path tenant_id: string, @path candidate_id: string, ...PollekHeaders): DiscoveryCapabilityInventoryResponse | PollekError;
+
+  @doc("Retrieve and persist canonical capabilities for a discovery candidate.")
+  @route("candidates/{candidate_id}/retrieve-capabilities")
+  @post retrieveCandidateCapabilities(@path tenant_id: string, @path candidate_id: string, ...PollekHeaders): DiscoveryCapabilityInventoryResponse | PollekError;
 
   @doc("Register a candidate")
   @route("candidates/{candidate_id}/register")

@@ -1,7 +1,7 @@
 # README Promise Task List
 
-<!-- readme-promises-sha256: 141f86ebdc3b1105ced97cf4979975d0cd220318a6aabd15b884b0e6e3e3a218 -->
-<!-- readme-promises-count: 56 -->
+<!-- readme-promises-sha256: 1aa7e5bcfcacb1913b308670278f8a2d102a24fb9b4d57e81e15815a58680a83 -->
+<!-- readme-promises-count: 57 -->
 
 This is the living implementation checklist for the user-facing promises in
 `README.md`. When the README changes, update this file in the same commit and
@@ -53,6 +53,7 @@ Status values:
 | Status | README Promise | Implementation Task |
 | --- | --- | --- |
 | Active | Shadow AI Discovery | Detect browser/process/network/local-model agents and attach evidence/source IDs. |
+| Active | Canonical Discovery Inventory | Derive source-backed entities, capabilities, and relationships from discovered candidates and expose them through Local Dashboard plus Contract Hub. |
 | Done | Secure Telemetry Spool | Continue routing local observations through the secure spool without requiring extra IPC ports. |
 | Active | Agent Fingerprint Definitions | Keep local baseline import plus signed Cloud delta update path in the contract. |
 | Active | Agent Binding Governance | Bind discovered agents to runtime capabilities, identity metadata, and enforceability state. |

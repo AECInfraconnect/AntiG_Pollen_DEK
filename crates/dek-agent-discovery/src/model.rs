@@ -267,6 +267,82 @@ pub struct DiscoveredMcpServerRef {
     pub command: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "snake_case")]
+pub enum DiscoveryEntityKind {
+    Agent,
+    AgenticHost,
+    SubAgent,
+    McpServer,
+    Tool,
+    Resource,
+    ModelProvider,
+    Model,
+    EmbeddingModel,
+    Reranker,
+    SafetyModel,
+    VisionModel,
+    MultimodalModel,
+    WorkflowBlueprint,
+    InferenceEndpoint,
+    Container,
+    Framework,
+    IdeExtension,
+    BrowserExtension,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CanonicalCapability {
+    pub capability_id: String,
+    pub candidate_id: String,
+    pub capability_kind: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub input_schema: Option<serde_json::Value>,
+    pub output_schema: Option<serde_json::Value>,
+    pub modality: Vec<String>,
+    pub actions: Vec<String>,
+    pub source: String,
+    pub confidence: f64,
+    pub risk_tags: Vec<String>,
+    pub evidence_ids: Vec<String>,
+    pub privacy_class: PrivacyClass,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscoveryEntityCandidate {
+    pub schema_version: String,
+    pub candidate_id: String,
+    pub tenant_id: String,
+    pub device_id: String,
+    pub entity_kind: DiscoveryEntityKind,
+    pub display_name: String,
+    pub vendor: Option<String>,
+    pub product: Option<String>,
+    pub confidence: f64,
+    pub risk_score: u32,
+    pub status: DiscoveryStatus,
+    pub capabilities: Vec<CanonicalCapability>,
+    pub evidence: Vec<DiscoveryEvidenceV2>,
+    pub relationships: Vec<DiscoveredRelationship>,
+    pub suggested_registration: serde_json::Value,
+    pub suggested_control_bindings: Vec<ControlBindingPlan>,
+    pub privacy_profile: String,
+    pub performance_cost_class: String,
+    pub first_seen: String,
+    pub last_seen: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscoveredRelationship {
+    pub relationship_id: String,
+    pub subject_candidate_id: String,
+    pub relation: String,
+    pub object_candidate_id: String,
+    pub confidence: f64,
+    pub evidence_ids: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ControlBindingKind {
     McpStdioWrapper,

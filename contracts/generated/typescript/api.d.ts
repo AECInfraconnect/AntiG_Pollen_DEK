@@ -321,7 +321,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/tenants/{tenant_id}/agent-discovery/candidates": {
+    "/v1/tenants/{tenant_id}/devices/{device_id}/bundles/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Fetch the latest signed policy bundle manifest for a device. */
+        post: operations["BundleApi_fetchLatest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/discovery/candidates": {
         parameters: {
             query?: never;
             header?: never;
@@ -338,7 +355,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/block": {
+    "/v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/block": {
         parameters: {
             query?: never;
             header?: never;
@@ -355,7 +372,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/ignore": {
+    "/v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get canonical capabilities for a discovery candidate without invoking tools or reading resources. */
+        get: operations["DiscoveryApi_getCandidateCapabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/ignore": {
         parameters: {
             query?: never;
             header?: never;
@@ -372,7 +406,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/observe-only": {
+    "/v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/observe-only": {
         parameters: {
             query?: never;
             header?: never;
@@ -389,7 +423,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/register": {
+    "/v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/register": {
         parameters: {
             query?: never;
             header?: never;
@@ -406,7 +440,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/tenants/{tenant_id}/agent-discovery/scan": {
+    "/v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/retrieve-capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Retrieve and persist canonical capabilities for a discovery candidate. */
+        post: operations["DiscoveryApi_retrieveCandidateCapabilities"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/discovery/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List canonical discovery entities derived from discovered candidates. */
+        get: operations["DiscoveryApi_listDiscoveryEntities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/discovery/scans": {
         parameters: {
             query?: never;
             header?: never;
@@ -417,23 +485,6 @@ export interface paths {
         put?: never;
         /** @description Start a discovery scan */
         post: operations["DiscoveryApi_scan"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/tenants/{tenant_id}/devices/{device_id}/bundles/latest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Fetch the latest signed policy bundle manifest for a device. */
-        post: operations["BundleApi_fetchLatest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1440,6 +1491,23 @@ export interface components {
             estimated: boolean;
             cost_details_ext: Record<string, never>;
         };
+        CanonicalDiscoveryCapability: {
+            capability_id: string;
+            candidate_id: string;
+            capability_kind: string;
+            name: string;
+            description?: string;
+            input_schema?: unknown;
+            output_schema?: unknown;
+            modality: string[];
+            actions: string[];
+            source: string;
+            /** Format: float */
+            confidence: number;
+            risk_tags: string[];
+            evidence_ids: string[];
+            privacy_class: string;
+        };
         CanonicalTokenUsageV1: {
             /** Format: int64 */
             input_tokens: number;
@@ -1542,6 +1610,15 @@ export interface components {
         };
         /** @enum {string} */
         DecisionOutcome: "allow" | "deny" | "redact" | "warn" | "observed";
+        DiscoveredDiscoveryRelationship: {
+            relationship_id: string;
+            subject_candidate_id: string;
+            relation: string;
+            object_candidate_id: string;
+            /** Format: float */
+            confidence: number;
+            evidence_ids: string[];
+        };
         DiscoveryCandidate: {
             candidate_id: string;
             tenant_id: string;
@@ -1558,6 +1635,51 @@ export interface components {
         };
         DiscoveryCandidateListResponse: {
             items: components["schemas"]["DiscoveryCandidate"][];
+        };
+        DiscoveryCapabilityInventoryResponse: {
+            /** @enum {string} */
+            schema_version: "discovery-capability-inventory.v1";
+            candidate_id: string;
+            entity: components["schemas"]["DiscoveryEntityCandidateV1"];
+            capabilities: components["schemas"]["CanonicalDiscoveryCapability"][];
+            relationships: components["schemas"]["DiscoveredDiscoveryRelationship"][];
+            retrieval_status: string;
+            source: string;
+            privacy_note?: string;
+        };
+        DiscoveryEntityCandidateV1: {
+            /** @enum {string} */
+            schema_version: "pollek.discovery_entity_candidate.v1";
+            candidate_id: string;
+            tenant_id: string;
+            device_id: string;
+            entity_kind: string;
+            display_name: string;
+            vendor?: string;
+            product?: string;
+            /** Format: float */
+            confidence: number;
+            /** Format: int32 */
+            risk_score: number;
+            status: string;
+            capabilities: components["schemas"]["CanonicalDiscoveryCapability"][];
+            evidence: unknown[];
+            relationships: components["schemas"]["DiscoveredDiscoveryRelationship"][];
+            suggested_registration: unknown;
+            suggested_control_bindings: unknown[];
+            privacy_profile: string;
+            performance_cost_class: string;
+            first_seen: string;
+            last_seen: string;
+        };
+        DiscoveryEntityListResponse: {
+            /** @enum {string} */
+            schema_version: "discovery-entity-list.v1";
+            entities: components["schemas"]["DiscoveryEntityCandidateV1"][];
+            /** Format: int64 */
+            next_cursor?: number;
+            /** Format: int64 */
+            total: number;
         };
         /** @enum {string} */
         EnforcePlaneState: "enforcing" | "observing" | "degraded" | "failed";
@@ -2765,6 +2887,53 @@ export interface operations {
             };
         };
     };
+    BundleApi_fetchLatest: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BundleFetchRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BundleFetchResponse"];
+                };
+            };
+            /** @description The client has made a conditional request and the resource has not been modified. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
     DiscoveryApi_listCandidates: {
         parameters: {
             query?: never;
@@ -2822,6 +2991,42 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    DiscoveryApi_getCandidateCapabilities: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveryCapabilityInventoryResponse"];
+                };
             };
             /** @description An unexpected error response. */
             default: {
@@ -2936,7 +3141,43 @@ export interface operations {
             };
         };
     };
-    DiscoveryApi_scan: {
+    DiscoveryApi_retrieveCandidateCapabilities: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveryCapabilityInventoryResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    DiscoveryApi_listDiscoveryEntities: {
         parameters: {
             query?: never;
             header: {
@@ -2951,12 +3192,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description There is no content to send for this request, but the headers may be useful. */
-            204: {
+            /** @description The request has succeeded. */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DiscoveryEntityListResponse"];
+                };
             };
             /** @description An unexpected error response. */
             default: {
@@ -2969,7 +3212,7 @@ export interface operations {
             };
         };
     };
-    BundleApi_fetchLatest: {
+    DiscoveryApi_scan: {
         parameters: {
             query?: never;
             header: {
@@ -2979,13 +3222,12 @@ export interface operations {
             };
             path: {
                 tenant_id: string;
-                device_id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BundleFetchRequest"];
+                "application/json": unknown;
             };
         };
         responses: {
@@ -2995,15 +3237,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BundleFetchResponse"];
+                    "application/json": unknown;
                 };
-            };
-            /** @description The client has made a conditional request and the resource has not been modified. */
-            304: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description An unexpected error response. */
             default: {

@@ -17,6 +17,30 @@ orchestration.
 The next expansion must extend that architecture. It should not replace it with
 one large scanner.
 
+## Current Implemented Slice
+
+Pollek now exposes a first canonical discovery inventory slice:
+
+- `dek-agent-discovery::capability_inventory` derives
+  `DiscoveryEntityCandidate`, `CanonicalCapability`, and relationship records
+  from existing source-backed discovery evidence.
+- Local Control Plane exposes:
+  - `GET /v1/tenants/{tenant}/discovery/entities`
+  - `GET /v1/tenants/{tenant}/discovery/candidates/{candidate_id}/capabilities`
+  - `POST /v1/tenants/{tenant}/discovery/candidates/{candidate_id}/retrieve-capabilities`
+- `retrieve-capabilities` persists canonical entities, capabilities, and
+  relationships as registry raw objects for local use and future Cloud sync.
+- The Local Dashboard Auto Discovery detail pane shows a friendly Capabilities
+  view with privacy profile, collection cost class, capability source, risk tags,
+  and relationship links.
+- Contract Hub TypeSpec/OpenAPI/TypeScript artifacts include the same
+  `DiscoveryEntityCandidateV1` and `DiscoveryCapabilityInventoryResponse`
+  shapes for Local Dashboard and Pollek Cloud.
+
+This slice is intentionally metadata-derived. It does not invoke MCP tools, read
+MCP resources, read raw prompts/responses, call external provider APIs, or
+download model weights.
+
 ## Design Principles
 
 - Definition-driven product coverage: fast-changing agent signatures, endpoint

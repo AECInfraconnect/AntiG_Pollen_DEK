@@ -75,6 +75,18 @@ pub fn router() -> Router<AppState> {
             get(list_candidates).delete(clear_candidates),
         )
         .route(
+            "/v1/tenants/:tenant/discovery/entities",
+            get(list_discovery_entities),
+        )
+        .route(
+            "/v1/tenants/:tenant/discovery/candidates/:candidate_id/capabilities",
+            get(get_candidate_capabilities),
+        )
+        .route(
+            "/v1/tenants/:tenant/discovery/candidates/:candidate_id/retrieve-capabilities",
+            post(retrieve_candidate_capabilities),
+        )
+        .route(
             "/v1/tenants/:tenant/discovery/candidates/:candidate_id",
             axum::routing::delete(delete_candidate),
         )
@@ -302,6 +314,148 @@ async fn list_candidates(
     })))
 }
 
+async fn list_discovery_entities(
+    Path(tenant): Path<String>,
+    Query(query): Query<PaginationQuery>,
+    State(st): State<AppState>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let mut candidates = Vec::new();
+    for raw in st
+        .registry_store
+        .list_raw(&tenant, "discovery_candidate")
+        .await
+        .map_err(ApiError::Internal)?
+    {
+        if let Ok(candidate) =
+            serde_json::from_value::<dek_agent_discovery::model::DiscoveredAgentCandidateV2>(raw)
+        {
+            candidates.push(candidate);
+        }
+    }
+
+    let mut entities =
+        dek_agent_discovery::capability_inventory::entities_for_candidates(&candidates);
+    entities.sort_by(|a, b| b.last_seen.cmp(&a.last_seen));
+
+    let limit = query.limit.unwrap_or(100);
+    let cursor = query.cursor.unwrap_or(0);
+    let total = entities.len();
+    let items: Vec<_> = entities.into_iter().skip(cursor).take(limit).collect();
+
+    Ok(Json(serde_json::json!({
+        "schema_version": "discovery-entity-list.v1",
+        "entities": items,
+        "next_cursor": if cursor + limit < total { Some(cursor + limit) } else { None },
+        "total": total
+    })))
+}
+
+async fn get_candidate_capabilities(
+    Path((tenant, candidate_id)): Path<(String, String)>,
+    State(st): State<AppState>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let candidate = load_candidate(&st, &tenant, &candidate_id).await?;
+    let entity = dek_agent_discovery::capability_inventory::entity_for_candidate(&candidate);
+    Ok(Json(capability_inventory_response(&entity, "derived")))
+}
+
+async fn retrieve_candidate_capabilities(
+    Path((tenant, candidate_id)): Path<(String, String)>,
+    State(st): State<AppState>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let candidate = load_candidate(&st, &tenant, &candidate_id).await?;
+    let entity = dek_agent_discovery::capability_inventory::entity_for_candidate(&candidate);
+    persist_discovery_entity(&st, &tenant, &entity).await?;
+
+    Ok(Json(capability_inventory_response(&entity, "persisted")))
+}
+
+async fn load_candidate(
+    st: &AppState,
+    tenant: &str,
+    candidate_id: &str,
+) -> ApiResult<dek_agent_discovery::model::DiscoveredAgentCandidateV2> {
+    let raw = st
+        .registry_store
+        .get_raw(tenant, "discovery_candidate", candidate_id)
+        .await
+        .map_err(ApiError::Internal)?
+        .ok_or_else(|| ApiError::NotFound(candidate_id.to_string()))?;
+
+    serde_json::from_value(raw).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))
+}
+
+async fn persist_discovery_entity(
+    st: &AppState,
+    tenant: &str,
+    entity: &dek_agent_discovery::model::DiscoveryEntityCandidate,
+) -> ApiResult<()> {
+    let now = chrono::Utc::now().to_rfc3339();
+    let entity_value =
+        serde_json::to_value(entity).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+    st.registry_store
+        .upsert_raw(
+            tenant,
+            "discovery_entity",
+            &entity.candidate_id,
+            &entity_value,
+        )
+        .await
+        .map_err(ApiError::Internal)?;
+
+    for capability in &entity.capabilities {
+        let mut value =
+            serde_json::to_value(capability).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+        if let Some(obj) = value.as_object_mut() {
+            obj.insert("updated_at".to_string(), serde_json::json!(now.clone()));
+        }
+        st.registry_store
+            .upsert_raw(
+                tenant,
+                "discovered_capability",
+                &capability.capability_id,
+                &value,
+            )
+            .await
+            .map_err(ApiError::Internal)?;
+    }
+
+    for relationship in &entity.relationships {
+        let mut value = serde_json::to_value(relationship)
+            .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+        if let Some(obj) = value.as_object_mut() {
+            obj.insert("updated_at".to_string(), serde_json::json!(now.clone()));
+        }
+        st.registry_store
+            .upsert_raw(
+                tenant,
+                "discovered_relationship",
+                &relationship.relationship_id,
+                &value,
+            )
+            .await
+            .map_err(ApiError::Internal)?;
+    }
+
+    Ok(())
+}
+
+fn capability_inventory_response(
+    entity: &dek_agent_discovery::model::DiscoveryEntityCandidate,
+    retrieval_status: &str,
+) -> serde_json::Value {
+    serde_json::json!({
+        "schema_version": "discovery-capability-inventory.v1",
+        "candidate_id": entity.candidate_id,
+        "entity": entity,
+        "capabilities": entity.capabilities,
+        "relationships": entity.relationships,
+        "retrieval_status": retrieval_status,
+        "source": "local_discovery_metadata",
+        "privacy_note": "Discovery capability inventory is derived from metadata already collected by Auto Discovery. It does not invoke MCP tools, read MCP resources, or capture raw prompts/responses."
+    })
+}
+
 async fn clear_candidates(
     Path(tenant): Path<String>,
     State(st): State<AppState>,
@@ -311,10 +465,28 @@ async fn clear_candidates(
         .clear_raw(&tenant, "discovery_candidate")
         .await
         .map_err(ApiError::Internal)?;
+    let entity_count = st
+        .registry_store
+        .clear_raw(&tenant, "discovery_entity")
+        .await
+        .map_err(ApiError::Internal)?;
+    let capability_count = st
+        .registry_store
+        .clear_raw(&tenant, "discovered_capability")
+        .await
+        .map_err(ApiError::Internal)?;
+    let relationship_count = st
+        .registry_store
+        .clear_raw(&tenant, "discovered_relationship")
+        .await
+        .map_err(ApiError::Internal)?;
 
     Ok(Json(serde_json::json!({
         "status": "cleared",
-        "deleted_count": count
+        "deleted_count": count,
+        "deleted_entities": entity_count,
+        "deleted_capabilities": capability_count,
+        "deleted_relationships": relationship_count
     })))
 }
 
@@ -329,10 +501,73 @@ async fn delete_candidate(
         .map_err(ApiError::Internal)?;
 
     if deleted {
+        clear_candidate_inventory(&st, &tenant, &candidate_id).await?;
         Ok(Json(serde_json::json!({ "status": "deleted" })))
     } else {
         Err(ApiError::NotFound(candidate_id))
     }
+}
+
+async fn clear_candidate_inventory(
+    st: &AppState,
+    tenant: &str,
+    candidate_id: &str,
+) -> ApiResult<()> {
+    let _ = st
+        .registry_store
+        .delete_raw(tenant, "discovery_entity", candidate_id)
+        .await
+        .map_err(ApiError::Internal)?;
+
+    for capability in st
+        .registry_store
+        .list_raw(tenant, "discovered_capability")
+        .await
+        .map_err(ApiError::Internal)?
+    {
+        if capability
+            .get("candidate_id")
+            .and_then(|value| value.as_str())
+            == Some(candidate_id)
+        {
+            if let Some(capability_id) = capability
+                .get("capability_id")
+                .and_then(|value| value.as_str())
+            {
+                let _ = st
+                    .registry_store
+                    .delete_raw(tenant, "discovered_capability", capability_id)
+                    .await
+                    .map_err(ApiError::Internal)?;
+            }
+        }
+    }
+
+    for relationship in st
+        .registry_store
+        .list_raw(tenant, "discovered_relationship")
+        .await
+        .map_err(ApiError::Internal)?
+    {
+        if relationship
+            .get("subject_candidate_id")
+            .and_then(|value| value.as_str())
+            == Some(candidate_id)
+        {
+            if let Some(relationship_id) = relationship
+                .get("relationship_id")
+                .and_then(|value| value.as_str())
+            {
+                let _ = st
+                    .registry_store
+                    .delete_raw(tenant, "discovered_relationship", relationship_id)
+                    .await
+                    .map_err(ApiError::Internal)?;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 async fn register_candidate(

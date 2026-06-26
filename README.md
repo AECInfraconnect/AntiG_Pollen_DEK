@@ -41,6 +41,10 @@ Pollek is designed for humans. Users simply state their **Policy** (e.g., "Block
 ### AI Agent Observability & Fingerprinting
 
 - **Shadow AI Discovery** — automatically detects unmanaged AI agents via eBPF/WFP network scanning and heuristic fingerprinting (Ollama, vLLM, Claude Desktop, GitHub Copilot, Cursor).
+- **Canonical Discovery Inventory** - derives source-backed entity, capability,
+  and relationship inventory from discovered agents so Local Dashboard and
+  Pollek Cloud can consume the same Contract Hub interface without invoking
+  tools or reading resource contents by default.
 - **Secure Telemetry Spool** — telemetry events are seamlessly streamed via `dek-secure-spool`, providing a secure asynchronous feed for auto-discovery and offline processing without opening local IPC ports.
 - **Agent Fingerprint Definitions** — natively supports Offline Baseline definitions with Cloud-pushed Delta updates over SSE. Definitions map agent binaries/processes to known identities securely with signature verification.
 - **Agent Binding Governance** — Maps discovered agents to Runtime Capabilities (resolving HTTP/Stdio MCP surfaces dynamically) and enforces governance constraints throughout the agent lifecycle.

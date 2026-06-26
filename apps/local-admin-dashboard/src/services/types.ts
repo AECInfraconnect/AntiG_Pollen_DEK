@@ -451,6 +451,87 @@ export interface DiscoveredAgentCandidateV2 {
   labels: Record<string, string>;
 }
 
+export type DiscoveryEntityKind =
+  | "agent"
+  | "agentic_host"
+  | "sub_agent"
+  | "mcp_server"
+  | "tool"
+  | "resource"
+  | "model_provider"
+  | "model"
+  | "embedding_model"
+  | "reranker"
+  | "safety_model"
+  | "vision_model"
+  | "multimodal_model"
+  | "workflow_blueprint"
+  | "inference_endpoint"
+  | "container"
+  | "framework"
+  | "ide_extension"
+  | "browser_extension";
+
+export interface CanonicalCapability {
+  capability_id: string;
+  candidate_id: string;
+  capability_kind: string;
+  name: string;
+  description?: string;
+  input_schema?: any;
+  output_schema?: any;
+  modality: string[];
+  actions: string[];
+  source: string;
+  confidence: number;
+  risk_tags: string[];
+  evidence_ids: string[];
+  privacy_class: string;
+}
+
+export interface DiscoveredRelationship {
+  relationship_id: string;
+  subject_candidate_id: string;
+  relation: string;
+  object_candidate_id: string;
+  confidence: number;
+  evidence_ids: string[];
+}
+
+export interface DiscoveryEntityCandidate {
+  schema_version: string;
+  candidate_id: string;
+  tenant_id: string;
+  device_id: string;
+  entity_kind: DiscoveryEntityKind;
+  display_name: string;
+  vendor?: string;
+  product?: string;
+  confidence: number;
+  risk_score: number;
+  status: string;
+  capabilities: CanonicalCapability[];
+  evidence: DiscoveryEvidenceV2[];
+  relationships: DiscoveredRelationship[];
+  suggested_registration: any;
+  suggested_control_bindings: ControlBindingPlan[];
+  privacy_profile: string;
+  performance_cost_class: string;
+  first_seen: string;
+  last_seen: string;
+}
+
+export interface DiscoveryCapabilityInventory {
+  schema_version: string;
+  candidate_id: string;
+  entity: DiscoveryEntityCandidate;
+  capabilities: CanonicalCapability[];
+  relationships: DiscoveredRelationship[];
+  retrieval_status: "derived" | "persisted" | string;
+  source: string;
+  privacy_note?: string;
+}
+
 export interface IdentityConfirmation {
   candidate_id: string;
   confirmed_signature_id?: string;

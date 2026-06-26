@@ -14,6 +14,8 @@ import type {
   PdpRuntime,
   PdpRouteRule,
   CloudPdpProfile,
+  DiscoveryCapabilityInventory,
+  DiscoveryEntityCandidate,
   DiscoveryScanJob,
   DiscoveredAgentCandidateV2,
   IdentityConfirmation,
@@ -533,12 +535,33 @@ export class ControlPlaneClient {
       .catch(() => []); // Mock fallback if endpoint not exist
   }
 
+  async listDiscoveryEntities(): Promise<DiscoveryEntityCandidate[]> {
+    return this.fetchApi("/discovery/entities")
+      .then((data: any) => data.items ?? data.entities ?? data)
+      .catch(() => []);
+  }
+
   async clearDiscoveryCandidates(): Promise<void> {
     return this.fetchApi("/discovery/candidates", { method: "DELETE" });
   }
 
   async deleteDiscoveryCandidate(id: string): Promise<void> {
     return this.fetchApi(`/discovery/candidates/${id}`, { method: "DELETE" });
+  }
+
+  async getDiscoveryCandidateCapabilities(
+    candidateId: string,
+  ): Promise<DiscoveryCapabilityInventory> {
+    return this.fetchApi(`/discovery/candidates/${candidateId}/capabilities`);
+  }
+
+  async retrieveDiscoveryCandidateCapabilities(
+    candidateId: string,
+  ): Promise<DiscoveryCapabilityInventory> {
+    return this.fetchApi(
+      `/discovery/candidates/${candidateId}/retrieve-capabilities`,
+      { method: "POST" },
+    );
   }
 
   async confirmCandidate(
@@ -782,9 +805,14 @@ export const RegistryApi = {
   listBlackboxAiProviders: () => defaultClient.listBlackboxAiProviders(),
   deleteBlackboxAi: (id: string) => defaultClient.deleteBlackboxAi(id),
   listDiscoveryCandidates: () => defaultClient.listDiscoveryCandidates(),
+  listDiscoveryEntities: () => defaultClient.listDiscoveryEntities(),
   clearDiscoveryCandidates: () => defaultClient.clearDiscoveryCandidates(),
   deleteDiscoveryCandidate: (id: string) =>
     defaultClient.deleteDiscoveryCandidate(id),
+  getDiscoveryCandidateCapabilities: (candidateId: string) =>
+    defaultClient.getDiscoveryCandidateCapabilities(candidateId),
+  retrieveDiscoveryCandidateCapabilities: (candidateId: string) =>
+    defaultClient.retrieveDiscoveryCandidateCapabilities(candidateId),
   confirmCandidate: (candidateId: string, payload: IdentityConfirmation) =>
     defaultClient.confirmCandidate(candidateId, payload),
   triggerDiscoveryScan: (req?: any) => defaultClient.triggerDiscoveryScan(req),

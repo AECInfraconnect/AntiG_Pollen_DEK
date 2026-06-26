@@ -8,11 +8,14 @@ import {
   Activity,
   Play,
   CheckCircle,
+  RefreshCw,
+  Link2,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { RegistryApi } from "../services/api";
 import type {
   DiscoveredAgentCandidateV2,
+  DiscoveryCapabilityInventory,
   DiscoveryScanJob,
 } from "../services/types";
 import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayout";
@@ -41,6 +44,12 @@ export function AutoDiscovery() {
   const [isScanning, setIsScanning] = useState(false);
   const [isFinalizingScan, setIsFinalizingScan] = useState(false);
   const [scans, setScans] = useState<DiscoveryScanJob[]>([]);
+  const [capabilityInventories, setCapabilityInventories] = useState<
+    Record<string, DiscoveryCapabilityInventory>
+  >({});
+  const [capabilityLoadingId, setCapabilityLoadingId] = useState<string | null>(
+    null,
+  );
 
   const scanBusy =
     isScanning ||
@@ -65,6 +74,7 @@ export function AutoDiscovery() {
       return;
     try {
       await RegistryApi.clearDiscoveryCandidates();
+      setCapabilityInventories({});
       void fetchCandidates();
       toast.success("Discovery history cleared");
     } catch (e) {
@@ -158,6 +168,36 @@ export function AutoDiscovery() {
     void fetchCandidates();
     void fetchScans();
   }, []);
+
+  useEffect(() => {
+    if (!selectedId || capabilityInventories[selectedId]) return;
+    void loadCapabilities(selectedId, false);
+  }, [selectedId]);
+
+  const loadCapabilities = async (candidateId: string, persist: boolean) => {
+    setCapabilityLoadingId(candidateId);
+    try {
+      const inventory = persist
+        ? await RegistryApi.retrieveDiscoveryCandidateCapabilities(candidateId)
+        : await RegistryApi.getDiscoveryCandidateCapabilities(candidateId);
+      setCapabilityInventories((prev) => ({
+        ...prev,
+        [candidateId]: inventory,
+      }));
+      if (persist) {
+        toast.success("Capability inventory refreshed");
+      }
+      return inventory;
+    } catch (e) {
+      console.error("Failed to load capability inventory:", e);
+      if (persist) {
+        toast.error("Failed to refresh capability inventory");
+      }
+      return null;
+    } finally {
+      setCapabilityLoadingId(null);
+    }
+  };
 
   const settleScanResults = async (expectedCount = 0) => {
     setIsFinalizingScan(true);
@@ -257,6 +297,11 @@ export function AutoDiscovery() {
         }
       }
       await RegistryApi.deleteDiscoveryCandidate(c.candidate_id);
+      setCapabilityInventories((prev) => {
+        const next = { ...prev };
+        delete next[c.candidate_id];
+        return next;
+      });
       if (selectedId === c.candidate_id) {
         setParams((p) => {
           p.delete("selected");
@@ -576,6 +621,11 @@ export function AutoDiscovery() {
           const isRegistered = c.status === "registered";
           const browserName = browserNameForCandidate(c);
           const sourceSummary = evidenceSourcesForCandidate(c);
+          const inventory = capabilityInventories[c.candidate_id];
+          const entity = inventory?.entity;
+          const canonicalCapabilities = inventory?.capabilities ?? [];
+          const relationships = inventory?.relationships ?? [];
+          const capabilityLoading = capabilityLoadingId === c.candidate_id;
 
           return (
             <DetailPane
@@ -730,7 +780,174 @@ export function AutoDiscovery() {
                               )}
                             </ul>
                           </div>
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  id: "capabilities",
+                  label: "Capabilities",
+                  content: (
+                    <div className="space-y-5">
+                      <div className="flex flex-col gap-3 rounded-xl border bg-muted/30 p-4 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <h4 className="text-sm font-semibold">
+                            Canonical Entity Inventory
+                          </h4>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Derived from local discovery metadata only. No MCP
+                            tools are invoked and no resource contents are read.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() =>
+                            void loadCapabilities(c.candidate_id, true)
+                          }
+                          disabled={capabilityLoading}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+                        >
+                          <RefreshCw
+                            className={`h-4 w-4 ${
+                              capabilityLoading ? "animate-spin" : ""
+                            }`}
+                          />
+                          Refresh inventory
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+                        <div className="rounded-xl border bg-muted/30 p-4">
+                          <span className="block text-muted-foreground">
+                            Entity Kind
+                          </span>
+                          <span className="font-semibold">
+                            {entity?.entity_kind?.replace(/_/g, " ") ||
+                              c.inferred_agent_type}
+                          </span>
+                        </div>
+                        <div className="rounded-xl border bg-muted/30 p-4">
+                          <span className="block text-muted-foreground">
+                            Privacy
+                          </span>
+                          <span className="font-semibold">
+                            {entity?.privacy_profile?.replace(/_/g, " ") ||
+                              "metadata only"}
+                          </span>
+                        </div>
+                        <div className="rounded-xl border bg-muted/30 p-4">
+                          <span className="block text-muted-foreground">
+                            Collection Cost
+                          </span>
+                          <span className="font-semibold">
+                            {entity?.performance_cost_class?.replace(
+                              /_/g,
+                              " ",
+                            ) || "passive metadata"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border bg-muted/30 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <h4 className="text-sm font-semibold">
+                            Capabilities
+                          </h4>
+                          <span className="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground">
+                            {canonicalCapabilities.length} found
+                          </span>
+                        </div>
+                        {canonicalCapabilities.length > 0 ? (
+                          <div className="space-y-3">
+                            {canonicalCapabilities.map((capability) => (
+                              <div
+                                key={capability.capability_id}
+                                className="rounded-lg border bg-background/70 p-3"
+                              >
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                  <div>
+                                    <div className="font-medium">
+                                      {capability.name}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {capability.capability_kind.replace(
+                                        /_/g,
+                                        " ",
+                                      )}{" "}
+                                      from {capability.source}
+                                    </div>
+                                  </div>
+                                  <span className="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">
+                                    {(
+                                      capability.confidence * 100
+                                    ).toFixed(0)}
+                                    %
+                                  </span>
+                                </div>
+                                {capability.description && (
+                                  <p className="mt-2 text-sm text-muted-foreground">
+                                    {capability.description}
+                                  </p>
+                                )}
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {[
+                                    ...capability.modality,
+                                    ...capability.actions,
+                                    ...capability.risk_tags,
+                                  ].map((tag) => (
+                                    <span
+                                      key={`${capability.capability_id}-${tag}`}
+                                      className="rounded-md border px-2 py-1 text-xs text-muted-foreground"
+                                    >
+                                      {tag.replace(/_/g, " ")}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Select Refresh inventory to derive capabilities
+                            from the latest discovery evidence.
+                          </p>
                         )}
+                      </div>
+
+                      <div className="rounded-xl border bg-muted/30 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <h4 className="text-sm font-semibold">
+                            Relationships
+                          </h4>
+                          <span className="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground">
+                            {relationships.length} link(s)
+                          </span>
+                        </div>
+                        {relationships.length > 0 ? (
+                          <div className="space-y-2">
+                            {relationships.map((relationship) => (
+                              <div
+                                key={relationship.relationship_id}
+                                className="flex items-start gap-2 rounded-lg border bg-background/70 p-3 text-sm"
+                              >
+                                <Link2 className="mt-0.5 h-4 w-4 text-primary" />
+                                <div>
+                                  <div className="font-medium">
+                                    {relationship.relation.replace(/_/g, " ")}
+                                  </div>
+                                  <div className="break-all text-xs text-muted-foreground">
+                                    {relationship.subject_candidate_id} to{" "}
+                                    {relationship.object_candidate_id}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            No relationships derived yet.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   ),
                 },

@@ -523,174 +523,6 @@ paths:
                 $ref: '#/components/schemas/PollekError'
       tags:
         - LocalDashboard
-  /v1/tenants/{tenant_id}/agent-discovery/candidates:
-    get:
-      operationId: DiscoveryApi_listCandidates
-      description: List discovery candidates
-      parameters:
-        - name: tenant_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
-        - $ref: '#/components/parameters/PollekHeaders.deviceId'
-        - $ref: '#/components/parameters/PollekHeaders.tenantId'
-      responses:
-        '200':
-          description: The request has succeeded.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DiscoveryCandidateListResponse'
-        default:
-          description: An unexpected error response.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PollekError'
-      tags:
-        - Discovery
-  /v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/block:
-    post:
-      operationId: DiscoveryApi_blockCandidate
-      description: Block a candidate
-      parameters:
-        - name: tenant_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: candidate_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
-        - $ref: '#/components/parameters/PollekHeaders.deviceId'
-        - $ref: '#/components/parameters/PollekHeaders.tenantId'
-      responses:
-        '204':
-          description: 'There is no content to send for this request, but the headers may be useful. '
-        default:
-          description: An unexpected error response.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PollekError'
-      tags:
-        - Discovery
-  /v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/ignore:
-    post:
-      operationId: DiscoveryApi_ignoreCandidate
-      description: Ignore a candidate
-      parameters:
-        - name: tenant_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: candidate_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
-        - $ref: '#/components/parameters/PollekHeaders.deviceId'
-        - $ref: '#/components/parameters/PollekHeaders.tenantId'
-      responses:
-        '204':
-          description: 'There is no content to send for this request, but the headers may be useful. '
-        default:
-          description: An unexpected error response.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PollekError'
-      tags:
-        - Discovery
-  /v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/observe-only:
-    post:
-      operationId: DiscoveryApi_observeCandidate
-      description: Observe a candidate only
-      parameters:
-        - name: tenant_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: candidate_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
-        - $ref: '#/components/parameters/PollekHeaders.deviceId'
-        - $ref: '#/components/parameters/PollekHeaders.tenantId'
-      responses:
-        '204':
-          description: 'There is no content to send for this request, but the headers may be useful. '
-        default:
-          description: An unexpected error response.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PollekError'
-      tags:
-        - Discovery
-  /v1/tenants/{tenant_id}/agent-discovery/candidates/{candidate_id}/register:
-    post:
-      operationId: DiscoveryApi_registerCandidate
-      description: Register a candidate
-      parameters:
-        - name: tenant_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: candidate_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
-        - $ref: '#/components/parameters/PollekHeaders.deviceId'
-        - $ref: '#/components/parameters/PollekHeaders.tenantId'
-      responses:
-        '204':
-          description: 'There is no content to send for this request, but the headers may be useful. '
-        default:
-          description: An unexpected error response.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PollekError'
-      tags:
-        - Discovery
-  /v1/tenants/{tenant_id}/agent-discovery/scan:
-    post:
-      operationId: DiscoveryApi_scan
-      description: Start a discovery scan
-      parameters:
-        - name: tenant_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
-        - $ref: '#/components/parameters/PollekHeaders.deviceId'
-        - $ref: '#/components/parameters/PollekHeaders.tenantId'
-      responses:
-        '204':
-          description: 'There is no content to send for this request, but the headers may be useful. '
-        default:
-          description: An unexpected error response.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PollekError'
-      tags:
-        - Discovery
   /v1/tenants/{tenant_id}/devices/{device_id}/bundles/latest:
     post:
       operationId: BundleApi_fetchLatest
@@ -732,6 +564,276 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/BundleFetchRequest'
+  /v1/tenants/{tenant_id}/discovery/candidates:
+    get:
+      operationId: DiscoveryApi_listCandidates
+      description: List discovery candidates
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryCandidateListResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+  /v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/block:
+    post:
+      operationId: DiscoveryApi_blockCandidate
+      description: Block a candidate
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: candidate_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+  /v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/capabilities:
+    get:
+      operationId: DiscoveryApi_getCandidateCapabilities
+      description: Get canonical capabilities for a discovery candidate without invoking tools or reading resources.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: candidate_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryCapabilityInventoryResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+  /v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/ignore:
+    post:
+      operationId: DiscoveryApi_ignoreCandidate
+      description: Ignore a candidate
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: candidate_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+  /v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/observe-only:
+    post:
+      operationId: DiscoveryApi_observeCandidate
+      description: Observe a candidate only
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: candidate_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+  /v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/register:
+    post:
+      operationId: DiscoveryApi_registerCandidate
+      description: Register a candidate
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: candidate_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+  /v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/retrieve-capabilities:
+    post:
+      operationId: DiscoveryApi_retrieveCandidateCapabilities
+      description: Retrieve and persist canonical capabilities for a discovery candidate.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: candidate_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryCapabilityInventoryResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+  /v1/tenants/{tenant_id}/discovery/entities:
+    get:
+      operationId: DiscoveryApi_listDiscoveryEntities
+      description: List canonical discovery entities derived from discovered candidates.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryEntityListResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+  /v1/tenants/{tenant_id}/discovery/scans:
+    post:
+      operationId: DiscoveryApi_scan
+      description: Start a discovery scan
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema: {}
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {}
   /v1/tenants/{tenant_id}/observations/agents/{agent_id}:
     get:
       operationId: ObservationApi_getAgentObservations
@@ -3289,6 +3391,56 @@ components:
           unevaluatedProperties:
             type: number
             format: float
+    CanonicalDiscoveryCapability:
+      type: object
+      required:
+        - capability_id
+        - candidate_id
+        - capability_kind
+        - name
+        - modality
+        - actions
+        - source
+        - confidence
+        - risk_tags
+        - evidence_ids
+        - privacy_class
+      properties:
+        capability_id:
+          type: string
+        candidate_id:
+          type: string
+        capability_kind:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        input_schema: {}
+        output_schema: {}
+        modality:
+          type: array
+          items:
+            type: string
+        actions:
+          type: array
+          items:
+            type: string
+        source:
+          type: string
+        confidence:
+          type: number
+          format: float
+        risk_tags:
+          type: array
+          items:
+            type: string
+        evidence_ids:
+          type: array
+          items:
+            type: string
+        privacy_class:
+          type: string
     CanonicalTokenUsageV1:
       type: object
       required:
@@ -3565,6 +3717,31 @@ components:
         - redact
         - warn
         - observed
+    DiscoveredDiscoveryRelationship:
+      type: object
+      required:
+        - relationship_id
+        - subject_candidate_id
+        - relation
+        - object_candidate_id
+        - confidence
+        - evidence_ids
+      properties:
+        relationship_id:
+          type: string
+        subject_candidate_id:
+          type: string
+        relation:
+          type: string
+        object_candidate_id:
+          type: string
+        confidence:
+          type: number
+          format: float
+        evidence_ids:
+          type: array
+          items:
+            type: string
     DiscoveryCandidate:
       type: object
       required:
@@ -3610,6 +3787,131 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DiscoveryCandidate'
+    DiscoveryCapabilityInventoryResponse:
+      type: object
+      required:
+        - schema_version
+        - candidate_id
+        - entity
+        - capabilities
+        - relationships
+        - retrieval_status
+        - source
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - discovery-capability-inventory.v1
+        candidate_id:
+          type: string
+        entity:
+          $ref: '#/components/schemas/DiscoveryEntityCandidateV1'
+        capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/CanonicalDiscoveryCapability'
+        relationships:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveredDiscoveryRelationship'
+        retrieval_status:
+          type: string
+        source:
+          type: string
+        privacy_note:
+          type: string
+    DiscoveryEntityCandidateV1:
+      type: object
+      required:
+        - schema_version
+        - candidate_id
+        - tenant_id
+        - device_id
+        - entity_kind
+        - display_name
+        - confidence
+        - risk_score
+        - status
+        - capabilities
+        - evidence
+        - relationships
+        - suggested_registration
+        - suggested_control_bindings
+        - privacy_profile
+        - performance_cost_class
+        - first_seen
+        - last_seen
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - pollek.discovery_entity_candidate.v1
+        candidate_id:
+          type: string
+        tenant_id:
+          type: string
+        device_id:
+          type: string
+        entity_kind:
+          type: string
+        display_name:
+          type: string
+        vendor:
+          type: string
+        product:
+          type: string
+        confidence:
+          type: number
+          format: float
+        risk_score:
+          type: integer
+          format: int32
+        status:
+          type: string
+        capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/CanonicalDiscoveryCapability'
+        evidence:
+          type: array
+          items: {}
+        relationships:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveredDiscoveryRelationship'
+        suggested_registration: {}
+        suggested_control_bindings:
+          type: array
+          items: {}
+        privacy_profile:
+          type: string
+        performance_cost_class:
+          type: string
+        first_seen:
+          type: string
+        last_seen:
+          type: string
+    DiscoveryEntityListResponse:
+      type: object
+      required:
+        - schema_version
+        - entities
+        - total
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - discovery-entity-list.v1
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveryEntityCandidateV1'
+        next_cursor:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
     EnforcePlaneState:
       type: string
       enum:
