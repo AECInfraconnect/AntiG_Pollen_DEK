@@ -249,16 +249,18 @@ pub fn spawn(
     active_network_rules: std::sync::Arc<tokio::sync::RwLock<Vec<CompiledNetworkRules>>>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
-        let mut enforcer = match platform_enforcer(&tenant_id, &device_id, spool) {
-            Some(e) => e,
-            None => {
-                info!("[net] no network enforcer for this platform; network plane disabled");
-                return;
-            }
-        };
-        let backend = enforcer.backend();
+        let mut enforcer = platform_enforcer(&tenant_id, &device_id, spool);
+        let backend = enforcer
+            .as_ref()
+            .map(|enforcer| enforcer.backend())
+            .unwrap_or("disabled")
+            .to_string();
         let mut lkg: Option<Vec<CompiledNetworkRules>> = None;
-        info!("[net] network enforcement driver started (backend={backend})");
+        if enforcer.is_some() {
+            info!("[net] network enforcement driver started (backend={backend})");
+        } else {
+            info!("[net] no network enforcer for this platform; sidecar reload remains enabled");
+        }
 
         loop {
             tokio::select! {
@@ -276,6 +278,13 @@ pub fn spawn(
                             }
 
                             if let Some(rules) = network_rules {
+                                let Some(enforcer) = enforcer.as_mut() else {
+                                    info!(
+                                        "[net] skipping {} network rule set(s); backend disabled",
+                                        rules.len()
+                                    );
+                                    continue;
+                                };
                                 let mut kernel_rules_vec = Vec::new();
                                 for r in &rules {
                                     let (kr, part) = crate::kernel_guard::kernel_subset(r);
@@ -296,7 +305,7 @@ pub fn spawn(
                                 match enforcer.apply(&kernel_rules_vec) {
                                     Ok(()) => {
                                         metrics::counter!("dek_network_rule_enforced_total",
-                                            "backend" => backend, "result" => "applied").increment(1);
+                                            "backend" => backend.clone(), "result" => "applied").increment(1);
                                         lkg = Some(kernel_rules_vec.clone());
                                         let active = active_network_rules.clone();
                                         let rules_clone = kernel_rules_vec.clone();
@@ -312,7 +321,7 @@ pub fn spawn(
                                         if !reverted {
                                             let _ = enforcer.fail_closed();
                                             metrics::counter!("dek_network_failclosed_total",
-                                                "backend" => backend, "reason" => "apply_error").increment(1);
+                                                "backend" => backend.clone(), "reason" => "apply_error").increment(1);
                                         }
                                     }
                                 }
@@ -321,17 +330,23 @@ pub fn spawn(
                         // Sync failed (cloud blip): keep LKG; if we never had any -> fail-closed.
                         Some(SyncOutcome::Failed { .. }) => {
                             if lkg.is_none() {
+                                let Some(enforcer) = enforcer.as_mut() else {
+                                    continue;
+                                };
                                 let _ = enforcer.fail_closed();
                                 metrics::counter!("dek_network_failclosed_total",
-                                    "backend" => backend, "reason" => "no_lkg_on_failure").increment(1);
+                                    "backend" => backend.clone(), "reason" => "no_lkg_on_failure").increment(1);
                             }
                         }
                         // Freshness state machine flipped to strict-deny -> block egress too.
                         Some(SyncOutcome::StateTransition(state)) if state.is_strict_deny() => {
                             warn!("[net] EnforcementState=StrictDeny -> network fail-closed");
+                            let Some(enforcer) = enforcer.as_mut() else {
+                                continue;
+                            };
                             let _ = enforcer.fail_closed();
                             metrics::counter!("dek_network_failclosed_total",
-                                "backend" => backend, "reason" => "strict_deny").increment(1);
+                                "backend" => backend.clone(), "reason" => "strict_deny").increment(1);
                         }
                         Some(_) => {}
                         None => { info!("[net] sync channel closed"); break; }
