@@ -12,6 +12,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "telemetry-envelope.v1.schema.json",
         "decision-result.v1.schema.json",
         "contract-discovery.v1.schema.json",
+        "agent-observation.v1.schema.json",
+        "enforcement-result.v1.schema.json",
     ];
 
     let mut generated = String::new();

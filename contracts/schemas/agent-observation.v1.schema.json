@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.pollen.dev/schemas/agent-observation.v1.schema.json",
+  "title": "AgentObservationPayload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agent_id",
+    "agent_label",
+    "domain",
+    "action",
+    "decision",
+    "enforced_for_real"
+  ],
+  "properties": {
+    "agent_id": { "type": "string" },
+    "agent_label": { "type": "string" },
+    "domain": {
+      "type": "string",
+      "enum": ["network", "file_system", "process", "mcp_tool", "dns"]
+    },
+    "action": { "type": "string" },
+    "target": { "type": "string" },
+    "decision": {
+      "type": "string",
+      "enum": ["allow", "deny", "redact", "warn", "observed"]
+    },
+    "control_method": {
+      "type": "string",
+      "enum": [
+        "mcp_stdio", "mcp_http",
+        "linux_landlock", "linux_ebpf", "linux_seccomp",
+        "windows_wfp_um", "windows_wfp_callout", "windows_etw",
+        "macos_netext", "macos_endpoint_security"
+      ]
+    },
+    "enforced_for_real": { "type": "boolean" },
+    "reason_th": { "type": "string" },
+    "reason_en": { "type": "string" }
+  }
+}

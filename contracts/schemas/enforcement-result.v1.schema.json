@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.pollen.dev/schemas/enforcement-result.v1.schema.json",
+  "title": "EnforcementResultPayload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agent_id",
+    "policy_id",
+    "control_method",
+    "domain",
+    "requested_level",
+    "effective_level",
+    "plane_state",
+    "success",
+    "os"
+  ],
+  "properties": {
+    "agent_id": { "type": "string" },
+    "policy_id": { "type": "string" },
+    "control_method": {
+      "type": "string",
+      "enum": [
+        "mcp_stdio", "mcp_http",
+        "linux_landlock", "linux_ebpf", "linux_seccomp",
+        "windows_wfp_um", "windows_wfp_callout", "windows_etw",
+        "macos_netext", "macos_endpoint_security"
+      ]
+    },
+    "domain": {
+      "type": "string",
+      "enum": ["network", "file_system", "process", "mcp_tool", "dns"]
+    },
+    "requested_level": {
+      "type": "string",
+      "enum": ["observe", "warn", "ask", "enforce"]
+    },
+    "effective_level": {
+      "type": "string",
+      "enum": ["observe", "warn", "ask", "enforce"]
+    },
+    "plane_state": {
+      "type": "string",
+      "enum": ["enforcing", "observing", "degraded", "failed"]
+    },
+    "success": { "type": "boolean" },
+    "os": { "type": "string" },
+    "message_th": { "type": "string" },
+    "message_en": { "type": "string" },
+    "user_action_th": { "type": "string" },
+    "user_action_en": { "type": "string" }
+  }
+}
