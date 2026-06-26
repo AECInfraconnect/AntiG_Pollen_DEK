@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.pollen.dev/schemas/registered-agent-identity-binding.v1.schema.json",
+  "title": "RegisteredAgentIdentityBinding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tenant_id",
+    "device_id",
+    "agent_id",
+    "agent_label",
+    "spiffe_selector_hashes",
+    "token_bindings",
+    "status",
+    "local_dashboard_available",
+    "cloud_enrollment_required",
+    "cloud_enrolled",
+    "evidence_ids",
+    "friendly_summary_en",
+    "friendly_summary_th",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "registered-agent-identity-binding.v1" },
+    "tenant_id": { "type": "string" },
+    "device_id": { "type": "string" },
+    "agent_id": { "type": "string" },
+    "agent_label": { "type": "string" },
+    "spiffe_id": { "type": ["string", "null"], "pattern": "^spiffe://.+" },
+    "spiffe_trust_domain": { "type": ["string", "null"] },
+    "spiffe_selector_hashes": { "type": "array", "items": { "type": "string" } },
+    "oauth_client_id": { "type": ["string", "null"] },
+    "oauth_issuer": { "type": ["string", "null"] },
+    "token_bindings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/token_binding" }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "local_only",
+        "ready_for_cloud_enrollment",
+        "cloud_bound",
+        "needs_spiffe_agent",
+        "needs_oauth_enrollment",
+        "suspended"
+      ]
+    },
+    "local_dashboard_available": { "type": "boolean" },
+    "cloud_enrollment_required": { "type": "boolean" },
+    "cloud_enrolled": { "type": "boolean" },
+    "evidence_ids": { "type": "array", "items": { "type": "string" } },
+    "friendly_summary_en": { "type": "string" },
+    "friendly_summary_th": { "type": "string" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "token_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "audience", "storage_location"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "oauth_access_token",
+            "oauth_refresh_token",
+            "oidc_id_token",
+            "jwt_svid",
+            "x509_svid",
+            "api_key_reference"
+          ]
+        },
+        "issuer": { "type": ["string", "null"] },
+        "audience": { "type": "array", "items": { "type": "string" } },
+        "subject_hint": { "type": ["string", "null"] },
+        "storage_location": {
+          "type": "string",
+          "enum": [
+            "os_key_store",
+            "browser_profile",
+            "agent_runtime",
+            "spire_workload_api",
+            "external_secret_manager",
+            "not_stored_by_pollek"
+          ]
+        },
+        "expires_at": { "type": ["string", "null"], "format": "date-time" },
+        "last_verified_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    }
+  }
+}

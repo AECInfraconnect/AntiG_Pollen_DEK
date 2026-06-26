@@ -1,9 +1,13 @@
+use std::path::Path;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 
+use anyhow::Context;
 use dek_control_plane_api::identity::ControlPlaneIdentity;
+use dek_secure_spool::key_manager::OsKeyStore;
+use sha2::Digest;
 
 use local_control_plane::app;
 use local_control_plane::auth;
@@ -14,6 +18,37 @@ use local_control_plane::state::AppState;
 use local_control_plane::store;
 
 mod panic_guard;
+
+fn local_device_id() -> String {
+    if let Ok(id) = std::env::var("POLLEK_DEVICE_ID") {
+        let trimmed = id.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
+        }
+    }
+
+    let host = std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .unwrap_or_else(|_| "local-device".to_string());
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(host.as_bytes());
+    let digest = hasher.finalize();
+    format!("dev_{}", hex::encode(&digest[..8]))
+}
+
+fn load_sqlite_spool_key(data_dir: &Path) -> anyhow::Result<[u8; 32]> {
+    std::fs::create_dir_all(data_dir).with_context(|| {
+        format!(
+            "failed to create local control-plane data dir {}",
+            data_dir.display()
+        )
+    })?;
+    let key_path = data_dir.join("telemetry-spool-master.key");
+    let store = dek_secure_spool::os::DefaultOsKeyStore::new(key_path);
+    store
+        .load_or_create_master_key()
+        .map_err(|err| anyhow::anyhow!("failed to load local telemetry spool key: {err}"))
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -31,6 +66,8 @@ async fn main() -> anyhow::Result<()> {
         .expect("Failed to install Prometheus recorder"); //
 
     let cfg = LocalControlPlaneConfig::from_env()?;
+    let device_id = local_device_id();
+    let spool_key = load_sqlite_spool_key(&cfg.data_dir)?;
 
     let store = Arc::new(store::SqliteStore::new(&cfg.db_url).await?);
     let signer = Arc::new(LocalSigner::load_or_create(&cfg.data_dir)?);
@@ -69,7 +106,7 @@ async fn main() -> anyhow::Result<()> {
         latest_snapshot: Arc::new(tokio::sync::RwLock::new(None)),
         secure_spool: Arc::new(dek_secure_spool::sqlite_spool::SqliteSpool::new(
             &cfg.data_dir.join("telemetry_spool.db"),
-            &[0u8; 32], // TODO: load key from keyring like in dek-telemetry
+            &spool_key,
             dek_secure_spool::sqlite_spool::DEFAULT_MAX_ROWS,
         )?),
         telemetry_tx: tokio::sync::broadcast::channel(100).0,
@@ -107,7 +144,7 @@ async fn main() -> anyhow::Result<()> {
         tx: telemetry_mpsc_tx,
         ctx: Arc::new(dek_enforcement_api::control_method::EmitCtx {
             tenant_id: "local".to_string(),
-            device_id: "default".to_string(),
+            device_id: device_id.clone(),
         }),
     };
 

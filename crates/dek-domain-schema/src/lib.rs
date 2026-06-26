@@ -7,6 +7,8 @@ pub mod agent;
 
 pub mod bundle;
 
+pub mod capability_snapshot_v2;
+
 pub mod capabilities;
 
 pub mod capability_inventory;
@@ -24,6 +26,8 @@ pub mod deployment_session;
 pub mod ebpf;
 
 pub mod entity;
+
+pub mod identity_binding;
 
 pub mod feasibility;
 
@@ -49,6 +53,8 @@ pub mod resource;
 
 pub mod scan_session;
 
+pub mod security_coverage;
+
 pub mod spiffe;
 
 pub mod telemetry_event;
@@ -59,9 +65,13 @@ pub mod tool;
 
 pub mod user_event;
 
+pub mod user_message;
+
 pub use agent::*;
 
 pub use bundle::*;
+
+pub use capability_snapshot_v2::*;
 
 pub use capabilities::*;
 
@@ -78,6 +88,8 @@ pub use deployment_session::*;
 pub use ebpf::*;
 
 pub use entity::*;
+
+pub use identity_binding::*;
 
 pub use feasibility::*;
 
@@ -103,6 +115,8 @@ pub use resource::*;
 
 pub use scan_session::*;
 
+pub use security_coverage::*;
+
 pub use spiffe::*;
 
 pub use telemetry_event::*;
@@ -112,5 +126,7 @@ pub use tenant::*;
 pub use tool::*;
 
 pub use user_event::{EventCategory, UserVisibleEvent};
+
+pub use user_message::*;
 
 pub mod entity_card;

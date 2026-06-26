@@ -674,6 +674,112 @@ export interface LocalCapabilitySnapshot {
   install_suggestions: CapabilityUpgrade[];
   snapshot_hash: string;
 }
+
+export type RuntimeModeV2 =
+  | "desktop_simple"
+  | "desktop_advanced"
+  | "enterprise_server"
+  | "sovereign"
+  | "air_gap";
+
+export type ControlDomainV2 =
+  | "mcp_tool_call"
+  | "network_egress"
+  | "dns"
+  | "file_access"
+  | "process_launch"
+  | "browser_ai_session"
+  | "identity_use"
+  | "skill_install"
+  | "skill_runtime"
+  | "token_cost"
+  | "prompt_content";
+
+export type ControlLevelV2 =
+  | "observe"
+  | "warn"
+  | "ask"
+  | "enforce"
+  | "strict_deny";
+
+export type MethodReadinessV2 =
+  | "available"
+  | "degraded"
+  | "needs_install"
+  | "needs_permission"
+  | "needs_configuration"
+  | "simulator_only"
+  | "unsupported"
+  | "failed";
+
+export interface SetupActionV2 {
+  action_id: string;
+  title_en: string;
+  title_th: string;
+  detail_en: string;
+  detail_th: string;
+  requires_admin: boolean;
+  requires_restart: boolean;
+  estimated_minutes: number;
+  docs_path?: string | null;
+  safe_to_skip: boolean;
+}
+
+export interface ControlMethodCapabilityV2 {
+  method_id: string;
+  display_name_en: string;
+  display_name_th: string;
+  domains: ControlDomainV2[];
+  max_level: ControlLevelV2;
+  status: MethodReadinessV2;
+  maturity: "production" | "beta" | "preview" | "simulator";
+  install_state:
+    | "built_in"
+    | "installed"
+    | "installed_but_disabled"
+    | "not_installed"
+    | "external_required"
+    | "unknown";
+  warm_check?: "not_run" | "passed" | "failed" | "not_applicable" | null;
+  setup_action_ids: string[];
+  limitations_en: string[];
+  limitations_th: string[];
+}
+
+export interface ObservationSourceCapabilityV2 {
+  source_id: string;
+  display_name_en: string;
+  display_name_th: string;
+  status: MethodReadinessV2;
+  domains: ControlDomainV2[];
+  privacy_note_en: string;
+  privacy_note_th: string;
+  setup_action_ids: string[];
+}
+
+export interface LocalCapabilitySnapshotV2 {
+  schema_version: "local-capability-snapshot.v2";
+  tenant_id: string;
+  device_id: string;
+  os: {
+    family: string;
+    version: string;
+    arch: string;
+    is_server: boolean;
+    elevated: boolean;
+  };
+  mode: RuntimeModeV2;
+  generated_at: string;
+  control_methods: ControlMethodCapabilityV2[];
+  observation_sources: ObservationSourceCapabilityV2[];
+  setup_actions: SetupActionV2[];
+  contract: {
+    local_contract_version: string;
+    compatible_cloud_contracts: string[];
+    status: string;
+    reason_code?: string | null;
+  };
+}
 export interface DomainFeasibility {
   domain: string;
   chosen_method?: string;

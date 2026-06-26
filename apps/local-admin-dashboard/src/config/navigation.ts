@@ -179,7 +179,7 @@ export const NAV: NavGroup[] = [
       },
       {
         id: "audit",
-        en: "Audit Logs",
+        en: "Timeline",
         th: "บันทึกตรวจสอบ",
         href: "/audit",
         icon: Activity,
@@ -214,7 +214,7 @@ export const NAV: NavGroup[] = [
         th: "ความสามารถเครื่อง",
         href: "/capabilities",
         icon: Cpu,
-        modes: ADV,
+        modes: ALL,
       },
       {
         id: "plugins",

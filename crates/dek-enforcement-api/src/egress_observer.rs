@@ -24,8 +24,9 @@ impl EgressEventSource for WindowsWfpEgressSource {
     }
 
     async fn start_observing(&self, _sink: TelemetrySink) -> anyhow::Result<()> {
-        // TODO: Implement WFP callout FFI to intercept outbound IPv4/IPv6 connects.
-        Ok(())
+        anyhow::bail!(
+            "windows_wfp_egress is not active: install and approve the Pollek WFP service before real network observation or blocking"
+        )
     }
 }
 
@@ -38,8 +39,9 @@ impl EgressEventSource for MacNetworkExtensionEgressSource {
     }
 
     async fn start_observing(&self, _sink: TelemetrySink) -> anyhow::Result<()> {
-        // TODO: Implement macOS Network Extension (NEFilterProvider) FFI bindings.
-        Ok(())
+        anyhow::bail!(
+            "macos_network_extension_egress is not active: install and approve the NetworkExtension system extension before real network observation or blocking"
+        )
     }
 }
 
@@ -52,7 +54,8 @@ impl EgressEventSource for LinuxEbpfEgressSource {
     }
 
     async fn start_observing(&self, _sink: TelemetrySink) -> anyhow::Result<()> {
-        // TODO: Implement Linux eBPF/conntrack hook to trace connect syscalls.
-        Ok(())
+        anyhow::bail!(
+            "linux_ebpf_egress is not active: run with CAP_BPF/CAP_NET_ADMIN and load the Pollek eBPF program before real network observation or blocking"
+        )
     }
 }

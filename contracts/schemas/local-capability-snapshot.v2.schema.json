@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.pollen.dev/schemas/local-capability-snapshot.v2.schema.json",
+  "title": "LocalCapabilitySnapshotV2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tenant_id",
+    "device_id",
+    "os",
+    "mode",
+    "generated_at",
+    "control_methods",
+    "observation_sources",
+    "setup_actions",
+    "contract"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "local-capability-snapshot.v2" },
+    "tenant_id": { "type": "string" },
+    "device_id": { "type": "string" },
+    "os": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "version", "arch", "is_server", "elevated"],
+      "properties": {
+        "family": { "type": "string" },
+        "version": { "type": "string" },
+        "arch": { "type": "string" },
+        "is_server": { "type": "boolean" },
+        "elevated": { "type": "boolean" }
+      }
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["desktop_simple", "desktop_advanced", "enterprise_server", "sovereign", "air_gap"]
+    },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "control_methods": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/control_method" }
+    },
+    "observation_sources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/observation_source" }
+    },
+    "setup_actions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/setup_action" }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["local_contract_version", "compatible_cloud_contracts", "status"],
+      "properties": {
+        "local_contract_version": { "type": "string" },
+        "compatible_cloud_contracts": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string" },
+        "reason_code": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "$defs": {
+    "control_domain": {
+      "type": "string",
+      "enum": [
+        "mcp_tool_call",
+        "network_egress",
+        "dns",
+        "file_access",
+        "process_launch",
+        "browser_ai_session",
+        "identity_use",
+        "skill_install",
+        "skill_runtime",
+        "token_cost",
+        "prompt_content"
+      ]
+    },
+    "control_level": {
+      "type": "string",
+      "enum": ["observe", "warn", "ask", "enforce", "strict_deny"]
+    },
+    "readiness": {
+      "type": "string",
+      "enum": [
+        "available",
+        "degraded",
+        "needs_install",
+        "needs_permission",
+        "needs_configuration",
+        "simulator_only",
+        "unsupported",
+        "failed"
+      ]
+    },
+    "control_method": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method_id",
+        "display_name_en",
+        "display_name_th",
+        "domains",
+        "max_level",
+        "status",
+        "maturity",
+        "install_state",
+        "setup_action_ids",
+        "limitations_en",
+        "limitations_th"
+      ],
+      "properties": {
+        "method_id": { "type": "string" },
+        "display_name_en": { "type": "string" },
+        "display_name_th": { "type": "string" },
+        "domains": { "type": "array", "items": { "$ref": "#/$defs/control_domain" } },
+        "max_level": { "$ref": "#/$defs/control_level" },
+        "status": { "$ref": "#/$defs/readiness" },
+        "maturity": { "type": "string", "enum": ["production", "beta", "preview", "simulator"] },
+        "install_state": {
+          "type": "string",
+          "enum": ["built_in", "installed", "installed_but_disabled", "not_installed", "external_required", "unknown"]
+        },
+        "warm_check": {
+          "type": ["string", "null"],
+          "enum": ["not_run", "passed", "failed", "not_applicable", null]
+        },
+        "setup_action_ids": { "type": "array", "items": { "type": "string" } },
+        "limitations_en": { "type": "array", "items": { "type": "string" } },
+        "limitations_th": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "observation_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "display_name_en",
+        "display_name_th",
+        "status",
+        "domains",
+        "privacy_note_en",
+        "privacy_note_th",
+        "setup_action_ids"
+      ],
+      "properties": {
+        "source_id": { "type": "string" },
+        "display_name_en": { "type": "string" },
+        "display_name_th": { "type": "string" },
+        "status": { "$ref": "#/$defs/readiness" },
+        "domains": { "type": "array", "items": { "$ref": "#/$defs/control_domain" } },
+        "privacy_note_en": { "type": "string" },
+        "privacy_note_th": { "type": "string" },
+        "setup_action_ids": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "setup_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_id",
+        "title_en",
+        "title_th",
+        "detail_en",
+        "detail_th",
+        "requires_admin",
+        "requires_restart",
+        "estimated_minutes",
+        "safe_to_skip"
+      ],
+      "properties": {
+        "action_id": { "type": "string" },
+        "title_en": { "type": "string" },
+        "title_th": { "type": "string" },
+        "detail_en": { "type": "string" },
+        "detail_th": { "type": "string" },
+        "requires_admin": { "type": "boolean" },
+        "requires_restart": { "type": "boolean" },
+        "estimated_minutes": { "type": "integer", "minimum": 0 },
+        "docs_path": { "type": ["string", "null"] },
+        "safe_to_skip": { "type": "boolean" }
+      }
+    }
+  }
+}

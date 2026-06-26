@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.pollen.dev/schemas/security-coverage.v1.schema.json",
+  "title": "PolicyCoverageReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "coverage_id",
+    "tenant_id",
+    "device_id",
+    "local_cloud_profile",
+    "mode",
+    "generated_at",
+    "summary",
+    "items",
+    "setup_actions"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "security-coverage.v1" },
+    "coverage_id": { "type": "string" },
+    "tenant_id": { "type": "string" },
+    "device_id": { "type": "string" },
+    "local_cloud_profile": { "type": "string" },
+    "mode": {
+      "type": "string",
+      "enum": ["desktop_simple", "desktop_advanced", "enterprise_server", "sovereign", "air_gap"]
+    },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "items": { "type": "array", "items": { "$ref": "#/$defs/item" } },
+    "setup_actions": { "type": "array", "items": { "$ref": "#/$defs/security_setup_action" } }
+  },
+  "$defs": {
+    "security_control_domain": {
+      "type": "string",
+      "enum": [
+        "mcp_tool_call",
+        "network_egress",
+        "dns",
+        "file_access",
+        "process_launch",
+        "browser_ai_session",
+        "identity_use",
+        "skill_install",
+        "skill_runtime",
+        "token_cost",
+        "prompt_content"
+      ]
+    },
+    "security_control_level": {
+      "type": "string",
+      "enum": ["observe", "warn", "ask", "enforce", "strict_deny"]
+    },
+    "risk_id": {
+      "type": "string",
+      "enum": [
+        "llm01_prompt_injection",
+        "llm02_sensitive_information_disclosure",
+        "llm03_supply_chain",
+        "llm04_data_and_model_poisoning",
+        "llm05_improper_output_handling",
+        "llm06_excessive_agency",
+        "llm07_system_prompt_leakage",
+        "llm08_vector_embedding_weakness",
+        "llm09_misinformation",
+        "llm10_unbounded_consumption",
+        "ast01_malicious_skills",
+        "ast02_supply_chain_compromise",
+        "ast03_over_privileged_skills",
+        "ast04_insecure_metadata",
+        "ast05_untrusted_external_instructions",
+        "ast06_weak_isolation",
+        "ast07_update_drift",
+        "ast08_poor_scanning",
+        "ast09_no_governance",
+        "ast10_cross_platform_reuse"
+      ]
+    },
+    "coverage_level": {
+      "type": "string",
+      "enum": [
+        "not_applicable",
+        "not_visible",
+        "observe_only",
+        "warn_only",
+        "ask_before_action",
+        "enforce_partial",
+        "enforce_full"
+      ]
+    },
+    "reason_code": {
+      "type": "string",
+      "enum": [
+        "fully_protected",
+        "observe_only_no_local_control_method",
+        "observe_only_permission_required",
+        "observe_only_unsupported_os",
+        "partial_agent_tool_control_only",
+        "partial_network_control_only",
+        "needs_mcp_config_change",
+        "needs_browser_extension",
+        "needs_os_network_extension",
+        "needs_admin_privilege",
+        "needs_server_side_proxy",
+        "needs_cloud_enrollment",
+        "simulator_only",
+        "policy_not_applicable_to_agent",
+        "warm_check_failed",
+        "bundle_rejected",
+        "contract_version_mismatch"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested_level",
+        "overall_achievable_level",
+        "verdict",
+        "title_en",
+        "title_th",
+        "friendly_en",
+        "friendly_th"
+      ],
+      "properties": {
+        "requested_level": { "$ref": "#/$defs/security_control_level" },
+        "overall_achievable_level": { "$ref": "#/$defs/coverage_level" },
+        "verdict": {
+          "type": "string",
+          "enum": ["full", "partial", "observe_only", "needs_setup", "not_applicable", "unsupported"]
+        },
+        "title_en": { "type": "string" },
+        "title_th": { "type": "string" },
+        "friendly_en": { "type": "string" },
+        "friendly_th": { "type": "string" }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "risk_id",
+        "policy_id",
+        "domain",
+        "requested_level",
+        "achievable_level",
+        "observe_capable",
+        "enforce_capable",
+        "enforced_for_real",
+        "reason_code",
+        "friendly_en",
+        "friendly_th",
+        "setup_actions",
+        "evidence_ids"
+      ],
+      "properties": {
+        "risk_id": { "$ref": "#/$defs/risk_id" },
+        "policy_id": { "type": "string" },
+        "agent_id": { "type": ["string", "null"] },
+        "entity_id": { "type": ["string", "null"] },
+        "domain": { "$ref": "#/$defs/security_control_domain" },
+        "requested_level": { "$ref": "#/$defs/security_control_level" },
+        "achievable_level": { "$ref": "#/$defs/coverage_level" },
+        "observe_capable": { "type": "boolean" },
+        "enforce_capable": { "type": "boolean" },
+        "enforced_for_real": { "type": "boolean" },
+        "chosen_control_method": { "type": ["string", "null"] },
+        "decision_engine": { "type": ["string", "null"], "enum": ["opa_wasm", "cedar", "openfga", "plugin_wasm", null] },
+        "reason_code": { "$ref": "#/$defs/reason_code" },
+        "friendly_en": { "type": "string" },
+        "friendly_th": { "type": "string" },
+        "setup_actions": { "type": "array", "items": { "$ref": "#/$defs/security_setup_action" } },
+        "evidence_ids": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "security_setup_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_id",
+        "title_en",
+        "title_th",
+        "detail_en",
+        "detail_th",
+        "requires_admin",
+        "requires_restart",
+        "estimated_minutes",
+        "safe_to_skip"
+      ],
+      "properties": {
+        "action_id": { "type": "string" },
+        "title_en": { "type": "string" },
+        "title_th": { "type": "string" },
+        "detail_en": { "type": "string" },
+        "detail_th": { "type": "string" },
+        "requires_admin": { "type": "boolean" },
+        "requires_restart": { "type": "boolean" },
+        "estimated_minutes": { "type": "integer", "minimum": 0 },
+        "docs_path": { "type": ["string", "null"] },
+        "safe_to_skip": { "type": "boolean" }
+      }
+    }
+  }
+}

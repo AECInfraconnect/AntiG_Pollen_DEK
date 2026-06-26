@@ -21,6 +21,33 @@
     "capabilities": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "contract_version": { "type": "string" },
+    "compatible_cloud_contracts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "schemas": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "interfaces": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schema", "direction"],
+        "properties": {
+          "schema": { "type": "string" },
+          "direction": {
+            "type": "string",
+            "enum": ["local_to_dashboard", "local_to_cloud", "cloud_to_local", "shared"]
+          },
+          "hot_reload": { "type": "boolean" },
+          "requires_spiffe": { "type": "boolean" },
+          "requires_oauth": { "type": "boolean" }
+        }
+      }
     }
   }
 }

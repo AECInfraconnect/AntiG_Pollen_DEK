@@ -22,6 +22,8 @@ import type {
   DeploySession,
   ControlMethodPlan,
   ControlLevel,
+  LocalCapabilitySnapshotV2,
+  RuntimeModeV2,
 } from "./types";
 export type * from "./types";
 import type { components } from "../../../../contracts/generated/typescript/api";
@@ -126,6 +128,23 @@ export class ControlPlaneClient {
 
   async getHostCapabilities(): Promise<LocalCapabilitySnapshot> {
     return this.fetchApi("/v1/host/capabilities");
+  }
+  async getHostCapabilitiesV2(
+    mode: RuntimeModeV2 = "desktop_advanced",
+  ): Promise<LocalCapabilitySnapshotV2> {
+    const params = new URLSearchParams({ mode });
+    return this.fetchRootApi(
+      `/v1/tenants/${this.tenantId}/devices/local/capability-snapshot-v2?${params}`,
+    );
+  }
+  async refreshHostCapabilitiesV2(
+    mode: RuntimeModeV2 = "desktop_advanced",
+  ): Promise<LocalCapabilitySnapshotV2> {
+    const params = new URLSearchParams({ mode });
+    return this.fetchRootApi(
+      `/v1/tenants/${this.tenantId}/devices/local/capability-refresh?${params}`,
+      { method: "POST" },
+    );
   }
   async scanAgents(): Promise<{ job_id: string }> {
     return this.fetchApi("/v1/discovery/scan", { method: "POST" });
@@ -568,6 +587,13 @@ export const DeploymentApi = {
     defaultClient.fetchApi(`/policy-deployment/${deploymentId}/rollback`, {
       method: "POST",
     }),
+};
+
+export const CapabilityApi = {
+  getSnapshotV2: (mode?: RuntimeModeV2) =>
+    defaultClient.getHostCapabilitiesV2(mode),
+  refreshSnapshotV2: (mode?: RuntimeModeV2) =>
+    defaultClient.refreshHostCapabilitiesV2(mode),
 };
 
 export const LogApi = {

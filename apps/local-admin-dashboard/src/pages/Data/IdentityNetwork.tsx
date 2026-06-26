@@ -155,7 +155,7 @@ export function IdentityNetwork() {
       </div>
 
       <MasterDetailLayout
-        idSelector={(x: any) => x.identity_id || x.id}
+        idSelector={(x: any) => x.identity_id || x.entity_id || x.id}
         items={entities}
         loading={loading}
         selectedId={selectedId}
@@ -202,6 +202,11 @@ export function IdentityNetwork() {
             <EntityCard
               title={e.display_name}
               subtitle={e.entity_type}
+              summary={
+                e.observed_details
+                  ? `${e.observed_details.access_count} identity event(s) from ${e.observed_details.agents.length || 0} agent(s). ${e.observed_details.spiffe_id ? "SPIFFE-linked workload." : "No SPIFFE ID observed yet."}`
+                  : `${e.entity_type} identity from ${e.external_ids?.[0]?.provider ?? "registry"} is ready for relationship and policy targeting.`
+              }
               icon={UserCircle}
               status={isGoverned ? "ok" : e.is_observed ? "degraded" : "idle"}
               statusLabel={

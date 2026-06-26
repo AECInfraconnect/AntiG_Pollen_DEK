@@ -228,6 +228,7 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
         }
         renderCard={(t: UnifiedTool, selected) => {
           let status: UiStatus = "ok";
+          const observed = t.observed_details;
           if (!t.is_registered) status = "idle";
           else if (t.risk_level === "high" || t.risk_level === "critical")
             status = "failed";
@@ -237,12 +238,20 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
             <EntityCard
               title={t.name}
               subtitle={t.description || "No description"}
+              summary={
+                observed
+                  ? `${observed.use_count} observed invocation(s) from ${observed.agents.length || 0} agent(s). ${observed.governed ? "Policy governed." : "No active policy yet."}`
+                  : `${t.risk_level || "Unknown"} risk tool with ${t.data_access_level || "unknown"} data access.`
+              }
               icon={Wrench}
               status={status}
               statusLabel={
                 !t.is_registered ? "Observed" : t.risk_level ? t.risk_level.toUpperCase() : "UNKNOWN"
               }
-              meta={[{ label: "Data Access", value: t.data_access_level }]}
+              meta={[
+                { label: "Data Access", value: t.data_access_level },
+                { label: "Side Effect", value: t.side_effect_level },
+              ]}
               actions={[
                 {
                   label: t.is_registered ? "Policy" : "Protect",

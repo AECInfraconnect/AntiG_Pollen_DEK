@@ -167,6 +167,11 @@ export function Entities() {
             <EntityCard
               title={e.display_name}
               subtitle={e.entity_type}
+              summary={
+                isDiscoverySurface
+                  ? `Discovered ${e.entity_type} surface with ${((e.attributes?.confidence ?? 0) * 100).toFixed(0)}% confidence and ${e.attributes?.capabilities?.length ?? 0} capability tag(s).`
+                  : `${e.entity_type} from ${e.external_ids?.[0]?.provider ?? "registry"} is ${isGoverned ? "governed by active policy" : "available for policy targeting"}.`
+              }
               icon={UserCircle}
               status={
                 isGoverned ? "ok" : isDiscoverySurface ? "degraded" : "idle"

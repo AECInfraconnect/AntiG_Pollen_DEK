@@ -46,6 +46,22 @@ fn main() {
             schema_for!(dek_domain_schema::feasibility::PolicyFeasibilityResult),
         ),
         (
+            "local-capability-snapshot.v2.schema.json",
+            schema_for!(dek_domain_schema::capability_snapshot_v2::LocalCapabilitySnapshotV2),
+        ),
+        (
+            "security-coverage.v1.schema.json",
+            schema_for!(dek_domain_schema::security_coverage::PolicyCoverageReport),
+        ),
+        (
+            "user-message-catalog.v1.schema.json",
+            schema_for!(Vec<dek_domain_schema::user_message::UserVisibleMessage>),
+        ),
+        (
+            "registered-agent-identity-binding.v1.schema.json",
+            schema_for!(dek_domain_schema::identity_binding::RegisteredAgentIdentityBinding),
+        ),
+        (
             "entity-card-model.schema.json",
             schema_for!(dek_domain_schema::entity_card::EntityCardModel),
         ),

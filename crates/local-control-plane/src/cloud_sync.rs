@@ -1,7 +1,25 @@
 use crate::state::AppState;
 use reqwest::Client;
+use sha2::Digest;
 use std::time::Duration;
 use tracing::{info, warn};
+
+fn local_device_id() -> String {
+    if let Ok(id) = std::env::var("POLLEK_DEVICE_ID") {
+        let trimmed = id.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
+        }
+    }
+
+    let host = std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .unwrap_or_else(|_| "local-device".to_string());
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(host.as_bytes());
+    let digest = hasher.finalize();
+    format!("dev_{}", hex::encode(&digest[..8]))
+}
 
 pub async fn start_cloud_registry_sync_loop(state: AppState) -> anyhow::Result<()> {
     tokio::spawn(async move {
@@ -9,6 +27,7 @@ pub async fn start_cloud_registry_sync_loop(state: AppState) -> anyhow::Result<(
             .timeout(Duration::from_secs(10))
             .build()
             .unwrap_or_default();
+        let device_id = local_device_id();
 
         loop {
             // Wait before starting the sync to avoid startup load
@@ -229,7 +248,7 @@ pub async fn start_cloud_registry_sync_loop(state: AppState) -> anyhow::Result<(
                         let batch_payload = serde_json::json!({
                             "schema_version": "telemetry-batch.v1",
                             "tenant_id": tenant_id,
-                            "device_id": "default",
+                            "device_id": device_id.clone(),
                             "batch_id": format!("batch-{}", chrono::Utc::now().timestamp_millis()),
                             "events": envelopes
                         });

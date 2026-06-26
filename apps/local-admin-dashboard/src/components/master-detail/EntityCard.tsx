@@ -4,6 +4,7 @@ import { statusToken, type UiStatus } from "../../lib/status";
 export function EntityCard({
   title,
   subtitle,
+  summary,
   icon: Icon,
   status,
   statusLabel,
@@ -13,6 +14,7 @@ export function EntityCard({
 }: {
   title: string;
   subtitle?: string;
+  summary?: string;
   icon: any;
   status: UiStatus;
   statusLabel: string;
@@ -58,6 +60,11 @@ export function EntityCard({
             <div className="truncate text-xs text-muted-foreground mt-0.5">
               {subtitle}
             </div>
+          )}
+          {summary && (
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+              {summary}
+            </p>
           )}
           {meta.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">

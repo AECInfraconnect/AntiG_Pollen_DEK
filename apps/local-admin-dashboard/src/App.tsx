@@ -34,6 +34,8 @@ import { Tools } from "./pages/Tools";
 import { Deployments } from "./pages/Deployments";
 import { LocalEvidence } from "./pages/LocalEvidence";
 import { ControlMethods } from "./pages/ControlMethods";
+import { Capabilities } from "./pages/Capabilities";
+import { Health } from "./pages/Health";
 
 import { Toaster } from "sonner";
 
@@ -79,24 +81,16 @@ function App() {
                 <Route index element={<Overview />} />
 
                 {/* New Navigation Routes */}
-                <Route
-                  path="scan"
-                  element={<Placeholder name="Scan This Device" />}
-                />
-                <Route
-                  path="offline-scan"
-                  element={<Placeholder name="Offline Scan" />}
-                />
+                <Route path="scan" element={<AutoDiscovery />} />
+                <Route path="offline-scan" element={<LocalEvidence />} />
                 <Route
                   path="recommended-policies"
                   element={<PolicySuggestions />}
                 />
-                <Route
-                  path="policy-feasibility"
-                  element={<Placeholder name="Policy Feasibility" />}
-                />
+                <Route path="policy-feasibility" element={<Protect />} />
                 <Route path="deployments" element={<Deployments />} />
                 <Route path="control-methods" element={<ControlMethods />} />
+                <Route path="capabilities" element={<Capabilities />} />
                 <Route
                   path="pep-layers"
                   element={<Placeholder name="PEP Layers" />}
@@ -107,7 +101,7 @@ function App() {
                 />
                 <Route path="timeline" element={<DecisionLogs />} />
                 <Route path="local-evidence" element={<LocalEvidence />} />
-                <Route path="health" element={<Placeholder name="Health" />} />
+                <Route path="health" element={<Health />} />
 
                 {/* AI Ecosystem */}
                 <Route path="agents" element={<AgentsAndModels />} />

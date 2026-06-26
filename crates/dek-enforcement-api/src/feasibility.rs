@@ -57,10 +57,14 @@ pub fn assess(
                 }
                 None => {
                     achievable = ControlLevel::Observe.min(achievable);
-                    if let Some(u) = snap.upgrade_for(domain.clone()) {
+                    let upgrade = snap.upgrade_for(domain.clone());
+                    if let Some(u) = &upgrade {
                         actions.push(u.clone());
                     }
-                    per_domain.push(DomainFeasibility::observe_fallback(domain));
+                    per_domain.push(DomainFeasibility::observe_fallback(
+                        domain,
+                        upgrade.as_ref(),
+                    ));
                 }
             }
         }

@@ -14,7 +14,7 @@ impl ControlLevel {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub enum ControlDomain {
     Network,
     FileSystem,
@@ -54,6 +54,14 @@ pub struct ControlMethodCap {
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CapabilityUpgrade {
     pub unlocks: String,
+    #[serde(default)]
+    pub action_id: String,
+    #[serde(default)]
+    pub reason_code: String,
+    #[serde(default)]
+    pub title_en: String,
+    #[serde(default)]
+    pub title_th: String,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -63,10 +71,54 @@ pub struct LocalCapabilitySnapshot {
 
 impl LocalCapabilitySnapshot {
     pub fn observe_capable(&self, _domain: ControlDomain) -> Option<&ControlMethodCap> {
-        None
+        self.control_methods.iter().find(|m| {
+            m.domains.contains(&_domain)
+                && m.max_level >= ControlLevel::Observe
+                && matches!(
+                    m.status,
+                    MethodStatus::Available | MethodStatus::NeedsPermission
+                )
+        })
     }
-    pub fn upgrade_for(&self, _domain: ControlDomain) -> Option<&CapabilityUpgrade> {
-        None
+    pub fn upgrade_for(&self, domain: ControlDomain) -> Option<CapabilityUpgrade> {
+        let (action_id, reason_code, title_en, title_th, unlocks) = match domain {
+            ControlDomain::Network | ControlDomain::Dns => (
+                "install_device_network_control",
+                "needs_os_network_extension",
+                "Install device-level network control",
+                "ติดตั้งตัวควบคุมเครือข่ายระดับเครื่อง",
+                "real network egress blocking",
+            ),
+            ControlDomain::McpTool => (
+                "approve_mcp_config_wrapper",
+                "needs_mcp_config_change",
+                "Allow Pollek to wrap this agent's tool configuration",
+                "อนุญาตให้ Pollek ครอบการตั้งค่าเครื่องมือของ Agent นี้",
+                "MCP tool-call enforcement",
+            ),
+            ControlDomain::FileSystem => (
+                "enable_file_activity_control",
+                "observe_only_no_local_control_method",
+                "Enable file activity control",
+                "เปิดใช้การควบคุมกิจกรรมไฟล์",
+                "file access enforcement",
+            ),
+            ControlDomain::Process => (
+                "enable_process_observation",
+                "observe_only_no_local_control_method",
+                "Enable process observation",
+                "เปิดใช้การสังเกต process",
+                "process launch observation",
+            ),
+        };
+
+        Some(CapabilityUpgrade {
+            unlocks: unlocks.to_string(),
+            action_id: action_id.to_string(),
+            reason_code: reason_code.to_string(),
+            title_en: title_en.to_string(),
+            title_th: title_th.to_string(),
+        })
     }
 }
 
@@ -78,7 +130,27 @@ pub struct Policy {
 
 impl Policy {
     pub fn required_domains(&self) -> Vec<ControlDomain> {
-        vec![]
+        let id = self.id.to_ascii_lowercase();
+        let mut domains = if id.contains("mcp") || id.contains("tool") {
+            vec![ControlDomain::McpTool]
+        } else if id.contains("network") || id.contains("shadow") || id.contains("egress") {
+            vec![ControlDomain::Network, ControlDomain::Dns]
+        } else if id.contains("file") || id.contains("folder") || id.contains("secret") {
+            vec![ControlDomain::FileSystem, ControlDomain::McpTool]
+        } else if id.contains("prompt")
+            || id.contains("pii")
+            || id.contains("redact")
+            || id.contains("budget")
+            || id.contains("token")
+            || id.contains("cost")
+        {
+            vec![ControlDomain::McpTool, ControlDomain::Network]
+        } else {
+            vec![ControlDomain::McpTool]
+        };
+        domains.sort();
+        domains.dedup();
+        domains
     }
 }
 
@@ -87,21 +159,47 @@ pub struct DomainFeasibility {
     pub domain: ControlDomain,
     pub chosen_method: Option<String>,
     pub level: ControlLevel,
+    #[serde(default)]
+    pub reason_code: String,
+    #[serde(default)]
+    pub setup_action_ids: Vec<String>,
+    #[serde(default)]
+    pub enforced_for_real: bool,
 }
 
 impl DomainFeasibility {
     pub fn ok(domain: ControlDomain, method: &ControlMethodCap, level: ControlLevel) -> Self {
+        let enforced_for_real =
+            method.status == MethodStatus::Available && level >= ControlLevel::Enforce;
         Self {
             domain,
             chosen_method: Some(method.id.clone()),
             level,
+            reason_code: if method.status == MethodStatus::Available {
+                "fully_protected".into()
+            } else {
+                "observe_only_permission_required".into()
+            },
+            setup_action_ids: Vec::new(),
+            enforced_for_real,
         }
     }
-    pub fn observe_fallback(domain: ControlDomain) -> Self {
+    pub fn observe_fallback(domain: ControlDomain, upgrade: Option<&CapabilityUpgrade>) -> Self {
         Self {
             domain,
             chosen_method: None,
             level: ControlLevel::Observe,
+            reason_code: upgrade
+                .map(|u| u.reason_code.clone())
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| "observe_only_no_local_control_method".into()),
+            setup_action_ids: upgrade
+                .map(|u| vec![u.action_id.clone()])
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|id| !id.is_empty())
+                .collect(),
+            enforced_for_real: false,
         }
     }
 }
@@ -211,10 +309,14 @@ pub fn assess_feasibility(
             }
             None => {
                 achievable = ControlLevel::Observe.min(achievable);
-                if let Some(u) = snap.upgrade_for(domain.clone()) {
+                let upgrade = snap.upgrade_for(domain.clone());
+                if let Some(u) = &upgrade {
                     gaps.push(u.clone());
                 }
-                per_domain.push(DomainFeasibility::observe_fallback(domain));
+                per_domain.push(DomainFeasibility::observe_fallback(
+                    domain,
+                    upgrade.as_ref(),
+                ));
             }
         }
     }
@@ -306,5 +408,36 @@ mod tests {
         };
         let result = assess_feasibility(&policy, &snap);
         assert_eq!(result.policy_id, "pol_empty");
+    }
+
+    #[test]
+    fn pii_policy_requires_tool_and_network_domains() {
+        let policy = Policy {
+            id: "pii.redact_before_external_llm".to_string(),
+            requested_level: ControlLevel::Enforce,
+        };
+        let domains = policy.required_domains();
+        assert!(domains.contains(&ControlDomain::McpTool));
+        assert!(domains.contains(&ControlDomain::Network));
+    }
+
+    #[test]
+    fn observe_fallback_carries_reason_and_setup_action() {
+        let policy = Policy {
+            id: "network.shadow_ai_external_llm_block".to_string(),
+            requested_level: ControlLevel::Enforce,
+        };
+        let snap = LocalCapabilitySnapshot {
+            control_methods: vec![],
+        };
+        let result = assess_feasibility(&policy, &snap);
+        assert!(matches!(result.verdict, FeasibilityVerdict::ObserveOnly));
+        assert!(result
+            .per_domain
+            .iter()
+            .all(|domain| !domain.reason_code.is_empty()));
+        assert!(result.per_domain.iter().any(|domain| domain
+            .setup_action_ids
+            .contains(&"install_device_network_control".to_string())));
     }
 }

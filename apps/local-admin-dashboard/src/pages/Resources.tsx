@@ -257,6 +257,7 @@ export function Resources() {
         renderCard={(r: UnifiedResource, selected) => {
           let status: UiStatus = "ok";
           let label = "Protected";
+          const observed = r.observed_details;
           if (!r.is_registered) {
             status = "idle";
             label = "Observed";
@@ -272,10 +273,21 @@ export function Resources() {
             <EntityCard
               title={r.name}
               subtitle={r.resource_type}
+              summary={
+                observed
+                  ? `${observed.access_count} observed access event(s) from ${observed.agents.length || 0} agent(s). ${observed.governed ? "Policy governed." : "No active policy yet."}`
+                  : `${r.classification || "Unclassified"} resource registered for policy targeting.`
+              }
               icon={Database}
               status={status}
               statusLabel={label}
-              meta={[{ label: "URI", value: r.uri }]}
+              meta={[
+                { label: "URI", value: r.uri },
+                {
+                  label: "Scope",
+                  value: observed?.scope ?? (r.uri.startsWith("http") ? "cloud" : "local"),
+                },
+              ]}
               actions={[
                 {
                   label: r.is_registered ? "Policy" : "Protect",
