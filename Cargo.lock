@@ -2263,6 +2263,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dek-guard-pipeline"
+version = "1.0.0-beta.10"
+dependencies = [
+ "async-trait",
+ "dek-plugin-sdk",
+ "once_cell",
+ "regex",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "dek-ipc"
 version = "0.1.0"
 dependencies = [
