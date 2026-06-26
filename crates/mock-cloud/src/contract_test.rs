@@ -169,6 +169,40 @@ async fn telemetry_decision_logs_endpoint_accepts_and_redacts() {
     let res1 = app.clone().oneshot(req1).await.unwrap(); //
     assert_eq!(res1.status(), StatusCode::OK);
 
+    let payload_audit = json!({
+        "events": [{
+            "event_type": "audit",
+            "action": "policy.sync.success",
+            "device_id": "device-1",
+            "tenant_id": "t1",
+            "timestamp": "2026-06-09T00:00:00Z",
+            "bundle_version": "v1",
+            "result": "success"
+        }]
+    });
+
+    let req_audit = Request::builder()
+        .method("POST")
+        .uri("/v1/telemetry/events")
+        .header("content-type", "application/json")
+        .body(Body::from(serde_json::to_vec(&payload_audit).unwrap())) //
+        .unwrap(); //
+
+    let res_audit = app.clone().oneshot(req_audit).await.unwrap(); //
+    assert_eq!(res_audit.status(), StatusCode::OK);
+    let mirrored_sync_audit = state
+        .audit_logs
+        .lock()
+        .map(|logs| {
+            logs.iter()
+                .any(|entry| entry.action == "policy.sync.success")
+        })
+        .unwrap_or(false);
+    assert!(
+        mirrored_sync_audit,
+        "audit telemetry should be mirrored into admin audit logs"
+    );
+
     let payload_dirty = json!({
         "events": [{
             "event_type": "decision",

@@ -58,29 +58,45 @@ pub struct TelemetryPayload {
     pub events: Vec<serde_json::Value>,
 }
 
+fn validate_redaction(event_val: &serde_json::Value) -> Result<(), String> {
+    if let Some(reason) = event_val.pointer("/reason").and_then(|r| r.as_str()) {
+        let r = reason.to_lowercase();
+        if r.contains("bearer") || r.contains("password") || r.contains("authorization:") {
+            return Err("Unredacted secrets detected in telemetry payload".into());
+        }
+    }
+    Ok(())
+}
+
+fn mirror_audit_event(state: &AppState, event_val: &serde_json::Value) {
+    let is_audit = event_val
+        .get("event_type")
+        .and_then(|e| e.as_str())
+        .map(|event_type| event_type.eq_ignore_ascii_case("audit"))
+        .unwrap_or(false);
+    if !is_audit {
+        return;
+    }
+
+    if let Some(action) = event_val.pointer("/action").and_then(|a| a.as_str()) {
+        let actor = event_val
+            .pointer("/actor")
+            .or_else(|| event_val.pointer("/device_id"))
+            .and_then(|a| a.as_str())
+            .unwrap_or("dek");
+        let details = event_val.get("details").unwrap_or(event_val).to_string();
+        state.audit_push(actor, action, &details);
+    }
+}
+
 /// Shared ingest: redaction-check + store into the unified buffer. Returns the
 /// count accepted, or an error if unredacted secrets are detected.
 fn ingest(state: &AppState, events: Vec<serde_json::Value>, kind: &str) -> Result<usize, String> {
     let mut logs = state.telemetry_events.lock().unwrap(); //
     let mut n = 0;
     for event_val in events {
-        // Redaction validation: assert no raw credentials leak into telemetry.
-        if let Some(reason) = event_val.pointer("/reason").and_then(|r| r.as_str()) {
-            let r = reason.to_lowercase();
-            if r.contains("bearer") || r.contains("password") || r.contains("authorization:") {
-                return Err("Unredacted secrets detected in telemetry payload".into());
-            }
-        }
-
-        if let Some(action) = event_val.pointer("/action").and_then(|a| a.as_str()) {
-            if event_val.get("event_type").and_then(|e| e.as_str()) == Some("Audit") {
-                state.audit_push(
-                    "dek",
-                    action,
-                    &serde_json::to_string(&event_val.get("details")).unwrap_or_default(),
-                );
-            }
-        }
+        validate_redaction(&event_val)?;
+        mirror_audit_event(state, &event_val);
         logs.push_front(event_val);
         if logs.len() > 2000 {
             logs.pop_back();
@@ -184,25 +200,20 @@ async fn ingest_batches(
         p.items
     };
     let count = events.len();
-    let mut logs = s.telemetry_events.lock().unwrap(); //
-    let mut n = 0;
-    for event in events {
-        logs.push_front(event);
-        if logs.len() > 2000 {
-            logs.pop_back();
-        }
-        n += 1;
+    match ingest(&s, events, "batches") {
+        Ok(n) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "schema_version": "telemetry-ingest-response.v1",
+                "accepted": n as i32,
+                "rejected": (count - n) as i32
+            })),
+        ),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": e })),
+        ),
     }
-    drop(logs);
-
-    (
-        StatusCode::OK,
-        Json(serde_json::json!({
-            "schema_version": "telemetry-ingest-response.v1",
-            "accepted": n as i32,
-            "rejected": (count - n) as i32
-        })),
-    )
 }
 
 #[derive(serde::Deserialize)]

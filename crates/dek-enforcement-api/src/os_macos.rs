@@ -21,10 +21,10 @@ impl ResourceObserver for MacosEndpointSecurityObserver {
 
 #[cfg(target_os = "macos")]
 pub mod ffi {
-    use libc::{c_int, c_void, size_t, uint32_t};
+    use libc::c_void;
 
-    pub type es_client_t = *mut c_void;
-    pub type es_message_t = *mut c_void;
+    pub type EsClient = *mut c_void;
+    pub type EsMessage = *mut c_void;
 
     pub const ES_NEW_CLIENT_RESULT_SUCCESS: u32 = 0;
     pub const ES_NEW_CLIENT_RESULT_ERR_NOT_ENTITLED: u32 = 1;
@@ -38,15 +38,15 @@ pub mod ffi {
 
     // A C block type for the callback. Rust doesn't natively support Objective-C blocks perfectly
     // without `block` crate, but we declare the opaque pointer.
-    pub type es_handler_block_t = *mut c_void;
+    pub type EsHandlerBlock = *mut c_void;
 
     extern "C" {
-        pub fn es_new_client(client: *mut es_client_t, handler: es_handler_block_t) -> u32;
+        pub fn es_new_client(client: *mut EsClient, handler: EsHandlerBlock) -> u32;
 
-        pub fn es_subscribe(client: es_client_t, events: *const u32, event_count: u32) -> u32;
+        pub fn es_subscribe(client: EsClient, events: *const u32, event_count: u32) -> u32;
 
-        pub fn es_unsubscribe_all(client: es_client_t) -> u32;
+        pub fn es_unsubscribe_all(client: EsClient) -> u32;
 
-        pub fn es_delete_client(client: es_client_t) -> u32;
+        pub fn es_delete_client(client: EsClient) -> u32;
     }
 }

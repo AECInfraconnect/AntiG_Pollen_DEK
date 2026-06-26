@@ -31,6 +31,7 @@ jobs:
   geiger:
     name: Cargo Geiger
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: cargo-bins/cargo-binstall@732870f031d2fb36309d0deaf36abcc704a7be65 # main
@@ -39,13 +40,17 @@ jobs:
       - name: Generate geiger reports
         shell: bash
         run: |
+          set +e
           mkdir -p target/security
-          for dir in crates/*/ plugins/*/ apps/*/; do
-            if [ -f "$dir/Cargo.toml" ]; then
-              name="$(echo "$dir" | tr '/ ' '__')"
-              (cd "$dir" && cargo geiger) > "target/security/${name}.geiger.txt" 2>&1 || true
-            fi
-          done
+          timeout 25m cargo geiger --workspace --all-targets > target/security/workspace.geiger.txt 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            {
+              echo
+              echo "cargo geiger exited with status ${status}; this report is best-effort and non-blocking."
+            } >> target/security/workspace.geiger.txt
+          fi
+          exit 0
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

@@ -158,7 +158,7 @@ export function DecisionLogs() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Activity className="h-6 w-6 text-primary" /> Audit &amp; Decision
-            Logs
+            Activity
           </h2>
           <p className="text-muted-foreground">
             Every authorization decision the Local Enforcement Kit enforced
