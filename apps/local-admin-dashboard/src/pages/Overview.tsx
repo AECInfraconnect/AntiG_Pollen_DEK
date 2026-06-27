@@ -1,19 +1,349 @@
-import { useEffect, useState } from "react";
-import { Activity, ShieldAlert, Server, Users, Info, Dot } from "lucide-react";
-import { RegistryApi, ActivityApi, PolicyFirstApi } from "../services/api";
-import type { LegacyLocalCapabilitySnapshot } from "../services/types";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  Cpu,
+  Database,
+  Eye,
+  Monitor,
+  RefreshCw,
+  Server,
+  ShieldAlert,
+  ShieldCheck,
+  Users,
+  Wrench,
+} from "lucide-react";
+import {
+  ActivityApi,
+  CapabilityApi,
+  RegistryApi,
+} from "../services/api";
+import type {
+  ControlMethodCapabilityV2,
+  LocalCapabilitySnapshotV2,
+  ObservationSourceCapabilityV2,
+  SetupActionV2,
+} from "../services/types";
+import { cn } from "@/lib/utils";
+import { ContextualHelp } from "../components/help/ContextualHelp";
+
+type Metrics = {
+  agents: number;
+  mcps: number;
+  tools: number;
+  resources: number;
+};
+
+const readinessTone: Record<string, string> = {
+  available: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+  degraded: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+  needs_install: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  needs_permission: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+  needs_configuration: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  simulator_only: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+  unsupported: "bg-muted text-muted-foreground border-border",
+  failed: "bg-red-500/10 text-red-500 border-red-500/20",
+};
+
+function pretty(value?: string | null) {
+  if (!value) return "-";
+  return value.replace(/_/g, " ");
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return "Not recorded";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
+
+function readinessClass(status?: string) {
+  return readinessTone[status ?? ""] ?? "bg-muted text-muted-foreground border-border";
+}
+
+function methodCanEnforce(method: ControlMethodCapabilityV2) {
+  return method.max_level === "enforce" || method.max_level === "strict_deny";
+}
+
+function isControlMethod(
+  row: ControlMethodCapabilityV2 | ObservationSourceCapabilityV2,
+): row is ControlMethodCapabilityV2 {
+  return "method_id" in row;
+}
+
+function SnapshotSummary({
+  snapshot,
+  loading,
+  onRefresh,
+}: {
+  snapshot: LocalCapabilitySnapshotV2 | null;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  const deviceName =
+    snapshot?.device_id ||
+    (typeof navigator !== "undefined" ? navigator.userAgent.split(" ")[0] : "local");
+
+  return (
+    <section className="rounded-lg border border-border/70 bg-card/50 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg bg-primary/10 p-2 text-primary">
+            <Monitor className="h-5 w-5" />
+          </div>
+          <div>
+            <p
+              className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              data-testid="current-device-label"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                Current Device
+                <ContextualHelp topicId="overview.current_device" />
+              </span>
+            </p>
+            <h1 className="text-2xl font-bold">{deviceName}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {snapshot
+                ? `${snapshot.os.family} ${snapshot.os.version} (${snapshot.os.arch})`
+                : "Loading local capability snapshot"}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={loading}
+          className="inline-flex h-9 items-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium hover:bg-muted disabled:opacity-50"
+        >
+          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+          Refresh
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <Fact label="Mode" value={pretty(snapshot?.mode)} source="dashboard mode" />
+        <Fact
+          label="Privilege"
+          value={snapshot?.os.elevated ? "Elevated" : "User level"}
+          source="OS probe"
+        />
+        <Fact
+          label="Contract"
+          value={snapshot?.contract.status ?? "-"}
+          source={snapshot?.contract.local_contract_version ?? "contract hub"}
+        />
+        <Fact
+          label="Generated"
+          value={formatDateTime(snapshot?.generated_at)}
+          source="capability snapshot v2"
+        />
+      </div>
+    </section>
+  );
+}
+
+function Fact({
+  label,
+  value,
+  source,
+}: {
+  label: string;
+  value: string;
+  source: string;
+}) {
+  return (
+    <div className="rounded-lg border border-border/60 bg-background/40 p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold capitalize">{value}</p>
+      <p className="mt-1 truncate text-[11px] text-muted-foreground">
+        Source: {source}
+      </p>
+    </div>
+  );
+}
+
+function MetricStrip({ metrics }: { metrics: Metrics }) {
+  const items = [
+    { label: "Agents", value: metrics.agents, icon: Users },
+    { label: "MCP Servers", value: metrics.mcps, icon: Server },
+    { label: "Tools", value: metrics.tools, icon: Wrench },
+    { label: "Resources", value: metrics.resources, icon: Database },
+  ];
+
+  return (
+    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <div
+            key={item.label}
+            className="rounded-lg border border-border/70 bg-card/50 p-4"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {item.label}
+              </p>
+              <Icon className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="mt-2 text-2xl font-bold">{item.value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Source: registry endpoint
+            </p>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+function CapabilityList({
+  title,
+  icon: Icon,
+  methods,
+  sources,
+  helpTopicId,
+}: {
+  title: string;
+  icon: any;
+  methods?: ControlMethodCapabilityV2[];
+  sources?: ObservationSourceCapabilityV2[];
+  helpTopicId?: string;
+}) {
+  const rows: Array<ControlMethodCapabilityV2 | ObservationSourceCapabilityV2> =
+    methods ?? sources ?? [];
+  return (
+    <section className="rounded-lg border border-border/70 bg-card/50">
+      <div className="border-b border-border/50 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-semibold">{title}</h2>
+          <ContextualHelp topicId={helpTopicId} />
+        </div>
+      </div>
+      <div className="divide-y divide-border/30">
+        {rows.slice(0, 8).map((row) => {
+          const controlMethod = isControlMethod(row);
+          return (
+            <div
+              key={controlMethod ? row.method_id : row.source_id}
+              className="p-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold">
+                    {controlMethod ? row.display_name_en : row.display_name_en}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {row.domains.map(pretty).join(", ")}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize",
+                    readinessClass(row.status),
+                  )}
+                >
+                  {pretty(row.status)}
+                </span>
+              </div>
+              {controlMethod && (
+                <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                  <span>Max: {pretty(row.max_level)}</span>
+                  <span>Maturity: {pretty(row.maturity)}</span>
+                  <span>Install: {pretty(row.install_state)}</span>
+                </div>
+              )}
+              {controlMethod && row.limitations_en.length > 0 && (
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  {row.limitations_en[0]}
+                </p>
+              )}
+              {!controlMethod && (
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  {row.privacy_note_en}
+                </p>
+              )}
+            </div>
+          );
+        })}
+        {rows.length === 0 && (
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            No capabilities reported yet.
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SetupActions({ actions }: { actions: SetupActionV2[] }) {
+  return (
+    <section className="rounded-lg border border-border/70 bg-card/50">
+      <div className="border-b border-border/50 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <h2 className="text-sm font-semibold">Setup Needed</h2>
+        </div>
+      </div>
+      <div className="divide-y divide-border/30">
+        {actions.slice(0, 6).map((action) => (
+          <div key={action.action_id} className="p-4">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold">{action.title_en}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {action.detail_en}
+                </p>
+              </div>
+              <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                {action.estimated_minutes} min
+              </span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+              {action.requires_admin && <span>Requires admin</span>}
+              {action.requires_restart && <span>Requires restart</span>}
+              {action.safe_to_skip && <span>Safe to skip</span>}
+            </div>
+          </div>
+        ))}
+        {actions.length === 0 && (
+          <div className="flex items-center gap-2 p-4 text-sm text-emerald-500">
+            <CheckCircle2 className="h-4 w-4" />
+            No required setup actions in the latest snapshot.
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
 
 export function Overview() {
-  const [metrics, setMetrics] = useState({
+  const [metrics, setMetrics] = useState<Metrics>({
     agents: 0,
     mcps: 0,
     tools: 0,
     resources: 0,
   });
-  const [snapshot, setSnapshot] =
-    useState<LegacyLocalCapabilitySnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<LocalCapabilitySnapshotV2 | null>(
+    null,
+  );
   const [snapshotLoading, setSnapshotLoading] = useState(true);
   const [activities, setActivities] = useState<any[]>([]);
+
+  const loadSnapshot = async (refresh = false) => {
+    setSnapshotLoading(true);
+    try {
+      const next = refresh
+        ? await CapabilityApi.refreshSnapshotV2("desktop_advanced")
+        : await CapabilityApi.getSnapshotV2("desktop_advanced");
+      setSnapshot(next);
+    } catch (error) {
+      console.error("Failed to load capability snapshot:", error);
+    } finally {
+      setSnapshotLoading(false);
+    }
+  };
 
   useEffect(() => {
     Promise.all([
@@ -32,176 +362,124 @@ export function Overview() {
       })
       .catch(console.error);
 
-    const fetchSnapshot = async () => {
-      try {
-        setSnapshotLoading(true);
-        await PolicyFirstApi.scan();
-        const res = await PolicyFirstApi.getLatestSnapshot();
-        setSnapshot(res);
-      } catch (err) {
-        console.error("Failed to load snapshot:", err);
-      } finally {
-        setSnapshotLoading(false);
-      }
-    };
-
-    fetchSnapshot();
+    void loadSnapshot();
 
     ActivityApi.getActivity()
       .then((res: any) => setActivities(res.activity_sets || []))
       .catch(console.error);
   }, []);
 
+  const capabilitySummary = useMemo(() => {
+    const methods = snapshot?.control_methods ?? [];
+    const enforceable = methods.filter(methodCanEnforce).length;
+    const available = methods.filter((method) => method.status === "available").length;
+    const observeSources = snapshot?.observation_sources.filter(
+      (source) => source.status === "available" || source.status === "degraded",
+    ).length ?? 0;
+    return { enforceable, available, observeSources };
+  }, [snapshot]);
+
+  const recentItems = activities.flatMap((set: any) => set.items ?? []).slice(0, 8);
+
   return (
     <div className="space-y-5">
-      {/* Header with compact inline metrics */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">
+          <span className="inline-flex items-center gap-2">
             Dashboard Overview
-          </h2>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 text-green-500 border border-green-500/20 rounded-full">
-            <ShieldAlert className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">
-              Local-Only Ready
-            </span>
-          </div>
-        </div>
-
-        {/* Compact inline metric strip - replaces big stat cards */}
-        <div className="flex flex-wrap items-center gap-1 text-sm">
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-card/50 px-2.5 py-1">
-            <Users className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="font-medium">{metrics.agents}</span>
-            <span className="text-muted-foreground text-xs">Agents</span>
+            <ContextualHelp topicId="overview.dashboard" />
           </span>
-          <Dot className="h-4 w-4 text-muted-foreground/40" />
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-card/50 px-2.5 py-1">
-            <Server className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="font-medium">{metrics.mcps}</span>
-            <span className="text-muted-foreground text-xs">MCPs</span>
-          </span>
-          <Dot className="h-4 w-4 text-muted-foreground/40" />
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-card/50 px-2.5 py-1">
-            <Activity className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="font-medium">{metrics.tools}</span>
-            <span className="text-muted-foreground text-xs">Tools</span>
-          </span>
-          <Dot className="h-4 w-4 text-muted-foreground/40" />
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-card/50 px-2.5 py-1">
-            <ShieldAlert className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="font-medium">{metrics.resources}</span>
-            <span className="text-muted-foreground text-xs">Resources</span>
-          </span>
-        </div>
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Local device posture, registered entities, observation sources, and
+          control capability readiness from the active control plane.
+        </p>
       </div>
 
-      {/* Two-column content area */}
-      <div className="grid gap-4 lg:grid-cols-[2fr_3fr]">
-        {/* Left: Control Methods */}
-        <div className="rounded-lg border border-border/60 bg-card/30 p-4 overflow-hidden">
-          <h3 className="text-sm font-semibold mb-3 flex items-center justify-between">
-            <span>Control Methods</span>
-            {snapshotLoading && (
-              <span className="text-muted-foreground text-xs animate-pulse">Scanning...</span>
-            )}
-          </h3>
-          {snapshot && !snapshotLoading && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground pb-2 border-b border-border/40">
-                <span>Device: {snapshot.device_id || "local"}</span>
-                <span className="text-muted-foreground/50">|</span>
-                <span>Agents: {snapshot.agents?.length || metrics.agents || 0}</span>
-              </div>
-              <div className="space-y-1">
-                {(
-                  (snapshot as any).methods || (snapshot as any).control_methods
-                )?.length > 0 ? (
-                  (
-                    (snapshot as any).methods ||
-                    (snapshot as any).control_methods
-                  ).map((m: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between py-1.5 text-xs border-b border-border/20 last:border-0"
-                    >
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-medium capitalize">
-                          {(m.method || m.id || "").replace(/_/g, " ")}
-                        </span>
-                        {m.domains && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {m.domains.join(", ")}
-                          </span>
-                        )}
-                      </div>
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                          m.status === "ready" ||
-                          m.status === "ready_after_approval" ||
-                          m.status === "Available" ||
-                          m.status === "installed"
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : m.status === "installed_inactive" ||
-                                m.status === "Degraded"
-                              ? "bg-amber-500/20 text-amber-400"
-                              : "bg-rose-500/20 text-rose-400"
-                        }`}
-                      >
-                        {(m.status || "unknown").replace(/_/g, " ")}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <span className="text-xs text-muted-foreground py-2">
-                    No control methods available
-                  </span>
-                )}
-              </div>
-              <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded flex items-start gap-1.5">
-                <Info className="w-3 h-3 text-blue-400 mt-0.5 shrink-0" />
-                <p className="text-[10px] text-blue-300 leading-relaxed">
-                  POLLEK dynamically selects the best control method for each
-                  policy.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+      <SnapshotSummary
+        snapshot={snapshot}
+        loading={snapshotLoading}
+        onRefresh={() => void loadSnapshot(true)}
+      />
 
-        {/* Right: Recent Activity */}
-        <div className="rounded-lg border border-border/60 bg-card/30 p-4">
-          <h3 className="text-sm font-semibold mb-3">Recent Audit Activity</h3>
-          <div className="space-y-2">
-            {activities.length > 0 ? (
-              activities
-                .flatMap((set: any) => set.items)
-                .slice(0, 8)
-                .map((item: any, i: number) => (
-                  <div key={i} className="flex items-center gap-3 py-1.5 border-b border-border/20 last:border-0">
-                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <Activity className="h-3 w-3 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium leading-none truncate">
-                        {item.event_type} — {item.decision}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                        {item.resource} | {item.reason}
-                      </p>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground shrink-0">
-                      {new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+      <MetricStrip metrics={metrics} />
+
+      <section className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
+          <ShieldCheck className="h-4 w-4 text-emerald-500" />
+          <p className="mt-3 text-2xl font-bold">{capabilitySummary.enforceable}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Enforce-capable methods
+          </p>
+        </div>
+        <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
+          <Eye className="h-4 w-4 text-blue-500" />
+          <p className="mt-3 text-2xl font-bold">{capabilitySummary.observeSources}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Observation sources
+          </p>
+        </div>
+        <div className="rounded-lg border border-purple-500/20 bg-purple-500/10 p-4">
+          <Cpu className="h-4 w-4 text-purple-500" />
+          <p className="mt-3 text-2xl font-bold">{capabilitySummary.available}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Ready methods
+          </p>
+        </div>
+      </section>
+
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <CapabilityList
+          title="Control Capabilities"
+          icon={ShieldAlert}
+          methods={snapshot?.control_methods ?? []}
+          helpTopicId="capability.control_methods"
+        />
+        <CapabilityList
+          title="Observation Sources"
+          icon={Activity}
+          sources={snapshot?.observation_sources ?? []}
+          helpTopicId="activity.timeline"
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <SetupActions actions={snapshot?.setup_actions ?? []} />
+        <section className="rounded-lg border border-border/70 bg-card/50">
+          <div className="border-b border-border/50 px-4 py-3">
+            <h2 className="text-sm font-semibold">Recent Audit Activity</h2>
+            <p className="text-xs text-muted-foreground">
+              Source: local activity endpoint
+            </p>
+          </div>
+          <div className="divide-y divide-border/30">
+            {recentItems.length > 0 ? (
+              recentItems.map((item: any, index: number) => (
+                <div key={`${item.event_id ?? index}`} className="flex gap-3 p-4">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <Activity className="h-4 w-4 text-primary" />
                   </div>
-                ))
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {item.event_type ?? item.action ?? "activity"} -{" "}
+                      {item.decision ?? "observed"}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {item.resource ?? item.reason ?? "No resource detail"}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {formatDateTime(item.timestamp)}
+                  </span>
+                </div>
+              ))
             ) : (
-              <p className="text-xs text-muted-foreground py-4 text-center">
+              <div className="p-6 text-center text-sm text-muted-foreground">
                 No recent activity.
-              </p>
+              </div>
             )}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

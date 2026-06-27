@@ -3,6 +3,7 @@ import { Download, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { EntityGraphApi } from "../../services/entityGraphApi";
 import { RelationshipSummaryCards } from "../entity-360/RelationshipSummaryCards";
+import { ContextualHelp } from "../../components/help/ContextualHelp";
 import type {
   ActivityTimelineItem,
   ActivityTimelineResponse,
@@ -202,6 +203,7 @@ export function ActivityTimelineV2() {
           <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <ShieldCheck className="h-6 w-6 text-primary" />
             Activity Timeline
+            <ContextualHelp topicId="activity.timeline" />
           </h2>
           <p className="text-sm text-muted-foreground">
             Real-time agent, resource, tool, policy, PEP, PDP, trace, cost, and

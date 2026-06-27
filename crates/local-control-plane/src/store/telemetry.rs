@@ -17,7 +17,7 @@ impl TelemetryStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 "INSERT INTO telemetry_events (tenant_id, event_type, event_id, data_json, created_at)
                  VALUES (?1,?2,?3,?4,?5)
@@ -34,7 +34,7 @@ impl TelemetryStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let rows = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare("SELECT data_json FROM telemetry_events WHERE tenant_id=?1 AND event_type=?2 ORDER BY created_at DESC LIMIT 1000")?;
             let mut rows = stmt.query(params![tenant, kind])?;
             let mut out = Vec::new();
@@ -55,7 +55,9 @@ impl TelemetryStore for SqliteStore {
         let kind = kind.to_string();
         let conn_arc = self.conn.clone();
         let count = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             Ok(conn.execute(
                 "DELETE FROM telemetry_events WHERE tenant_id = ?1 AND event_type = ?2",
                 params![tenant, kind],

@@ -1,3 +1,4 @@
+import type { MouseEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { statusToken, type UiStatus } from "../../lib/status";
 
@@ -10,6 +11,7 @@ export function EntityCard({
   statusLabel,
   meta = [],
   actions = [],
+  visual,
   selected,
 }: {
   title: string;
@@ -18,14 +20,15 @@ export function EntityCard({
   icon: any;
   status: UiStatus;
   statusLabel: string;
-  meta?: { label: string; value: React.ReactNode }[];
+  meta?: { label: string; value: ReactNode }[];
   actions?: {
     label: string;
     icon?: any;
     primary?: boolean;
     disabled?: boolean;
-    onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+    onClick: (event: MouseEvent<HTMLButtonElement>) => void;
   }[];
+  visual?: ReactNode;
   selected: boolean;
 }) {
   const s = statusToken(status);
@@ -39,9 +42,11 @@ export function EntityCard({
       )}
     >
       <div className="flex items-start gap-3">
-        <div className={cn("mt-0.5 rounded-lg p-2", s.bg)}>
-          <Icon className={cn("h-4 w-4", s.text)} />
-        </div>
+        {visual ?? (
+          <div className={cn("mt-0.5 rounded-lg p-2", s.bg)}>
+            <Icon className={cn("h-4 w-4", s.text)} />
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate font-medium">{title}</span>

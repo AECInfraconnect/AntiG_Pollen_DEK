@@ -24,6 +24,9 @@ import { DetailPane } from "../components/master-detail/DetailPane";
 import { EmptyState } from "../components/master-detail/EmptyState";
 import type { UiStatus } from "../lib/status";
 import { SimplePolicyWizard } from "../components/simple/SimplePolicyWizard";
+import { findAgentReferenceIntel } from "../lib/entityReferenceIntel";
+import { ReferenceIntelMark } from "../components/reference/ReferenceIntelMark";
+import { ContextualHelp } from "../components/help/ContextualHelp";
 
 const DEEP_SCAN_SOURCES = [
   "process",
@@ -360,6 +363,13 @@ export function AutoDiscovery() {
       .map((source) => source.replace(/_/g, " "))
       .join(", ");
 
+  const referenceForCandidate = (candidate: DiscoveredAgentCandidateV2) =>
+    findAgentReferenceIntel({
+      name: displayNameForCandidate(candidate),
+      vendor: candidate.vendor,
+      agentType: candidate.inferred_agent_type,
+    })[0];
+
   const scanIdForCandidate = (candidate: DiscoveredAgentCandidateV2) =>
     candidate.last_scan_id ||
     candidate.scan_ids?.[candidate.scan_ids.length - 1] ||
@@ -453,7 +463,16 @@ export function AutoDiscovery() {
         sources: DEEP_SCAN_SOURCES,
         candidates_found: 0,
       });
-      void fetchScans();
+      if (
+        result.status === "completed" ||
+        result.status === "partial" ||
+        result.status === "failed"
+      ) {
+        await settleScanResults((result as any).candidates_found ?? 0);
+        await fetchScans();
+      } else {
+        void fetchScans();
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -466,7 +485,10 @@ export function AutoDiscovery() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">
-            Auto Discovery
+            <span className="inline-flex items-center gap-2">
+              Auto Discovery
+              <ContextualHelp topicId="discovery.auto_scan" />
+            </span>
           </h2>
           <p className="text-sm text-muted-foreground">
             Find and manage local AI agents, MCP servers, and model endpoints.
@@ -553,12 +575,18 @@ export function AutoDiscovery() {
           const caps = capabilityTags(c);
           const isRegistered = c.status === "registered";
           const browserName = browserNameForCandidate(c);
+          const primaryReference = referenceForCandidate(c);
 
           return (
             <EntityCard
               title={displayNameForCandidate(c)}
               subtitle={c.inferred_agent_type}
               icon={ShieldAlert}
+              visual={
+                primaryReference ? (
+                  <ReferenceIntelMark reference={primaryReference} />
+                ) : undefined
+              }
               status={status}
               statusLabel={isRegistered ? "Registered" : "Pending"}
               meta={[
@@ -580,6 +608,9 @@ export function AutoDiscovery() {
                   value:
                     caps.length > 0 ? caps.slice(0, 3).join(", ") : "Unknown",
                 },
+                ...(primaryReference
+                  ? [{ label: "Known", value: primaryReference.title }]
+                  : []),
                 ...(browserName
                   ? [
                       {

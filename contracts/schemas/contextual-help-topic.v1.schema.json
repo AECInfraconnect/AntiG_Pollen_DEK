@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollek.ai/schemas/contextual-help-topic.v1.schema.json",
+  "title": "Pollek Contextual Help Topic",
+  "description": "Compact in-product help text that can be rendered by Local Dashboard and Pollek Cloud without leaving the application.",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "summary",
+    "guidance",
+    "appliesTo",
+    "sourceDoc"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.-]{1,100}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 320
+    },
+    "guidance": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 220
+      }
+    },
+    "appliesTo": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 60
+      },
+      "uniqueItems": true
+    },
+    "sourceDoc": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 180
+    },
+    "sourceAnchor": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "relatedTopicIds": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_.-]{1,100}$"
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}

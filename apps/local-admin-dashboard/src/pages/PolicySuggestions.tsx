@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Lightbulb, RefreshCw, AlertTriangle } from "lucide-react";
 import { PolicyFirstApi } from "../services/api";
+import { ContextualHelp } from "../components/help/ContextualHelp";
 
 export function PolicySuggestions() {
   const [loading, setLoading] = useState(false);
@@ -37,7 +38,10 @@ export function PolicySuggestions() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">
-            Policy Suggestions
+            <span className="inline-flex items-center gap-2">
+              Policy Suggestions
+              <ContextualHelp topicId="policy.suggestions" />
+            </span>
           </h2>
           <p className="text-muted-foreground">
             Policies automatically suggested based on Shadow AI and Auto

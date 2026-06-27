@@ -41,7 +41,7 @@ impl PdpStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT INTO pdp_runtimes (
@@ -74,7 +74,9 @@ impl PdpStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Option<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt =
                 conn.prepare("SELECT * FROM pdp_runtimes WHERE tenant_id = ?1 AND id = ?2")?;
             let mut rows = stmt.query(params![tenant, id])?;
@@ -94,7 +96,9 @@ impl PdpStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Vec<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare("SELECT * FROM pdp_runtimes WHERE tenant_id = ?1")?;
             let mut rows = stmt.query(params![tenant])?;
             let mut results = Vec::new();
@@ -116,7 +120,9 @@ impl PdpStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let rows_affected = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             Ok(conn.execute(
                 "DELETE FROM pdp_runtimes WHERE tenant_id = ?1 AND id = ?2",
                 params![tenant, id],
@@ -183,7 +189,7 @@ impl PdpStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT INTO pdp_routes (
@@ -219,7 +225,9 @@ impl PdpStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Option<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt =
                 conn.prepare("SELECT * FROM pdp_routes WHERE tenant_id = ?1 AND id = ?2")?;
             let mut rows = stmt.query(params![tenant, id])?;
@@ -239,7 +247,9 @@ impl PdpStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Vec<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn
                 .prepare("SELECT * FROM pdp_routes WHERE tenant_id = ?1 ORDER BY priority DESC")?;
             let mut rows = stmt.query(params![tenant])?;
@@ -262,7 +272,9 @@ impl PdpStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let rows_affected = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             Ok(conn.execute(
                 "DELETE FROM pdp_routes WHERE tenant_id = ?1 AND id = ?2",
                 params![tenant, id],

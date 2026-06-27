@@ -1,10 +1,13 @@
 import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { ContextualHelp } from "../help/ContextualHelp";
 
 export interface EntityPageHeaderProps {
   entityType: string;
   entityName: string;
   icon: any;
+  visual?: ReactNode;
+  helpTopicId?: string;
   iconColor?: string;
   status?: {
     label: string;
@@ -41,6 +44,8 @@ export function EntityPageHeader({
   entityType,
   entityName,
   icon: Icon,
+  visual,
+  helpTopicId,
   iconColor = "text-primary",
   status,
   badges = [],
@@ -52,19 +57,24 @@ export function EntityPageHeader({
     <div className="border-b border-border pb-4">
       <div className="flex items-center gap-3">
         {/* Icon */}
-        <div
-          className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10",
-            iconColor,
-          )}
-        >
-          <Icon className="h-5 w-5" />
-        </div>
+        {visual ?? (
+          <div
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10",
+              iconColor,
+            )}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+        )}
 
         {/* Name block */}
         <div className="min-w-0 flex-1">
           <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            {entityType}
+            <span className="inline-flex items-center gap-1.5">
+              {entityType}
+              <ContextualHelp topicId={helpTopicId} />
+            </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-lg font-bold leading-tight text-foreground">

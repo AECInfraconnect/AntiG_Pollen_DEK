@@ -6,7 +6,9 @@ impl ObservabilityStore for SqliteStore {
         let tenant_id = tenant_id.to_string();
         let conn_arc = self.conn.clone();
         let count = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             Ok(conn.execute(
                 "DELETE FROM observation_events WHERE tenant_id = ?1",
                 params![tenant_id],
@@ -44,7 +46,7 @@ impl ObservabilityStore for SqliteStore {
         let latency_ms = event.latency_ms;
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT INTO observation_events (
@@ -66,7 +68,7 @@ impl ObservabilityStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let json_strs = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare("SELECT payload_json FROM observation_events WHERE tenant_id = ?1 ORDER BY timestamp DESC LIMIT 100")?;
             let mut rows = stmt.query(params![tenant_id])?;
             let mut out = Vec::new();
@@ -103,7 +105,7 @@ impl ObservabilityStore for SqliteStore {
         let timestamp = entry.timestamp.clone();
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT INTO cost_ledger (id, agent_id, provider, model, input_tokens, output_tokens, total_tokens, input_cost, output_cost, total_cost, currency, estimated, timestamp)
@@ -120,7 +122,7 @@ impl ObservabilityStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Vec<CostLedgerEntry>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare("SELECT id, agent_id, provider, model, input_tokens, output_tokens, total_tokens, input_cost, output_cost, total_cost, currency, estimated, timestamp FROM cost_ledger ORDER BY timestamp DESC")?;
             let mut rows = stmt.query(params![])?;
             let mut out = Vec::new();
@@ -164,7 +166,9 @@ impl ObservabilityStore for SqliteStore {
         let cost_estimated = if event.cost.estimated { 1_i64 } else { 0_i64 };
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT OR IGNORE INTO ai_usage_events (
@@ -310,7 +314,9 @@ impl ObservabilityStore for SqliteStore {
     async fn list_ai_usage_events(&self, query: AiUsageQuery) -> Result<Vec<AiUsageEventV1>> {
         let conn_arc = self.conn.clone();
         let events = tokio::task::spawn_blocking(move || -> Result<Vec<AiUsageEventV1>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut sql =
                 String::from("SELECT event_json FROM ai_usage_events WHERE tenant_id = ?");
             let mut values: Vec<Box<dyn ToSql>> = vec![Box::new(query.tenant_id)];
@@ -507,7 +513,7 @@ impl ObservabilityStore for SqliteStore {
         let agent_type = serde_string(&event.agent_type)?;
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT INTO ai_usage_rollups (
@@ -571,7 +577,7 @@ impl ObservabilityStore for SqliteStore {
         let tenant_id = tenant_id.to_string();
         let conn_arc = self.conn.clone();
         let rows = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare(
                 "SELECT data_json FROM ai_budget_limits WHERE tenant_id = ?1 ORDER BY updated_at DESC",
             )?;
@@ -598,7 +604,9 @@ impl ObservabilityStore for SqliteStore {
         let enabled = if budget.enabled { 1_i64 } else { 0_i64 };
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT INTO ai_budget_limits (
@@ -660,7 +668,9 @@ impl ObservabilityStore for SqliteStore {
         let status = status.to_string();
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let mut conn = conn_arc.lock().unwrap(); //
+            let mut conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let tx = conn.transaction()?;
             for event_id in ids {
                 tx.execute(
@@ -688,7 +698,7 @@ impl ObservabilityStore for SqliteStore {
         let created_at = suggestion.created_at.clone();
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT INTO policy_suggestions (id, tenant_id, target_agent_id, target_resource_id, suggestion_type, status, created_at, data_json)
@@ -709,7 +719,7 @@ impl ObservabilityStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let json_strs = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare("SELECT data_json FROM policy_suggestions WHERE tenant_id = ?1 ORDER BY created_at DESC")?;
             let mut rows = stmt.query(params![tenant_id])?;
             let mut out = Vec::new();
@@ -737,7 +747,9 @@ impl ObservabilityStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let rows = tokio::task::spawn_blocking(move || -> Result<Vec<AgentCostRow>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let sql = r#"
                 SELECT agent_id,
                        COALESCE(SUM(total_cost),0)   AS cost,
@@ -769,7 +781,7 @@ impl ObservabilityStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let rows = tokio::task::spawn_blocking(move || -> Result<Vec<ToolUsageRow>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let sql = r#"
                 SELECT agent_id, tool_id,
                        COUNT(*) AS calls,

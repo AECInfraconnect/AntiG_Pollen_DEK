@@ -535,7 +535,7 @@ impl SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT INTO registry_objects (tenant_id, object_type, object_id, status, source, data_json, created_at, updated_at)
@@ -566,7 +566,7 @@ impl SqliteStore {
 
         let conn_arc = self.conn.clone();
         let data_json = tokio::task::spawn_blocking(move || -> Result<Option<String>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare("SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3")?;
             let mut rows = stmt.query(params![tenant_id, object_type, object_id])?;
             if let Some(row) = rows.next()? {
@@ -594,7 +594,9 @@ impl SqliteStore {
 
         let conn_arc = self.conn.clone();
         let data_jsons = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare(
                 "SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2",
             )?;
@@ -627,7 +629,7 @@ impl SqliteStore {
 
         let conn_arc = self.conn.clone();
         let rows_affected = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let changed = conn.execute(
                 "DELETE FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3",
                 params![tenant_id, object_type, object_id],

@@ -1,0 +1,198 @@
+[
+  {
+    "id": "overview.dashboard",
+    "title": "Dashboard overview",
+    "summary": "Use this page to confirm the current device, local mode, registered entity counts, observation sources, and control capability readiness.",
+    "guidance": [
+      "Start here after launching the Local Control Plane.",
+      "If a capability shows setup needed, open the related setup action before expecting enforcement.",
+      "Entity counts come from registry endpoints; capability readiness comes from the local capability snapshot."
+    ],
+    "appliesTo": ["page", "overview"],
+    "sourceDoc": "docs/FIRST_RUN_UX.md",
+    "sourceAnchor": "dashboard-overview",
+    "relatedTopicIds": ["capability.control_methods", "discovery.auto_scan"]
+  },
+  {
+    "id": "overview.current_device",
+    "title": "Current device",
+    "summary": "This card identifies the local device and OS posture that Pollek is observing and enforcing from.",
+    "guidance": [
+      "Device ID and OS properties are local-control-plane data.",
+      "Privilege level affects which OS control methods can enforce.",
+      "Enterprise Cloud can aggregate many devices, but this card describes only this local node."
+    ],
+    "appliesTo": ["overview", "device"],
+    "sourceDoc": "docs/design/POLICY_FIRST_OS_OBSERVE_ENFORCE_WASM.md",
+    "sourceAnchor": "local-capabilities",
+    "relatedTopicIds": ["capability.control_methods"]
+  },
+  {
+    "id": "capability.control_methods",
+    "title": "Control capabilities",
+    "summary": "Control methods are OS, wrapper, proxy, or protocol integration points that can observe or enforce policy.",
+    "guidance": [
+      "Available means the method is installed and warmed up on this device.",
+      "Max level shows the strongest behavior this method can currently provide.",
+      "A policy can only enforce where at least one matching method can enforce."
+    ],
+    "appliesTo": ["capability", "policy", "overview"],
+    "sourceDoc": "docs/design/POLICY_FIRST_OS_OBSERVE_ENFORCE_WASM.md",
+    "sourceAnchor": "control-methods",
+    "relatedTopicIds": ["policy.deploy"]
+  },
+  {
+    "id": "discovery.auto_scan",
+    "title": "Auto Discovery deep scan",
+    "summary": "Deep Scan collects local metadata from known safe discovery sources to find AI agents, tools, resources, and model endpoints.",
+    "guidance": [
+      "A deep scan can take longer because it waits for slower sources to finish.",
+      "Pollek records metadata and evidence pointers, not private file contents.",
+      "Review candidates before relying on policy suggestions for newly discovered agents."
+    ],
+    "appliesTo": ["page", "discovery"],
+    "sourceDoc": "docs/design/AUTO_DISCOVERY_COVERAGE_EXPANSION.md",
+    "sourceAnchor": "deep-scan",
+    "relatedTopicIds": ["entity.agent", "entity.known_capabilities"]
+  },
+  {
+    "id": "discovery.candidate",
+    "title": "Discovery candidate",
+    "summary": "A candidate is an observed entity that Pollek can explain and optionally register as a governed record.",
+    "guidance": [
+      "Confidence combines matched signals such as process names, configs, windows, endpoints, or known definitions.",
+      "Registered candidates become durable registry records.",
+      "Capabilities are detected from local evidence and compared with reference definitions."
+    ],
+    "appliesTo": ["discovery", "entity"],
+    "sourceDoc": "docs/design/AUTO_DISCOVERY_COVERAGE_EXPANSION.md",
+    "sourceAnchor": "candidate-model",
+    "relatedTopicIds": ["entity.reference_intel", "entity.known_capabilities"]
+  },
+  {
+    "id": "entity.agent",
+    "title": "Agent record",
+    "summary": "An agent record represents a local or cloud AI workload that can use tools, access resources, and produce telemetry.",
+    "guidance": [
+      "Identity fields should prefer SPIFFE or token-bound identities when available.",
+      "Reference intel enriches context, but only local evidence proves activity.",
+      "Use related records to inspect governed tools, resources, policies, and activity."
+    ],
+    "appliesTo": ["entity", "agent"],
+    "sourceDoc": "docs/design/identity-binding-and-cloud-control.md",
+    "sourceAnchor": "agent-identity",
+    "relatedTopicIds": ["entity.reference_intel", "entity.known_capabilities"]
+  },
+  {
+    "id": "entity.tool",
+    "title": "Tool record",
+    "summary": "A tool record describes a callable function, MCP tool, wrapper action, API, or local integration point an agent can use.",
+    "guidance": [
+      "Tool ownership links the tool to the agent or server that exposes it.",
+      "Call counts and last used values come from telemetry or registry aggregation.",
+      "Tool output should be guarded before returning to the agent or host."
+    ],
+    "appliesTo": ["entity", "tool"],
+    "sourceDoc": "docs/DEFINITION_FILE.md",
+    "sourceAnchor": "tools",
+    "relatedTopicIds": ["entity.resource", "policy.deploy"]
+  },
+  {
+    "id": "entity.resource",
+    "title": "Data resource record",
+    "summary": "A resource record describes local files, folders, cloud drives, APIs, databases, tables, or other data sources.",
+    "guidance": [
+      "Prefer exact local metadata such as file path, folder path, host, database, schema, or table when the OS/source can provide it.",
+      "Sensitivity is advisory until confirmed by local evidence or policy classification.",
+      "Use activity to verify which agent accessed the resource."
+    ],
+    "appliesTo": ["entity", "resource"],
+    "sourceDoc": "docs/RESOURCE_TRACE_DEPTH.md",
+    "sourceAnchor": "resource-detail-depth",
+    "relatedTopicIds": ["activity.timeline"]
+  },
+  {
+    "id": "entity.policy",
+    "title": "Policy record",
+    "summary": "A policy record defines the intended governance behavior and tracks deployment, engine, mode, and affected entities.",
+    "guidance": [
+      "Policy status and deployment history are evidence fields.",
+      "Mode explains whether the policy observes, asks, warns, or enforces.",
+      "Use the relationship map to confirm affected agents, tools, and resources."
+    ],
+    "appliesTo": ["entity", "policy"],
+    "sourceDoc": "docs/POLICY_FIRST_FLOW.md",
+    "sourceAnchor": "policy-records",
+    "relatedTopicIds": ["policy.deploy", "activity.timeline"]
+  },
+  {
+    "id": "entity.reference_intel",
+    "title": "Reference intel",
+    "summary": "Reference intel is curated external context matched from observed names, vendors, hosts, URIs, paths, or protocols.",
+    "guidance": [
+      "Reference intel helps classify and explain a known entity.",
+      "It is not proof that access occurred and must not drive allow or deny decisions by itself.",
+      "Source labels and reviewed dates show where the summary came from."
+    ],
+    "appliesTo": ["entity", "reference"],
+    "sourceDoc": "docs/reference-intel-definitions.md",
+    "sourceAnchor": "contract",
+    "relatedTopicIds": ["entity.known_capabilities"]
+  },
+  {
+    "id": "entity.known_capabilities",
+    "title": "Known capability checklist",
+    "summary": "Known capabilities compare standard expected behavior from reference definitions with what this device actually observed.",
+    "guidance": [
+      "Green detected items require local evidence, registry values, telemetry, or wrapper/proxy observations.",
+      "Not observed yet means the entity may support it, but this device has not seen proof.",
+      "Use this checklist to decide what additional probes or integrations are worth enabling."
+    ],
+    "appliesTo": ["entity", "capability"],
+    "sourceDoc": "docs/reference-intel-definitions.md",
+    "sourceAnchor": "display-rules",
+    "relatedTopicIds": ["discovery.auto_scan"]
+  },
+  {
+    "id": "policy.suggestions",
+    "title": "Policy suggestions",
+    "summary": "Suggestions are generated from discovery, observed behavior, capability readiness, and policy templates.",
+    "guidance": [
+      "Review target agents and feasibility before deployment.",
+      "A suggestion is not active policy until it is deployed or converted into a policy record.",
+      "Setup requirements explain why enforcement may be limited on this device."
+    ],
+    "appliesTo": ["policy", "suggestion"],
+    "sourceDoc": "docs/POLICY_FIRST_FLOW.md",
+    "sourceAnchor": "policy-suggestions",
+    "relatedTopicIds": ["policy.deploy"]
+  },
+  {
+    "id": "policy.deploy",
+    "title": "Deploy or apply policy",
+    "summary": "Deployment binds policy intent to the available control methods on this local device.",
+    "guidance": [
+      "The Local Control Plane chooses the best available method for each domain.",
+      "If enforcement is unavailable, Pollek should explain the gap instead of silently downgrading.",
+      "Deployment evidence should appear in policy details and activity."
+    ],
+    "appliesTo": ["policy", "deployment"],
+    "sourceDoc": "docs/design/policy-enforcement-flows.md",
+    "sourceAnchor": "deployment",
+    "relatedTopicIds": ["capability.control_methods", "activity.timeline"]
+  },
+  {
+    "id": "activity.timeline",
+    "title": "Activity timeline",
+    "summary": "Activity shows chronological evidence across agents, tools, resources, policies, decisions, PEP/PDP, cost, and traces.",
+    "guidance": [
+      "Use filters to isolate a single entity or decision outcome.",
+      "Exact usage and cost should come from wrappers, proxies, provider usage fields, or logs before estimates.",
+      "Trace IDs connect local activity to Cloud aggregation when Enterprise Cloud is enabled."
+    ],
+    "appliesTo": ["activity", "telemetry"],
+    "sourceDoc": "docs/COST_TOKEN_USAGE_RESEARCH.md",
+    "sourceAnchor": "exact-first",
+    "relatedTopicIds": ["entity.resource", "entity.policy"]
+  }
+]

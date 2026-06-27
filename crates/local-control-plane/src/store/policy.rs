@@ -77,7 +77,7 @@ impl PolicyStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 "INSERT INTO bundle_blobs (tenant_id, path, bytes) VALUES (?1, ?2, ?3) ON CONFLICT(tenant_id, path) DO UPDATE SET bytes=excluded.bytes",
                 params![tenant, path, bytes]
@@ -93,7 +93,9 @@ impl PolicyStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let bytes = tokio::task::spawn_blocking(move || -> Result<Option<Vec<u8>>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt =
                 conn.prepare("SELECT bytes FROM bundle_blobs WHERE tenant_id = ?1 AND path = ?2")?;
             let mut rows = stmt.query(params![tenant, path])?;
@@ -144,7 +146,7 @@ impl PolicyStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT INTO policy_preset_deployments (
@@ -175,7 +177,7 @@ impl PolicyStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let val = tokio::task::spawn_blocking(move || -> Result<Option<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare("SELECT * FROM policy_preset_deployments WHERE tenant_id = ?1 AND deployment_id = ?2")?;
             let mut rows = stmt.query(params![tenant_id, deployment_id])?;
             if let Some(r) = rows.next()? {
@@ -206,7 +208,7 @@ impl PolicyStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Vec<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare("SELECT * FROM policy_preset_deployments WHERE tenant_id = ?1")?;
             let mut rows = stmt.query(params![tenant_id])?;
             let mut out = Vec::new();
@@ -254,7 +256,7 @@ impl PolicyStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT INTO pep_bindings (
@@ -283,7 +285,9 @@ impl PolicyStore for SqliteStore {
         let conn_arc = self.conn.clone();
 
         let out = tokio::task::spawn_blocking(move || -> Result<Vec<serde_json::Value>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare(
                 "SELECT * FROM pep_bindings WHERE tenant_id = ?1 AND deployment_id = ?2",
             )?;

@@ -1,0 +1,343 @@
+[
+  {
+    "id": "google-antigravity",
+    "title": "Google Antigravity",
+    "vendor": "Google",
+    "category": "Agentic IDE",
+    "description": "Agent-first development environment with editor, terminal, browser, and multi-agent workflow surfaces.",
+    "controlNotes": "Treat as a high-capability local agent: file access, shell execution, browser activity, model usage, and workspace artifacts should be observable.",
+    "sourceLabel": "Google Antigravity official site",
+    "sourceUrl": "https://antigravity.google/",
+    "reviewedAt": "2026-06-27",
+    "keywords": ["antigravity", "google antigravity"],
+    "vendorKeywords": ["google"],
+    "entityKinds": ["agent", "tool", "resource"],
+    "visualIdentity": {
+      "icon": "bot",
+      "label": "G",
+      "background": "#4285F4",
+      "foreground": "#FFFFFF",
+      "sourceLabel": "Pollek curated brand hint from Google Antigravity official site"
+    },
+    "expectedCapabilities": [
+      {
+        "id": "workspace-files",
+        "label": "Workspace file access",
+        "keywords": ["file", "workspace", "resource"]
+      },
+      {
+        "id": "terminal-execution",
+        "label": "Terminal or command execution",
+        "keywords": ["terminal", "shell", "command", "process"]
+      },
+      {
+        "id": "browser-control",
+        "label": "Browser session control",
+        "keywords": ["browser", "web_ai", "web"]
+      },
+      {
+        "id": "multi-agent",
+        "label": "Multi-agent orchestration",
+        "keywords": ["multi_agent", "subagent", "agent_manager"]
+      }
+    ]
+  },
+  {
+    "id": "openai-chatgpt",
+    "title": "ChatGPT",
+    "vendor": "OpenAI",
+    "category": "Web and desktop AI assistant",
+    "description": "General AI assistant surface that can involve browser sessions, uploaded files, connectors, and model usage.",
+    "controlNotes": "Browser and desktop observation should separate prompt activity, file uploads, cloud-drive connectors, and exact token usage when wrapper or proxy telemetry is available.",
+    "sourceLabel": "ChatGPT official app",
+    "sourceUrl": "https://chatgpt.com/",
+    "reviewedAt": "2026-06-27",
+    "keywords": ["chatgpt", "openai"],
+    "vendorKeywords": ["openai"],
+    "entityKinds": ["agent", "tool", "resource"],
+    "visualIdentity": {
+      "icon": "message",
+      "label": "AI",
+      "background": "#10A37F",
+      "foreground": "#FFFFFF",
+      "sourceLabel": "Pollek curated brand hint from ChatGPT official app"
+    },
+    "expectedCapabilities": [
+      {
+        "id": "web-chat",
+        "label": "Web chat session",
+        "keywords": ["browser", "web_ai", "chat"]
+      },
+      {
+        "id": "file-upload",
+        "label": "File upload or attachment",
+        "keywords": ["file", "upload", "attachment"]
+      },
+      {
+        "id": "connector-access",
+        "label": "Connector or cloud app access",
+        "keywords": ["connector", "oauth", "cloud_drive"]
+      },
+      {
+        "id": "token-usage",
+        "label": "Token and usage telemetry",
+        "keywords": ["token", "usage", "cost"]
+      }
+    ]
+  },
+  {
+    "id": "anthropic-claude",
+    "title": "Claude",
+    "vendor": "Anthropic",
+    "category": "AI assistant and coding agent family",
+    "description": "Claude includes web, desktop, coding, cowork, and extension surfaces depending on deployment.",
+    "controlNotes": "Classify browser sessions, desktop app processes, Claude Code shells, MCP tools, and cloud connector activity separately.",
+    "sourceLabel": "Anthropic Claude product overview",
+    "sourceUrl": "https://claude.com/product/overview",
+    "reviewedAt": "2026-06-27",
+    "keywords": ["claude", "claude code", "anthropic"],
+    "vendorKeywords": ["anthropic"],
+    "entityKinds": ["agent", "tool", "resource"],
+    "visualIdentity": {
+      "icon": "sparkles",
+      "label": "C",
+      "background": "#D97757",
+      "foreground": "#111827",
+      "sourceLabel": "Pollek curated brand hint from Anthropic Claude product overview"
+    },
+    "expectedCapabilities": [
+      {
+        "id": "desktop-or-web",
+        "label": "Desktop or browser session",
+        "keywords": ["desktop", "browser", "web_ai"]
+      },
+      {
+        "id": "coding-agent",
+        "label": "Coding agent or shell workflow",
+        "keywords": ["code", "cli", "terminal", "shell"]
+      },
+      {
+        "id": "mcp-tools",
+        "label": "MCP tool access",
+        "keywords": ["mcp", "tool"]
+      },
+      {
+        "id": "cloud-connectors",
+        "label": "Cloud connector access",
+        "keywords": ["connector", "oauth", "cloud"]
+      }
+    ]
+  },
+  {
+    "id": "deepseek-api",
+    "title": "DeepSeek",
+    "vendor": "DeepSeek",
+    "category": "LLM API and chat provider",
+    "description": "Model provider commonly observed through API calls, browser sessions, SDKs, and local agent wrappers.",
+    "controlNotes": "Exact usage should prefer provider response usage, proxy logs, SDK logs, or wrapper telemetry before falling back to estimates.",
+    "sourceLabel": "DeepSeek API documentation",
+    "sourceUrl": "https://api-docs.deepseek.com/",
+    "reviewedAt": "2026-06-27",
+    "keywords": ["deepseek", "api.deepseek.com"],
+    "vendorKeywords": ["deepseek"],
+    "entityKinds": ["agent", "tool", "resource"],
+    "visualIdentity": {
+      "icon": "server",
+      "label": "DS",
+      "background": "#2563EB",
+      "foreground": "#FFFFFF",
+      "sourceLabel": "Pollek curated brand hint from DeepSeek API documentation"
+    },
+    "expectedCapabilities": [
+      {
+        "id": "llm-api-egress",
+        "label": "LLM API network egress",
+        "keywords": ["api", "network", "egress"]
+      },
+      {
+        "id": "usage-response",
+        "label": "Usage response telemetry",
+        "keywords": ["usage", "token", "cost"]
+      }
+    ]
+  },
+  {
+    "id": "manus-ai",
+    "title": "Manus",
+    "vendor": "Butterfly Effect",
+    "category": "Autonomous AI agent",
+    "description": "Autonomous agent surface focused on completing multi-step online tasks and generating artifacts.",
+    "controlNotes": "Classify as a high-autonomy agent when observed: browser actions, file generation, cloud task execution, and user approvals should be separated in evidence.",
+    "sourceLabel": "Manus official site",
+    "sourceUrl": "https://manus.im/",
+    "reviewedAt": "2026-06-27",
+    "keywords": ["manus", "manus ai"],
+    "vendorKeywords": ["manus", "butterfly effect"],
+    "entityKinds": ["agent", "tool", "resource"],
+    "visualIdentity": {
+      "icon": "bot",
+      "label": "M",
+      "background": "#111827",
+      "foreground": "#FFFFFF",
+      "sourceLabel": "Pollek curated brand hint from Manus official site"
+    },
+    "expectedCapabilities": [
+      {
+        "id": "web-automation",
+        "label": "Web automation",
+        "keywords": ["browser", "web", "automation"]
+      },
+      {
+        "id": "file-generation",
+        "label": "File generation",
+        "keywords": ["file", "artifact", "download"]
+      },
+      {
+        "id": "cloud-task",
+        "label": "Cloud task execution",
+        "keywords": ["cloud", "task", "remote"]
+      }
+    ]
+  },
+  {
+    "id": "google-drive",
+    "title": "Google Drive",
+    "vendor": "Google",
+    "category": "Cloud drive",
+    "description": "Cloud file storage and collaboration surface often accessed by AI agents through browser sessions, connectors, OAuth scopes, or drive APIs.",
+    "controlNotes": "Use observed host, OAuth scopes, file names, and connector IDs as local evidence. Reference intel helps classify the resource; it does not prove access.",
+    "sourceLabel": "Google Drive official site",
+    "sourceUrl": "https://drive.google.com/",
+    "reviewedAt": "2026-06-27",
+    "keywords": ["drive.google.com", "google drive", "gdrive"],
+    "vendorKeywords": ["google"],
+    "entityKinds": ["resource", "tool"],
+    "visualIdentity": {
+      "icon": "folder",
+      "label": "D",
+      "background": "#34A853",
+      "foreground": "#FFFFFF",
+      "sourceLabel": "Pollek curated brand hint from Google Drive official site"
+    },
+    "expectedCapabilities": [
+      {
+        "id": "cloud-drive",
+        "label": "Cloud drive access",
+        "keywords": ["cloud_drive", "drive", "oauth"]
+      },
+      {
+        "id": "file-metadata",
+        "label": "File metadata visibility",
+        "keywords": ["file", "metadata", "folder"]
+      }
+    ]
+  },
+  {
+    "id": "anthropic-api",
+    "title": "Anthropic API",
+    "vendor": "Anthropic",
+    "category": "LLM API",
+    "description": "Provider API endpoint for Claude models and agent integrations.",
+    "controlNotes": "Exact token and cost records should come from provider response usage, proxy telemetry, SDK logs, or wrapper events before estimates.",
+    "sourceLabel": "Anthropic developer docs",
+    "sourceUrl": "https://docs.claude.com/",
+    "reviewedAt": "2026-06-27",
+    "keywords": ["api.anthropic.com", "anthropic api", "claude api"],
+    "vendorKeywords": ["anthropic"],
+    "entityKinds": ["resource", "tool", "agent"],
+    "visualIdentity": {
+      "icon": "server",
+      "label": "A",
+      "background": "#D97757",
+      "foreground": "#111827",
+      "sourceLabel": "Pollek curated brand hint from Anthropic developer docs"
+    },
+    "expectedCapabilities": [
+      {
+        "id": "llm-api-egress",
+        "label": "LLM API network egress",
+        "keywords": ["api", "network", "egress"]
+      },
+      {
+        "id": "exact-usage",
+        "label": "Exact usage telemetry",
+        "keywords": ["exact", "usage", "token"]
+      }
+    ]
+  },
+  {
+    "id": "openai-api",
+    "title": "OpenAI API",
+    "vendor": "OpenAI",
+    "category": "LLM API",
+    "description": "Provider API endpoint for OpenAI model, tool, and agent workloads.",
+    "controlNotes": "Prefer exact usage from API responses, SDK logs, proxy wrappers, or MCP wrapper events.",
+    "sourceLabel": "OpenAI platform documentation",
+    "sourceUrl": "https://platform.openai.com/docs/",
+    "reviewedAt": "2026-06-27",
+    "keywords": ["api.openai.com", "openai api", "responses api"],
+    "vendorKeywords": ["openai"],
+    "entityKinds": ["resource", "tool", "agent"],
+    "visualIdentity": {
+      "icon": "server",
+      "label": "OAI",
+      "background": "#10A37F",
+      "foreground": "#FFFFFF",
+      "sourceLabel": "Pollek curated brand hint from OpenAI platform documentation"
+    },
+    "expectedCapabilities": [
+      {
+        "id": "llm-api-egress",
+        "label": "LLM API network egress",
+        "keywords": ["api", "network", "egress"]
+      },
+      {
+        "id": "tool-calling",
+        "label": "Tool calling or agent action",
+        "keywords": ["tool", "agent", "responses"]
+      },
+      {
+        "id": "exact-usage",
+        "label": "Exact usage telemetry",
+        "keywords": ["exact", "usage", "token"]
+      }
+    ]
+  },
+  {
+    "id": "mcp",
+    "title": "Model Context Protocol",
+    "vendor": "MCP ecosystem",
+    "category": "Tool protocol",
+    "description": "Protocol surface for exposing tools, resources, and prompts to AI clients.",
+    "controlNotes": "Local enforcement should prioritize MCP proxy or wrapper decision points, parameter visibility, audit logging, and output guard checks.",
+    "sourceLabel": "Model Context Protocol documentation",
+    "sourceUrl": "https://modelcontextprotocol.io/",
+    "reviewedAt": "2026-06-27",
+    "keywords": ["mcp", "model context protocol", "mcp server", "mcp tool"],
+    "entityKinds": ["tool", "resource", "agent"],
+    "visualIdentity": {
+      "icon": "plug",
+      "label": "MCP",
+      "background": "#7C3AED",
+      "foreground": "#FFFFFF",
+      "sourceLabel": "Pollek curated protocol icon hint from MCP documentation"
+    },
+    "expectedCapabilities": [
+      {
+        "id": "tool-schema",
+        "label": "Tool schema visibility",
+        "keywords": ["schema", "tool", "parameter"]
+      },
+      {
+        "id": "resource-template",
+        "label": "Resource template visibility",
+        "keywords": ["resource", "template"]
+      },
+      {
+        "id": "output-guard",
+        "label": "Output guard point",
+        "keywords": ["output", "guard", "response"]
+      }
+    ]
+  }
+]

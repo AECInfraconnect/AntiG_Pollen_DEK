@@ -16,7 +16,9 @@ impl RegistryStore for SqliteStore {
         let object_type = object_type.to_string();
         let conn_arc = self.conn.clone();
         let count = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             Ok(conn.execute(
                 "DELETE FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2",
                 params![tenant_id, object_type],
@@ -61,7 +63,7 @@ impl RegistryStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT INTO registry_objects (tenant_id, object_type, object_id, status, source, data_json, created_at, updated_at)
@@ -90,7 +92,7 @@ impl RegistryStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         let json_str = tokio::task::spawn_blocking(move || -> Result<Option<String>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare(
                 "SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2 AND object_id = ?3"
             )?;
@@ -117,7 +119,9 @@ impl RegistryStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         let json_strs = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare(
                 "SELECT data_json FROM registry_objects WHERE tenant_id = ?1 AND object_type = ?2",
             )?;
@@ -332,7 +336,7 @@ impl RegistryStore for SqliteStore {
         let device_id = inventory.device_id.clone();
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc.lock().map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             conn.execute(
                 r#"
                 INSERT INTO agent_inventory (tenant, agent_id, device_id, inventory_json, updated_at)
@@ -360,7 +364,9 @@ impl RegistryStore for SqliteStore {
 
         let conn_arc = self.conn.clone();
         let json_str = tokio::task::spawn_blocking(move || -> Result<Option<String>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt = conn.prepare(
                 "SELECT inventory_json FROM agent_inventory WHERE tenant = ?1 AND agent_id = ?2",
             )?;
@@ -388,7 +394,9 @@ impl RegistryStore for SqliteStore {
         let tenant_id = tenant_id.to_string();
         let conn_arc = self.conn.clone();
         let json_strs = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let mut stmt =
                 conn.prepare("SELECT inventory_json FROM agent_inventory WHERE tenant = ?1")?;
             let mut rows = stmt.query(params![tenant_id])?;
@@ -414,7 +422,9 @@ impl RegistryStore for SqliteStore {
         let agent_id = agent_id.to_string();
         let conn_arc = self.conn.clone();
         let rows_affected = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let conn = conn_arc.lock().unwrap(); //
+            let conn = conn_arc
+                .lock()
+                .map_err(|_| anyhow::anyhow!("sqlite store connection lock poisoned"))?;
             let changed = conn.execute(
                 "DELETE FROM agent_inventory WHERE tenant = ?1 AND agent_id = ?2",
                 params![tenant_id, agent_id],
