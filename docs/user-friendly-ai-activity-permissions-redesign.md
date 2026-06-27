@@ -41,7 +41,7 @@ the default user value is broad, explainable visibility plus clear next steps.
 - W3C Trace Context standardizes trace correlation across systems. Pollek should
   keep stable trace IDs for advanced inspection while translating them into
   plain-language activity for Simple Mode:
-  https://www.w3.org/TR/trace-context/
+  https://github.com/w3c/trace-context
 - MCP explicitly treats tools and data access as powerful operations requiring
   user consent, control, clear authorization UI, and privacy protection:
   https://modelcontextprotocol.io/specification/2025-06-18
