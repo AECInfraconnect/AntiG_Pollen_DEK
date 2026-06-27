@@ -2,9 +2,13 @@ import {
   Activity,
   Bot,
   Cpu,
+  Database,
   FileKey,
+  FolderSearch,
   FolderTree,
+  History,
   LayoutDashboard,
+  ListChecks,
   Network,
   Puzzle,
   Route,
@@ -15,6 +19,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Users,
+  Wrench,
   Zap,
 } from "lucide-react";
 
@@ -35,7 +40,12 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-const ALL: string[] = ["desktop_simple", "desktop_advanced", "enterprise_cloud"];
+const SIMPLE: string[] = ["desktop_simple"];
+const ALL: string[] = [
+  "desktop_simple",
+  "desktop_advanced",
+  "enterprise_cloud",
+];
 const ADV: string[] = ["desktop_advanced", "enterprise_cloud"];
 const ENT: string[] = ["enterprise_cloud"];
 
@@ -57,6 +67,69 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    id: "start",
+    en: "Start",
+    th: "เริ่มต้น",
+    items: [
+      {
+        id: "scan",
+        en: "Find AI Apps",
+        th: "ค้นหา AI",
+        href: "/scan",
+        icon: ScanSearch,
+        modes: ALL,
+      },
+      {
+        id: "my-ai-apps",
+        en: "My AI Apps",
+        th: "AI ของฉัน",
+        href: "/my-ai-apps",
+        icon: Bot,
+        modes: SIMPLE,
+      },
+      {
+        id: "ai-activity",
+        en: "AI Activity",
+        th: "กิจกรรม AI",
+        href: "/activity",
+        icon: Activity,
+        modes: SIMPLE,
+      },
+      {
+        id: "data-apps",
+        en: "Data & Apps",
+        th: "ไฟล์ เว็บ แอป",
+        href: "/data-apps",
+        icon: Database,
+        modes: SIMPLE,
+      },
+      {
+        id: "allowed-blocked",
+        en: "Allowed & Blocked",
+        th: "อนุญาตและห้าม",
+        href: "/allowed-blocked",
+        icon: ListChecks,
+        modes: SIMPLE,
+      },
+      {
+        id: "setup",
+        en: "Setup",
+        th: "ตั้งค่า",
+        href: "/setup",
+        icon: Wrench,
+        modes: SIMPLE,
+      },
+      {
+        id: "history",
+        en: "History",
+        th: "ประวัติย้อนหลัง",
+        href: "/history",
+        icon: History,
+        modes: SIMPLE,
+      },
+    ],
+  },
+  {
     id: "registry",
     en: "Registry",
     th: "ทะเบียน",
@@ -67,7 +140,7 @@ export const NAV: NavGroup[] = [
         th: "เอเจนต์และโมเดล",
         href: "/agents",
         icon: Bot,
-        modes: ALL,
+        modes: ADV,
       },
       {
         id: "tools-resources",
@@ -75,7 +148,7 @@ export const NAV: NavGroup[] = [
         th: "เครื่องมือและทรัพยากร",
         href: "/tools",
         icon: FolderTree,
-        modes: ALL,
+        modes: ADV,
       },
       {
         id: "identities",
@@ -106,7 +179,7 @@ export const NAV: NavGroup[] = [
         th: "นโยบาย",
         href: "/policies",
         icon: FileKey,
-        modes: ALL,
+        modes: ADV,
       },
       {
         id: "policy-presets",
@@ -122,7 +195,7 @@ export const NAV: NavGroup[] = [
         th: "การบังคับใช้",
         href: "/deployments",
         icon: SlidersHorizontal,
-        modes: ALL,
+        modes: ADV,
       },
       {
         id: "simulator",
@@ -140,12 +213,12 @@ export const NAV: NavGroup[] = [
     th: "ตรวจสอบ",
     items: [
       {
-        id: "activity",
-        en: "Activity",
-        th: "กิจกรรม",
+        id: "activity-timeline",
+        en: "Activity Timeline",
+        th: "ไทม์ไลน์กิจกรรม",
         href: "/activity-timeline",
         icon: Activity,
-        modes: ALL,
+        modes: ADV,
       },
       {
         id: "alerts",
@@ -153,7 +226,7 @@ export const NAV: NavGroup[] = [
         th: "แจ้งเตือน",
         href: "/alerts",
         icon: ShieldAlert,
-        modes: ALL,
+        modes: ADV,
       },
       {
         id: "cost",
@@ -161,7 +234,7 @@ export const NAV: NavGroup[] = [
         th: "ค่าใช้จ่าย",
         href: "/cost-ledger",
         icon: Zap,
-        modes: ALL,
+        modes: ADV,
       },
       {
         id: "health",
@@ -179,12 +252,12 @@ export const NAV: NavGroup[] = [
     th: "ระบบ",
     items: [
       {
-        id: "scan",
-        en: "Scan & Discover",
-        th: "สแกนและค้นหา",
-        href: "/scan",
-        icon: ScanSearch,
-        modes: ALL,
+        id: "capabilities",
+        en: "Capabilities",
+        th: "ความสามารถระบบ",
+        href: "/capabilities",
+        icon: FolderSearch,
+        modes: ADV,
       },
       {
         id: "integrations",
@@ -197,7 +270,7 @@ export const NAV: NavGroup[] = [
       {
         id: "bundles",
         en: "Bundles & Sync",
-        th: "แพ็กเกจและซิงค์",
+        th: "แพ็กเกจและซิงก์",
         href: "/bundles",
         icon: Server,
         modes: ENT,

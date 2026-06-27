@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { Overview } from "./pages/Overview";
+import { SimpleOverviewPage } from "./pages/SimpleOverviewPage";
 import { Resources } from "./pages/Resources";
 // import { Policies } from "./pages/Policies"; // Replaced by PoliciesV2
 import { Simulator } from "./pages/Simulator";
@@ -39,6 +40,12 @@ import { LocalEvidence } from "./pages/LocalEvidence";
 import { ControlMethods } from "./pages/ControlMethods";
 import { Capabilities } from "./pages/Capabilities";
 import { Health } from "./pages/Health";
+import { AiActivityPage } from "./pages/AiActivityPage";
+import { AllowedBlockedPage } from "./pages/AllowedBlockedPage";
+import { DataAndAppsPage } from "./pages/DataAndAppsPage";
+import { HistoryReportsPage } from "./pages/HistoryReportsPage";
+import { MyAiAppsPage } from "./pages/MyAiAppsPage";
+import { SetupCapabilitiesPage } from "./pages/SetupCapabilitiesPage";
 import AgentsV2 from "./pages/AgentsV2";
 import ToolsResourcesV2 from "./pages/ToolsResourcesV2";
 import PoliciesV2 from "./pages/PoliciesV2";
@@ -59,8 +66,7 @@ const ModeGuard = () => {
     .filter((item) => item.href !== "/")
     .sort((a, b) => b.href.length - a.href.length)
     .find(
-      (item) =>
-        pathname === item.href || pathname.startsWith(`${item.href}/`),
+      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
     );
 
   if (navRule && !navRule.modes.includes(mode)) {
@@ -68,6 +74,11 @@ const ModeGuard = () => {
   }
 
   return <Outlet />;
+};
+
+const HomeRoute = () => {
+  const { mode } = useMode();
+  return mode === "desktop_simple" ? <SimpleOverviewPage /> : <Overview />;
 };
 
 import { ConfirmProvider } from "./components/ui/ConfirmDialog";
@@ -81,10 +92,18 @@ function App() {
           <Routes>
             <Route path="/" element={<DashboardLayout />}>
               <Route element={<ModeGuard />}>
-                <Route index element={<Overview />} />
+                <Route index element={<HomeRoute />} />
 
                 {/* New Navigation Routes */}
                 <Route path="scan" element={<AutoDiscovery />} />
+                <Route path="my-ai-apps" element={<MyAiAppsPage />} />
+                <Route path="data-apps" element={<DataAndAppsPage />} />
+                <Route
+                  path="allowed-blocked"
+                  element={<AllowedBlockedPage />}
+                />
+                <Route path="setup" element={<SetupCapabilitiesPage />} />
+                <Route path="history" element={<HistoryReportsPage />} />
                 <Route path="offline-scan" element={<LocalEvidence />} />
                 <Route
                   path="recommended-policies"
@@ -134,10 +153,7 @@ function App() {
                 <Route path="simulator" element={<Simulator />} />
 
                 {/* Monitoring & Activity */}
-                <Route
-                  path="activity"
-                  element={<Navigate to="/activity-timeline" replace />}
-                />
+                <Route path="activity" element={<AiActivityPage />} />
                 <Route
                   path="activity-timeline"
                   element={<ActivityTimelineV2 />}
