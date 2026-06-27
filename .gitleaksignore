@@ -4,3 +4,6 @@
 paths = [
     '''master\.key\.wrapped''',
 ]
+
+# False positive from a Prompt Guard unit-test fixture that was split in a later commit.
+5e567491f51a5b6fb78cf94f4026a317bc48c0bf:crates/dek-guard-pipeline/src/output_guard.rs:generic-api-key:279
