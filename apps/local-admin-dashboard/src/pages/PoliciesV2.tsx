@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Bot,
+  BookOpen,
   Clock3,
   Database,
   FileKey,
@@ -16,14 +17,17 @@ import {
   type RelatedSection,
 } from "../components/entity-360";
 import type { RelatedListItem } from "../components/entity-360/RelatedList";
+import { DetailPane } from "../components/master-detail/DetailPane";
 import { EntityCard } from "../components/master-detail/EntityCard";
 import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayout";
+import { useMode } from "../context/ModeContext";
 import { entityIcon } from "../features/entity-graph/graphUtils";
 import type {
   Entity360Response,
   GraphNode,
 } from "../features/entity-graph/types";
 import { useEntity360 } from "../features/entity-graph/useEntity360";
+import { isAdvanceMode } from "../lib/modes";
 import { defaultClient } from "../services/api";
 
 interface PolicyItem {
@@ -50,7 +54,7 @@ function usePolicies() {
     defaultClient
       .fetchApi("/policies")
       .then((data) => {
-        setPolicies(Array.isArray(data) ? data : data?.items ?? []);
+        setPolicies(Array.isArray(data) ? data : (data?.items ?? []));
       })
       .catch(() => setPolicies([]))
       .finally(() => setLoading(false));
@@ -59,7 +63,10 @@ function usePolicies() {
   return { policies, loading };
 }
 
-function buildRelatedSections(nodes: GraphNode[], centerId: string): RelatedSection[] {
+function buildRelatedSections(
+  nodes: GraphNode[],
+  centerId: string,
+): RelatedSection[] {
   const related = nodes.filter((node) => node.id !== centerId);
   const agents = related.filter((node) => node.type === "agent");
   const tools = related.filter((node) => node.type === "tool");
@@ -171,6 +178,29 @@ function modeTone(policy: PolicyItem) {
   return "neutral" as const;
 }
 
+function policyStatus(policy: PolicyItem) {
+  if (policy.mode === "enforce") return "ok" as const;
+  if (policy.mode === "observe") return "info" as const;
+  return "idle" as const;
+}
+
+function plainPolicyEffect(policy: PolicyItem) {
+  if (policy.mode === "enforce") {
+    return "Pollek can actively allow or block matching activity where this device has a compatible control method.";
+  }
+  if (policy.mode === "ask") {
+    return "Pollek should ask the user before matching activity continues, where an approval flow is available.";
+  }
+  if (policy.mode === "observe") {
+    return "Pollek watches matching activity and records evidence without blocking it.";
+  }
+  return "Pollek records the policy definition, but the current control behavior is not fully declared yet.";
+}
+
+function policyScopeLabel(policy: PolicyItem) {
+  return policy.scope ?? "All matching local AI activity";
+}
+
 function policyDetailSections(
   policy: PolicyItem,
   data: Entity360Response | null | undefined,
@@ -178,7 +208,9 @@ function policyDetailSections(
   const graphNodes = data?.graph.nodes ?? [];
   const agents = graphNodes.filter((node) => node.type === "agent").length;
   const tools = graphNodes.filter((node) => node.type === "tool").length;
-  const resources = graphNodes.filter((node) => node.type === "resource").length;
+  const resources = graphNodes.filter(
+    (node) => node.type === "resource",
+  ).length;
   const lifecycle = `${formatDate(policy.created_at)} -> ${formatDate(
     policy.updated_at,
   )}`;
@@ -207,8 +239,7 @@ function policyDetailSections(
           label: "Engine",
           value: policy.engine,
           source: "policy metadata",
-          note:
-            "Decision evidence should reflect the actual decision path used by the PDP router.",
+          note: "Decision evidence should reflect the actual decision path used by the PDP router.",
         },
         {
           label: "Rules",
@@ -332,6 +363,172 @@ function PolicyDetailView({ policy }: { policy: PolicyItem }) {
   );
 }
 
+function PolicyMasterDetailPane({
+  policy,
+  onOpenRecord,
+  showTechnicalDetails,
+}: {
+  policy: PolicyItem;
+  onOpenRecord: () => void;
+  showTechnicalDetails: boolean;
+}) {
+  return (
+    <DetailPane
+      title={policy.name}
+      subtitle={policy.description ?? policy.engine}
+      status={policyStatus(policy)}
+      statusLabel={modeLabel(policy)}
+      actions={[
+        {
+          label: "Open full record",
+          primary: true,
+          icon: BookOpen,
+          onClick: onOpenRecord,
+        },
+      ]}
+      tabs={[
+        {
+          id: "overview",
+          label: "Overview",
+          content: (
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">
+                    User-facing result
+                  </div>
+                  <div className="mt-1 break-words text-sm font-semibold">
+                    {modeLabel(policy)}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">Engine</div>
+                  <div className="mt-1 break-words text-sm font-semibold">
+                    {policy.engine}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">Rules</div>
+                  <div className="mt-1 text-sm font-semibold">
+                    {policy.rules_count ?? 0}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-background/60 p-4">
+                <h4 className="text-sm font-semibold">What this rule does</h4>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {plainPolicyEffect(policy)}
+                </p>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">Scope</div>
+                  <div className="mt-1 break-words text-sm font-semibold">
+                    {policyScopeLabel(policy)}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">
+                    Last changed
+                  </div>
+                  <div className="mt-1 text-sm font-semibold">
+                    {formatDate(policy.updated_at)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ),
+        },
+        {
+          id: "what-it-controls",
+          label: "What It Controls",
+          content: (
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-background/60 p-4">
+                <h4 className="text-sm font-semibold">
+                  How users should read this policy
+                </h4>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  A policy explains what Pollek should watch, ask about, or
+                  block when an AI app touches files, folders, websites, tools,
+                  commands, model APIs, or other local resources. Observation
+                  evidence remains useful even when this device can only watch
+                  and notify instead of enforcing directly.
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">
+                    AI apps affected
+                  </div>
+                  <div className="mt-1 text-sm font-semibold">
+                    {policy.scope ? "Scoped" : "Any matching app"}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">
+                    Activity result
+                  </div>
+                  <div className="mt-1 text-sm font-semibold">
+                    {modeLabel(policy)}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">
+                    Deployment
+                  </div>
+                  <div className="mt-1 break-words text-sm font-semibold">
+                    {formatDate(policy.last_deployed_at)}
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-lg border bg-background/60 p-4">
+                <h4 className="text-sm font-semibold">Next useful check</h4>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Open the full record to inspect affected agents, governed
+                  tools, protected resources, decision history, and raw evidence
+                  links for audit review.
+                </p>
+              </div>
+            </div>
+          ),
+        },
+        ...(showTechnicalDetails
+          ? [
+              {
+                id: "technical",
+                label: "Technical Details",
+                content: (
+                  <div className="space-y-3">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <PropertyRow label="Policy ID" value={policy.policy_id} />
+                      <PropertyRow label="Engine" value={policy.engine} />
+                      <PropertyRow label="Mode" value={policy.mode} />
+                      <PropertyRow label="Status" value={policy.status} />
+                      <PropertyRow
+                        label="Bundle"
+                        value={policy.bundle_id ?? "-"}
+                      />
+                      <PropertyRow
+                        label="Source"
+                        value={policy.source ?? "-"}
+                      />
+                    </div>
+                    <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
+                      {JSON.stringify(policy, null, 2)}
+                    </pre>
+                  </div>
+                ),
+              },
+            ]
+          : []),
+      ]}
+    />
+  );
+}
+
 function PropertyRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-2 border-b border-border/30 pb-2 last:border-0 last:pb-0">
@@ -347,25 +544,36 @@ function PropertyRow({ label, value }: { label: string; value: ReactNode }) {
 
 export default function PoliciesV2() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const selectedId = searchParams.get("id") ?? undefined;
+  const { mode } = useMode();
+  const showTechnicalDetails = isAdvanceMode(mode);
+  const recordId = searchParams.get("id") ?? undefined;
+  const selectedId = searchParams.get("selected") ?? undefined;
   const { policies, loading } = usePolicies();
 
   const handleSelect = (id: string) => {
+    if (!id) {
+      setSearchParams({});
+      return;
+    }
+    setSearchParams({ selected: id });
+  };
+
+  const openFullRecord = (id: string) => {
     setSearchParams({ id });
   };
 
-  const selectedPolicy = policies.find((policy) => policy.policy_id === selectedId);
-  if (selectedPolicy) {
+  const recordPolicy = policies.find((policy) => policy.policy_id === recordId);
+  if (recordPolicy) {
     return (
       <div className="space-y-4">
         <button
           type="button"
-          onClick={() => setSearchParams({})}
+          onClick={() => setSearchParams({ selected: recordPolicy.policy_id })}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           Back to all policies
         </button>
-        <PolicyDetailView policy={selectedPolicy} />
+        <PolicyDetailView policy={recordPolicy} />
       </div>
     );
   }
@@ -414,19 +622,11 @@ export default function PoliciesV2() {
           );
         }}
         renderDetail={(policy) => (
-          <div className="p-4">
-            <button
-              type="button"
-              onClick={() => handleSelect(policy.policy_id)}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Open Record View
-            </button>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Review affected agents, governed tools, protected resources, and
-              decision history.
-            </p>
-          </div>
+          <PolicyMasterDetailPane
+            policy={policy}
+            onOpenRecord={() => openFullRecord(policy.policy_id)}
+            showTechnicalDetails={showTechnicalDetails}
+          />
         )}
       />
     </div>
