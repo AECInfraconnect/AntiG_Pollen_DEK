@@ -2,7 +2,7 @@
 // Copyright (c) 2026 AEC Infraconnect
 
 use crate::normalize::{normalize_for_match, NormalizedText};
-use crate::{InjectionClassifier, InjectionScore};
+use crate::{ensure_rustls_crypto_provider, InjectionClassifier, InjectionScore};
 use dek_plugin_sdk::{PluginError, PluginResult};
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -274,6 +274,7 @@ struct ClassifierResponse {
 
 impl InjectionClassifier for HttpClassifier {
     fn classify(&self, text: &str) -> PluginResult<InjectionScore> {
+        ensure_rustls_crypto_provider();
         let client = reqwest::blocking::Client::builder()
             .timeout(self.timeout)
             .build()

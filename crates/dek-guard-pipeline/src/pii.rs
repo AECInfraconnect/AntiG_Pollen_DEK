@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-use dek_plugin_sdk::RedactionFinding;
+use crate::{ensure_rustls_crypto_provider, NerProvider};
+use dek_plugin_sdk::{PluginResult, RedactionFinding};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::cmp::Reverse;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PiiSpan {
@@ -85,6 +87,129 @@ const RECOGNIZERS: &[Recognizer] = &[
 #[derive(Debug, Default, Clone)]
 pub struct PiiDetector;
 
+#[derive(Debug, Clone)]
+pub struct GlinerProvider {
+    pub endpoint: String,
+    pub labels: Vec<String>,
+    pub min_confidence: f32,
+    pub timeout: Duration,
+}
+
+impl GlinerProvider {
+    pub fn new(endpoint: impl Into<String>) -> Self {
+        Self {
+            endpoint: endpoint.into(),
+            labels: vec![
+                "person".to_string(),
+                "address".to_string(),
+                "organization".to_string(),
+            ],
+            min_confidence: 0.80,
+            timeout: Duration::from_millis(80),
+        }
+    }
+
+    pub fn with_labels(mut self, labels: Vec<String>) -> Self {
+        self.labels = labels;
+        self
+    }
+
+    pub fn with_min_confidence(mut self, min_confidence: f32) -> Self {
+        self.min_confidence = clamp_unit_score(min_confidence);
+        self
+    }
+
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct GlinerRequest<'a> {
+    text: &'a str,
+    labels: &'a [String],
+}
+
+#[derive(Debug, Deserialize)]
+struct GlinerEntity {
+    label: String,
+    start: usize,
+    end: usize,
+    score: f32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum GlinerResponse {
+    Items(Vec<GlinerEntity>),
+    Wrapped { entities: Vec<GlinerEntity> },
+}
+
+impl GlinerResponse {
+    fn into_entities(self) -> Vec<GlinerEntity> {
+        match self {
+            GlinerResponse::Items(items) => items,
+            GlinerResponse::Wrapped { entities } => entities,
+        }
+    }
+}
+
+impl NerProvider for GlinerProvider {
+    fn detect_entities(&self, text: &str) -> PluginResult<Vec<PiiSpan>> {
+        ensure_rustls_crypto_provider();
+        let client = match reqwest::blocking::Client::builder()
+            .timeout(self.timeout)
+            .build()
+        {
+            Ok(client) => client,
+            Err(_) => return Ok(Vec::new()),
+        };
+
+        let response = match client
+            .post(&self.endpoint)
+            .json(&GlinerRequest {
+                text,
+                labels: &self.labels,
+            })
+            .send()
+        {
+            Ok(response) => response,
+            Err(_) => return Ok(Vec::new()),
+        };
+
+        if !response.status().is_success() {
+            return Ok(Vec::new());
+        }
+
+        let parsed = match response.json::<GlinerResponse>() {
+            Ok(parsed) => parsed,
+            Err(_) => return Ok(Vec::new()),
+        };
+
+        let mut spans = Vec::new();
+        for entity in parsed.into_entities() {
+            let confidence = clamp_unit_score(entity.score);
+            if confidence < self.min_confidence {
+                continue;
+            }
+            let Some(value) = span_value(text, entity.start, entity.end) else {
+                continue;
+            };
+            spans.push(PiiSpan {
+                entity_type: normalize_ner_label(&entity.label),
+                start: entity.start,
+                end: entity.end,
+                value: value.to_string(),
+                confidence,
+                source: "ner",
+            });
+        }
+
+        Ok(dedupe_overlaps(spans))
+    }
+}
+
 impl PiiDetector {
     pub fn detect(&self, text: &str) -> Vec<PiiSpan> {
         let mut spans = Vec::new();
@@ -132,8 +257,17 @@ impl PiiDetector {
         value: &Value,
         min_confidence: f32,
     ) -> (Value, Vec<RedactionFinding>) {
+        self.redact_value_with_ner(value, min_confidence, None)
+    }
+
+    pub fn redact_value_with_ner(
+        &self,
+        value: &Value,
+        min_confidence: f32,
+        ner: Option<&dyn NerProvider>,
+    ) -> (Value, Vec<RedactionFinding>) {
         let mut findings = Vec::new();
-        let redacted = self.redact_value_at_path(value, min_confidence, "$", &mut findings);
+        let redacted = self.redact_value_at_path(value, min_confidence, "$", ner, &mut findings);
         (redacted, findings)
     }
 
@@ -142,11 +276,17 @@ impl PiiDetector {
         value: &Value,
         min_confidence: f32,
         path: &str,
+        ner: Option<&dyn NerProvider>,
         findings: &mut Vec<RedactionFinding>,
     ) -> Value {
         match value {
             Value::String(text) => {
-                let spans = self.detect(text);
+                let mut spans = self.detect(text);
+                if let Some(provider) = ner {
+                    if let Ok(mut ner_spans) = provider.detect_entities(text) {
+                        spans.append(&mut ner_spans);
+                    }
+                }
                 let (redacted, mut local_findings) =
                     self.anonymize_at_path(text, spans, min_confidence, path);
                 findings.append(&mut local_findings);
@@ -161,6 +301,7 @@ impl PiiDetector {
                             item,
                             min_confidence,
                             &format!("{path}[{index}]"),
+                            ner,
                             findings,
                         )
                     })
@@ -175,6 +316,7 @@ impl PiiDetector {
                             child,
                             min_confidence,
                             &format!("{path}.{key}"),
+                            ner,
                             findings,
                         ),
                     );
@@ -192,6 +334,7 @@ impl PiiDetector {
         min_confidence: f32,
         path: &str,
     ) -> (String, Vec<RedactionFinding>) {
+        spans = dedupe_overlaps(spans);
         spans.retain(|span| span.confidence >= min_confidence);
         spans.sort_by_key(|span| Reverse(span.start));
 
@@ -247,6 +390,35 @@ pub fn thai_id_valid(value: &str) -> bool {
         .sum();
     let check = (11 - (sum % 11)) % 10;
     digits.get(12).is_some_and(|digit| *digit == check)
+}
+
+fn clamp_unit_score(score: f32) -> f32 {
+    if !score.is_finite() || score <= 0.0 {
+        0.0
+    } else if score >= 1.0 {
+        1.0
+    } else {
+        score
+    }
+}
+
+fn normalize_ner_label(label: &str) -> String {
+    match label.trim().to_ascii_lowercase().as_str() {
+        "person" | "name" => "PERSON".to_string(),
+        "address" | "location" => "ADDRESS".to_string(),
+        "organization" | "org" => "ORGANIZATION".to_string(),
+        other => other.to_ascii_uppercase(),
+    }
+}
+
+fn span_value(text: &str, start: usize, end: usize) -> Option<&str> {
+    if start >= end || end > text.len() {
+        return None;
+    }
+    if !text.is_char_boundary(start) || !text.is_char_boundary(end) {
+        return None;
+    }
+    text.get(start..end)
 }
 
 fn always_valid(_value: &str) -> bool {
@@ -356,6 +528,16 @@ mod tests {
         assert!(with_context
             .iter()
             .any(|span| span.entity_type == "PASSPORT"));
+    }
+
+    #[test]
+    fn gliner_endpoint_failure_returns_empty_spans() -> PluginResult<()> {
+        let provider =
+            GlinerProvider::new("http://127.0.0.1:9/ner").with_timeout(Duration::from_millis(5));
+        let spans = provider.detect_entities("สมชายอยู่กรุงเทพ")?;
+
+        assert!(spans.is_empty());
+        Ok(())
     }
 
     #[test]

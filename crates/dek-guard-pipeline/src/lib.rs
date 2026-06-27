@@ -10,7 +10,7 @@ pub mod pii;
 pub mod spotlight;
 
 use async_trait::async_trait;
-use config::GuardConfig;
+use config::{GuardConfig, NerProviderKind, ThirdPartyNerConfig};
 use dek_plugin_sdk::{
     PluginIdentity, PluginResult, PluginType, RedactionFinding, TransformDirection,
     TransformPlugin, TransformRequest, TransformResponse, DEK_PLUGIN_API_VERSION,
@@ -18,6 +18,7 @@ use dek_plugin_sdk::{
 pub use pii::PiiDetector;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::time::Duration;
 
 pub const GUARD_PIPELINE_ID: &str = "dek.guard-pipeline";
 pub const GUARD_PIPELINE_NAME: &str = "Pollek Guard Pipeline";
@@ -48,7 +49,7 @@ impl Default for InjectionScore {
 }
 
 pub trait NerProvider: Send + Sync {
-    fn detect_entities(&self, text: &str) -> PluginResult<Vec<RedactionFinding>>;
+    fn detect_entities(&self, text: &str) -> PluginResult<Vec<pii::PiiSpan>>;
 }
 
 pub trait InjectionClassifier: Send + Sync {
@@ -89,16 +90,22 @@ pub struct GuardPipeline {
 
 impl GuardPipeline {
     pub fn new(cfg: GuardConfig) -> Self {
+        let ner = build_ner_provider(&cfg);
         Self {
             cfg,
             pii: PiiDetector,
-            ner: None,
+            ner,
             classifier: None,
         }
     }
 
     pub fn with_classifier(mut self, classifier: Box<dyn InjectionClassifier>) -> Self {
         self.classifier = Some(classifier);
+        self
+    }
+
+    pub fn with_ner(mut self, ner: Box<dyn NerProvider>) -> Self {
+        self.ner = Some(ner);
         self
     }
 
@@ -109,9 +116,7 @@ impl GuardPipeline {
 
         let text = payload_to_text(payload);
         let scanned = self.scan_injection_text(&text);
-        let (pii_payload, findings) = self
-            .pii
-            .redact_value(payload, self.cfg.thresholds.pii_confidence);
+        let (pii_payload, findings) = self.redact_pii_value(payload);
         let has_pii = !findings.is_empty();
 
         let action = if scanned.score >= self.cfg.thresholds.injection_deny_score {
@@ -180,9 +185,7 @@ impl GuardPipeline {
             findings.append(&mut output_findings);
         }
 
-        let (pii_payload, mut pii_findings) = self
-            .pii
-            .redact_value(&working_payload, self.cfg.thresholds.pii_confidence);
+        let (pii_payload, mut pii_findings) = self.redact_pii_value(&working_payload);
         let has_pii = !pii_findings.is_empty();
         if has_pii {
             working_payload = pii_payload;
@@ -288,6 +291,16 @@ impl GuardPipeline {
             normalization_steps,
         }
     }
+
+    fn redact_pii_value(&self, payload: &Value) -> (Value, Vec<RedactionFinding>) {
+        let ner = if self.cfg.enable_ner {
+            self.ner.as_deref()
+        } else {
+            None
+        };
+        self.pii
+            .redact_value_with_ner(payload, self.cfg.thresholds.pii_confidence, ner)
+    }
 }
 
 struct CombinedInjectionScan {
@@ -299,6 +312,31 @@ struct CombinedInjectionScan {
 fn push_unique(values: &mut Vec<String>, value: String) {
     if !values.iter().any(|item| item == &value) {
         values.push(value);
+    }
+}
+
+pub(crate) fn ensure_rustls_crypto_provider() {
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    }
+}
+
+fn build_ner_provider(cfg: &GuardConfig) -> Option<Box<dyn NerProvider>> {
+    if !cfg.enable_ner {
+        return None;
+    }
+    let provider = cfg.ner_provider.as_ref()?;
+    Some(build_third_party_ner_provider(provider))
+}
+
+fn build_third_party_ner_provider(provider: &ThirdPartyNerConfig) -> Box<dyn NerProvider> {
+    match provider.provider_kind {
+        NerProviderKind::Gliner | NerProviderKind::CustomHttp => Box::new(
+            pii::GlinerProvider::new(provider.endpoint.clone())
+                .with_labels(provider.labels.clone())
+                .with_min_confidence(provider.min_confidence)
+                .with_timeout(Duration::from_millis(provider.timeout_ms)),
+        ),
     }
 }
 
@@ -451,6 +489,39 @@ mod tests {
         fn classify(&self, _text: &str) -> PluginResult<InjectionScore> {
             Err(PluginError::Unavailable(
                 "classifier fixture unavailable".to_string(),
+            ))
+        }
+    }
+
+    struct StaticNerProvider {
+        entities: Vec<(&'static str, &'static str)>,
+    }
+
+    impl NerProvider for StaticNerProvider {
+        fn detect_entities(&self, text: &str) -> PluginResult<Vec<pii::PiiSpan>> {
+            let mut spans = Vec::new();
+            for (kind, needle) in &self.entities {
+                if let Some(start) = text.find(needle) {
+                    spans.push(pii::PiiSpan {
+                        entity_type: (*kind).to_string(),
+                        start,
+                        end: start + needle.len(),
+                        value: (*needle).to_string(),
+                        confidence: 0.91,
+                        source: "ner",
+                    });
+                }
+            }
+            Ok(spans)
+        }
+    }
+
+    struct FailingNerProvider;
+
+    impl NerProvider for FailingNerProvider {
+        fn detect_entities(&self, _text: &str) -> PluginResult<Vec<pii::PiiSpan>> {
+            Err(PluginError::Unavailable(
+                "ner fixture unavailable".to_string(),
             ))
         }
     }
@@ -617,6 +688,88 @@ mod tests {
             .categories
             .iter()
             .any(|category| category == "llm07_system_prompt_leakage"));
+    }
+
+    #[test]
+    fn ner_is_disabled_by_default_even_when_provider_is_attached() {
+        let pipeline = GuardPipeline::default().with_ner(Box::new(StaticNerProvider {
+            entities: vec![("PERSON", "สมชาย")],
+        }));
+
+        let outcome = pipeline.scan_request(&serde_json::json!({
+            "content": "ผู้ติดต่อ สมชาย"
+        }));
+
+        assert_eq!(outcome.action, GuardAction::Allow);
+        assert!(outcome.findings.is_empty());
+    }
+
+    #[test]
+    fn enabled_ner_redacts_thai_person_and_address_entities() {
+        let cfg = GuardConfig {
+            enable_ner: true,
+            ..GuardConfig::default()
+        };
+        let pipeline = GuardPipeline::new(cfg).with_ner(Box::new(StaticNerProvider {
+            entities: vec![("PERSON", "สมชาย"), ("ADDRESS", "กรุงเทพ")],
+        }));
+
+        let outcome = pipeline.scan_request(&serde_json::json!({
+            "content": "ผู้ติดต่อ สมชาย อยู่ กรุงเทพ"
+        }));
+        let rendered = outcome
+            .redacted_payload
+            .as_ref()
+            .map(serde_json::Value::to_string)
+            .unwrap_or_default();
+
+        assert_eq!(outcome.action, GuardAction::Redact);
+        assert!(outcome
+            .findings
+            .iter()
+            .any(|finding| finding.kind == "PERSON"));
+        assert!(outcome
+            .findings
+            .iter()
+            .any(|finding| finding.kind == "ADDRESS"));
+        assert!(rendered.contains("[REDACTED_PERSON]"));
+        assert!(rendered.contains("[REDACTED_ADDRESS]"));
+    }
+
+    #[test]
+    fn ner_provider_failure_does_not_fail_pipeline() {
+        let cfg = GuardConfig {
+            enable_ner: true,
+            ..GuardConfig::default()
+        };
+        let pipeline = GuardPipeline::new(cfg).with_ner(Box::new(FailingNerProvider));
+
+        let outcome = pipeline.scan_request(&serde_json::json!({
+            "content": "ผู้ติดต่อ สมชาย"
+        }));
+
+        assert_eq!(outcome.action, GuardAction::Allow);
+        assert!(outcome.findings.is_empty());
+    }
+
+    #[test]
+    fn enterprise_cloud_can_configure_third_party_ner_provider() {
+        let cfg = GuardConfig {
+            enable_ner: true,
+            ner_provider: Some(ThirdPartyNerConfig {
+                provider_id: "enterprise-gliner".to_string(),
+                provider_kind: NerProviderKind::CustomHttp,
+                endpoint: "http://127.0.0.1:8080/ner".to_string(),
+                labels: vec!["person".to_string(), "address".to_string()],
+                min_confidence: 0.75,
+                timeout_ms: 80,
+            }),
+            ..GuardConfig::default()
+        };
+
+        let pipeline = GuardPipeline::new(cfg);
+
+        assert!(pipeline.ner.is_some());
     }
 
     #[test]

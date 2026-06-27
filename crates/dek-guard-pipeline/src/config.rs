@@ -37,9 +37,45 @@ pub struct GuardConfig {
     pub response_guard_enabled: bool,
     pub telemetry_enabled: bool,
     pub enable_classifier: bool,
+    pub enable_ner: bool,
+    pub ner_provider: Option<ThirdPartyNerConfig>,
     pub enable_spotlight: bool,
     pub output_canary: Option<String>,
     pub thresholds: GuardThresholds,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum NerProviderKind {
+    Gliner,
+    CustomHttp,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ThirdPartyNerConfig {
+    pub provider_id: String,
+    pub provider_kind: NerProviderKind,
+    pub endpoint: String,
+    pub labels: Vec<String>,
+    pub min_confidence: f32,
+    pub timeout_ms: u64,
+}
+
+impl ThirdPartyNerConfig {
+    pub fn gliner(endpoint: impl Into<String>) -> Self {
+        Self {
+            provider_id: "gliner".to_string(),
+            provider_kind: NerProviderKind::Gliner,
+            endpoint: endpoint.into(),
+            labels: vec![
+                "person".to_string(),
+                "address".to_string(),
+                "organization".to_string(),
+            ],
+            min_confidence: 0.80,
+            timeout_ms: 80,
+        }
+    }
 }
 
 impl Default for GuardConfig {
@@ -50,6 +86,8 @@ impl Default for GuardConfig {
             response_guard_enabled: true,
             telemetry_enabled: true,
             enable_classifier: false,
+            enable_ner: false,
+            ner_provider: None,
             enable_spotlight: true,
             output_canary: None,
             thresholds: GuardThresholds::default(),
