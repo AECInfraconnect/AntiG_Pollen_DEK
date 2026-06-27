@@ -184,4 +184,3 @@ Activity shows chronological evidence across agents, tools, resources, policies,
 
 Source: `docs/COST_TOKEN_USAGE_RESEARCH.md#exact-first`
 Related: `entity.resource`, `entity.policy`
-

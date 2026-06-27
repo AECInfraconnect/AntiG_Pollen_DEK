@@ -41,4 +41,5 @@ for (const topic of topics) {
 }
 
 mkdirSync(dirname(outputPath), { recursive: true });
-writeFileSync(outputPath, `${lines.join("\n")}\n`, "utf8");
+const markdown = lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd();
+writeFileSync(outputPath, `${markdown}\n`, "utf8");
