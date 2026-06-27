@@ -9,7 +9,7 @@ import {
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { Overview } from "./pages/Overview";
 import { Resources } from "./pages/Resources";
-import { Policies } from "./pages/Policies";
+// import { Policies } from "./pages/Policies"; // Replaced by PoliciesV2
 import { Simulator } from "./pages/Simulator";
 import { Bundles } from "./pages/Bundles";
 import { Settings } from "./pages/Settings";
@@ -24,13 +24,13 @@ import { Protect } from "./pages/Protect";
 import { NAV } from "./config/navigation";
 
 // Merged composite pages
-import { AgentsAndModels } from "./pages/Ecosystem/AgentsAndModels";
+// import { AgentsAndModels } from "./pages/Ecosystem/AgentsAndModels"; // Replaced by AgentsV2
 import { Integrations } from "./pages/Ecosystem/Integrations";
 import { PluginMarketplace } from "./pages/Ecosystem/PluginMarketplace";
 import { IdentityNetwork } from "./pages/Data/IdentityNetwork";
 import { AlertsAndShadowAI } from "./pages/Monitoring/AlertsAndShadowAI";
 import { Entities } from "./pages/Entities";
-import { Tools } from "./pages/Tools";
+// import { Tools } from "./pages/Tools"; // Replaced by ToolsResourcesV2
 import { ActivityTimelineV2 } from "./features/activity/ActivityTimelineV2";
 import { EntityGraphPage } from "./features/entity-graph/EntityGraphPage";
 
@@ -39,6 +39,9 @@ import { LocalEvidence } from "./pages/LocalEvidence";
 import { ControlMethods } from "./pages/ControlMethods";
 import { Capabilities } from "./pages/Capabilities";
 import { Health } from "./pages/Health";
+import AgentsV2 from "./pages/AgentsV2";
+import ToolsResourcesV2 from "./pages/ToolsResourcesV2";
+import PoliciesV2 from "./pages/PoliciesV2";
 
 import { Toaster } from "sonner";
 
@@ -108,13 +111,13 @@ function App() {
                 <Route path="entity-graph" element={<EntityGraphPage />} />
 
                 {/* AI Ecosystem */}
-                <Route path="agents" element={<AgentsAndModels />} />
+                <Route path="agents" element={<AgentsV2 />} />
                 <Route path="integrations" element={<Integrations />} />
                 <Route
                   path="plugin-marketplace"
                   element={<PluginMarketplace />}
                 />
-                <Route path="tools" element={<Tools />} />
+                <Route path="tools" element={<ToolsResourcesV2 />} />
 
                 {/* Data & Context */}
                 <Route path="resources" element={<Resources />} />
@@ -127,7 +130,7 @@ function App() {
                   path="policy-suggestions"
                   element={<PolicySuggestions />}
                 />
-                <Route path="policies" element={<Policies />} />
+                <Route path="policies" element={<PoliciesV2 />} />
                 <Route path="simulator" element={<Simulator />} />
 
                 {/* Monitoring & Activity */}
