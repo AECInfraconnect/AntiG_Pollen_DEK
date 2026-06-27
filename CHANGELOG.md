@@ -4,6 +4,16 @@ All notable changes to Pollek Local Enforcement Kit are documented here. Format 
 [Keep a Changelog](https://keepachangelog.com/); the project uses semantic-ish
 versioning with pre-release tags (e.g. `1.0.0-beta.1`).
 
+## [Unreleased]
+
+### Added
+
+- Added Prompt Guard Suite runtime wiring with configurable guard modes,
+  `/v1/filter/response` as the response data plane, guard incident telemetry,
+  and Local Dashboard incident remediation.
+- Added policy preset rendering for `guard-pipeline-config.v1` so content, PII,
+  and secret guard presets map `control_mode` into GuardPipeline mode.
+
 ## [1.0.0-beta.10] -- 2026-06-20
 
 ### Fixed

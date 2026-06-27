@@ -2554,6 +2554,7 @@ dependencies = [
  "cedar-policy",
  "dek-control-plane-api",
  "dek-domain-schema",
+ "dek-guard-pipeline",
  "schemars 0.8.22",
  "serde",
  "serde_json",

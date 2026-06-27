@@ -13,6 +13,7 @@ anyhow = "1.0"
 uuid = { version = "1.23.3", features = ["v4"] }
 dek-domain-schema = { version = "0.1.0", path = "../dek-domain-schema" }
 dek-control-plane-api = { version = "0.1.0", path = "../dek-control-plane-api" }
+dek-guard-pipeline = { path = "../dek-guard-pipeline" }
 
 [lints]
 workspace = true

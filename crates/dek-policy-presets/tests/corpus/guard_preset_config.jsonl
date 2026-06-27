@@ -1,0 +1,3 @@
+{"id":"rt-pr9-prompt-injection-strict-deny","preset_id":"content.prompt_injection_guard","control_mode":"strict_deny","expected_guard_mode":"strict_deny","status":"active"}
+{"id":"rt-pr9-pii-approval-maps-to-warn","preset_id":"pii.redact_before_external_llm","control_mode":"approval","expected_guard_mode":"warn","status":"active"}
+{"id":"rt-pr9-system-leak-observe","preset_id":"content.system_prompt_leak_guard","control_mode":"observe","expected_guard_mode":"observe","status":"active"}

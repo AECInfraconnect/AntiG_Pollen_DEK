@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `guard_incident` telemetry event type and `GuardIncidentPayload` schema for
+  shared Local Dashboard and Pollek Cloud Prompt Guard incident evidence.
 - Optional `ResourceTraceDetails` on resource access telemetry and resource
   inventory items so Local Dashboard and Pollek Cloud can share exact file,
   folder, database, table/collection, and provenance metadata.
