@@ -1,10 +1,4 @@
 #![allow(clippy::print_stdout)]
-#![allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::duplicated_attributes
-)]
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
@@ -21,33 +15,38 @@ use sysinfo::{Pid, System};
 use tokio::process::{Child, Command};
 use tokio::time::sleep;
 
-fn workspace_dir() -> PathBuf {
-    std::env::current_dir()
-        .unwrap()
+const TEST_CONSENT_JSON: &str = r#"{"records":{"Eula":{"agreement_type":"Eula","version":"1.0","timestamp":"2026-06-24T00:00:00Z","user_identifier":"soak-test"},"PrivacyNotice":{"agreement_type":"PrivacyNotice","version":"1.0","timestamp":"2026-06-24T00:00:00Z","user_identifier":"soak-test"}}}"#;
+
+fn workspace_dir() -> Result<PathBuf> {
+    let current_dir = std::env::current_dir().context("resolve current test directory")?;
+    let crate_dir = current_dir
         .parent()
-        .unwrap()
+        .context("acceptance-tests directory has no parent")?;
+    let workspace_dir = crate_dir
         .parent()
-        .unwrap()
-        .to_path_buf()
+        .context("crates directory has no parent")?;
+    Ok(workspace_dir.to_path_buf())
 }
 
-fn bin(name: &str) -> PathBuf {
-    std::env::current_exe()
-        .unwrap()
+fn bin(name: &str) -> Result<PathBuf> {
+    let current_exe = std::env::current_exe().context("resolve current test executable")?;
+    let deps_dir = current_exe
         .parent()
-        .unwrap()
+        .context("test executable has no parent directory")?;
+    let target_dir = deps_dir
         .parent()
-        .unwrap()
+        .context("test deps directory has no parent directory")?;
+    Ok(target_dir
         .join(name)
-        .with_extension(std::env::consts::EXE_EXTENSION)
+        .with_extension(std::env::consts::EXE_EXTENSION))
 }
 
-fn insecure_client() -> reqwest::Client {
+fn insecure_client() -> Result<reqwest::Client> {
     reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .pool_max_idle_per_host(50)
         .build()
-        .unwrap()
+        .context("build insecure test client")
 }
 
 struct Proc(Child, Option<u32>);
@@ -58,7 +57,7 @@ impl Drop for Proc {
 }
 
 async fn wait_https(url: &str, tries: u32) -> Result<()> {
-    let c = insecure_client();
+    let c = insecure_client()?;
     for _ in 0..tries {
         if c.get(url).send().await.is_ok() {
             return Ok(());
@@ -70,23 +69,21 @@ async fn wait_https(url: &str, tries: u32) -> Result<()> {
 
 async fn setup_mock_cloud() -> Result<Proc> {
     if std::env::var("DEK_SKIP_HARNESS_BUILD").is_err() {
-        assert!(
-            Command::new("cargo")
-                .args(["build", "--workspace"])
-                .status()
-                .await?
-                .success(),
-            "workspace build failed"
-        );
+        let status = Command::new("cargo")
+            .args(["build", "--workspace"])
+            .status()
+            .await
+            .context("build workspace for soak harness")?;
+        anyhow::ensure!(status.success(), "workspace build failed");
     }
-    let _ = Command::new(bin("cert-gen"))
+    let _ = Command::new(bin("cert-gen")?)
         .arg("certs")
-        .current_dir(workspace_dir())
+        .current_dir(workspace_dir()?)
         .status()
         .await;
 
-    let mock = Command::new(bin("mock-cloud"))
-        .current_dir(workspace_dir())
+    let mock = Command::new(bin("mock-cloud")?)
+        .current_dir(workspace_dir()?)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -103,20 +100,20 @@ async fn enroll_and_start_core() -> Result<Proc> {
     std::fs::create_dir_all(&tmp_config)?;
     std::fs::create_dir_all(&tmp_data)?;
     std::fs::create_dir_all(&tmp_logs)?;
-    std::fs::create_dir_all(&tmp_config).unwrap();
-    std::fs::create_dir_all(&tmp_data).unwrap();
+    std::fs::write(tmp_config.join("consent.json"), TEST_CONSENT_JSON)
+        .context("write soak consent file")?;
 
-    let status = Command::new(bin("dek-cli"))
+    let status = Command::new(bin("dek-cli")?)
         .args(["enroll", "--cloud-url", "https://127.0.0.1:43892"])
         .env("DEK_CONFIG_DIR", &tmp_config)
         .env("DEK_DATA_DIR", &tmp_data)
-        .current_dir(workspace_dir())
+        .current_dir(workspace_dir()?)
         .status()
         .await
         .context("enroll")?;
     anyhow::ensure!(status.success(), "enrollment failed");
 
-    let core = Command::new(bin("dek-core"))
+    let mut core = Command::new(bin("dek-core")?)
         .env("DEK_CONFIG_DIR", &tmp_config)
         .env("DEK_DATA_DIR", &tmp_data)
         .env("DEK_LOG_DIR", &tmp_logs)
@@ -125,6 +122,9 @@ async fn enroll_and_start_core() -> Result<Proc> {
         .context("spawn dek-core")?;
     let pid = core.id();
     sleep(Duration::from_secs(3)).await;
+    if let Some(status) = core.try_wait().context("check dek-core startup status")? {
+        anyhow::bail!("dek-core exited during startup: {status}");
+    }
     Ok(Proc(core, pid))
 }
 
@@ -157,7 +157,7 @@ async fn soak_harness() -> Result<()> {
     let _mock = setup_mock_cloud().await?;
     let core = enroll_and_start_core().await?;
 
-    let core_pid = core.1.expect("dek-core pid not found");
+    let core_pid = core.1.context("dek-core pid not found")?;
     let mut sys = System::new_all();
     sys.refresh_processes();
     let initial_rss = sys
@@ -166,7 +166,7 @@ async fn soak_harness() -> Result<()> {
         .unwrap_or(0);
     println!("Initial dek-core RSS: {} KB", initial_rss);
 
-    let pep = insecure_client();
+    let pep = insecure_client()?;
     let allow_req = serde_json::json!({
         "request_id": "test-req-1",
         "tenant_id": "tenant-production-1",
@@ -232,7 +232,7 @@ async fn soak_harness() -> Result<()> {
         err_reqs,
         err_rate * 100.0
     );
-    assert!(err_rate < 0.10, "Error rate must be < 10%");
+    anyhow::ensure!(err_rate < 0.10, "Error rate must be < 10%");
 
     sys.refresh_processes();
     let final_rss = sys
@@ -242,12 +242,12 @@ async fn soak_harness() -> Result<()> {
     println!("Final dek-core RSS: {} KB", final_rss);
 
     // Check for leak: RSS growth > 1.5x (and significantly > 10MB to avoid base noise)
-    if initial_rss > 10_000 && final_rss > (initial_rss as f64 * 1.5) as u64 {
-        panic!(
-            "Potential memory leak detected! RSS grew from {} KB to {} KB",
-            initial_rss, final_rss
-        );
-    }
+    anyhow::ensure!(
+        !(initial_rss > 10_000 && final_rss > (initial_rss as f64 * 1.5) as u64),
+        "Potential memory leak detected! RSS grew from {} KB to {} KB",
+        initial_rss,
+        final_rss
+    );
 
     Ok(())
 }
