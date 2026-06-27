@@ -2,6 +2,11 @@ import { expect, test } from "@playwright/test";
 import { installMockApi } from "./mock-api";
 
 test.describe("Governance loop", () => {
+  test.skip(
+    process.env.DEK_PLAYWRIGHT_EXTERNAL_SERVER === "1",
+    "Runs in the dashboard mock E2E job; the external-server job validates the real Local Control Plane.",
+  );
+
   test.beforeEach(async ({ page }) => {
     await installMockApi(page);
     await page.addInitScript(() => {
