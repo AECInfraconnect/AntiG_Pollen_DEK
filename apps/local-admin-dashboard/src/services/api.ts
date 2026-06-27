@@ -907,7 +907,12 @@ export const TelemetryApi = {
     return defaultClient.fetchRootApi(url);
   },
   streamUrl: (
-    channel: "observations" | "resources" | "tools" | "identities" = "observations",
+    channel:
+      | "observations"
+      | "resources"
+      | "tools"
+      | "identities"
+      | "guard-events" = "observations",
   ) =>
     `${defaultClient.rootUrl}/v1/tenants/${defaultClient.tenantId}/telemetry/${channel}/stream`,
   listResourceInventory: async (

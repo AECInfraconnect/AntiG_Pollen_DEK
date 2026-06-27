@@ -82,6 +82,10 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/telemetry/identities/stream",
             get(telemetry_stream),
         )
+        .route(
+            "/v1/tenants/:tenant/telemetry/guard-events/stream",
+            get(telemetry_stream),
+        )
         .route("/v1/telemetry/enforcement-status", get(enforcement_status))
         .route("/v1/decisions/:id/explain", get(explain_decision))
 }
@@ -327,6 +331,11 @@ async fn store_events(
         {
             stored += 1;
             bridge_exact_usage_event(st, tenant, &kind, &val).await;
+            if let Ok(envelope) =
+                serde_json::from_value::<pollek_contract::PollekTelemetryEnvelopeV1>(val)
+            {
+                let _sent = st.telemetry_tx.send(envelope);
+            }
         }
     }
     (

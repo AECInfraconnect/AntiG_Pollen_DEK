@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.pollek.dev/schemas/guard-incident.v1.schema.json",
+  "title": "GuardIncidentPayloadV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "guard_event",
+    "direction",
+    "action",
+    "categories",
+    "severity",
+    "findings",
+    "redaction",
+    "remediation"
+  ],
+  "properties": {
+    "guard_event": { "type": "object" },
+    "agent_id": { "type": "string" },
+    "direction": { "type": "string" },
+    "action": { "enum": ["allow", "deny", "redact"] },
+    "categories": { "type": "array", "items": { "type": "string" } },
+    "severity": { "type": "string" },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "count"],
+        "properties": {
+          "kind": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applied"],
+      "properties": {
+        "applied": { "type": "boolean" }
+      }
+    },
+    "remediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["user_message", "recommended_actions", "can_override"],
+      "properties": {
+        "user_message": { "type": "string" },
+        "recommended_actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "doc_url": { "type": "string" },
+        "can_override": { "type": "boolean" }
+      }
+    }
+  }
+}

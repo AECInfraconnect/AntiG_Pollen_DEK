@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { ShieldAlert, AlertTriangle } from "lucide-react";
+import { AlertTriangle, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Alerts } from "../Alerts";
 import { ShadowAI } from "../ShadowAI";
+import { GuardIncidentFeed } from "../../features/guard/GuardIncidentCard";
 
 export function AlertsAndShadowAI() {
-  const [activeTab, setActiveTab] = useState<"alerts" | "shadow">("alerts");
+  const [activeTab, setActiveTab] = useState<"alerts" | "guard" | "shadow">(
+    "alerts",
+  );
 
   return (
     <div className="space-y-6">
@@ -33,6 +36,17 @@ export function AlertsAndShadowAI() {
           Active Alerts
         </button>
         <button
+          onClick={() => setActiveTab("guard")}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "guard"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+          }`}
+        >
+          <ShieldCheck className="h-4 w-4" />
+          Guard Incidents
+        </button>
+        <button
           onClick={() => setActiveTab("shadow")}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             activeTab === "shadow"
@@ -50,6 +64,8 @@ export function AlertsAndShadowAI() {
           <div className="mt-[-24px]">
             <Alerts hideHeader={true} />
           </div>
+        ) : activeTab === "guard" ? (
+          <GuardIncidentFeed />
         ) : (
           <div className="mt-[-24px]">
             <ShadowAI hideHeader={true} />

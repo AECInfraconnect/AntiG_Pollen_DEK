@@ -21,6 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "resource-access.v1.schema.json",
         "tool-usage.v1.schema.json",
         "identity-access.v1.schema.json",
+        "guard-incident.v1.schema.json",
         "ai-usage-event.v1.schema.json",
         "ai-usage-summary.v1.schema.json",
         "ai-usage-rollup.v1.schema.json",

@@ -12,7 +12,7 @@ use axum::{
     Json, Router as AxumRouter,
 };
 
-use dek_guard_pipeline::{GuardAction, GuardOutcome};
+use dek_guard_pipeline::{event, GuardAction, GuardOutcome};
 use dek_mcp_normalizer::{http::HttpTransportAdapter, TransportAdapter};
 use dek_openfga::OpenFgaAdapter;
 use dek_policy_router::PolicyRouter;
@@ -158,6 +158,67 @@ mod tests {
         assert_eq!(reasons, vec!["spotlight_untrusted_data".to_string()]);
         assert!(rendered.contains(dek_guard_pipeline::spotlight::UNTRUSTED_DATA_BEGIN));
         assert!(!rendered.contains("[REDACTED_BY_POLLEK_OUTPUT_GUARD]"));
+    }
+
+    #[test]
+    fn guard_error_includes_thai_remediation_without_raw_finding_paths() {
+        let outcome = GuardOutcome {
+            action: GuardAction::Deny,
+            injection_score: 0.88,
+            categories: vec!["llm01_prompt_injection".to_string()],
+            findings: vec![dek_plugin_sdk::RedactionFinding {
+                kind: "EMAIL".to_string(),
+                confidence: 0.95,
+                path: "$.payload.alice@example.com".to_string(),
+                replacement: "[REDACTED_EMAIL]".to_string(),
+            }],
+            redacted_payload: None,
+            normalization_steps: vec!["base64_decode".to_string()],
+            confidence: 0.88,
+        };
+
+        let body = guard_json_rpc_error(
+            &json!(1),
+            "Access Denied: Prompt injection or policy override detected",
+            &outcome,
+            Some("ge_test"),
+        );
+        let rendered = body.to_string();
+
+        assert_eq!(body["error"]["data"]["guard_event_id"], "ge_test");
+        assert!(rendered.contains("คำขอถูกบล็อก"));
+        assert!(rendered.contains("remediation"));
+        assert!(rendered.contains("findings"));
+        assert!(!rendered.contains("alice@example.com"));
+        assert!(!rendered.contains("$.payload"));
+    }
+
+    #[test]
+    fn guard_metadata_emits_preset_summary_fields() {
+        let outcome = GuardOutcome {
+            action: GuardAction::Redact,
+            injection_score: 0.0,
+            categories: vec!["llm02_sensitive_information_disclosure".to_string()],
+            findings: vec![dek_plugin_sdk::RedactionFinding {
+                kind: "THAI_NATIONAL_ID".to_string(),
+                confidence: 0.95,
+                path: "$.profile.1101700207030".to_string(),
+                replacement: "[REDACTED_THAI_NATIONAL_ID]".to_string(),
+            }],
+            redacted_payload: None,
+            normalization_steps: Vec::new(),
+            confidence: 0.95,
+        };
+
+        let metadata = guard_metadata(&outcome, true);
+        let rendered = metadata.to_string();
+
+        assert_eq!(metadata["redaction"]["applied"], true);
+        assert_eq!(metadata["findings"][0]["kind"], "THAI_NATIONAL_ID");
+        assert_eq!(metadata["findings"][0]["count"], 1);
+        assert!(rendered.contains("ข้อมูลอ่อนไหว"));
+        assert!(!rendered.contains("1101700207030"));
+        assert!(!rendered.contains("$.profile"));
     }
 }
 
@@ -688,14 +749,41 @@ async fn handle_mcp_request(
                 agent = %normalized.agent_id.as_deref().unwrap_or("unknown"),
                 "request denied by guard pipeline"
             );
+            let guard_event = build_guard_event(
+                Some(final_tenant_id.clone()),
+                normalized.agent_id.clone(),
+                "request",
+                &request_guard,
+                false,
+            );
+            emit_guard_event(
+                state.as_ref(),
+                &guard_event,
+                Some(metadata.device_id.clone()),
+                dek_telemetry::spooler::Priority::High,
+            );
             let body = guard_json_rpc_error(
                 payload.get("id").unwrap_or(&serde_json::Value::Null),
                 "Access Denied: Prompt injection or policy override detected",
                 &request_guard,
+                Some(&guard_event.event_id),
             );
             return (axum::http::StatusCode::FORBIDDEN, axum::Json(body)).into_response();
         }
         GuardAction::Redact => {
+            let guard_event = build_guard_event(
+                Some(final_tenant_id.clone()),
+                normalized.agent_id.clone(),
+                "request",
+                &request_guard,
+                request_guard.redacted_payload.is_some(),
+            );
+            emit_guard_event(
+                state.as_ref(),
+                &guard_event,
+                Some(metadata.device_id.clone()),
+                dek_telemetry::spooler::Priority::Normal,
+            );
             extra_obligations.push("redact_content".to_string());
         }
         GuardAction::Allow => {}
@@ -1092,8 +1180,15 @@ async fn handle_mcp_request(
                     "decision": response
                 });
 
-                let outcome =
-                    filter_response_payload(state.as_ref(), final_response, redact_content).await;
+                let outcome = filter_response_payload(
+                    state.as_ref(),
+                    final_response,
+                    redact_content,
+                    Some(final_tenant_id.clone()),
+                    normalized.agent_id.clone(),
+                    Some(metadata.device_id.clone()),
+                )
+                .await;
                 if outcome.action == GuardAction::Deny {
                     let body = json!({
                         "jsonrpc": "2.0",
@@ -1269,7 +1364,10 @@ fn guard_action_label(action: GuardAction) -> &'static str {
     }
 }
 
-fn guard_metadata(outcome: &GuardOutcome) -> Value {
+fn guard_metadata(outcome: &GuardOutcome, redaction_applied: bool) -> Value {
+    let findings_summary = event::summarize_findings(&outcome.findings);
+    let remediation = event::remediation_for(outcome.action, &outcome.categories);
+    let severity = event::severity_for(outcome.action, &outcome.categories);
     json!({
         "plugin_id": "dek.guard-pipeline",
         "action": guard_action_label(outcome.action),
@@ -1278,10 +1376,24 @@ fn guard_metadata(outcome: &GuardOutcome) -> Value {
         "normalization_steps": outcome.normalization_steps,
         "confidence": outcome.confidence,
         "findings_count": outcome.findings.len(),
+        "findings": findings_summary,
+        "findings_summary": findings_summary,
+        "severity": severity,
+        "remediation": remediation,
+        "redaction": {
+            "applied": redaction_applied
+        },
     })
 }
 
-fn guard_json_rpc_error(id: &Value, message: &str, outcome: &GuardOutcome) -> Value {
+fn guard_json_rpc_error(
+    id: &Value,
+    message: &str,
+    outcome: &GuardOutcome,
+    guard_event_id: Option<&str>,
+) -> Value {
+    let metadata = guard_metadata(outcome, false);
+    let guard_event_id = guard_event_id.unwrap_or("ge_unemitted");
     json!({
         "jsonrpc": "2.0",
         "id": id,
@@ -1289,24 +1401,124 @@ fn guard_json_rpc_error(id: &Value, message: &str, outcome: &GuardOutcome) -> Va
             "code": -32000,
             "message": message,
             "data": {
-                "guard": guard_metadata(outcome)
+                "guard_event_id": guard_event_id,
+                "action": guard_action_label(outcome.action),
+                "categories": outcome.categories,
+                "severity": metadata["severity"].clone(),
+                "remediation": metadata["remediation"].clone(),
+                "guard": metadata
             }
         }
     })
+}
+
+fn build_guard_event(
+    tenant_id: Option<String>,
+    agent_id: Option<String>,
+    direction: &str,
+    outcome: &GuardOutcome,
+    redaction_applied: bool,
+) -> event::GuardEvent {
+    event::GuardEvent::from_outcome(
+        format!("ge_{}", uuid::Uuid::new_v4()),
+        chrono::Utc::now().to_rfc3339(),
+        tenant_id,
+        agent_id,
+        direction,
+        outcome,
+        redaction_applied,
+    )
+}
+
+fn guard_event_envelope(ev: &event::GuardEvent, device_id: Option<String>) -> Value {
+    let payload = match serde_json::to_value(ev) {
+        Ok(value) => value,
+        Err(_) => json!({}),
+    };
+    json!({
+        "schema_version": "telemetry-envelope.v1",
+        "event_id": ev.event_id,
+        "event_type": "guard_incident",
+        "timestamp": ev.ts,
+        "tenant_id": ev.tenant_id.clone().unwrap_or_else(|| "local".to_string()),
+        "device_id": device_id.unwrap_or_else(|| "local-device".to_string()),
+        "redaction_applied": ev.redaction_applied,
+        "payload": {
+            "guard_event": payload,
+            "agent_id": ev.agent_id,
+            "direction": ev.direction,
+            "action": guard_action_label(ev.action),
+            "categories": ev.categories,
+            "severity": ev.severity,
+            "findings": ev.findings_summary,
+            "redaction": {
+                "applied": ev.redaction_applied
+            },
+            "remediation": ev.remediation
+        }
+    })
+}
+
+fn emit_guard_event(
+    state: &AppState,
+    ev: &event::GuardEvent,
+    device_id: Option<String>,
+    priority: dek_telemetry::spooler::Priority,
+) {
+    if let Some(telemetry) = &state.telemetry {
+        telemetry.emit_async(guard_event_envelope(ev, device_id), priority);
+    }
+}
+
+fn effective_response_guard(
+    mut guard: GuardOutcome,
+    redaction_applied: bool,
+    pii_redacted: bool,
+    force_redact: bool,
+) -> GuardOutcome {
+    if redaction_applied && guard.action == GuardAction::Allow {
+        guard.action = GuardAction::Redact;
+    }
+    if pii_redacted {
+        push_guard_category(
+            &mut guard.categories,
+            "llm02_sensitive_information_disclosure",
+        );
+    }
+    if force_redact {
+        push_guard_category(&mut guard.categories, "llm05_improper_output_handling");
+    }
+    guard
+}
+
+fn push_guard_category(categories: &mut Vec<String>, category: &str) {
+    if !categories.iter().any(|existing| existing == category) {
+        categories.push(category.to_string());
+    }
 }
 
 async fn filter_response_payload(
     state: &AppState,
     payload: Value,
     force_redact: bool,
+    tenant_id: Option<String>,
+    agent_id: Option<String>,
+    device_id: Option<String>,
 ) -> ResponseFilterOutcome {
     let guard = state.guard_pipeline.scan_response(&payload);
     if guard.action == GuardAction::Deny {
+        let guard_event = build_guard_event(tenant_id, agent_id, "response", &guard, false);
+        emit_guard_event(
+            state,
+            &guard_event,
+            device_id,
+            dek_telemetry::spooler::Priority::High,
+        );
         return ResponseFilterOutcome {
             action: GuardAction::Deny,
             payload,
             reason: "output_guard_blocked_risky_tool_response".to_string(),
-            guard: guard_metadata(&guard),
+            guard: guard_metadata(&guard, false),
         };
     }
 
@@ -1319,20 +1531,30 @@ async fn filter_response_payload(
         redaction_applied = true;
         reasons.push("pii_redacted".to_string());
     }
+    let effective_guard =
+        effective_response_guard(guard, redaction_applied, pii_redacted, force_redact);
 
     if redaction_applied {
+        let guard_event =
+            build_guard_event(tenant_id, agent_id, "response", &effective_guard, true);
+        emit_guard_event(
+            state,
+            &guard_event,
+            device_id,
+            dek_telemetry::spooler::Priority::Normal,
+        );
         ResponseFilterOutcome {
             action: GuardAction::Redact,
             payload: filtered_payload,
             reason: reasons.join(","),
-            guard: guard_metadata(&guard),
+            guard: guard_metadata(&effective_guard, true),
         }
     } else {
         ResponseFilterOutcome {
             action: GuardAction::Allow,
             payload: filtered_payload,
             reason: "allow".to_string(),
-            guard: guard_metadata(&guard),
+            guard: guard_metadata(&effective_guard, false),
         }
     }
 }
@@ -1404,7 +1626,7 @@ async fn handle_filter_response(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
 ) -> Response {
-    let outcome = filter_response_payload(state.as_ref(), payload, false).await;
+    let outcome = filter_response_payload(state.as_ref(), payload, false, None, None, None).await;
     match outcome.action {
         GuardAction::Deny => {
             metrics::counter!("dek_proxy_responses_total", "decision" => "deny", "reason" => "output_guard").increment(1);

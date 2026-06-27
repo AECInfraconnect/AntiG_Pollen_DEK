@@ -17,7 +17,16 @@ model TelemetryEnvelope<T> {
   payload: T;
 }
 
-enum TelemetryEventType { agent_observation, enforcement_result, control_binding_changed, health, resource_access, tool_usage, identity_access }
+enum TelemetryEventType {
+  agent_observation,
+  enforcement_result,
+  control_binding_changed,
+  health,
+  resource_access,
+  tool_usage,
+  identity_access,
+  guard_incident,
+}
 
 enum ControlLevel { observe, warn, ask, enforce }
 enum ControlDomain { network, file_system, process, mcp_tool, dns }
@@ -148,6 +157,34 @@ model IdentityAccessPayload {
   control_method?: ControlMethod;
   enforced_for_real: boolean;
   observed_at: utcDateTime;
+}
+
+model GuardFindingSummary {
+  kind: string;
+  count: int32;
+}
+
+model GuardRemediation {
+  user_message: string;
+  recommended_actions: string[];
+  doc_url?: string;
+  can_override: boolean;
+}
+
+model GuardRedactionSummary {
+  applied: boolean;
+}
+
+model GuardIncidentPayload {
+  guard_event: unknown;
+  agent_id?: string;
+  direction: string;
+  action: DecisionOutcome;
+  categories: string[];
+  severity: string;
+  findings: GuardFindingSummary[];
+  redaction: GuardRedactionSummary;
+  remediation: GuardRemediation;
 }
 
 model ObservedResource {

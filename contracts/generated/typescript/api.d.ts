@@ -1718,6 +1718,31 @@ export interface components {
                 payload: components["schemas"]["EnforcementResultPayload"];
             }[];
         };
+        GuardFindingSummary: {
+            kind: string;
+            /** Format: int32 */
+            count: number;
+        };
+        GuardIncidentPayload: {
+            guard_event: unknown;
+            agent_id?: string;
+            direction: string;
+            action: components["schemas"]["DecisionOutcome"];
+            categories: string[];
+            severity: string;
+            findings: components["schemas"]["GuardFindingSummary"][];
+            redaction: components["schemas"]["GuardRedactionSummary"];
+            remediation: components["schemas"]["GuardRemediation"];
+        };
+        GuardRedactionSummary: {
+            applied: boolean;
+        };
+        GuardRemediation: {
+            user_message: string;
+            recommended_actions: string[];
+            doc_url?: string;
+            can_override: boolean;
+        };
         IdentityAccessPayload: {
             agent_id: string;
             agent_label: string;
@@ -2109,7 +2134,7 @@ export interface components {
             }[];
         };
         /** @enum {string} */
-        TelemetryEventType: "agent_observation" | "enforcement_result" | "control_binding_changed" | "health" | "resource_access" | "tool_usage" | "identity_access";
+        TelemetryEventType: "agent_observation" | "enforcement_result" | "control_binding_changed" | "health" | "resource_access" | "tool_usage" | "identity_access" | "guard_incident";
         TelemetryIngestResponse: {
             /** @enum {string} */
             schema_version: "telemetry-ingest-response.v1";

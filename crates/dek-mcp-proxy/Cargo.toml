@@ -53,5 +53,8 @@ sha2 = "0.11.0"
 hex = "0.4"
 serde_jcs = "0.2.0"
 
+[dev-dependencies]
+dek-plugin-sdk = { path = "../dek-plugin-sdk" }
+
 [lints]
 workspace = true
