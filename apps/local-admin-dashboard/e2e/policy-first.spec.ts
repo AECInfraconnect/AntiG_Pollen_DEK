@@ -35,7 +35,7 @@ test.describe("Policy-First Navigation", () => {
   });
 
   test("API HTML fallback errors are shortened for operators", async ({ page }) => {
-    await page.route("**/v1/tenants/local/entity-graph", (route) =>
+    await page.route("**/v1/tenants/local/entity-graph**", (route) =>
       route.fulfill({
         status: 200,
         contentType: "text/html",

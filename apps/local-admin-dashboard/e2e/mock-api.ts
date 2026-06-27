@@ -43,7 +43,7 @@ export async function installMockApi(page: Page) {
     json(route, { count: 0, decisions: [] }),
   );
 
-  await page.route("**/v1/tenants/local/entity-graph", (route) =>
+  await page.route("**/v1/tenants/local/entity-graph**", (route) =>
     json(route, {
       schema_version: "entity-graph.v1",
       tenant_id: "local",
