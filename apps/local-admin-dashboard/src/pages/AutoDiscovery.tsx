@@ -6,13 +6,18 @@ import {
   ShieldAlert,
   Info,
   Activity,
+  Eye,
   Play,
   CheckCircle,
   RefreshCw,
   Link2,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { RegistryApi } from "../services/api";
+import {
+  LocalObserveApi,
+  RegistryApi,
+  type LocalObserveRefreshResponse,
+} from "../services/api";
 import type {
   DiscoveredAgentCandidateV2,
   DiscoveryCapabilityInventory,
@@ -26,6 +31,7 @@ import type { UiStatus } from "../lib/status";
 import { SimplePolicyWizard } from "../components/simple/SimplePolicyWizard";
 import { findAgentReferenceIntel } from "../lib/entityReferenceIntel";
 import { ReferenceIntelMark } from "../components/reference/ReferenceIntelMark";
+import { ReferenceIntelGuide } from "../components/reference/ReferenceIntelGuide";
 import { ContextualHelp } from "../components/help/ContextualHelp";
 
 const DEEP_SCAN_SOURCES = [
@@ -57,8 +63,12 @@ export function AutoDiscovery() {
     useState<DiscoveredAgentCandidateV2 | null>(null);
   const [editName, setEditName] = useState("");
   const [filter, setFilter] = useState<"all" | "pending" | "registered">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [isFinalizingScan, setIsFinalizingScan] = useState(false);
+  const [isObserving, setIsObserving] = useState(false);
+  const [observeResult, setObserveResult] =
+    useState<LocalObserveRefreshResponse | null>(null);
   const [scans, setScans] = useState<DiscoveryScanJob[]>([]);
   const [capabilityInventories, setCapabilityInventories] = useState<
     Record<string, DiscoveryCapabilityInventory>
@@ -413,11 +423,41 @@ export function AutoDiscovery() {
       if (filter === "pending") return c.status !== "registered";
       return true;
     })
+    .filter((c) => {
+      const query = searchQuery.trim().toLowerCase();
+      if (!query) return true;
+      return [
+        displayNameForCandidate(c),
+        c.vendor,
+        c.inferred_agent_type,
+        browserNameForCandidate(c),
+        evidenceSourcesForCandidate(c),
+        ...(capabilityTags(c) ?? []),
+        ...Object.keys(c.labels ?? {}),
+        ...Object.values(c.labels ?? {}),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    })
     .sort((a, b) => {
       const scanDelta = scanSortTime(b) - scanSortTime(a);
       if (scanDelta !== 0) return scanDelta;
       return new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime();
     });
+
+  const registeredCount = candidates.filter(
+    (candidate) => candidate.status === "registered",
+  ).length;
+  const pendingCount = candidates.length - registeredCount;
+  const knownCount = candidates.filter(
+    (candidate) => referenceForCandidate(candidate) != null,
+  ).length;
+  const evidenceCount = candidates.reduce(
+    (total, candidate) => total + (candidate.evidence?.length ?? 0),
+    0,
+  );
 
   const openConfirmDialog = (candidate: DiscoveredAgentCandidateV2) => {
     setConfirmTarget(candidate);
@@ -480,6 +520,52 @@ export function AutoDiscovery() {
     }
   };
 
+  const observeNow = async () => {
+    setIsObserving(true);
+    try {
+      const result = await LocalObserveApi.refresh({ include_estimates: true });
+      setObserveResult(result);
+      await Promise.all([
+        fetchCandidates({ showLoading: false }),
+        fetchScans(),
+      ]);
+      toast.success(
+        `Observed ${result.candidates_found} AI app(s), ${result.resource_events} resource event(s), and ${result.tool_events} tool event(s).`,
+      );
+    } catch (e) {
+      console.error(e);
+      toast.error(
+        e instanceof Error ? e.message : "Local observe refresh failed",
+      );
+    } finally {
+      setIsObserving(false);
+    }
+  };
+
+  const observedTermsForCandidate = (
+    candidate: DiscoveredAgentCandidateV2,
+  ): Array<string | undefined | null> => [
+    displayNameForCandidate(candidate),
+    candidate.vendor,
+    candidate.inferred_agent_type,
+    browserNameForCandidate(candidate),
+    evidenceSourcesForCandidate(candidate),
+    ...(candidate.capability_tags ?? []),
+    ...Object.keys(candidate.labels ?? {}),
+    ...Object.values(candidate.labels ?? {}),
+    ...(candidate.evidence ?? []).flatMap((evidence) => [
+      evidence.source,
+      (evidence as any).source_path_redacted,
+      (evidence as any).merge_key,
+      JSON.stringify(evidence.data ?? {}),
+    ]),
+    ...(candidate.discovered_mcp_servers ?? []).flatMap((server: any) => [
+      server.server_name,
+      server.transport,
+      JSON.stringify(server),
+    ]),
+  ];
+
   return (
     <div className="p-6 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
@@ -502,6 +588,14 @@ export function AutoDiscovery() {
             Clear History
           </button>
           <button
+            onClick={observeNow}
+            disabled={isObserving}
+            className="flex items-center gap-2 rounded-lg border bg-background px-4 py-2 text-sm font-medium hover:bg-muted shadow-sm disabled:opacity-50"
+          >
+            <Eye className={`h-4 w-4 ${isObserving ? "animate-pulse" : ""}`} />
+            {isObserving ? "Observing" : "Observe Now"}
+          </button>
+          <button
             onClick={triggerScan}
             disabled={scanBusy}
             className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-sm disabled:opacity-50"
@@ -515,6 +609,70 @@ export function AutoDiscovery() {
           </button>
         </div>
       </div>
+
+      {observeResult && (
+        <section className="rounded-lg border bg-card/60 p-4 text-sm">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h3 className="font-semibold">Latest observe refresh</h3>
+              <p className="text-xs leading-5 text-muted-foreground">
+                {observeResult.candidates_found} AI app(s),{" "}
+                {observeResult.resource_events} resource event(s),{" "}
+                {observeResult.tool_events} tool event(s),{" "}
+                {observeResult.exact_usage_events} exact usage event(s), and{" "}
+                {observeResult.estimated_usage_events} estimated usage event(s)
+                were written into the activity timeline.
+              </p>
+            </div>
+            <span className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground">
+              {observeResult.capture_quality.join(", ") || "metadata observed"}
+            </span>
+          </div>
+        </section>
+      )}
+
+      <section className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-xl border bg-card/60 p-4">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <Search className="h-3.5 w-3.5" />
+            Found
+          </div>
+          <div className="mt-2 text-2xl font-semibold">{candidates.length}</div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            discovery candidates
+          </p>
+        </div>
+        <div className="rounded-xl border bg-card/60 p-4">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <CheckCircle className="h-3.5 w-3.5" />
+            Registered
+          </div>
+          <div className="mt-2 text-2xl font-semibold">{registeredCount}</div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {pendingCount} still need review
+          </p>
+        </div>
+        <div className="rounded-xl border bg-card/60 p-4">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <Info className="h-3.5 w-3.5" />
+            Known
+          </div>
+          <div className="mt-2 text-2xl font-semibold">{knownCount}</div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            matched reference profiles
+          </p>
+        </div>
+        <div className="rounded-xl border bg-card/60 p-4">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <Eye className="h-3.5 w-3.5" />
+            Evidence
+          </div>
+          <div className="mt-2 text-2xl font-semibold">{evidenceCount}</div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            local metadata signals
+          </p>
+        </div>
+      </section>
 
       <MasterDetailLayout
         items={visibleCandidates}
@@ -542,6 +700,8 @@ export function AutoDiscovery() {
             <div className="flex items-center gap-2">
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search candidates..."
                 className="px-3 py-1.5 text-sm rounded-md border bg-background w-full"
               />
@@ -564,7 +724,7 @@ export function AutoDiscovery() {
           const isLatest = scanId === scanIdForCandidate(visibleCandidates[0]);
           return (
             <div className="px-2 py-1 mt-4 first:mt-0 mb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              {isLatest ? "Latest Scan" : "Scan"} · {scanLabelForCandidate(c)}
+              {isLatest ? "Latest Scan" : "Scan"} - {scanLabelForCandidate(c)}
             </div>
           );
         }}
@@ -581,6 +741,12 @@ export function AutoDiscovery() {
             <EntityCard
               title={displayNameForCandidate(c)}
               subtitle={c.inferred_agent_type}
+              summary={
+                primaryReference?.observeGuide?.summary ||
+                `Detected from ${
+                  evidenceSourcesForCandidate(c) || "local metadata"
+                }.`
+              }
               icon={ShieldAlert}
               visual={
                 primaryReference ? (
@@ -590,6 +756,10 @@ export function AutoDiscovery() {
               status={status}
               statusLabel={isRegistered ? "Registered" : "Pending"}
               meta={[
+                {
+                  label: "Evidence",
+                  value: `${c.evidence?.length ?? 0} signal(s)`,
+                },
                 {
                   label: "Confidence",
                   value: `${(c.confidence * 100).toFixed(0)}%`,
@@ -648,6 +818,7 @@ export function AutoDiscovery() {
           const isRegistered = c.status === "registered";
           const browserName = browserNameForCandidate(c);
           const sourceSummary = evidenceSourcesForCandidate(c);
+          const primaryReference = referenceForCandidate(c);
           const inventory = capabilityInventories[c.candidate_id];
           const entity = inventory?.entity;
           const canonicalCapabilities = inventory?.capabilities ?? [];
@@ -732,6 +903,11 @@ export function AutoDiscovery() {
                         </div>
                       </div>
 
+                      <ReferenceIntelGuide
+                        reference={primaryReference}
+                        observedTerms={observedTermsForCandidate(c)}
+                      />
+
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="p-4 bg-muted/30 rounded-xl border">
                           <span className="text-muted-foreground block mb-1">
@@ -807,7 +983,7 @@ export function AutoDiscovery() {
                               )}
                             </ul>
                           </div>
-                      )}
+                        )}
                     </div>
                   ),
                 },
@@ -904,10 +1080,7 @@ export function AutoDiscovery() {
                                     </div>
                                   </div>
                                   <span className="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">
-                                    {(
-                                      capability.confidence * 100
-                                    ).toFixed(0)}
-                                    %
+                                    {(capability.confidence * 100).toFixed(0)}%
                                   </span>
                                 </div>
                                 {capability.description && (
@@ -934,8 +1107,8 @@ export function AutoDiscovery() {
                           </div>
                         ) : (
                           <p className="text-sm text-muted-foreground">
-                            Select Refresh inventory to derive capabilities
-                            from the latest discovery evidence.
+                            Select Refresh inventory to derive capabilities from
+                            the latest discovery evidence.
                           </p>
                         )}
                       </div>

@@ -1,102 +1,124 @@
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { ControlLevelSelector } from "./ControlLevelSelector";
-import { FeasibilityPreview } from "./FeasibilityPreview";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { CheckCircle2, ChevronRight, Eye, ShieldCheck } from "lucide-react";
+import { useMode } from "../../context/ModeContext";
+import { isAdvanceMode } from "../../lib/modes";
+import { defaultClient as client } from "../../services/api";
 import type {
   ControlLevel,
   PolicyFeasibilityResult,
   PolicySuggestion,
 } from "../../services/types";
-import { defaultClient as client } from "../../services/api"; // instance ของ ControlPlaneClient
+import { ControlLevelSelector } from "./ControlLevelSelector";
+import { FeasibilityPreview } from "./FeasibilityPreview";
 
-// --- PRIMITIVES (mocking the design system) ---
-function StepDots({ step, labels }: { step: number; labels: string[] }) {
+type Step = 1 | 2 | 3 | 4;
+
+const STEP_LABELS = [
+  "Choose AI",
+  "Choose activity",
+  "Choose behavior",
+  "Review setup",
+];
+
+const FALLBACK_SUGGESTIONS: PolicySuggestion[] = [
+  {
+    id: "pol_watch_activity",
+    title_en: "Watch all activity",
+    title_th: "ดูทุกกิจกรรม",
+    domains: ["network", "file_system", "process"],
+    recommended_level: "observe",
+  },
+  {
+    id: "pol_prompt_guard",
+    title_en: "Guard prompts and private data",
+    title_th: "ป้องกันพรอมป์และข้อมูลส่วนตัว",
+    domains: ["prompt_content", "mcp_tool_call"],
+    recommended_level: "ask",
+  },
+  {
+    id: "pol_ask_before_write",
+    title_en: "Ask before changing files",
+    title_th: "ถามก่อนแก้ไขไฟล์",
+    domains: ["file_system"],
+    recommended_level: "ask",
+  },
+];
+
+function StepDots({ step }: { step: Step }) {
   return (
-    <div className="flex gap-2">
-      {labels.map((l, i) => (
-        <span
-          key={i}
-          className={step >= i + 1 ? "font-bold text-primary" : "text-muted"}
-        >
-          {l}
-        </span>
-      ))}
+    <div className="flex flex-wrap gap-2">
+      {STEP_LABELS.map((label, index) => {
+        const active = step >= index + 1;
+        return (
+          <div
+            key={label}
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${
+              active
+                ? "border-primary/30 bg-primary/10 text-primary"
+                : "border-border bg-background text-muted-foreground"
+            }`}
+          >
+            <span>{index + 1}</span>
+            <span>{label}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
+
 function Section({
   title,
+  description,
   children,
 }: {
   title: string;
-  children: React.ReactNode;
+  description: string;
+  children: ReactNode;
 }) {
   return (
-    <div className="space-y-4">
-      <h3 className="text-xl font-bold">{title}</h3>
+    <section className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+          {description}
+        </p>
+      </div>
       {children}
-    </div>
+    </section>
   );
 }
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input type="checkbox" checked={checked} onChange={onChange} /> {label}
-    </label>
-  );
-}
-function Radio({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input type="radio" checked={checked} onChange={onChange} /> {label}
-    </label>
-  );
-}
-function NextBtn({
+
+function NextButton({
   disabled,
   onClick,
-  label,
+  children,
 }: {
-  disabled: boolean;
+  disabled?: boolean;
   onClick: () => void;
-  label: string;
+  children: ReactNode;
 }) {
   return (
     <button
+      type="button"
       disabled={disabled}
       onClick={onClick}
-      className="mt-4 px-4 py-2 bg-primary text-white rounded disabled:opacity-50"
+      className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
     >
-      {label}
+      {children}
+      <ChevronRight className="h-4 w-4" />
     </button>
   );
 }
-function i18nTitle(s: any) {
-  const isTh = localStorage.getItem("i18nextLng") === "th";
-  return isTh ? s.title_th : s.title_en;
+
+function suggestionTitle(suggestion: PolicySuggestion) {
+  const lang =
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem("i18nextLng")
+      : "en";
+  return lang === "th" ? suggestion.title_th : suggestion.title_en;
 }
-// ----------------------------------------------
-
-import { useMode } from "../../context/ModeContext";
-import { isAdvanceMode } from "../../lib/modes";
-
-type Step = 1 | 2 | 3 | 4;
 
 export function SimplePolicyWizard({
   agents = [],
@@ -110,66 +132,56 @@ export function SimplePolicyWizard({
   onCancel?: () => void;
 }) {
   const { mode } = useMode();
-  const { t } = useTranslation();
   const [step, setStep] = useState<Step>(1);
   const [picked, setPicked] = useState<string[]>([]);
-  const [suggestions, setSuggestions] = useState<PolicySuggestion[]>([]);
+  const [suggestions, setSuggestions] =
+    useState<PolicySuggestion[]>(FALLBACK_SUGGESTIONS);
   const [policy, setPolicy] = useState<PolicySuggestion | null>(null);
-  const [level, setLevel] = useState<ControlLevel>("enforce");
+  const [level, setLevel] = useState<ControlLevel>("observe");
   const [feasibility, setFeasibility] =
     useState<PolicyFeasibilityResult | null>(null);
   const [plan, setPlan] = useState<any | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const pickedLabels = useMemo(
+    () =>
+      agents
+        .filter((agent) => picked.includes(agent.id))
+        .map((agent) => agent.label),
+    [agents, picked],
+  );
+
   useEffect(() => {
     if (initialTarget && picked.length === 0) {
       setPicked([initialTarget]);
-      setBusy(true);
-      client
-        .getPolicySuggestions([initialTarget])
-        .then(setSuggestions)
-        .catch(() => {
-          setSuggestions([
-            {
-              id: "pol_observe",
-              title_en: "Observe All Activity",
-              title_th: "สังเกตการณ์ทุกกิจกรรม",
-              domains: ["network"],
-              recommended_level: "observe",
-            },
-          ]);
-        })
-        .finally(() => {
-          setBusy(false);
-          setStep(2);
-        });
+      void loadSuggestions([initialTarget]).then(() => setStep(2));
     }
-  }, [initialTarget]);
+  }, [initialTarget, picked.length]);
 
-  async function toPolicies() {
+  async function loadSuggestions(targets: string[]) {
     setBusy(true);
     try {
-      setSuggestions(await client.getPolicySuggestions(picked));
+      const next = await client.getPolicySuggestions(targets);
+      setSuggestions(next.length > 0 ? next : FALLBACK_SUGGESTIONS);
     } catch {
-      setSuggestions([
-        {
-          id: "pol_observe",
-          title_en: "Observe All Activity",
-          title_th: "สังเกตการณ์ทุกกิจกรรม",
-          domains: ["network"],
-          recommended_level: "observe",
-        },
-      ]);
+      setSuggestions(FALLBACK_SUGGESTIONS);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
+  }
+
+  async function toActivityChoice() {
+    await loadSuggestions(picked);
     setStep(2);
   }
-  async function toConfirm() {
+
+  async function toReview() {
+    if (!policy) return;
     setBusy(true);
     try {
       const feas = await client.previewFeasibility(policy, level);
-      setFeasibility(feas); // auto-detect + auto-select เกิดที่ backend
+      setFeasibility(feas);
       if (isAdvanceMode(mode)) {
         const session = await client.createDeploySession({
           policy,
@@ -177,25 +189,29 @@ export function SimplePolicyWizard({
           requested_level: level,
         });
         setSessionId(session.id);
-        const p = await client.confirmDeploySession(session.id);
-        setPlan(p);
+        setPlan(await client.confirmDeploySession(session.id));
       }
     } catch {
       setFeasibility({
-        policy_id: policy!.id,
+        policy_id: policy.id,
         requested_level: level,
         achievable_level: level,
-        verdict: "fully_enforceable",
+        verdict: "observe_only",
         per_domain: [],
         gaps: [],
-        friendly_en: "This policy can be fully enforced.",
-        friendly_th: "นโยบายนี้สามารถบังคับใช้ได้จริง",
-      } as any);
+        friendly_en:
+          "Pollek can start by watching this activity. Blocking may need extra setup on this computer or inside the AI app.",
+        friendly_th:
+          "Pollek เริ่มจากการดูเหตุการณ์นี้ได้ การบล็อกอาจต้องตั้งค่าเพิ่มบนเครื่องหรือใน AI app",
+      } as PolicyFeasibilityResult);
+    } finally {
+      setBusy(false);
+      setStep(4);
     }
-    setBusy(false);
-    setStep(4);
   }
-  async function protectNow() {
+
+  async function activateRule() {
+    if (!policy) return;
     try {
       let sid = sessionId;
       if (!sid) {
@@ -212,120 +228,196 @@ export function SimplePolicyWizard({
         onComplete();
         return;
       }
-    } catch {}
-    // -> ไปหน้า Activity timeline
-    window.location.href = "/activity";
+    } catch {
+      // The activity page still gives the user a useful next step when setup is incomplete.
+    }
+    window.location.assign("/activity");
   }
 
-  const isTh = localStorage.getItem("i18nextLng") === "th";
-
   return (
-    <div className="mx-auto max-w-2xl space-y-6 relative py-4">
+    <div className="relative mx-auto max-w-3xl space-y-6 py-4">
       {onCancel && (
         <button
+          type="button"
           onClick={onCancel}
-          className="absolute -top-2 right-0 px-3 py-1.5 text-sm font-medium rounded-md border bg-background hover:bg-muted text-muted-foreground"
+          className="absolute right-0 top-0 rounded-md border bg-background px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
         >
           Cancel
         </button>
       )}
-      <StepDots
-        step={step}
-        labels={[
-          isTh ? "1. เลือก Agent" : "1. Agent",
-          isTh ? "2. เลือกนโยบาย" : "2. Policy",
-          isTh ? "3. ตั้งค่าการควบคุม" : "3. Control",
-          isTh ? "4. ยืนยัน" : "4. Confirm",
-        ]}
-      />
+
+      <div className="space-y-3">
+        <StepDots step={step} />
+        <div className="rounded-lg border bg-card/60 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-primary/10 p-2 text-primary">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold">
+                Create an AI activity rule
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Start from what you want to see or stop. Pollek will tell you
+                whether this computer can watch, ask first, or block it now.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {step === 1 && !initialTarget && (
-        <Section title={t("step.agent")}>
-          {agents.map((a) => (
-            <Toggle
-              key={a.id}
-              label={a.label}
-              checked={picked.includes(a.id)}
-              onChange={() =>
-                setPicked((p) =>
-                  p.includes(a.id) ? p.filter((x) => x !== a.id) : [...p, a.id],
-                )
-              }
-            />
-          ))}
-          <NextBtn
+        <Section
+          title="Choose the AI app"
+          description="Pick one or more AI apps. You can start with watch-only and tighten controls later."
+        >
+          <div className="grid gap-2">
+            {agents.length > 0 ? (
+              agents.map((agent) => {
+                const active = picked.includes(agent.id);
+                return (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    onClick={() =>
+                      setPicked((current) =>
+                        current.includes(agent.id)
+                          ? current.filter((id) => id !== agent.id)
+                          : [...current, agent.id],
+                      )
+                    }
+                    className={`flex items-center justify-between rounded-lg border p-3 text-left text-sm ${
+                      active
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-background hover:bg-muted"
+                    }`}
+                  >
+                    <span className="font-medium">{agent.label}</span>
+                    {active && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                No AI apps are loaded yet. Run Find AI Apps first, then come
+                back to create a rule.
+              </div>
+            )}
+          </div>
+          <NextButton
             disabled={!picked.length || busy}
-            onClick={toPolicies}
-            label={t("common.next")}
-          />
+            onClick={toActivityChoice}
+          >
+            Choose activity
+          </NextButton>
         </Section>
       )}
 
       {step === 1 && initialTarget && (
-        <div className="py-12 text-center text-sm text-muted-foreground animate-pulse">
-          Loading policy suggestions...
+        <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+          Loading rule suggestions...
         </div>
       )}
 
       {step === 2 && (
-        <Section title={t("step.policy")}>
-          {suggestions.map((s) => (
-            <Radio
-              key={s.id}
-              label={i18nTitle(s)}
-              checked={policy?.id === s.id}
-              onChange={() => {
-                setPolicy(s);
-                setLevel(s.recommended_level);
-              }}
-            />
-          ))}
-          <NextBtn
-            disabled={!policy}
-            onClick={() => setStep(3)}
-            label={t("common.next")}
-          />
+        <Section
+          title="Choose what to watch or control"
+          description="These are plain-language rule starters. Advanced policy details stay available after review."
+        >
+          <div className="grid gap-2">
+            {suggestions.map((suggestion) => {
+              const active = policy?.id === suggestion.id;
+              return (
+                <button
+                  key={suggestion.id}
+                  type="button"
+                  onClick={() => {
+                    setPolicy(suggestion);
+                    setLevel(suggestion.recommended_level);
+                  }}
+                  className={`rounded-lg border p-4 text-left ${
+                    active
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-background hover:bg-muted"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold">
+                        {suggestionTitle(suggestion)}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Covers {suggestion.domains.join(", ") || "AI activity"}
+                      </div>
+                    </div>
+                    {active && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <NextButton disabled={!policy} onClick={() => setStep(3)}>
+            Choose behavior
+          </NextButton>
         </Section>
       )}
 
       {step === 3 && (
-        <Section title={t("step.level")}>
+        <Section
+          title="Choose what Pollek should do"
+          description="Watching is always the safest starting point. Ask first and block depend on the local OS setup and the AI app path."
+        >
           <ControlLevelSelector value={level} onChange={setLevel} />
-          <NextBtn
-            disabled={busy}
-            onClick={toConfirm}
-            label={t("common.review")}
-          />
+          <NextButton disabled={busy} onClick={toReview}>
+            Review setup
+          </NextButton>
         </Section>
       )}
 
       {step === 4 && feasibility && (
-        <Section title={t("step.confirm")}>
+        <Section
+          title="Review what can really happen"
+          description={`Selected AI app${pickedLabels.length === 1 ? "" : "s"}: ${
+            pickedLabels.join(", ") || picked.join(", ")
+          }`}
+        >
           <FeasibilityPreview result={feasibility as any} />
+
           {isAdvanceMode(mode) && plan && (
-              <div className="mt-4 rounded-xl border border-zinc-700 bg-zinc-900/50 p-4">
-                <h4 className="text-sm font-semibold text-zinc-300 mb-2">
-                  Control Method Plan (Advance)
-                </h4>
-                <ul className="space-y-2 text-xs font-mono text-zinc-400">
-                  {plan.bindings.map((b: any, i: number) => (
-                    <li key={i}>
-                      [{b.domain}] → {b.method_id} (Level: {b.effective_level})
-                    </li>
-                  ))}
-                  {plan.fallbacks.map((f: string, i: number) => (
-                    <li key={`f-${i}`} className="text-amber-500/80">
-                      Fallback: {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <details className="rounded-lg border bg-background p-4 text-sm">
+              <summary className="cursor-pointer font-semibold">
+                Advanced control method plan
+              </summary>
+              <ul className="mt-3 space-y-2 text-xs text-muted-foreground">
+                {(plan.bindings ?? []).map((binding: any, index: number) => (
+                  <li key={`${binding.domain}-${index}`}>
+                    {binding.domain}: {binding.method_id} ({binding.effective_level})
+                  </li>
+                ))}
+                {(plan.fallbacks ?? []).map((fallback: string, index: number) => (
+                  <li key={`fallback-${index}`}>Fallback: {fallback}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-700">
+            <div className="flex items-start gap-2">
+              <Eye className="mt-0.5 h-4 w-4" />
+              <p>
+                Even when Pollek cannot block something directly on this OS, it
+                will still show the activity and explain what to change inside
+                the AI app settings or local setup.
+              </p>
+            </div>
+          </div>
+
           <button
-            onClick={protectNow}
-            className="mt-4 w-full rounded-xl bg-violet-600 py-3 font-semibold text-white hover:bg-violet-500"
+            type="button"
+            onClick={activateRule}
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            {t("simple.protect_now")}
+            Save rule and watch activity
           </button>
         </Section>
       )}

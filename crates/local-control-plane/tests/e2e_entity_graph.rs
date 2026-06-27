@@ -203,6 +203,31 @@ async fn entity_graph_joins_registry_policy_observation_and_activity() {
     assert_eq!(timeline["schema_version"], "activity-timeline.v1");
     assert_eq!(timeline["items"][0]["decision"], "deny");
     assert_eq!(timeline["items"][0]["enforcement_mode"], "enforce");
+
+    let user_activity = client
+        .get(format!(
+            "{base}/v1/tenants/local/user-friendly-activity?agent_id=agent-graph-e2e"
+        ))
+        .send()
+        .await
+        .unwrap()
+        .json::<serde_json::Value>()
+        .await
+        .unwrap();
+    assert_eq!(
+        user_activity["schema_version"],
+        "user-friendly-activity-list.v1"
+    );
+    assert_eq!(
+        user_activity["items"][0]["schema_version"],
+        "user-friendly-activity.v1"
+    );
+    assert_eq!(user_activity["items"][0]["agent_name"], "Graph E2E Agent");
+    assert_eq!(user_activity["items"][0]["result"], "blocked");
+    assert_eq!(
+        user_activity["items"][0]["privacy_note"],
+        "Pollek shows activity metadata here, not file contents, email bodies, raw prompts, or raw responses."
+    );
 }
 
 #[tokio::test]

@@ -207,6 +207,12 @@ fn default_sources() -> Vec<String> {
 fn default_next_steps() -> Vec<LocalObserveNextStep> {
     vec![
         LocalObserveNextStep {
+            action_id: "review_ai_app_native_permissions".into(),
+            title: "Review the AI app's own permissions".into(),
+            reason: "Observation can show which files, websites, tools, or apps were touched so the user can also tighten permissions inside ChatGPT, Claude, Codex, Manus, Antigravity, or the agent's own settings.".into(),
+            route: "/activity".into(),
+        },
+        LocalObserveNextStep {
             action_id: "route_agents_through_mcp_wrapper_or_proxy".into(),
             title: "Activate MCP wrapper or proxy for exact tool/resource enforcement".into(),
             reason: "MCP wrapper/proxy can see plaintext tool calls and enforce policy before tools run.".into(),

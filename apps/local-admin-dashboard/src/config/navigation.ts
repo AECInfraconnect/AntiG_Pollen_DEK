@@ -40,7 +40,6 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-const SIMPLE: string[] = ["desktop_simple"];
 const ALL: string[] = [
   "desktop_simple",
   "desktop_advanced",
@@ -67,9 +66,9 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    id: "start",
-    en: "Start",
-    th: "เริ่มต้น",
+    id: "activity",
+    en: "AI Activity",
+    th: "กิจกรรม AI",
     items: [
       {
         id: "scan",
@@ -85,7 +84,7 @@ export const NAV: NavGroup[] = [
         th: "AI ของฉัน",
         href: "/my-ai-apps",
         icon: Bot,
-        modes: SIMPLE,
+        modes: ALL,
       },
       {
         id: "ai-activity",
@@ -93,15 +92,15 @@ export const NAV: NavGroup[] = [
         th: "กิจกรรม AI",
         href: "/activity",
         icon: Activity,
-        modes: SIMPLE,
+        modes: ALL,
       },
       {
-        id: "data-apps",
-        en: "Data & Apps",
-        th: "ไฟล์ เว็บ แอป",
-        href: "/data-apps",
-        icon: Database,
-        modes: SIMPLE,
+        id: "create-rule",
+        en: "Create Rule",
+        th: "สร้างกฎ",
+        href: "/protect",
+        icon: ShieldCheck,
+        modes: ALL,
       },
       {
         id: "allowed-blocked",
@@ -109,7 +108,15 @@ export const NAV: NavGroup[] = [
         th: "อนุญาตและห้าม",
         href: "/allowed-blocked",
         icon: ListChecks,
-        modes: SIMPLE,
+        modes: ALL,
+      },
+      {
+        id: "data-apps",
+        en: "Data & Apps",
+        th: "ไฟล์ เว็บ แอป",
+        href: "/data-apps",
+        icon: Database,
+        modes: ALL,
       },
       {
         id: "setup",
@@ -117,7 +124,7 @@ export const NAV: NavGroup[] = [
         th: "ตั้งค่า",
         href: "/setup",
         icon: Wrench,
-        modes: SIMPLE,
+        modes: ALL,
       },
       {
         id: "history",
@@ -125,7 +132,7 @@ export const NAV: NavGroup[] = [
         th: "ประวัติย้อนหลัง",
         href: "/history",
         icon: History,
-        modes: SIMPLE,
+        modes: ALL,
       },
     ],
   },
@@ -160,8 +167,8 @@ export const NAV: NavGroup[] = [
       },
       {
         id: "entity-graph",
-        en: "Entity Graph",
-        th: "กราฟความสัมพันธ์",
+        en: "Relationship Map",
+        th: "แผนผังความสัมพันธ์",
         href: "/entity-graph",
         icon: Network,
         modes: ADV,
@@ -184,7 +191,7 @@ export const NAV: NavGroup[] = [
       {
         id: "policy-presets",
         en: "Policy Presets",
-        th: "เทมเพลตนโยบาย",
+        th: "เทมเพลตกฎ",
         href: "/policy-presets",
         icon: ShieldCheck,
         modes: ADV,
@@ -192,7 +199,7 @@ export const NAV: NavGroup[] = [
       {
         id: "deployments",
         en: "Deployments",
-        th: "การบังคับใช้",
+        th: "การใช้งานกฎ",
         href: "/deployments",
         icon: SlidersHorizontal,
         modes: ADV,
@@ -209,8 +216,8 @@ export const NAV: NavGroup[] = [
   },
   {
     id: "observe",
-    en: "Observe",
-    th: "ตรวจสอบ",
+    en: "Advanced Observe",
+    th: "ตรวจสอบขั้นสูง",
     items: [
       {
         id: "activity-timeline",

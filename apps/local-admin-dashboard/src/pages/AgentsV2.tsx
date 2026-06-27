@@ -1,6 +1,8 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  Activity,
+  ArrowRight,
   Bot,
   BookOpen,
   CheckCircle2,
@@ -30,28 +32,40 @@ import { useEntity360 } from "../features/entity-graph/useEntity360";
 import { useConfirm } from "../components/ui/ConfirmDialog";
 import { RegistryApi, type AiAgent } from "../services/api";
 import type { UiStatus } from "../lib/status";
+import { cn } from "../lib/utils";
 import {
   assessExpectedCapabilities,
   findAgentReferenceIntel,
+  matchObserveGuideSignals,
 } from "../lib/entityReferenceIntel";
 import {
   ReferenceIntelInline,
   ReferenceIntelMark,
 } from "../components/reference/ReferenceIntelMark";
+import { ReferenceIntelGuide } from "../components/reference/ReferenceIntelGuide";
+import { UserActivityApi } from "../features/user-activity/api";
+import type { UserFriendlyActivityEvent } from "../features/user-activity/types";
 import { toast } from "sonner";
 
 function useAgents() {
   const [agents, setAgents] = useState<AiAgent[]>([]);
+  const [activity, setActivity] = useState<UserFriendlyActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    RegistryApi.listAgents()
-      .then(setAgents)
+    Promise.all([
+      RegistryApi.listAgents(),
+      UserActivityApi.list({ limit: 300 }),
+    ])
+      .then(([nextAgents, nextActivity]) => {
+        setAgents(nextAgents);
+        setActivity(nextActivity.items);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  return { agents, loading };
+  return { agents, activity, loading };
 }
 
 function useDeleteAgent() {
@@ -214,6 +228,22 @@ function formatDateTime(value?: string) {
   return date.toLocaleString();
 }
 
+function formatRelativeTime(value?: string) {
+  if (!value) return "No activity yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const diffMs = Date.now() - date.getTime();
+  const absMs = Math.abs(diffMs);
+  const minutes = Math.round(absMs / 60_000);
+  if (minutes < 1) return diffMs >= 0 ? "Just now" : "Soon";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
+
 function summarizeSource(agent: AiAgent) {
   const source = agent.meta?.source ?? "registry";
   if (source === "discovery") return "Auto Discovery";
@@ -229,6 +259,61 @@ function referencesForAgent(agent: AiAgent) {
     agentType: agent.agent_type,
     runtimeName: agent.runtime?.runtime_name,
   });
+}
+
+function observedTermsForAgent(
+  agent: AiAgent,
+  data?: Entity360Response | null,
+) {
+  return [
+    agent.name,
+    agent.vendor,
+    agent.agent_type,
+    agent.runtime?.runtime_name,
+    agent.runtime?.version,
+    agent.identity?.process_path,
+    ...(agent.capabilities ?? []),
+    ...(agent.declared_tools ?? []),
+    ...(agent.declared_resources ?? []),
+    ...(data?.graph.nodes ?? []).flatMap((node) => [
+      node.label,
+      node.subtitle,
+      node.type,
+      node.status,
+      node.mode,
+    ]),
+    ...(data?.activity ?? [])
+      .slice(0, 12)
+      .flatMap((item) => [
+        item.action,
+        item.explanation,
+        item.tool?.label,
+        item.resource?.label,
+        item.resource?.type,
+        item.decision,
+        item.enforcement_mode,
+      ]),
+  ].filter(
+    (term): term is string =>
+      typeof term === "string" && term.trim().length > 0,
+  );
+}
+
+function activityForAgent(
+  agent: AiAgent,
+  activity: UserFriendlyActivityEvent[],
+) {
+  const normalizedName = agent.name.toLowerCase();
+  return activity
+    .filter((item) => {
+      if (item.agent_id && item.agent_id === agent.agent_id) return true;
+      return item.agent_name.toLowerCase() === normalizedName;
+    })
+    .sort(
+      (left, right) =>
+        new Date(right.timestamp).getTime() -
+        new Date(left.timestamp).getTime(),
+    );
 }
 
 function agentDetailSections(
@@ -472,6 +557,7 @@ function AgentDetailView({
   const { data } = useEntity360("agent", agent.agent_id);
   const { label, tone } = agentStatus(agent);
   const primaryReference = referencesForAgent(agent)[0];
+  const observedTerms = observedTermsForAgent(agent, data);
 
   const relatedSections = data
     ? buildRelatedSections(data.graph.nodes, data.entity.id)
@@ -536,7 +622,22 @@ function AgentDetailView({
           id: "capabilities",
           label: "Capabilities",
           icon: Gauge,
-          content: <AgentCapabilities agent={agent} />,
+          content: <AgentCapabilities agent={agent} data={data} />,
+        },
+        {
+          id: "known-profile",
+          label: "Known Profile",
+          icon: BookOpen,
+          content: primaryReference ? (
+            <ReferenceIntelGuide
+              reference={primaryReference}
+              observedTerms={observedTerms}
+            />
+          ) : (
+            <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+              No well-known reference profile matched this agent yet.
+            </div>
+          ),
         },
       ]}
     />
@@ -562,10 +663,7 @@ function AgentAboutSection({ agent }: { agent: AiAgent }) {
       />
       <PropertyRow label="Version" value={agent.runtime?.version ?? "-"} />
       <PropertyRow label="Trust Level" value={agent.trust_level} />
-      <PropertyRow
-        label="Enforcement"
-        value={agent.enforcement_mode ?? "-"}
-      />
+      <PropertyRow label="Enforcement" value={agent.enforcement_mode ?? "-"} />
       <PropertyRow
         label="Process Path"
         value={agent.identity?.process_path ?? "-"}
@@ -591,32 +689,89 @@ function AgentAboutSection({ agent }: { agent: AiAgent }) {
   );
 }
 
-function AgentCapabilities({ agent }: { agent: AiAgent }) {
+function AgentCapabilities({
+  agent,
+  data,
+}: {
+  agent: AiAgent;
+  data?: Entity360Response | null;
+}) {
+  const referenceIntel = referencesForAgent(agent);
+  const observedTerms = observedTermsForAgent(agent, data);
+  const expected = assessExpectedCapabilities(referenceIntel, observedTerms);
   const allCaps = [
     ...(agent.capabilities ?? []),
     ...(agent.declared_tools ?? []).map((tool) => `tool: ${tool}`),
-    ...(agent.declared_resources ?? []).map((resource) => `resource: ${resource}`),
+    ...(agent.declared_resources ?? []).map(
+      (resource) => `resource: ${resource}`,
+    ),
   ];
 
-  if (!allCaps.length) {
-    return (
-      <div className="text-sm text-muted-foreground">
-        No specific capabilities registered for this agent.
-      </div>
-    );
-  }
-
   return (
-    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {allCaps.map((capability) => (
-        <div
-          key={capability}
-          className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
-        >
-          <div className="h-2 w-2 rounded-full bg-primary/60" />
-          <span className="font-medium">{capability}</span>
-        </div>
-      ))}
+    <div className="space-y-4">
+      {referenceIntel[0] && (
+        <ReferenceIntelGuide
+          reference={referenceIntel[0]}
+          observedTerms={observedTerms}
+          compact
+        />
+      )}
+
+      {expected.length > 0 && (
+        <section className="rounded-lg border bg-background/40 p-4">
+          <h3 className="text-sm font-semibold">Expected vs observed</h3>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            These items come from well-known definitions and are compared with
+            local evidence. A missing item means it has not been observed here
+            yet, not that the product cannot do it.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {expected.map((capability) => (
+              <div
+                key={`${capability.referenceId}-${capability.id}`}
+                className={cn(
+                  "rounded-md border p-3 text-sm",
+                  capability.detected
+                    ? "border-emerald-500/25 bg-emerald-500/10"
+                    : "bg-card/70",
+                )}
+              >
+                <div className="font-medium">{capability.label}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {capability.detected
+                    ? "Observed locally"
+                    : "Not observed yet"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="rounded-lg border bg-background/40 p-4">
+        <h3 className="text-sm font-semibold">Local capabilities</h3>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          Values from registry, discovery, and entity telemetry for this device.
+        </p>
+        {allCaps.length ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {allCaps.map((capability) => (
+              <div
+                key={capability}
+                className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
+              >
+                <div className="h-2 w-2 rounded-full bg-primary/60" />
+                <span className="font-medium">{capability}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-muted-foreground">
+            No specific local capability tags have been registered for this
+            agent yet.
+          </p>
+        )}
+      </section>
     </div>
   );
 }
@@ -637,7 +792,7 @@ function PropertyRow({ label, value }: { label: string; value: ReactNode }) {
 export default function AgentsV2() {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get("id") ?? undefined;
-  const { agents, loading } = useAgents();
+  const { agents, activity, loading } = useAgents();
   const deleteAgent = useDeleteAgent();
 
   const handleSelect = (id: string) => {
@@ -645,6 +800,18 @@ export default function AgentsV2() {
   };
 
   const selectedAgent = agents.find((agent) => agent.agent_id === selectedId);
+  const knownProfiles = agents.filter(
+    (agent) => referencesForAgent(agent).length > 0,
+  ).length;
+  const agentsWithActivity = agents.filter(
+    (agent) => activityForAgent(agent, activity).length > 0,
+  ).length;
+  const protectedAgents = agents.filter(
+    (agent) => agent.enforcement_mode === "Enforce",
+  ).length;
+  const observedOnlyAgents = agents.filter(
+    (agent) => agent.enforcement_mode === "Observe",
+  ).length;
 
   if (selectedAgent) {
     return (
@@ -673,9 +840,8 @@ export default function AgentsV2() {
         <div>
           <h1 className="text-2xl font-bold">Agents & Models</h1>
           <p className="text-sm text-muted-foreground">
-            All discovered and registered AI agents on this device. Click any
-            agent to see its full record view with policies, tools, activity,
-            and cost.
+            AI apps and agents found on this device, with what Pollek knows,
+            what it has observed, and what to watch next.
           </p>
         </div>
       </div>
@@ -698,76 +864,243 @@ export default function AgentsV2() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {agents.map((agent) => {
-            const { tone, label } = agentStatus(agent);
-            const primaryReference = referencesForAgent(agent)[0];
-            return (
-              <button
-                key={agent.agent_id}
-                type="button"
-                onClick={() => handleSelect(agent.agent_id)}
-                className="group relative flex flex-col rounded-xl border bg-card/60 p-4 text-left transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-md"
-              >
-                <div className="flex items-start gap-3">
-                  {primaryReference ? (
-                    <ReferenceIntelMark reference={primaryReference} />
-                  ) : (
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Bot className="h-5 w-5" />
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-semibold">
-                        {agent.name}
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                          tone === "success"
-                            ? "bg-emerald-500/10 text-emerald-700"
-                            : tone === "info"
-                              ? "bg-blue-500/10 text-blue-700"
-                              : tone === "warning"
-                                ? "bg-amber-500/10 text-amber-700"
-                                : "bg-red-500/10 text-red-700"
-                        }`}
-                      >
+        <div className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-xl border bg-card/60 p-4">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Bot className="h-3.5 w-3.5" />
+                Found
+              </div>
+              <div className="mt-2 text-2xl font-semibold">{agents.length}</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                AI apps and local agents
+              </p>
+            </div>
+            <div className="rounded-xl border bg-card/60 p-4">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <BookOpen className="h-3.5 w-3.5" />
+                Known
+              </div>
+              <div className="mt-2 text-2xl font-semibold">{knownProfiles}</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                matched with reference definitions
+              </p>
+            </div>
+            <div className="rounded-xl border bg-card/60 p-4">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Activity className="h-3.5 w-3.5" />
+                Observed
+              </div>
+              <div className="mt-2 text-2xl font-semibold">
+                {agentsWithActivity}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                have timeline evidence
+              </p>
+            </div>
+            <div className="rounded-xl border bg-card/60 p-4">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Guarded
+              </div>
+              <div className="mt-2 text-2xl font-semibold">
+                {protectedAgents}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {observedOnlyAgents} watch-only setups
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+            {agents.map((agent) => {
+              const { tone, label } = agentStatus(agent);
+              const primaryReference = referencesForAgent(agent)[0];
+              const agentEvents = activityForAgent(agent, activity);
+              const latestEvent = agentEvents[0];
+              const observedTerms = [
+                ...observedTermsForAgent(agent),
+                ...agentEvents.flatMap((item) => [
+                  item.category,
+                  item.action,
+                  item.target_kind,
+                  item.target_label,
+                  item.access_mode,
+                  item.result,
+                  item.rule_label,
+                ]),
+              ];
+              const observeSignals = primaryReference
+                ? matchObserveGuideSignals(primaryReference, observedTerms)
+                : [];
+              const detectedSignals = observeSignals.filter(
+                (signal) => signal.detected,
+              ).length;
+              const visibleSignals = observeSignals.slice(0, 4);
+              const totalEvidence =
+                agentEvents.length +
+                (agent.declared_tools?.length ?? 0) +
+                (agent.declared_resources?.length ?? 0);
+
+              return (
+                <button
+                  key={agent.agent_id}
+                  type="button"
+                  onClick={() => handleSelect(agent.agent_id)}
+                  className="group relative flex min-h-[260px] flex-col rounded-xl border bg-card/60 p-4 text-left transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-md"
+                >
+                  <div className="flex items-start gap-3">
+                    {primaryReference ? (
+                      <ReferenceIntelMark reference={primaryReference} />
+                    ) : (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Bot className="h-5 w-5" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="block truncate text-sm font-semibold">
+                            {agent.name}
+                          </span>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {primaryReference?.category ??
+                              agent.runtime?.runtime_name ??
+                              agent.agent_type}
+                          </p>
+                        </div>
                         <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            tone === "success"
-                              ? "bg-emerald-500"
-                              : tone === "info"
-                                ? "bg-blue-500"
-                                : tone === "warning"
-                                  ? "bg-amber-500"
-                                  : "bg-red-500"
-                          }`}
-                        />
-                        {label}
+                          className={cn(
+                            "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
+                            tone === "success" &&
+                              "bg-emerald-500/10 text-emerald-700",
+                            tone === "info" && "bg-blue-500/10 text-blue-700",
+                            tone === "warning" &&
+                              "bg-amber-500/10 text-amber-700",
+                            tone === "danger" && "bg-red-500/10 text-red-700",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              tone === "success" && "bg-emerald-500",
+                              tone === "info" && "bg-blue-500",
+                              tone === "warning" && "bg-amber-500",
+                              tone === "danger" && "bg-red-500",
+                            )}
+                          />
+                          {label}
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                        {primaryReference?.description ??
+                          "Registered local AI process. Pollek can watch activity as telemetry becomes available."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <div className="rounded-lg border bg-background/40 p-2">
+                      <div className="text-[10px] uppercase text-muted-foreground">
+                        Evidence
+                      </div>
+                      <div className="mt-1 text-sm font-semibold">
+                        {totalEvidence}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border bg-background/40 p-2">
+                      <div className="text-[10px] uppercase text-muted-foreground">
+                        Activity
+                      </div>
+                      <div className="mt-1 text-sm font-semibold">
+                        {agentEvents.length}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border bg-background/40 p-2">
+                      <div className="text-[10px] uppercase text-muted-foreground">
+                        Signals
+                      </div>
+                      <div className="mt-1 text-sm font-semibold">
+                        {observeSignals.length
+                          ? `${detectedSignals}/${observeSignals.length}`
+                          : "-"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        What to observe
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {latestEvent
+                          ? formatRelativeTime(latestEvent.timestamp)
+                          : "No activity yet"}
                       </span>
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {agent.runtime?.runtime_name}{" "}
-                      {agent.runtime?.version ? `v${agent.runtime.version}` : ""}
-                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {visibleSignals.length ? (
+                        visibleSignals.map((signal) => (
+                          <span
+                            key={signal.label}
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-medium",
+                              signal.detected
+                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
+                                : "bg-muted/40 text-muted-foreground",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "h-1.5 w-1.5 rounded-full",
+                                signal.detected
+                                  ? "bg-emerald-500"
+                                  : "bg-muted-foreground/50",
+                              )}
+                            />
+                            {signal.label}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="rounded-full border bg-muted/40 px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                          General app, file, web, command activity
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  <span className="rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                    {agent.agent_type}
-                  </span>
-                  <span className="rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                    Trust: {agent.trust_level}
-                  </span>
-                </div>
-                <div className="mt-2 text-[11px] text-muted-foreground">
-                  {agent.declared_tools?.length ?? 0} tools -{" "}
-                  {agent.capabilities?.length ?? 0} capabilities
-                </div>
-              </button>
-            );
-          })}
+
+                  <div className="mt-auto pt-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                        {summarizeSource(agent)}
+                      </span>
+                      <span className="rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                        Trust: {agent.trust_level}
+                      </span>
+                      <span className="rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                        {agent.agent_type}
+                      </span>
+                    </div>
+                    {latestEvent ? (
+                      <p className="mt-3 line-clamp-2 text-[11px] leading-5 text-muted-foreground">
+                        Latest: {latestEvent.plain_summary}
+                      </p>
+                    ) : (
+                      <p className="mt-3 line-clamp-2 text-[11px] leading-5 text-muted-foreground">
+                        Start Observe to collect timeline evidence for files,
+                        web, apps, commands, tools, models, and safety events.
+                      </p>
+                    )}
+                    <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                      Open record
+                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

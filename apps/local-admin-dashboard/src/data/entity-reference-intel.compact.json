@@ -40,7 +40,131 @@
         "label": "Multi-agent orchestration",
         "keywords": ["multi_agent", "subagent", "agent_manager"]
       }
-    ]
+    ],
+    "observeGuide": {
+      "summary": "Antigravity is expected to behave like an agentic IDE: local workspace reads and writes, terminal commands, browser verification, artifacts, and model calls may all appear as separate activity.",
+      "probeKeys": [
+        "antigravity",
+        "process_name",
+        "exe_path_hash",
+        "workspace",
+        "terminal",
+        "browser",
+        "artifact",
+        "gemini"
+      ],
+      "signals": [
+        {
+          "label": "Workspace file access",
+          "probeKeys": ["file", "folder", "workspace", "resource"],
+          "meaning": "The agent may read or modify project files in a selected workspace.",
+          "detail": "Use file/folder observations, IDE workspace paths, and command working directories as the strongest local evidence.",
+          "userAction": "Review the touched path in Activity, then create an ask-first or block rule for private folders."
+        },
+        {
+          "label": "Terminal or program execution",
+          "probeKeys": ["terminal", "shell", "command", "process"],
+          "meaning": "The agent may run commands, tests, package managers, or helper programs.",
+          "detail": "Process launch, terminal tool, and local shell evidence should be separated from ordinary file reads.",
+          "userAction": "Use ask-first for commands, and also tighten Antigravity's own command approval settings."
+        },
+        {
+          "label": "Browser verification",
+          "probeKeys": ["browser", "web_ai", "screenshot", "recording"],
+          "meaning": "The agent may open a browser, inspect pages, or create visual verification artifacts.",
+          "detail": "Without a browser extension, Pollek can usually see domains and app/window metadata, not raw HTTPS page bodies.",
+          "userAction": "Install or enable browser observation only if you need page-level details."
+        }
+      ],
+      "caveat": "Reference intel explains expected Antigravity behavior. Only local observed events prove what happened on this device."
+    }
+  },
+  {
+    "id": "google-gemini",
+    "title": "Google Gemini",
+    "vendor": "Google",
+    "category": "Multimodal model and AI assistant family",
+    "description": "Gemini is Google's multimodal AI model and assistant family, used through Gemini apps, APIs, AI Studio, coding agents, and tool integrations.",
+    "controlNotes": "Separate model/API usage, browser or app sessions, file inputs, long-context documents, function/tool calls, and code execution signals.",
+    "sourceLabel": "Google Gemini API documentation",
+    "sourceUrl": "https://ai.google.dev/gemini-api/docs",
+    "reviewedAt": "2026-06-27",
+    "keywords": [
+      "gemini",
+      "gemini pro",
+      "gemini api",
+      "generativelanguage.googleapis.com",
+      "google ai studio"
+    ],
+    "vendorKeywords": ["google", "google ai", "google deepmind"],
+    "entityKinds": ["agent", "tool", "resource"],
+    "visualIdentity": {
+      "icon": "sparkles",
+      "label": "G",
+      "background": "#1A73E8",
+      "foreground": "#FFFFFF",
+      "sourceLabel": "Pollek curated model hint from Google Gemini API documentation"
+    },
+    "expectedCapabilities": [
+      {
+        "id": "model-api",
+        "label": "Gemini model API use",
+        "keywords": ["gemini", "api", "model", "generativelanguage"]
+      },
+      {
+        "id": "tool-use",
+        "label": "Function calling or tools",
+        "keywords": ["function", "tool", "code execution", "computer use"]
+      },
+      {
+        "id": "file-input",
+        "label": "File or long-context input",
+        "keywords": ["file", "document", "long_context", "input"]
+      },
+      {
+        "id": "usage-and-billing",
+        "label": "Usage and billing signals",
+        "keywords": ["token", "usage", "billing", "cost"]
+      }
+    ],
+    "observeGuide": {
+      "summary": "Gemini should be shown as a model/provider layer when another agent, such as Antigravity, uses it. The user needs to see both the local agent and the Gemini model/API activity.",
+      "probeKeys": [
+        "gemini",
+        "gemini pro",
+        "gemini-3",
+        "generativelanguage.googleapis.com",
+        "aistudio.google.com",
+        "model",
+        "tool",
+        "file",
+        "token"
+      ],
+      "signals": [
+        {
+          "label": "Model/provider activity",
+          "probeKeys": ["gemini", "model", "generativelanguage.googleapis.com"],
+          "meaning": "A local AI agent may be using Gemini as the reasoning/model backend.",
+          "detail": "Attribute local file and command activity to the local agent, while showing Gemini as the model/provider when API evidence exists.",
+          "userAction": "Review both the agent row and model/provider row before creating spend or data-sharing rules."
+        },
+        {
+          "label": "Tool or code execution capability",
+          "probeKeys": ["tool", "function", "code execution", "computer use"],
+          "meaning": "Gemini API workflows may include tool use, code execution, URL context, Google Search, or computer-use style actions.",
+          "detail": "Definitions can explain these capabilities; exact calls require API, wrapper, or tool telemetry.",
+          "userAction": "Route tools through a wrapper/proxy when exact tool-call history is required."
+        },
+        {
+          "label": "File and long-context inputs",
+          "probeKeys": ["file", "document", "long_context", "input"],
+          "meaning": "Gemini-capable apps may process documents, media, or long-context data.",
+          "detail": "Pollek should show file/path metadata and avoid storing raw file contents in the dashboard timeline.",
+          "userAction": "Protect sensitive folders and keep file content capture disabled unless the user explicitly opts in."
+        }
+      ],
+      "caveat": "Reference intel explains Gemini capabilities. It does not prove which prompt, file, or model request occurred locally."
+    }
   },
   {
     "id": "openai-chatgpt",
@@ -83,7 +207,133 @@
         "label": "Token and usage telemetry",
         "keywords": ["token", "usage", "cost"]
       }
-    ]
+    ],
+    "observeGuide": {
+      "summary": "ChatGPT can appear as a browser session, desktop app, app/connector access, file attachment flow, or model/API usage depending on how the user runs it.",
+      "probeKeys": [
+        "chatgpt",
+        "openai",
+        "chatgpt.com",
+        "process_name",
+        "browser_host",
+        "file",
+        "attachment",
+        "connector",
+        "app",
+        "token"
+      ],
+      "signals": [
+        {
+          "label": "Browser or desktop session",
+          "probeKeys": ["chatgpt.com", "browser", "desktop", "process_name"],
+          "meaning": "The AI activity may be happening in a web tab, browser app, or ChatGPT desktop process.",
+          "detail": "Process/window evidence can identify the surface; browser-extension or approved integration is needed for richer page/session details.",
+          "userAction": "Use Activity to confirm the surface, then configure ChatGPT app permissions or browser observation as needed."
+        },
+        {
+          "label": "Files and connected apps",
+          "probeKeys": ["file", "upload", "attachment", "connector", "app"],
+          "meaning": "ChatGPT may reference uploaded files or connected app data depending on user-granted permissions.",
+          "detail": "Pollek should distinguish local file paths, cloud app hosts, OAuth/connectors, and write actions because they carry different risk.",
+          "userAction": "Review Settings > Apps inside ChatGPT for read/write permission, and use Pollek rules for local folders."
+        },
+        {
+          "label": "Model usage and cost",
+          "probeKeys": ["token", "usage", "cost", "api.openai.com"],
+          "meaning": "Usage can be exact only when an approved local integration sees provider usage fields.",
+          "detail": "Without SDK/proxy/wrapper telemetry, Pollek should label usage as estimated or metadata-only.",
+          "userAction": "Enable a wrapper/proxy for exact usage, or keep estimates visible but clearly labeled."
+        }
+      ],
+      "caveat": "Reference intel does not mean ChatGPT accessed a file or app. Local activity events and ChatGPT's own permissions remain the proof."
+    }
+  },
+  {
+    "id": "openai-codex",
+    "title": "OpenAI Codex",
+    "vendor": "OpenAI",
+    "category": "Coding agent and desktop/CLI app",
+    "description": "Coding agent surface that can write code, run tasks, manage projects, and operate through desktop or CLI workflows.",
+    "controlNotes": "Classify workspace file access, command execution, package manager activity, Git operations, browser/test verification, and model usage separately.",
+    "sourceLabel": "OpenAI Codex download page",
+    "sourceUrl": "https://chatgpt.com/download/",
+    "reviewedAt": "2026-06-27",
+    "keywords": ["codex", "openai codex", "codex.exe", "codex cli"],
+    "vendorKeywords": ["openai"],
+    "entityKinds": ["agent", "tool", "resource"],
+    "visualIdentity": {
+      "icon": "bot",
+      "label": "CX",
+      "background": "#111827",
+      "foreground": "#FFFFFF",
+      "sourceLabel": "Pollek curated brand hint from OpenAI Codex download page"
+    },
+    "expectedCapabilities": [
+      {
+        "id": "workspace-code",
+        "label": "Workspace code access",
+        "keywords": ["file", "workspace", "code"]
+      },
+      {
+        "id": "command-execution",
+        "label": "Command and test execution",
+        "keywords": ["terminal", "shell", "command", "test"]
+      },
+      {
+        "id": "git-workflow",
+        "label": "Git workflow activity",
+        "keywords": ["git", "commit", "diff", "push"]
+      },
+      {
+        "id": "model-usage",
+        "label": "Model usage telemetry",
+        "keywords": ["token", "usage", "cost", "model"]
+      }
+    ],
+    "observeGuide": {
+      "summary": "Codex should be explained as a coding agent: the user cares which workspace files were read or changed, what commands ran, whether Git/network/package tools were used, and what model usage was captured.",
+      "probeKeys": [
+        "codex",
+        "codex.exe",
+        "process_name",
+        "workspace",
+        "terminal",
+        "shell",
+        "git",
+        "package_manager",
+        "token"
+      ],
+      "signals": [
+        {
+          "label": "Code and workspace access",
+          "probeKeys": ["file", "workspace", "code", "diff"],
+          "meaning": "Codex may read, edit, or create files inside the active project workspace.",
+          "detail": "File paths, diff/write events, and working-directory evidence should be shown as timeline items, not hidden in raw logs.",
+          "userAction": "Set ask-first for writes outside approved project folders."
+        },
+        {
+          "label": "Command, test, and package activity",
+          "probeKeys": [
+            "terminal",
+            "shell",
+            "command",
+            "test",
+            "package_manager"
+          ],
+          "meaning": "Codex may run tests, build tools, package managers, or helper scripts.",
+          "detail": "Treat command execution as a separate activity category because it can indirectly read or modify many files.",
+          "userAction": "Keep command execution on ask-first if the repository or machine contains sensitive data."
+        },
+        {
+          "label": "Git and publishing workflow",
+          "probeKeys": ["git", "commit", "push", "diff"],
+          "meaning": "Codex may inspect diffs, create commits, or push changes when allowed by the user.",
+          "detail": "Git events should be grouped with file writes and network activity so the user understands what left the machine.",
+          "userAction": "Review Git actions in History before allowing pushes from an agent."
+        }
+      ],
+      "caveat": "Reference intel describes expected Codex workflows. Pollek still needs local observation, shell wrapper logs, or OS audit sources to prove exact actions."
+    }
   },
   {
     "id": "anthropic-claude",
@@ -126,7 +376,52 @@
         "label": "Cloud connector access",
         "keywords": ["connector", "oauth", "cloud"]
       }
-    ]
+    ],
+    "observeGuide": {
+      "summary": "Claude may appear as a web app, desktop app, Claude Code CLI, Chrome extension, connector, or API/model provider. Observation should separate each surface.",
+      "probeKeys": [
+        "claude",
+        "anthropic",
+        "claude.ai",
+        "claude code",
+        "process_name",
+        "mcp",
+        "connector",
+        "browser",
+        "file",
+        "terminal"
+      ],
+      "signals": [
+        {
+          "label": "Desktop, web, or Chrome surface",
+          "probeKeys": [
+            "desktop",
+            "browser",
+            "chrome",
+            "claude.ai",
+            "process_name"
+          ],
+          "meaning": "The same Claude account can be used through several local surfaces with different observable evidence.",
+          "detail": "Window/process metadata identifies the surface; exact prompts, page content, or connector records need approved integrations.",
+          "userAction": "Check Claude's own connected apps and permissions when Pollek reports browser or connector activity."
+        },
+        {
+          "label": "Claude Code or command workflow",
+          "probeKeys": ["claude code", "terminal", "shell", "command", "file"],
+          "meaning": "Claude Code can operate like a coding agent that reads files and runs commands.",
+          "detail": "Treat shell execution, workspace file access, and model usage as separate timeline categories.",
+          "userAction": "Use ask-first for terminal commands and protect folders outside the active project."
+        },
+        {
+          "label": "MCP tools and connectors",
+          "probeKeys": ["mcp", "tool", "connector", "oauth"],
+          "meaning": "Claude integrations may expose external tools, files, or cloud data through MCP or connector surfaces.",
+          "detail": "MCP config paths and tool schemas are definition evidence; actual tool calls need wrapper/proxy/telemetry events.",
+          "userAction": "Route MCP servers through a Pollek wrapper or proxy when you need exact tool-call history."
+        }
+      ],
+      "caveat": "Reference intel gives expected Claude surfaces. It is not a claim that Claude accessed a file, email, or connector on this device."
+    }
   },
   {
     "id": "deepseek-api",
@@ -159,7 +454,50 @@
         "label": "Usage response telemetry",
         "keywords": ["usage", "token", "cost"]
       }
-    ]
+    ],
+    "observeGuide": {
+      "summary": "DeepSeek is most often observed as model/API network egress, SDK usage, an agent backend, or a browser/chat session rather than as a local desktop agent.",
+      "probeKeys": [
+        "deepseek",
+        "api.deepseek.com",
+        "deepseek-chat",
+        "deepseek-reasoner",
+        "deepseek-v4",
+        "openai_compatible",
+        "anthropic_compatible",
+        "token",
+        "model"
+      ],
+      "signals": [
+        {
+          "label": "API endpoint use",
+          "probeKeys": [
+            "api.deepseek.com",
+            "network",
+            "egress",
+            "openai_compatible"
+          ],
+          "meaning": "A local app or agent may be sending model requests to DeepSeek-compatible API endpoints.",
+          "detail": "Network metadata can identify the host. Exact prompt, response, token, or cost fields require SDK/proxy/wrapper telemetry.",
+          "userAction": "Keep DeepSeek API calls labeled as model usage and enable proxy telemetry for exact cost."
+        },
+        {
+          "label": "Agent backend model",
+          "probeKeys": ["agent", "backend", "model", "deepseek-v4"],
+          "meaning": "Another AI agent may use DeepSeek as the model provider behind its own UI.",
+          "detail": "Pollek should attribute the local agent and the model provider separately when both are visible.",
+          "userAction": "Review both the AI app and model provider rows in Activity before creating a rule."
+        },
+        {
+          "label": "Usage fields",
+          "probeKeys": ["usage", "token", "cost", "reasoning_effort"],
+          "meaning": "DeepSeek-compatible responses may expose usage details through approved API integrations.",
+          "detail": "If only domain/process metadata is available, Pollek must show estimated usage separately from exact usage.",
+          "userAction": "Treat estimated usage as directional until exact SDK/proxy logs are available."
+        }
+      ],
+      "caveat": "Reference intel classifies DeepSeek surfaces. Local evidence is still required to prove which app called the API."
+    }
   },
   {
     "id": "manus-ai",
@@ -197,7 +535,46 @@
         "label": "Cloud task execution",
         "keywords": ["cloud", "task", "remote"]
       }
-    ]
+    ],
+    "observeGuide": {
+      "summary": "Manus should be explained as a high-autonomy agent surface: web tasks, browser operation, generated files, desktop/mobile apps, integrations, and cloud task execution may all appear.",
+      "probeKeys": [
+        "manus",
+        "manus.im",
+        "browser_operator",
+        "desktop_app",
+        "web_app",
+        "slack",
+        "mail",
+        "api",
+        "artifact",
+        "download"
+      ],
+      "signals": [
+        {
+          "label": "Browser and web automation",
+          "probeKeys": ["browser", "web", "browser_operator", "manus.im"],
+          "meaning": "Manus may operate web pages or cloud tasks through a browser-like surface.",
+          "detail": "Domain/window metadata can prove surface activity; page-level action details require approved browser or app integration.",
+          "userAction": "Use warning or ask-first for risky web actions and review Manus permissions inside Manus."
+        },
+        {
+          "label": "Generated files and downloads",
+          "probeKeys": ["file", "artifact", "download", "desktop_app"],
+          "meaning": "Manus may create deliverables, slides, websites, apps, or downloaded artifacts.",
+          "detail": "File write events should be shown as timeline entries with target path and action result.",
+          "userAction": "Protect Downloads, Desktop, and project folders if Manus is allowed to generate files."
+        },
+        {
+          "label": "Connected services",
+          "probeKeys": ["slack", "mail", "api", "integration", "oauth"],
+          "meaning": "Manus may interact with apps such as mail, Slack, API, or team integrations when configured.",
+          "detail": "Pollek can classify known hosts and integrations from definition data, but exact actions require integration logs.",
+          "userAction": "Check Manus integration settings and use Pollek Activity to confirm which service was touched."
+        }
+      ],
+      "caveat": "Reference intel makes Manus understandable to users. It does not replace local observation or Manus's own permission records."
+    }
   },
   {
     "id": "google-drive",
@@ -338,6 +715,44 @@
         "label": "Output guard point",
         "keywords": ["output", "guard", "response"]
       }
-    ]
+    ],
+    "observeGuide": {
+      "summary": "MCP definitions explain which tools, resources, and prompts an AI client may call. Pollek should compare discovered MCP config and schemas with actual tool-call telemetry.",
+      "probeKeys": [
+        "mcp",
+        "model context protocol",
+        "tools/list",
+        "tools/call",
+        "resources/list",
+        "resource",
+        "prompt",
+        "wrapper",
+        "proxy"
+      ],
+      "signals": [
+        {
+          "label": "Tool definitions",
+          "probeKeys": ["tools/list", "tool", "schema", "parameter"],
+          "meaning": "The MCP server exposes callable tools and parameter schemas to AI clients.",
+          "detail": "A discovered definition is capability evidence. A timeline tool-call event is action evidence.",
+          "userAction": "Use MCP wrapper/proxy mode when users need ask-first or blocking before tools run."
+        },
+        {
+          "label": "Resource visibility",
+          "probeKeys": ["resources/list", "resource", "file", "uri"],
+          "meaning": "The MCP server may expose resource links, files, records, or templates.",
+          "detail": "Some resources may appear only in tool results, so Pollek should inspect approved tool telemetry as well as resource lists.",
+          "userAction": "Show resource links in Data & Apps and let users create folder/domain/resource rules."
+        },
+        {
+          "label": "Prompt and output guard point",
+          "probeKeys": ["prompt", "output", "guard", "redact"],
+          "meaning": "MCP wrapper or proxy is a strong place to observe prompt/tool arguments and apply safety guards.",
+          "detail": "Raw prompt capture should remain opt-in; default dashboard views should show redacted metadata and decisions.",
+          "userAction": "Enable Prompt Guard only for the agent paths where the user wants safety checks."
+        }
+      ],
+      "caveat": "MCP reference intel explains protocol capability. Actual tool use is proven only by wrapper/proxy/telemetry events."
+    }
   }
 ]

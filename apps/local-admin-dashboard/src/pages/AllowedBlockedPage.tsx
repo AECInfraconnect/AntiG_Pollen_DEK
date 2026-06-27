@@ -133,6 +133,15 @@ function PresetCard({
                 : capability.why}
             </p>
           )}
+          <div className="mt-3">
+            <Link
+              to={`/protect?intent=${encodeURIComponent(preset.intent)}`}
+              className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-xs text-primary hover:bg-primary/10"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Start with this rule
+            </Link>
+          </div>
         </div>
       </div>
     </article>
@@ -183,13 +192,22 @@ export function AllowedBlockedPage() {
             Choose what each AI app can do, and see when Pollek can only watch.
           </p>
         </div>
-        <Link
-          to="/policies"
-          className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
-        >
-          <FileKey className="h-4 w-4" />
-          Advanced policies
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/protect"
+            className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Create rule
+          </Link>
+          <Link
+            to="/policies"
+            className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+          >
+            <FileKey className="h-4 w-4" />
+            Advanced policies
+          </Link>
+        </div>
       </div>
 
       <section className="grid gap-3 sm:grid-cols-3">

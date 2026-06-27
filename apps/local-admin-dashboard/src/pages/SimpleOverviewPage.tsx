@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import {
   Activity,
   Bot,
@@ -11,18 +12,25 @@ import {
   ShieldCheck,
   Wrench,
 } from "lucide-react";
-import { CapabilityApi, RegistryApi, type AiAgent } from "../services/api";
-import { EntityGraphApi } from "../services/entityGraphApi";
-import type { ActivityTimelineItem } from "../features/entity-graph/types";
+import {
+  CapabilityApi,
+  LocalObserveApi,
+  RegistryApi,
+  type AiAgent,
+  type LocalObserveRefreshResponse,
+} from "../services/api";
 import type { LocalCapabilitySnapshotV2 } from "../services/types";
+import { UserActivityApi } from "../features/user-activity/api";
 import {
   buildUserCapabilityMatrix,
   capabilityTone,
   formatDateTime,
   summarizeActivities,
-  toUserFriendlyActivity,
 } from "../features/user-activity/userActivityModel";
-import type { UserCapabilityItem } from "../features/user-activity/types";
+import type {
+  UserCapabilityItem,
+  UserFriendlyActivityEvent,
+} from "../features/user-activity/types";
 import { cn } from "@/lib/utils";
 
 const toneClass: Record<string, string> = {
@@ -95,22 +103,25 @@ function CapabilityMini({ item }: { item: UserCapabilityItem }) {
 
 export function SimpleOverviewPage() {
   const [agents, setAgents] = useState<AiAgent[]>([]);
-  const [rawActivity, setRawActivity] = useState<ActivityTimelineItem[]>([]);
+  const [activity, setActivity] = useState<UserFriendlyActivityEvent[]>([]);
   const [snapshot, setSnapshot] = useState<LocalCapabilitySnapshotV2 | null>(
     null,
   );
   const [loading, setLoading] = useState(true);
+  const [observing, setObserving] = useState(false);
+  const [observeResult, setObserveResult] =
+    useState<LocalObserveRefreshResponse | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([
       RegistryApi.listAgents().catch(() => [] as AiAgent[]),
-      EntityGraphApi.getActivity({ limit: 100 }).catch(() => ({ items: [] })),
+      UserActivityApi.list({ limit: 100 }).catch(() => ({ items: [] })),
       CapabilityApi.getSnapshotV2("desktop_simple").catch(() => null),
     ])
       .then(([agentRows, activityPage, capabilitySnapshot]) => {
         setAgents(agentRows);
-        setRawActivity(activityPage.items ?? []);
+        setActivity(activityPage.items ?? []);
         setSnapshot(capabilitySnapshot);
       })
       .finally(() => setLoading(false));
@@ -120,10 +131,24 @@ export function SimpleOverviewPage() {
     load();
   }, [load]);
 
-  const activity = useMemo(
-    () => rawActivity.map(toUserFriendlyActivity),
-    [rawActivity],
-  );
+  const observeNow = useCallback(async () => {
+    setObserving(true);
+    try {
+      const result = await LocalObserveApi.refresh({ include_estimates: true });
+      setObserveResult(result);
+      toast.success(
+        `Observed ${result.candidates_found} AI app(s) and ${result.resource_events} resource event(s).`,
+      );
+      load();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Local observe refresh failed",
+      );
+    } finally {
+      setObserving(false);
+    }
+  }, [load]);
+
   const summary = useMemo(() => summarizeActivities(activity), [activity]);
   const matrix = useMemo(() => buildUserCapabilityMatrix(snapshot), [snapshot]);
   const needsSetup = matrix.filter(
@@ -147,9 +172,18 @@ export function SimpleOverviewPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={observeNow}
+              disabled={observing}
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+            >
+              <Eye className={cn("h-4 w-4", observing && "animate-pulse")} />
+              {observing ? "Observing" : "Observe now"}
+            </button>
             <Link
               to="/scan"
-              className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90"
+              className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
             >
               <FolderSearch className="h-4 w-4" />
               Find AI apps
@@ -164,6 +198,19 @@ export function SimpleOverviewPage() {
           </div>
         </div>
       </section>
+
+      {observeResult && (
+        <section className="rounded-lg border bg-card/60 p-4">
+          <h2 className="text-sm font-semibold">Latest observe refresh</h2>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Pollek wrote {observeResult.resource_events} resource event(s),{" "}
+            {observeResult.tool_events} tool event(s),{" "}
+            {observeResult.exact_usage_events} exact usage event(s), and{" "}
+            {observeResult.estimated_usage_events} estimated usage event(s) to
+            the local timeline.
+          </p>
+        </section>
+      )}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-lg border bg-card/60 p-4">

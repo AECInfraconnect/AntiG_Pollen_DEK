@@ -8,6 +8,7 @@ export type UserActivityCategory =
   | "commands"
   | "ai_models"
   | "tools"
+  | "safety"
   | "cost"
   | "unknown";
 
@@ -19,6 +20,7 @@ export type UserActivityAction =
   | "send"
   | "use_model"
   | "call_tool"
+  | "redact"
   | "spend"
   | "watch";
 
@@ -30,6 +32,7 @@ export type UserActivityResult =
   | "asked_and_denied"
   | "watched_only"
   | "warned"
+  | "redacted"
   | "error";
 
 export interface UserFriendlyActivityEvent {
@@ -62,6 +65,15 @@ export interface UserFriendlyActivityEvent {
   };
 }
 
+export interface UserFriendlyActivityResponse {
+  schema_version: "user-friendly-activity-list.v1";
+  tenant_id: string;
+  generated_at: string;
+  source?: string;
+  items: UserFriendlyActivityEvent[];
+  next_cursor?: string | null;
+}
+
 export interface SimpleRulePreset {
   id: string;
   label: string;
@@ -72,6 +84,7 @@ export interface SimpleRulePreset {
     | "block_folder_access"
     | "ask_before_terminal_command"
     | "allow_website_domain"
+    | "enable_prompt_guard"
     | "limit_ai_model_cost";
   category: UserActivityCategory;
   behavior: "watch" | "allow" | "ask_first" | "block";

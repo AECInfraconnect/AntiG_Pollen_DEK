@@ -33,6 +33,10 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/activity-timeline",
             get(activity_timeline),
         )
+        .route(
+            "/v1/tenants/:tenant/user-friendly-activity",
+            get(user_friendly_activity),
+        )
         .route("/v1/tenants/:tenant/graph/entities", get(entity_graph))
         .route("/v1/tenants/:tenant/graph/entity", get(entity_360_query))
         .route(
@@ -179,6 +183,51 @@ pub struct ActivityTimelineResponse {
     pub tenant_id: String,
     pub generated_at: String,
     pub items: Vec<ActivityTimelineItem>,
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserFriendlyActivityAdvanced {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw_item: Option<ActivityTimelineItem>,
+    pub decision: Option<String>,
+    pub mode: Option<String>,
+    pub pep_plane: Option<String>,
+    pub pdp_engine: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserFriendlyActivityEvent {
+    pub schema_version: String,
+    pub event_id: String,
+    pub timestamp: String,
+    pub agent_id: Option<String>,
+    pub agent_name: String,
+    pub category: String,
+    pub action: String,
+    pub target_label: String,
+    pub target_kind: String,
+    pub access_mode: String,
+    pub result: String,
+    pub result_label: String,
+    pub plain_summary: String,
+    pub rule_label: Option<String>,
+    pub capability_note: String,
+    pub next_step: String,
+    pub privacy_note: String,
+    pub cost_usd: Option<f64>,
+    pub tokens: Option<i64>,
+    pub trace_id: Option<String>,
+    pub advanced: UserFriendlyActivityAdvanced,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserFriendlyActivityResponse {
+    pub schema_version: String,
+    pub tenant_id: String,
+    pub generated_at: String,
+    pub source: String,
+    pub items: Vec<UserFriendlyActivityEvent>,
     pub next_cursor: Option<String>,
 }
 
@@ -396,6 +445,41 @@ async fn activity_timeline(
                     schema_version: "activity-timeline.v1".to_string(),
                     tenant_id: tenant,
                     generated_at: chrono::Utc::now().to_rfc3339(),
+                    items,
+                    next_cursor: None,
+                })),
+            )
+        }
+        Err(err) => internal_error(err),
+    }
+}
+
+async fn user_friendly_activity(
+    State(state): State<AppState>,
+    Path(tenant): Path<String>,
+    Query(query): Query<ActivityQuery>,
+) -> impl IntoResponse {
+    match build_read_model(&state, &tenant).await {
+        Ok(model) => {
+            let limit = query.limit.unwrap_or(100).min(500);
+            let mut items: Vec<_> = model
+                .activity
+                .into_iter()
+                .filter(|item| activity_matches(item, &query))
+                .collect();
+            items.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+            items.truncate(limit);
+            let items = items
+                .iter()
+                .map(user_friendly_activity_from_timeline)
+                .collect();
+            (
+                StatusCode::OK,
+                Json(json!(UserFriendlyActivityResponse {
+                    schema_version: "user-friendly-activity-list.v1".to_string(),
+                    tenant_id: tenant,
+                    generated_at: chrono::Utc::now().to_rfc3339(),
+                    source: "local-control-plane-read-model".to_string(),
                     items,
                     next_cursor: None,
                 })),
@@ -1138,6 +1222,309 @@ fn activity_from_usage(
         }),
         explanation: event.error_code.clone(),
         raw: serde_json::to_value(event).ok(),
+    }
+}
+
+fn user_friendly_activity_from_timeline(item: &ActivityTimelineItem) -> UserFriendlyActivityEvent {
+    let category = infer_user_activity_category(item);
+    let action = infer_user_activity_action(item, &category);
+    let result = infer_user_activity_result(item);
+    let agent_name = item
+        .actor
+        .as_ref()
+        .map(|actor| actor.label.clone())
+        .unwrap_or_else(|| "Unknown AI app".to_string());
+    let target = user_activity_target(item);
+    let plain_summary = format!("{} {} {}", agent_name, action_text(&action), target);
+
+    UserFriendlyActivityEvent {
+        schema_version: "user-friendly-activity.v1".to_string(),
+        event_id: item.event_id.clone(),
+        timestamp: item.timestamp.clone(),
+        agent_id: item.actor.as_ref().map(|actor| actor.entity_id.clone()),
+        agent_name,
+        category: category.clone(),
+        action: action.clone(),
+        target_label: target,
+        target_kind: category_label(&category).to_string(),
+        access_mode: access_mode(&action).to_string(),
+        result: result.clone(),
+        result_label: result_label(&result).to_string(),
+        plain_summary,
+        rule_label: item.policies.first().map(|policy| policy.label.clone()),
+        capability_note: capability_note(&result, &category).to_string(),
+        next_step: next_step(&result, &category).to_string(),
+        privacy_note: "Pollek shows activity metadata here, not file contents, email bodies, raw prompts, or raw responses.".to_string(),
+        cost_usd: item.cost.as_ref().and_then(|cost| cost.total_cost_usd),
+        tokens: item.cost.as_ref().and_then(|cost| cost.total_tokens),
+        trace_id: item.trace_id.clone(),
+        advanced: UserFriendlyActivityAdvanced {
+            raw_item: None,
+            decision: Some(item.decision.clone()),
+            mode: Some(item.enforcement_mode.clone()),
+            pep_plane: item.pep_plane.clone(),
+            pdp_engine: item.pdp_engine.clone(),
+        },
+    }
+}
+
+fn user_activity_raw_text(item: &ActivityTimelineItem) -> String {
+    [
+        Some(item.action.as_str()),
+        item.actor.as_ref().map(|actor| actor.label.as_str()),
+        item.tool.as_ref().map(|tool| tool.label.as_str()),
+        item.resource
+            .as_ref()
+            .map(|resource| resource.label.as_str()),
+        item.resource
+            .as_ref()
+            .map(|resource| resource.entity_type.as_str()),
+        item.explanation.as_deref(),
+        Some(item.decision.as_str()),
+        Some(item.enforcement_mode.as_str()),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>()
+    .join(" ")
+    .to_lowercase()
+}
+
+fn infer_user_activity_category(item: &ActivityTimelineItem) -> String {
+    let text = user_activity_raw_text(item);
+    let resource_type = item
+        .resource
+        .as_ref()
+        .map(|resource| resource.entity_type.to_lowercase())
+        .unwrap_or_default();
+    let tool_type = item
+        .tool
+        .as_ref()
+        .map(|tool| tool.entity_type.to_lowercase())
+        .unwrap_or_default();
+
+    if text.contains("prompt")
+        || text.contains("injection")
+        || text.contains("redact")
+        || text.contains("mask")
+        || text.contains("pii")
+        || text.contains("secret")
+        || text.contains("credential")
+        || text.contains("unsafe output")
+        || text.contains("guard")
+    {
+        return "safety".to_string();
+    }
+    if resource_type.contains("file")
+        || resource_type.contains("folder")
+        || text.contains("file")
+        || text.contains("folder")
+        || text.contains("read")
+        || text.contains("write")
+    {
+        return "files".to_string();
+    }
+    if resource_type.contains("domain")
+        || resource_type.contains("url")
+        || text.contains("http")
+        || text.contains("network")
+        || text.contains("domain")
+        || text.contains("connect")
+    {
+        return "web".to_string();
+    }
+    if text.contains("email") || text.contains("calendar") {
+        return "email".to_string();
+    }
+    if tool_type.contains("terminal")
+        || text.contains("terminal")
+        || text.contains("shell")
+        || text.contains("command")
+    {
+        return "commands".to_string();
+    }
+    if text.contains("model") || text.contains("token") || text.contains("llm") {
+        return "ai_models".to_string();
+    }
+    if item.tool.is_some() {
+        return "tools".to_string();
+    }
+    if item
+        .cost
+        .as_ref()
+        .map(|cost| cost.total_cost_usd.is_some() || cost.total_tokens.is_some())
+        .unwrap_or(false)
+    {
+        return "cost".to_string();
+    }
+    if text.contains("process") || text.contains("app") {
+        return "apps".to_string();
+    }
+    "unknown".to_string()
+}
+
+fn infer_user_activity_action(item: &ActivityTimelineItem, category: &str) -> String {
+    let text = user_activity_raw_text(item);
+    if text.contains("write") || text.contains("delete") || text.contains("edit") {
+        return "write".to_string();
+    }
+    if text.contains("read") || text.contains("open") {
+        return "read".to_string();
+    }
+    match category {
+        "web" => "connect".to_string(),
+        "commands" | "apps" => "run".to_string(),
+        "email" if text.contains("send") => "send".to_string(),
+        "email" => "read".to_string(),
+        "ai_models" => "use_model".to_string(),
+        "tools" => "call_tool".to_string(),
+        "safety" => "redact".to_string(),
+        "cost" => "spend".to_string(),
+        _ => "watch".to_string(),
+    }
+}
+
+fn infer_user_activity_result(item: &ActivityTimelineItem) -> String {
+    let decision = item.decision.to_lowercase();
+    let mode = item.enforcement_mode.to_lowercase();
+    if decision == "redact" || decision == "mask" {
+        return "redacted".to_string();
+    }
+    if decision == "deny" || decision == "blocked" {
+        return "blocked".to_string();
+    }
+    if decision == "error" {
+        return "error".to_string();
+    }
+    if decision == "warn" {
+        return "warned".to_string();
+    }
+    if decision == "require_approval" {
+        return "asked_first".to_string();
+    }
+    if decision == "asked_and_allowed" {
+        return "asked_and_allowed".to_string();
+    }
+    if decision == "asked_and_denied" {
+        return "asked_and_denied".to_string();
+    }
+    if mode.contains("observe") || decision == "observe" {
+        return "watched_only".to_string();
+    }
+    "allowed".to_string()
+}
+
+fn user_activity_target(item: &ActivityTimelineItem) -> String {
+    item.resource
+        .as_ref()
+        .map(|resource| resource.label.clone())
+        .or_else(|| item.tool.as_ref().map(|tool| tool.label.clone()))
+        .or_else(|| item.cost.as_ref().and_then(|cost| cost.model.clone()))
+        .or_else(|| item.cost.as_ref().and_then(|cost| cost.provider.clone()))
+        .unwrap_or_else(|| "an unknown target".to_string())
+}
+
+fn category_label(category: &str) -> &'static str {
+    match category {
+        "files" => "Files & folders",
+        "web" => "Websites & network",
+        "email" => "Email & calendar",
+        "apps" => "Apps",
+        "commands" => "Commands",
+        "ai_models" => "AI models",
+        "tools" => "AI tools",
+        "safety" => "Prompt & data safety",
+        "cost" => "Cost",
+        _ => "Other activity",
+    }
+}
+
+fn action_text(action: &str) -> &'static str {
+    match action {
+        "read" => "read",
+        "write" => "changed",
+        "connect" => "connected to",
+        "run" => "ran",
+        "send" => "sent",
+        "use_model" => "used",
+        "call_tool" => "called",
+        "redact" => "protected",
+        "spend" => "spent tokens on",
+        _ => "was seen using",
+    }
+}
+
+fn access_mode(action: &str) -> &'static str {
+    match action {
+        "read" | "use_model" | "call_tool" => "read",
+        "write" => "write",
+        "connect" => "connect",
+        "run" => "run",
+        "send" => "send",
+        _ => "unknown",
+    }
+}
+
+fn result_label(result: &str) -> &'static str {
+    match result {
+        "allowed" => "Allowed",
+        "blocked" => "Blocked",
+        "asked_first" => "Ask first",
+        "asked_and_allowed" => "Asked and allowed",
+        "asked_and_denied" => "Asked and blocked",
+        "watched_only" => "Watched only",
+        "warned" => "Warned",
+        "redacted" => "Redacted",
+        "error" => "Error",
+        _ => "Unknown",
+    }
+}
+
+fn capability_note(result: &str, category: &str) -> &'static str {
+    if result == "blocked" {
+        return "Pollek blocked this action.";
+    }
+    if result == "redacted" {
+        return "Pollek removed or masked sensitive content before it could continue.";
+    }
+    if result == "allowed" {
+        return "Pollek saw this action and it was allowed.";
+    }
+    if result == "warned" {
+        return "Pollek warned about this action.";
+    }
+    if result == "asked_first" {
+        return "Pollek can ask before this kind of action.";
+    }
+    if category == "files" || category == "web" || category == "commands" {
+        return "Pollek can watch this now. Blocking may require OS setup or an agent-specific setting.";
+    }
+    if category == "safety" {
+        return "Pollek can watch prompt and data-safety signals. Blocking or redaction depends on which guard is in the AI app path.";
+    }
+    "Pollek can watch this activity and explain what to review next."
+}
+
+fn next_step(result: &str, category: &str) -> &'static str {
+    if result == "blocked" {
+        return "Review the rule if this should be allowed next time.";
+    }
+    if result == "redacted" {
+        return "Review the safety rule and confirm the AI app is using the guard path for prompts and outputs.";
+    }
+    match category {
+        "files" => {
+            "Set a rule for this folder, or restrict file access inside the AI app settings."
+        }
+        "web" => "Set an approved website rule, or restrict network access in the AI app settings.",
+        "commands" | "apps" => {
+            "Ask before commands, or disable command execution inside the AI app."
+        }
+        "email" => "Keep email access opt-in and review the connector permissions.",
+        "safety" => {
+            "Keep watching, enable Prompt Guard for this AI app, or tighten the AI app's own safety settings."
+        }
+        _ => "Keep watching or create a rule from similar activity.",
     }
 }
 

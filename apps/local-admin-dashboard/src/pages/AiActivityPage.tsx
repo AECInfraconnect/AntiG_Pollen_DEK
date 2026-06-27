@@ -1,29 +1,51 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import {
+  AppWindow,
   Activity,
   AlertTriangle,
+  ArrowRight,
+  Clock3,
+  Database,
   Download,
   Eye,
   FileText,
+  FolderOpen,
+  Globe2,
+  Info,
+  Mail,
   RefreshCw,
   Search,
   ShieldCheck,
   ShieldX,
+  Sparkles,
+  Terminal,
+  Wrench,
 } from "lucide-react";
-import { EntityGraphApi } from "../services/entityGraphApi";
-import type { ActivityTimelineItem } from "../features/entity-graph/types";
+import { UserActivityApi } from "../features/user-activity/api";
+import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayout";
+import { EntityCard } from "../components/master-detail/EntityCard";
+import { DetailPane } from "../components/master-detail/DetailPane";
+import { ReferenceIntelGuide } from "../components/reference/ReferenceIntelGuide";
 import {
   categoryLabel,
   formatDateTime,
   summarizeActivities,
-  toUserFriendlyActivity,
 } from "../features/user-activity/userActivityModel";
 import type {
   UserActivityCategory,
   UserActivityResult,
   UserFriendlyActivityEvent,
 } from "../features/user-activity/types";
+import {
+  LocalObserveApi,
+  type LocalObserveRefreshResponse,
+} from "../services/api";
+import { findAgentReferenceIntel } from "../lib/entityReferenceIntel";
+import type { UiStatus } from "../lib/status";
+import { useMode } from "../context/ModeContext";
+import { isAdvanceMode } from "../lib/modes";
 import { cn } from "@/lib/utils";
 
 type Filters = {
@@ -33,28 +55,76 @@ type Filters = {
   agent: string;
 };
 
-const resultTone: Record<UserActivityResult, string> = {
-  allowed: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600",
-  blocked: "border-red-500/25 bg-red-500/10 text-red-600",
-  asked_first: "border-amber-500/25 bg-amber-500/10 text-amber-600",
-  asked_and_allowed: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600",
-  asked_and_denied: "border-red-500/25 bg-red-500/10 text-red-600",
-  watched_only: "border-blue-500/25 bg-blue-500/10 text-blue-600",
-  warned: "border-amber-500/25 bg-amber-500/10 text-amber-600",
-  error: "border-red-500/25 bg-red-500/10 text-red-600",
-};
-
 const categories: UserActivityCategory[] = [
   "files",
   "web",
   "email",
   "apps",
   "commands",
+  "safety",
   "ai_models",
   "tools",
   "cost",
   "unknown",
 ];
+
+const categoryIcons: Record<UserActivityCategory, any> = {
+  files: FolderOpen,
+  web: Globe2,
+  email: Mail,
+  apps: AppWindow,
+  commands: Terminal,
+  ai_models: Sparkles,
+  tools: Wrench,
+  safety: ShieldCheck,
+  cost: Database,
+  unknown: Activity,
+};
+
+function statusForResult(result: UserActivityResult): UiStatus {
+  if (result === "blocked" || result === "asked_and_denied") return "failed";
+  if (result === "warned" || result === "asked_first") return "degraded";
+  if (
+    result === "allowed" ||
+    result === "asked_and_allowed" ||
+    result === "redacted"
+  ) {
+    return "ok";
+  }
+  if (result === "error") return "failed";
+  return "info";
+}
+
+function formatShortTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function observedTermsForActivity(item: UserFriendlyActivityEvent) {
+  return [
+    item.agent_name,
+    item.category,
+    item.action,
+    item.access_mode,
+    item.target_kind,
+    item.target_label,
+    item.plain_summary,
+    item.capability_note,
+    item.next_step,
+    item.rule_label,
+    item.result,
+    item.result_label,
+    item.advanced?.decision,
+    item.advanced?.mode,
+    item.advanced?.pep_plane,
+  ];
+}
 
 function exportJson(items: UserFriendlyActivityEvent[]) {
   const blob = new Blob([JSON.stringify(items, null, 2)], {
@@ -112,6 +182,8 @@ function ActivityResultIcon({ result }: { result: UserActivityResult }) {
   if (result === "allowed" || result === "asked_and_allowed") {
     return <ShieldCheck className="h-4 w-4 text-emerald-500" />;
   }
+  if (result === "redacted")
+    return <ShieldCheck className="h-4 w-4 text-violet-500" />;
   if (result === "error")
     return <AlertTriangle className="h-4 w-4 text-red-500" />;
   return <Eye className="h-4 w-4 text-blue-500" />;
@@ -132,85 +204,310 @@ function SummaryTile({
   );
 }
 
-function ActivityCard({ item }: { item: UserFriendlyActivityEvent }) {
+function ActivityDetail({
+  item,
+  showTechnicalDetails,
+}: {
+  item: UserFriendlyActivityEvent;
+  showTechnicalDetails: boolean;
+}) {
+  const reference = findAgentReferenceIntel({
+    name: item.agent_name,
+    agentType: item.category,
+  })[0];
+  const observedTerms = observedTermsForActivity(item);
+  const status = statusForResult(item.result);
+  const Icon = categoryIcons[item.category] ?? Activity;
+
   return (
-    <article className="rounded-lg border bg-card/60 p-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <ActivityResultIcon result={item.result} />
-            <h3 className="min-w-0 text-sm font-semibold">
-              {item.plain_summary}
-            </h3>
-            <span
-              className={cn(
-                "rounded-full border px-2 py-0.5 text-[11px] font-medium",
-                resultTone[item.result],
-              )}
-            >
-              {item.result_label}
-            </span>
-            <span className="rounded-full border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
-              {categoryLabel(item.category)}
-            </span>
-          </div>
+    <DetailPane
+      title={item.plain_summary}
+      subtitle={`${item.agent_name} - ${formatDateTime(item.timestamp)}`}
+      status={status}
+      statusLabel={item.result_label}
+      tabs={[
+        {
+          id: "overview",
+          label: "Overview",
+          content: (
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <ActivityResultIcon result={item.result} />
+                    Result
+                  </div>
+                  <div className="mt-2 text-sm font-semibold">
+                    {item.result_label}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Icon className="h-4 w-4" />
+                    Activity type
+                  </div>
+                  <div className="mt-2 text-sm font-semibold">
+                    {categoryLabel(item.category)}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Clock3 className="h-4 w-4" />
+                    Time
+                  </div>
+                  <div className="mt-2 text-sm font-semibold">
+                    {formatShortTime(item.timestamp)}
+                  </div>
+                </div>
+              </div>
 
-          <div className="mt-3 grid gap-2 text-sm md:grid-cols-3">
-            <div className="rounded-md border bg-background/60 p-3">
-              <div className="text-xs text-muted-foreground">AI app</div>
-              <div className="mt-1 truncate font-medium">{item.agent_name}</div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">AI app</div>
+                  <div className="mt-1 break-words text-sm font-semibold">
+                    {item.agent_name}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">
+                    Touched or used
+                  </div>
+                  <div className="mt-1 break-words text-sm font-semibold">
+                    {item.target_label}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {item.target_kind} - {item.access_mode}
+                  </div>
+                </div>
+              </div>
+
+              <ReferenceIntelGuide
+                reference={reference}
+                observedTerms={observedTerms}
+              />
             </div>
-            <div className="rounded-md border bg-background/60 p-3">
-              <div className="text-xs text-muted-foreground">Touched</div>
-              <div className="mt-1 truncate font-medium">
-                {item.target_label}
+          ),
+        },
+        {
+          id: "evidence",
+          label: "Evidence",
+          content: (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-700">
+                {item.capability_note}
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <h4 className="text-sm font-semibold">What Pollek saw</h4>
+                  <dl className="mt-3 space-y-2 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">Action</dt>
+                      <dd className="font-medium">{item.action}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">Access</dt>
+                      <dd className="font-medium">{item.access_mode}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">Category</dt>
+                      <dd className="font-medium">
+                        {categoryLabel(item.category)}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">Trace</dt>
+                      <dd className="break-all text-right font-medium">
+                        {item.trace_id ?? "Not linked"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <h4 className="text-sm font-semibold">Policy result</h4>
+                  <dl className="mt-3 space-y-2 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">Rule</dt>
+                      <dd className="break-words text-right font-medium">
+                        {item.rule_label ?? "No rule matched"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">Decision</dt>
+                      <dd className="font-medium">
+                        {item.advanced?.decision ?? item.result}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">Mode</dt>
+                      <dd className="font-medium">
+                        {item.advanced?.mode ?? "watch"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">Source</dt>
+                      <dd className="break-words text-right font-medium">
+                        {item.advanced?.pep_plane ?? "local observe"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+              <p className="rounded-lg border bg-background/60 p-4 text-xs leading-5 text-muted-foreground">
+                {item.privacy_note}
+              </p>
+            </div>
+          ),
+        },
+        {
+          id: "next",
+          label: "Next Steps",
+          content: (
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-background/60 p-4">
+                <h4 className="flex items-center gap-2 text-sm font-semibold">
+                  <ArrowRight className="h-4 w-4 text-primary" />
+                  Suggested action
+                </h4>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {item.next_step}
+                </p>
+              </div>
+              <div className="rounded-lg border bg-background/60 p-4">
+                <h4 className="flex items-center gap-2 text-sm font-semibold">
+                  <Info className="h-4 w-4 text-primary" />
+                  Plain explanation
+                </h4>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  This event means {item.agent_name} was seen trying to{" "}
+                  {item.action.replace(/_/g, " ")} {item.target_label}. You can
+                  keep watching it, ask before similar actions, or block this
+                  kind of activity where your device supports that control.
+                </p>
               </div>
             </div>
-            <div className="rounded-md border bg-background/60 p-3">
-              <div className="text-xs text-muted-foreground">Access</div>
-              <div className="mt-1 truncate font-medium capitalize">
-                {item.access_mode}
-              </div>
-            </div>
-          </div>
+          ),
+        },
+        ...(showTechnicalDetails
+          ? [
+              {
+                id: "technical",
+                label: "Technical Details",
+                content: (
+                  <div className="space-y-3">
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="rounded-lg border bg-background/60 p-4">
+                        <div className="text-xs text-muted-foreground">
+                          Event ID
+                        </div>
+                        <div className="mt-1 break-all text-sm font-semibold">
+                          {item.event_id}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border bg-background/60 p-4">
+                        <div className="text-xs text-muted-foreground">
+                          Agent ID
+                        </div>
+                        <div className="mt-1 break-all text-sm font-semibold">
+                          {item.agent_id ?? "Not linked"}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border bg-background/60 p-4">
+                        <div className="text-xs text-muted-foreground">
+                          Trace ID
+                        </div>
+                        <div className="mt-1 break-all text-sm font-semibold">
+                          {item.trace_id ?? "Not linked"}
+                        </div>
+                      </div>
+                    </div>
 
-          <div className="mt-3 grid gap-2 text-xs md:grid-cols-2">
-            <p className="rounded-md border border-blue-500/20 bg-blue-500/10 p-3 text-blue-700">
-              {item.capability_note}
-            </p>
-            <p className="rounded-md border bg-background/60 p-3 text-muted-foreground">
-              {item.next_step}
-            </p>
-          </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="rounded-lg border bg-background/60 p-4">
+                        <h4 className="text-sm font-semibold">
+                          Decision metadata
+                        </h4>
+                        <dl className="mt-3 space-y-2 text-sm">
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">Decision</dt>
+                            <dd className="font-medium">
+                              {item.advanced?.decision ?? item.result}
+                            </dd>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">Mode</dt>
+                            <dd className="font-medium">
+                              {item.advanced?.mode ?? "unknown"}
+                            </dd>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">PEP plane</dt>
+                            <dd className="break-words text-right font-medium">
+                              {item.advanced?.pep_plane ?? "unknown"}
+                            </dd>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">
+                              PDP engine
+                            </dt>
+                            <dd className="break-words text-right font-medium">
+                              {item.advanced?.pdp_engine ?? "unknown"}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+                      <div className="rounded-lg border bg-background/60 p-4">
+                        <h4 className="text-sm font-semibold">Usage fields</h4>
+                        <dl className="mt-3 space-y-2 text-sm">
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">Tokens</dt>
+                            <dd className="font-medium">
+                              {item.tokens?.toLocaleString() ?? "Not reported"}
+                            </dd>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">Cost</dt>
+                            <dd className="font-medium">
+                              {item.cost_usd
+                                ? `$${item.cost_usd.toFixed(4)}`
+                                : "None"}
+                            </dd>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">
+                              Schema version
+                            </dt>
+                            <dd className="font-medium">
+                              {item.schema_version}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+                    </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>{formatDateTime(item.timestamp)}</span>
-            {item.rule_label && <span>Rule: {item.rule_label}</span>}
-            {item.tokens && <span>{item.tokens.toLocaleString()} tokens</span>}
-            {item.cost_usd && <span>${item.cost_usd.toFixed(4)}</span>}
-          </div>
-        </div>
-
-        <details className="shrink-0 rounded-md border bg-background px-3 py-2 text-xs">
-          <summary className="cursor-pointer text-muted-foreground">
-            Advanced
-          </summary>
-          <div className="mt-2 max-w-xs space-y-1 text-muted-foreground">
-            <p>Trace: {item.trace_id ?? "none"}</p>
-            <p>Decision: {item.advanced?.decision ?? "unknown"}</p>
-            <p>Mode: {item.advanced?.mode ?? "unknown"}</p>
-          </div>
-        </details>
-      </div>
-    </article>
+                    <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
+                      {JSON.stringify(item.advanced ?? {}, null, 2)}
+                    </pre>
+                  </div>
+                ),
+              },
+            ]
+          : []),
+      ]}
+    />
   );
 }
 
 export function AiActivityPage() {
-  const [searchParams] = useSearchParams();
-  const [rawItems, setRawItems] = useState<ActivityTimelineItem[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { mode } = useMode();
+  const showTechnicalDetails = isAdvanceMode(mode);
+  const selectedEventId = searchParams.get("event") ?? undefined;
+  const [items, setItems] = useState<UserFriendlyActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [observing, setObserving] = useState(false);
+  const [observeResult, setObserveResult] =
+    useState<LocalObserveRefreshResponse | null>(null);
   const [filters, setFilters] = useState<Filters>({
     search: searchParams.get("q") ?? "",
     category: "",
@@ -220,9 +517,9 @@ export function AiActivityPage() {
 
   const load = useCallback(() => {
     setLoading(true);
-    EntityGraphApi.getActivity({ limit: 300 })
+    UserActivityApi.list({ limit: 300 })
       .then((response) => {
-        setRawItems(response.items ?? []);
+        setItems(response.items ?? []);
         setError(null);
       })
       .catch((err) =>
@@ -237,7 +534,25 @@ export function AiActivityPage() {
     return () => window.clearInterval(timer);
   }, [load]);
 
-  const items = useMemo(() => rawItems.map(toUserFriendlyActivity), [rawItems]);
+  const observeNow = useCallback(async () => {
+    setObserving(true);
+    try {
+      const result = await LocalObserveApi.refresh({ include_estimates: true });
+      setObserveResult(result);
+      setError(null);
+      toast.success(
+        `Observed ${result.candidates_found} AI app(s), ${result.resource_events} resource event(s), and ${result.tool_events} tool event(s).`,
+      );
+      load();
+    } catch (err) {
+      const nextError = err instanceof Error ? err : new Error(String(err));
+      setError(nextError);
+      toast.error(nextError.message || "Local observe refresh failed");
+    } finally {
+      setObserving(false);
+    }
+  }, [load]);
+
   const agentOptions = useMemo(
     () => Array.from(new Set(items.map((item) => item.agent_name))).sort(),
     [items],
@@ -264,6 +579,18 @@ export function AiActivityPage() {
     });
   }, [filters, items]);
   const summary = useMemo(() => summarizeActivities(filtered), [filtered]);
+  const handleSelectEvent = useCallback(
+    (eventId: string) => {
+      const next = new URLSearchParams(searchParams);
+      if (eventId) {
+        next.set("event", eventId);
+      } else {
+        next.delete("event");
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
   return (
     <div className="space-y-5">
@@ -279,6 +606,15 @@ export function AiActivityPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={observeNow}
+            disabled={observing}
+            className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+          >
+            <Eye className={cn("h-4 w-4", observing && "animate-pulse")} />
+            {observing ? "Observing" : "Observe now"}
+          </button>
           <button
             type="button"
             onClick={() => exportCsv(filtered)}
@@ -306,11 +642,80 @@ export function AiActivityPage() {
         </div>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      {observeResult && (
+        <section className="rounded-lg border bg-card/60 p-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold">
+                Latest local observe refresh
+              </h3>
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
+                Pollek records activity metadata only here: redacted paths,
+                domains, tools, model usage fields, decisions, and timestamps.
+                It does not store file contents, email bodies, raw prompts, or
+                raw responses in this timeline.
+              </p>
+            </div>
+            <span className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground">
+              Scan {observeResult.scan_id}
+            </span>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
+            <SummaryTile
+              label="AI apps observed"
+              value={observeResult.candidates_found}
+            />
+            <SummaryTile
+              label="Resources"
+              value={observeResult.resource_events}
+            />
+            <SummaryTile label="Tools" value={observeResult.tool_events} />
+            <SummaryTile
+              label="Identities"
+              value={observeResult.identity_events}
+            />
+            <SummaryTile
+              label="Exact usage"
+              value={observeResult.exact_usage_events}
+            />
+            <SummaryTile
+              label="Estimated usage"
+              value={observeResult.estimated_usage_events}
+            />
+          </div>
+          {(observeResult.capture_quality.length > 0 ||
+            observeResult.limitations.length > 0) && (
+            <div className="mt-3 grid gap-2 lg:grid-cols-2">
+              <div className="rounded-md border bg-background/60 p-3">
+                <div className="text-xs font-medium">Capture quality</div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {observeResult.capture_quality.length > 0
+                    ? observeResult.capture_quality.join(", ")
+                    : "Metadata observed; no exact usage source reported yet."}
+                </p>
+              </div>
+              <div className="rounded-md border bg-background/60 p-3">
+                <div className="text-xs font-medium">What may need setup</div>
+                <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                  {observeResult.limitations.slice(0, 3).map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                  {observeResult.limitations.length === 0 && (
+                    <li>No limitations were reported by this refresh.</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
         <SummaryTile label="Events" value={summary.total} />
         <SummaryTile label="File activity" value={summary.files} />
         <SummaryTile label="Web activity" value={summary.web} />
         <SummaryTile label="Commands" value={summary.commands} />
+        <SummaryTile label="Safety" value={summary.safety} />
         <SummaryTile label="Blocked" value={summary.blocked} />
         <SummaryTile
           label="Estimated cost"
@@ -385,6 +790,7 @@ export function AiActivityPage() {
             <option value="blocked">Blocked</option>
             <option value="asked_first">Ask first</option>
             <option value="warned">Warned</option>
+            <option value="redacted">Redacted</option>
             <option value="error">Error</option>
           </select>
         </div>
@@ -396,21 +802,59 @@ export function AiActivityPage() {
         </div>
       )}
 
-      <div className="space-y-3">
-        {loading && rawItems.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-            Loading AI activity...
-          </div>
-        ) : filtered.length === 0 ? (
+      <MasterDetailLayout
+        items={filtered}
+        selectedId={selectedEventId}
+        onSelect={handleSelectEvent}
+        idSelector={(item) => item.event_id}
+        loading={loading && items.length === 0}
+        emptyState={
           <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
             No AI activity matches this view yet.
           </div>
-        ) : (
-          filtered.map((item) => (
-            <ActivityCard key={item.event_id} item={item} />
-          ))
+        }
+        renderGroupHeader={(item, index, prevItem) => {
+          const day = new Date(item.timestamp).toDateString();
+          const prevDay = prevItem
+            ? new Date(prevItem.timestamp).toDateString()
+            : null;
+          if (index > 0 && day === prevDay) return null;
+          return (
+            <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {formatShortTime(item.timestamp).split(",")[0] || day}
+            </div>
+          );
+        }}
+        renderCard={(item, selected) => {
+          const Icon = categoryIcons[item.category] ?? Activity;
+          return (
+            <EntityCard
+              title={item.plain_summary}
+              subtitle={`${item.agent_name} - ${formatShortTime(
+                item.timestamp,
+              )}`}
+              summary={`${item.target_kind}: ${item.target_label}`}
+              icon={Icon}
+              status={statusForResult(item.result)}
+              statusLabel={item.result_label}
+              meta={[
+                { label: "Type", value: categoryLabel(item.category) },
+                { label: "Access", value: item.access_mode },
+                ...(item.rule_label
+                  ? [{ label: "Rule", value: item.rule_label }]
+                  : []),
+              ]}
+              selected={selected}
+            />
+          );
+        }}
+        renderDetail={(item) => (
+          <ActivityDetail
+            item={item}
+            showTechnicalDetails={showTechnicalDetails}
+          />
         )}
-      </div>
+      />
     </div>
   );
 }

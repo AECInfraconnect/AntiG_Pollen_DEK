@@ -163,6 +163,84 @@
         },
         "additionalProperties": false
       }
+    },
+    "observeGuide": {
+      "type": "object",
+      "description": "Human-readable observability guidance keyed by local probe evidence. This explains what Pollek may look for; it is not proof that local access happened.",
+      "required": ["summary", "probeKeys", "signals", "caveat"],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 420
+        },
+        "probeKeys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 24,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "uniqueItems": true
+        },
+        "signals": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "probeKeys",
+              "meaning",
+              "detail",
+              "userAction"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "probeKeys": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "uniqueItems": true
+              },
+              "meaning": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 220
+              },
+              "detail": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "userAction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 260
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "caveat": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

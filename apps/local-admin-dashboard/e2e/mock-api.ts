@@ -95,7 +95,8 @@ const resource = {
   uri: "file:///C:/Users/DELL/Documents/Codex/repo/apps/local-admin-dashboard/src",
   path: "C:\\Users\\DELL\\Documents\\Codex\\repo\\apps\\local-admin-dashboard\\src",
   host: "DELL-WINDOWS",
-  description: "Source folder observed through the local filesystem telemetry plane.",
+  description:
+    "Source folder observed through the local filesystem telemetry plane.",
   sensitivity: "internal_source",
   source: "local-observer",
   status: "active",
@@ -105,7 +106,8 @@ const resource = {
 const policy = {
   policy_id: "policy-protect-workspace-files",
   name: "Protect workspace source files",
-  description: "Require local policy evaluation before Antigravity reads source folders.",
+  description:
+    "Require local policy evaluation before Antigravity reads source folders.",
   engine: "opa_wasm",
   status: "published",
   mode: "enforce",
@@ -143,7 +145,8 @@ const candidate = {
       privacy_class: "metadata_only",
       redacted: true,
       merge_key: "Google/Antigravity",
-      source_path_redacted: "C:\\Program Files\\Google\\Antigravity\\antigravity.exe",
+      source_path_redacted:
+        "C:\\Program Files\\Google\\Antigravity\\antigravity.exe",
       data: {
         process_name: "antigravity.exe",
         window_title: "Antigravity - Pollek Workspace",
@@ -209,7 +212,8 @@ const canonicalCapability = {
   candidate_id: agent.agent_id,
   capability_kind: "tool_access",
   name: "Workspace file access",
-  description: "Local discovery observed filesystem metadata for source folder reads.",
+  description:
+    "Local discovery observed filesystem metadata for source folder reads.",
   modality: ["filesystem"],
   actions: ["read", "list"],
   source: "filesystem observer",
@@ -373,8 +377,18 @@ const graphResponse = {
   edges: graphEdges,
   summaries: [
     { kind: "agents", label: "Agents", count: 1, tone: "info" },
-    { kind: "observed_links", label: "Observed Links", count: 3, tone: "success" },
-    { kind: "enforced_links", label: "Enforced Links", count: 3, tone: "success" },
+    {
+      kind: "observed_links",
+      label: "Observed Links",
+      count: 3,
+      tone: "success",
+    },
+    {
+      kind: "enforced_links",
+      label: "Enforced Links",
+      count: 3,
+      tone: "success",
+    },
   ],
   warnings: [],
 };
@@ -435,6 +449,46 @@ const activityTimeline = {
   next_cursor: null,
 };
 
+const userFriendlyActivity = {
+  schema_version: "user-friendly-activity-list.v1",
+  tenant_id: "local",
+  generated_at: now,
+  source: "mock-api",
+  items: [
+    {
+      schema_version: "user-friendly-activity.v1",
+      event_id: activityItem.event_id,
+      timestamp: activityItem.timestamp,
+      agent_id: agent.agent_id,
+      agent_name: agent.name,
+      category: "files",
+      action: "read",
+      target_label: resource.name,
+      target_kind: "Files & folders",
+      access_mode: "read",
+      result: "allowed",
+      result_label: "Allowed",
+      plain_summary: `${agent.name} read ${resource.name}`,
+      rule_label: policy.name,
+      capability_note: "Pollek saw this action and it was allowed.",
+      next_step:
+        "Set a rule for this folder, or restrict file access inside the AI app settings.",
+      privacy_note:
+        "Pollek shows activity metadata here, not file contents, email bodies, raw prompts, or raw responses.",
+      cost_usd: activityItem.cost.total_cost_usd,
+      tokens: activityItem.cost.total_tokens,
+      trace_id: activityItem.trace_id,
+      advanced: {
+        decision: activityItem.decision,
+        mode: activityItem.enforcement_mode,
+        pep_plane: activityItem.pep_plane,
+        pdp_engine: activityItem.pdp_engine,
+      },
+    },
+  ],
+  next_cursor: null,
+};
+
 const activitySummary = {
   activity_sets: [
     {
@@ -470,7 +524,9 @@ const capabilitySnapshot = {
       install_state: "installed",
       warm_check: "passed",
       setup_action_ids: [],
-      limitations_en: ["User-mode fixture for E2E. Kernel WFP driver is not required."],
+      limitations_en: [
+        "User-mode fixture for E2E. Kernel WFP driver is not required.",
+      ],
       limitations_th: [],
     },
     {
@@ -484,7 +540,9 @@ const capabilitySnapshot = {
       install_state: "not_installed",
       warm_check: "not_run",
       setup_action_ids: ["install-browser-extension"],
-      limitations_en: ["Browser message body capture requires user installation."],
+      limitations_en: [
+        "Browser message body capture requires user installation.",
+      ],
       limitations_th: [],
     },
   ],
@@ -613,7 +671,8 @@ const usageEvents = {
 const policySuggestion = {
   suggestion_id: "suggest-protect-workspace-files",
   title: "Protect workspace source files",
-  summary: "Antigravity was observed reading the source folder. Deploy an enforce policy for local file access.",
+  summary:
+    "Antigravity was observed reading the source folder. Deploy an enforce policy for local file access.",
   severity: "medium",
   status: "ready",
   feasibility: "can_enforce_now",
@@ -641,8 +700,18 @@ function entity360(entityType: string | null, entityId: string | null) {
     },
     summaries: [
       { kind: "entity", label: entity.label, count: 1, tone: "info" },
-      { kind: "observed_links", label: "Observed Links", count: 3, tone: "success" },
-      { kind: "enforced_links", label: "Enforced Links", count: 3, tone: "success" },
+      {
+        kind: "observed_links",
+        label: "Observed Links",
+        count: 3,
+        tone: "success",
+      },
+      {
+        kind: "enforced_links",
+        label: "Enforced Links",
+        count: 3,
+        tone: "success",
+      },
     ],
     activity: [activityItem],
     warnings: [],
@@ -671,11 +740,13 @@ export async function installMockApi(page: Page) {
     }),
   );
 
-  await page.route("**/v1/tenants/local/devices/local/capability-snapshot-v2**", (route) =>
-    json(route, capabilitySnapshot),
+  await page.route(
+    "**/v1/tenants/local/devices/local/capability-snapshot-v2**",
+    (route) => json(route, capabilitySnapshot),
   );
-  await page.route("**/v1/tenants/local/devices/local/capability-refresh**", (route) =>
-    json(route, capabilitySnapshot),
+  await page.route(
+    "**/v1/tenants/local/devices/local/capability-refresh**",
+    (route) => json(route, capabilitySnapshot),
   );
 
   await page.route("**/v1/tenants/local/registry/agents", (route) =>
@@ -708,17 +779,21 @@ export async function installMockApi(page: Page) {
   await page.route("**/v1/tenants/local/discovery/entities", (route) =>
     json(route, { items: scanStarted ? [capabilityInventory.entity] : [] }),
   );
-  await page.route("**/v1/tenants/local/discovery/candidates/*/capabilities", (route) =>
-    json(route, capabilityInventory),
+  await page.route(
+    "**/v1/tenants/local/discovery/candidates/*/capabilities",
+    (route) => json(route, capabilityInventory),
   );
   await page.route(
     "**/v1/tenants/local/discovery/candidates/*/retrieve-capabilities",
     (route) => json(route, capabilityInventory),
   );
-  await page.route("**/v1/tenants/local/discovery/candidates/*/register", (route) => {
-    scanStarted = true;
-    return json(route, agent);
-  });
+  await page.route(
+    "**/v1/tenants/local/discovery/candidates/*/register",
+    (route) => {
+      scanStarted = true;
+      return json(route, agent);
+    },
+  );
   await page.route("**/v1/tenants/local/discovery/scans", (route) => {
     if (route.request().method() === "POST") {
       scanStarted = true;
@@ -765,7 +840,10 @@ export async function installMockApi(page: Page) {
     if (url.pathname.endsWith("/entity-graph/node")) {
       return json(
         route,
-        entity360(url.searchParams.get("entity_type"), url.searchParams.get("entity_id")),
+        entity360(
+          url.searchParams.get("entity_type"),
+          url.searchParams.get("entity_id"),
+        ),
       );
     }
     return json(
@@ -774,7 +852,18 @@ export async function installMockApi(page: Page) {
     );
   });
   await page.route("**/v1/tenants/local/activity-timeline**", (route) =>
-    json(route, scanStarted ? activityTimeline : { ...activityTimeline, items: [] }),
+    json(
+      route,
+      scanStarted ? activityTimeline : { ...activityTimeline, items: [] },
+    ),
+  );
+  await page.route("**/v1/tenants/local/user-friendly-activity**", (route) =>
+    json(
+      route,
+      scanStarted
+        ? userFriendlyActivity
+        : { ...userFriendlyActivity, items: [] },
+    ),
   );
   await page.route("**/v1/tenants/local/activity", (route) =>
     json(route, scanStarted ? activitySummary : { activity_sets: [] }),
@@ -783,10 +872,13 @@ export async function installMockApi(page: Page) {
   await page.route("**/v1/tenants/local/policy-suggestions", (route) =>
     json(route, { items: suggestionsGenerated ? [policySuggestion] : [] }),
   );
-  await page.route("**/v1/tenants/local/policy-suggestions/generate", (route) => {
-    suggestionsGenerated = true;
-    return json(route, { items: [policySuggestion] });
-  });
+  await page.route(
+    "**/v1/tenants/local/policy-suggestions/generate",
+    (route) => {
+      suggestionsGenerated = true;
+      return json(route, { items: [policySuggestion] });
+    },
+  );
   await page.route("**/v1/tenants/local/v1/policy/suggestions", (route) =>
     json(route, [
       {
@@ -862,23 +954,26 @@ export async function installMockApi(page: Page) {
       },
     }),
   );
-  await page.route("**/v1/tenants/local/v1/deploy/session/deploy-session-1/confirm", (route) =>
-    json(route, {
-      policy_id: policy.policy_id,
-      bindings: [
-        {
-          domain: "filesystem",
-          method_id: "windows_process_observer",
-          effective_level: "enforce",
-          maturity: "beta",
-        },
-      ],
-      fallbacks: [],
-      auto_selected: true,
-    }),
+  await page.route(
+    "**/v1/tenants/local/v1/deploy/session/deploy-session-1/confirm",
+    (route) =>
+      json(route, {
+        policy_id: policy.policy_id,
+        bindings: [
+          {
+            domain: "filesystem",
+            method_id: "windows_process_observer",
+            effective_level: "enforce",
+            maturity: "beta",
+          },
+        ],
+        fallbacks: [],
+        auto_selected: true,
+      }),
   );
-  await page.route("**/v1/tenants/local/v1/deploy/session/deploy-session-1/apply", (route) =>
-    json(route, { applied: true, policy_id: policy.policy_id }),
+  await page.route(
+    "**/v1/tenants/local/v1/deploy/session/deploy-session-1/apply",
+    (route) => json(route, { applied: true, policy_id: policy.policy_id }),
   );
   await page.route(/\/v1\/tenants\/local\/policies\/[^/]+\/publish$/, (route) =>
     json(route, {
@@ -897,7 +992,8 @@ export async function installMockApi(page: Page) {
           event_id: "decision-e2e-1",
           payload: {
             decision: "allow",
-            reason: "Policy allowed source folder read after local PDP evaluation.",
+            reason:
+              "Policy allowed source folder read after local PDP evaluation.",
             request_id: "req-e2e-1",
             matched_policy_ids: [policy.policy_id],
             latency_ms: 7,
@@ -913,8 +1009,9 @@ export async function installMockApi(page: Page) {
   await page.route("**/v1/tenants/local/usage/events**", (route) =>
     json(route, usageEvents),
   );
-  await page.route("**/v1/tenants/local/local-observe/refresh", (route) =>
-    json(route, {
+  await page.route("**/v1/tenants/local/local-observe/refresh", (route) => {
+    scanStarted = true;
+    return json(route, {
       schema_version: "local-observe-refresh.v1",
       tenant_id: "local",
       scan_id: "scan-e2e-1",
@@ -928,8 +1025,8 @@ export async function installMockApi(page: Page) {
       capture_quality: ["exact"],
       limitations: [],
       next_steps: [],
-    }),
-  );
+    });
+  });
 
   await page.route("**/v1/tenants/local/connectors", (route) => {
     if (route.request().method() === "GET") {

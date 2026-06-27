@@ -21,6 +21,7 @@ const categoryLabels: Record<UserActivityCategory, string> = {
   commands: "Commands",
   ai_models: "AI models",
   tools: "AI tools",
+  safety: "Prompt & data safety",
   cost: "Cost",
   unknown: "Other activity",
 };
@@ -33,6 +34,7 @@ const actionText: Record<UserActivityAction, string> = {
   send: "sent",
   use_model: "used",
   call_tool: "called",
+  redact: "protected",
   spend: "spent tokens on",
   watch: "was seen using",
 };
@@ -45,6 +47,7 @@ const resultLabels: Record<UserActivityResult, string> = {
   asked_and_denied: "Asked and blocked",
   watched_only: "Watched only",
   warned: "Warned",
+  redacted: "Redacted",
   error: "Error",
 };
 
@@ -90,6 +93,15 @@ export const SIMPLE_RULE_PRESETS: SimpleRulePreset[] = [
     behavior: "allow",
   },
   {
+    id: "enable_prompt_guard",
+    label: "Guard prompts and private data",
+    description:
+      "Watch for prompt injection, secrets, and PII before prompts or outputs continue.",
+    intent: "enable_prompt_guard",
+    category: "safety",
+    behavior: "ask_first",
+  },
+  {
     id: "limit_ai_spend",
     label: "Limit AI usage cost",
     description: "Warn or block when token or cost usage exceeds your limit.",
@@ -128,6 +140,8 @@ function rawText(item: ActivityTimelineItem) {
     item.resource?.label,
     item.resource?.type,
     item.explanation,
+    item.decision,
+    item.enforcement_mode,
   ]
     .filter(Boolean)
     .join(" ")
@@ -139,6 +153,19 @@ function inferCategory(item: ActivityTimelineItem): UserActivityCategory {
   const resourceType = item.resource?.type?.toLowerCase() ?? "";
   const toolType = item.tool?.type?.toLowerCase() ?? "";
 
+  if (
+    text.includes("prompt") ||
+    text.includes("injection") ||
+    text.includes("redact") ||
+    text.includes("mask") ||
+    text.includes("pii") ||
+    text.includes("secret") ||
+    text.includes("credential") ||
+    text.includes("unsafe output") ||
+    text.includes("guard")
+  ) {
+    return "safety";
+  }
   if (
     resourceType.includes("file") ||
     resourceType.includes("folder") ||
@@ -199,6 +226,7 @@ function inferAction(
   if (category === "email") return text.includes("send") ? "send" : "read";
   if (category === "ai_models") return "use_model";
   if (category === "tools") return "call_tool";
+  if (category === "safety") return "redact";
   if (category === "cost") return "spend";
   return "watch";
 }
@@ -206,6 +234,7 @@ function inferAction(
 function inferResult(item: ActivityTimelineItem): UserActivityResult {
   const decision = item.decision.toLowerCase();
   const mode = item.enforcement_mode.toLowerCase();
+  if (decision === "redact" || decision === "mask") return "redacted";
   if (decision === "deny" || decision === "blocked") return "blocked";
   if (decision === "error") return "error";
   if (decision === "warn") return "warned";
@@ -244,6 +273,8 @@ function capabilityNote(
   category: UserActivityCategory,
 ) {
   if (result === "blocked") return "Pollek blocked this action.";
+  if (result === "redacted")
+    return "Pollek removed or masked sensitive content before it could continue.";
   if (result === "allowed") return "Pollek saw this action and it was allowed.";
   if (result === "warned") return "Pollek warned about this action.";
   if (result === "asked_first")
@@ -251,12 +282,17 @@ function capabilityNote(
   if (category === "files" || category === "web" || category === "commands") {
     return "Pollek can watch this now. Blocking may require OS setup or an agent-specific setting.";
   }
+  if (category === "safety") {
+    return "Pollek can watch prompt and data-safety signals. Blocking or redaction depends on which guard is in the AI app path.";
+  }
   return "Pollek can watch this activity and explain what to review next.";
 }
 
 function nextStep(result: UserActivityResult, category: UserActivityCategory) {
   if (result === "blocked")
     return "Review the rule if this should be allowed next time.";
+  if (result === "redacted")
+    return "Review the safety rule and confirm the AI app is using the guard path for prompts and outputs.";
   if (category === "files") {
     return "Set a rule for this folder, or restrict file access inside the AI app settings.";
   }
@@ -268,6 +304,9 @@ function nextStep(result: UserActivityResult, category: UserActivityCategory) {
   }
   if (category === "email") {
     return "Keep email access opt-in and review the connector permissions.";
+  }
+  if (category === "safety") {
+    return "Keep watching, enable Prompt Guard for this AI app, or tighten the AI app's own safety settings.";
   }
   return "Keep watching or create a rule from similar activity.";
 }
@@ -320,8 +359,10 @@ export function summarizeActivities(items: UserFriendlyActivityEvent[]) {
     files: items.filter((item) => item.category === "files").length,
     web: items.filter((item) => item.category === "web").length,
     commands: items.filter((item) => item.category === "commands").length,
+    safety: items.filter((item) => item.category === "safety").length,
     blocked: items.filter((item) => item.result === "blocked").length,
     watched: items.filter((item) => item.result === "watched_only").length,
+    redacted: items.filter((item) => item.result === "redacted").length,
     costUsd: items.reduce((total, item) => total + (item.cost_usd ?? 0), 0),
   };
 }
@@ -343,6 +384,7 @@ function domainsForCategory(category: UserActivityCategory) {
     commands: ["process_launch"],
     ai_models: ["token_cost", "prompt_content"],
     tools: ["mcp_tool_call"],
+    safety: ["prompt_content", "mcp_tool_call"],
     cost: ["token_cost"],
     unknown: [],
   };
@@ -382,6 +424,7 @@ export function buildUserCapabilityMatrix(
     "email",
     "commands",
     "tools",
+    "safety",
     "ai_models",
     "cost",
   ];

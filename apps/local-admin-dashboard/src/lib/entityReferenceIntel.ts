@@ -25,12 +25,27 @@ export interface ReferenceIntel {
     label: string;
     keywords: string[];
   }>;
+  observeGuide?: {
+    summary: string;
+    probeKeys: string[];
+    signals: Array<{
+      label: string;
+      probeKeys: string[];
+      meaning: string;
+      detail: string;
+      userAction: string;
+    }>;
+    caveat: string;
+  };
 }
 
 const REFERENCES = referenceDefinitions as ReferenceIntel[];
 
 function normalize(value?: string | null) {
-  return (value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 export function findReferenceIntel(input: {
@@ -102,4 +117,17 @@ export function assessExpectedCapabilities(
       ),
     })),
   );
+}
+
+export function matchObserveGuideSignals(
+  reference: ReferenceIntel | undefined,
+  observedTerms: Array<string | undefined | null>,
+) {
+  const guide = reference?.observeGuide;
+  if (!guide) return [];
+  const observed = normalize(observedTerms.filter(Boolean).join(" "));
+  return guide.signals.map((signal) => ({
+    ...signal,
+    detected: signal.probeKeys.some((key) => observed.includes(normalize(key))),
+  }));
 }

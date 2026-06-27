@@ -31,13 +31,13 @@ export function Protect() {
           <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
             <ShieldCheck className="h-6 w-6 text-primary" />
             {mode === "desktop_simple"
-              ? "Protect Agents"
-              : "Advance Protection"}
+              ? "Create AI Activity Rule"
+              : "Create Rule"}
           </h2>
           <p className="mt-1 text-muted-foreground">
             {mode === "desktop_simple"
-              ? "Deploy guardrails in 3 easy steps. The system will handle the rest."
-              : "Deploy guardrails with automatic feasibility planning and method selection."}
+              ? "Choose what an AI app can watch, ask about, or block without learning policy terms."
+              : "Create a user-friendly rule first, then inspect the generated policy and control plan when needed."}
           </p>
         </div>
       </div>

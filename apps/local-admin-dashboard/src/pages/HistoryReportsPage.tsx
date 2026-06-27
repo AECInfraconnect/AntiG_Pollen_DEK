@@ -9,12 +9,10 @@ import {
   History,
   RefreshCw,
 } from "lucide-react";
-import { EntityGraphApi } from "../services/entityGraphApi";
-import type { ActivityTimelineItem } from "../features/entity-graph/types";
+import { UserActivityApi } from "../features/user-activity/api";
 import {
   categoryLabel,
   summarizeActivities,
-  toUserFriendlyActivity,
 } from "../features/user-activity/userActivityModel";
 import type { UserFriendlyActivityEvent } from "../features/user-activity/types";
 import { cn } from "@/lib/utils";
@@ -123,15 +121,15 @@ function ReportRow({
 }
 
 export function HistoryReportsPage() {
-  const [rawItems, setRawItems] = useState<ActivityTimelineItem[]>([]);
+  const [allItems, setAllItems] = useState<UserFriendlyActivityEvent[]>([]);
   const [range, setRange] = useState<Range>("7d");
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(() => {
     setLoading(true);
-    EntityGraphApi.getActivity({ limit: 1000 })
-      .then((response) => setRawItems(response.items ?? []))
-      .catch(() => setRawItems([]))
+    UserActivityApi.list({ limit: 1000 })
+      .then((response) => setAllItems(response.items ?? []))
+      .catch(() => setAllItems([]))
       .finally(() => setLoading(false));
   }, []);
 
@@ -140,11 +138,8 @@ export function HistoryReportsPage() {
   }, [load]);
 
   const items = useMemo(
-    () =>
-      rawItems
-        .map(toUserFriendlyActivity)
-        .filter((item) => inRange(item, range)),
-    [rawItems, range],
+    () => allItems.filter((item) => inRange(item, range)),
+    [allItems, range],
   );
   const summary = useMemo(() => summarizeActivities(items), [items]);
   const byAgent = useMemo(
@@ -215,7 +210,7 @@ export function HistoryReportsPage() {
         </div>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         <div className="rounded-lg border bg-card/60 p-4">
           <div className="text-2xl font-semibold">{summary.total}</div>
           <p className="mt-1 text-xs text-muted-foreground">Events</p>
@@ -231,6 +226,10 @@ export function HistoryReportsPage() {
         <div className="rounded-lg border bg-card/60 p-4">
           <div className="text-2xl font-semibold">{summary.blocked}</div>
           <p className="mt-1 text-xs text-muted-foreground">Blocked</p>
+        </div>
+        <div className="rounded-lg border bg-card/60 p-4">
+          <div className="text-2xl font-semibold">{summary.safety}</div>
+          <p className="mt-1 text-xs text-muted-foreground">Safety</p>
         </div>
         <div className="rounded-lg border bg-card/60 p-4">
           <div className="text-2xl font-semibold">

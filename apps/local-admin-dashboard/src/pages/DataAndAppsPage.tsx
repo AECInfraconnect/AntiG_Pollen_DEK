@@ -6,7 +6,10 @@ import {
   ExternalLink,
   FolderOpen,
   Globe2,
+  Mail,
+  ShieldCheck,
   Search,
+  Sparkles,
   Terminal,
   Wrench,
 } from "lucide-react";
@@ -19,14 +22,25 @@ import {
 import type { UserActivityCategory } from "../features/user-activity/types";
 import { cn } from "@/lib/utils";
 
-type Tab = "files" | "web" | "apps" | "commands" | "tools";
+type Tab =
+  | "files"
+  | "web"
+  | "email"
+  | "apps"
+  | "commands"
+  | "ai_models"
+  | "tools"
+  | "safety";
 
 const tabs: Array<{ id: Tab; label: string; icon: any }> = [
   { id: "files", label: "Files & folders", icon: FolderOpen },
   { id: "web", label: "Websites", icon: Globe2 },
+  { id: "email", label: "Email & calendar", icon: Mail },
   { id: "apps", label: "Apps", icon: AppWindow },
   { id: "commands", label: "Commands", icon: Terminal },
+  { id: "ai_models", label: "AI APIs & models", icon: Sparkles },
   { id: "tools", label: "AI tools", icon: Wrench },
+  { id: "safety", label: "Prompt safety", icon: ShieldCheck },
 ];
 
 function rawResourceText(resource: Resource) {
@@ -71,6 +85,28 @@ function resourceCategory(resource: Resource): Tab {
   ) {
     return "web";
   }
+  if (text.includes("email") || text.includes("calendar")) return "email";
+  if (
+    text.includes("model") ||
+    text.includes("llm") ||
+    text.includes("token") ||
+    text.includes("openai") ||
+    text.includes("anthropic") ||
+    text.includes("huggingface") ||
+    text.includes("nvidia")
+  ) {
+    return "ai_models";
+  }
+  if (
+    text.includes("prompt") ||
+    text.includes("injection") ||
+    text.includes("pii") ||
+    text.includes("secret") ||
+    text.includes("redact") ||
+    text.includes("guard")
+  ) {
+    return "safety";
+  }
   if (text.includes("process") || text.includes("app")) return "apps";
   if (
     text.includes("command") ||
@@ -90,6 +126,25 @@ function toolCategory(tool: Tool): Tab {
     text.includes("shell")
   ) {
     return "commands";
+  }
+  if (
+    text.includes("prompt") ||
+    text.includes("injection") ||
+    text.includes("pii") ||
+    text.includes("secret") ||
+    text.includes("redact") ||
+    text.includes("guard")
+  ) {
+    return "safety";
+  }
+  if (
+    text.includes("model") ||
+    text.includes("llm") ||
+    text.includes("token") ||
+    text.includes("openai") ||
+    text.includes("anthropic")
+  ) {
+    return "ai_models";
   }
   if (
     text.includes("browser") ||
@@ -194,11 +249,17 @@ export function DataAndAppsPage() {
         category:
           category === "web"
             ? "web"
+            : category === "email"
+              ? "email"
             : category === "apps"
               ? "apps"
               : category === "commands"
                 ? "commands"
-                : "files",
+                : category === "ai_models"
+                  ? "ai_models"
+                  : category === "safety"
+                    ? "safety"
+                    : "files",
         source: "registry",
       };
     });
@@ -214,6 +275,10 @@ export function DataAndAppsPage() {
         category:
           category === "web"
             ? "web"
+            : category === "ai_models"
+              ? "ai_models"
+              : category === "safety"
+                ? "safety"
             : category === "commands"
               ? "commands"
               : "tools",
@@ -231,6 +296,19 @@ export function DataAndAppsPage() {
       const category: Tab =
         text.includes("http") || text.includes("domain")
           ? "web"
+          : text.includes("email") || text.includes("calendar")
+            ? "email"
+            : text.includes("prompt") ||
+                text.includes("injection") ||
+                text.includes("pii") ||
+                text.includes("secret") ||
+                text.includes("redact") ||
+                text.includes("guard")
+              ? "safety"
+              : text.includes("model") ||
+                  text.includes("llm") ||
+                  text.includes("token")
+                ? "ai_models"
           : text.includes("command")
             ? "commands"
             : text.includes("app")
@@ -244,11 +322,17 @@ export function DataAndAppsPage() {
         category:
           category === "web"
             ? "web"
+            : category === "email"
+              ? "email"
             : category === "commands"
               ? "commands"
               : category === "apps"
                 ? "apps"
-                : "files",
+                : category === "ai_models"
+                  ? "ai_models"
+                  : category === "safety"
+                    ? "safety"
+                    : "files",
         source: "telemetry",
       };
     });
@@ -260,7 +344,7 @@ export function DataAndAppsPage() {
         tab: "tools" as Tab,
         title,
         subtitle: `${row.call_count ?? row.invocation_count ?? 0} observed calls`,
-        category: "tools",
+        category: "tools" as UserActivityCategory,
         source: "telemetry",
       };
     });
@@ -293,8 +377,8 @@ export function DataAndAppsPage() {
           Data & Apps
         </h2>
         <p className="text-sm text-muted-foreground">
-          Files, folders, websites, apps, commands, and tools touched by AI
-          apps.
+          Files, folders, websites, email, apps, commands, AI APIs, safety
+          guards, and tools touched by AI apps.
         </p>
       </div>
 

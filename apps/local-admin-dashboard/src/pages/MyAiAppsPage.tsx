@@ -11,15 +11,16 @@ import {
   ShieldCheck,
   ShieldX,
 } from "lucide-react";
-import { EntityGraphApi } from "../services/entityGraphApi";
 import { RegistryApi, type AiAgent } from "../services/api";
-import type { ActivityTimelineItem } from "../features/entity-graph/types";
+import { UserActivityApi } from "../features/user-activity/api";
+import { ReferenceIntelGuide } from "../components/reference/ReferenceIntelGuide";
+import { ReferenceIntelMark } from "../components/reference/ReferenceIntelMark";
 import {
   formatDateTime,
   labelize,
-  toUserFriendlyActivity,
 } from "../features/user-activity/userActivityModel";
 import type { UserFriendlyActivityEvent } from "../features/user-activity/types";
+import { findAgentReferenceIntel } from "../lib/entityReferenceIntel";
 import { cn } from "@/lib/utils";
 
 function agentSource(agent: AiAgent) {
@@ -79,13 +80,39 @@ function AgentCard({
   const events = eventsForAgent(agent, activity);
   const lastEvent = events[0];
   const blocked = events.filter((event) => event.result === "blocked").length;
+  const reference = findAgentReferenceIntel({
+    name: agent.name,
+    vendor: agent.vendor,
+    agentType: agent.agent_type,
+    runtimeName: agent.runtime?.runtime_name,
+  })[0];
+  const observedTerms = [
+    agent.name,
+    agent.vendor,
+    agent.agent_type,
+    agent.runtime?.runtime_name,
+    ...(agent.capabilities ?? []),
+    ...(agent.declared_tools ?? []),
+    ...(agent.declared_resources ?? []),
+    ...events.slice(0, 12).flatMap((event) => [
+      event.category,
+      event.action,
+      event.access_mode,
+      event.target_label,
+      event.plain_summary,
+    ]),
+  ];
 
   return (
     <article className="rounded-lg border bg-card/60 p-4">
       <div className="flex items-start gap-3">
-        <div className="rounded-lg bg-primary/10 p-2 text-primary">
-          <Bot className="h-4 w-4" />
-        </div>
+        {reference ? (
+          <ReferenceIntelMark reference={reference} size="sm" />
+        ) : (
+          <div className="rounded-lg bg-primary/10 p-2 text-primary">
+            <Bot className="h-4 w-4" />
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
@@ -131,6 +158,14 @@ function AgentCard({
               : "No recent activity is linked to this AI app yet."}
           </p>
 
+          <div className="mt-3">
+            <ReferenceIntelGuide
+              reference={reference}
+              observedTerms={observedTerms}
+              compact
+            />
+          </div>
+
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
               to={`/activity?q=${encodeURIComponent(agent.name)}`}
@@ -174,7 +209,7 @@ function AgentCard({
 
 export function MyAiAppsPage() {
   const [agents, setAgents] = useState<AiAgent[]>([]);
-  const [rawActivity, setRawActivity] = useState<ActivityTimelineItem[]>([]);
+  const [activity, setActivity] = useState<UserFriendlyActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -182,11 +217,11 @@ export function MyAiAppsPage() {
     setLoading(true);
     Promise.all([
       RegistryApi.listAgents().catch(() => [] as AiAgent[]),
-      EntityGraphApi.getActivity({ limit: 300 }).catch(() => ({ items: [] })),
+      UserActivityApi.list({ limit: 300 }).catch(() => ({ items: [] })),
     ])
       .then(([agentRows, activityPage]) => {
         setAgents(agentRows);
-        setRawActivity(activityPage.items ?? []);
+        setActivity(activityPage.items ?? []);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -195,10 +230,6 @@ export function MyAiAppsPage() {
     load();
   }, [load]);
 
-  const activity = useMemo(
-    () => rawActivity.map(toUserFriendlyActivity),
-    [rawActivity],
-  );
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return agents;

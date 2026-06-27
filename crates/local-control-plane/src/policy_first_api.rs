@@ -577,7 +577,167 @@ fn build_capability_snapshot_v2_for(
             privacy_note_th: "ต้องติดตั้ง browser extension ก่อนจึงจะสังเกต AI session บน browser ได้".into(),
             setup_action_ids: vec!["install_browser_extension".into()],
         },
+        ObservationSourceCapability {
+            source_id: "structured_local_agent_logs".into(),
+            display_name_en: "Structured local agent logs".into(),
+            display_name_th: "บันทึกกิจกรรมของ Agent ในเครื่อง".into(),
+            status: MethodReadiness::Available,
+            domains: vec![
+                ControlDomainV2::FileAccess,
+                ControlDomainV2::NetworkEgress,
+                ControlDomainV2::McpToolCall,
+                ControlDomainV2::PromptContent,
+                ControlDomainV2::TokenCost,
+            ],
+            privacy_note_en: "Reads approved local agent/session logs when present; stores redacted paths, domains, usage fields, and decisions, not raw prompt or file contents by default.".into(),
+            privacy_note_th: "อ่าน log/session ในเครื่องที่อนุญาตไว้เมื่อพบ เก็บ path/domain/usage/decision แบบ redacted โดยไม่เก็บ prompt หรือเนื้อหาไฟล์เป็นค่าเริ่มต้น".into(),
+            setup_action_ids: vec![],
+        },
+        ObservationSourceCapability {
+            source_id: "wrapper_or_proxy_telemetry".into(),
+            display_name_en: "Wrapper or proxy telemetry".into(),
+            display_name_th: "Telemetry จาก wrapper หรือ proxy".into(),
+            status: if std::env::var("POLLEK_MCP_PROXY_READY").ok().as_deref() == Some("1")
+                || std::env::var("POLLEK_MCP_STDIO_WRAPPER_READY").ok().as_deref() == Some("1")
+            {
+                MethodReadiness::Available
+            } else {
+                MethodReadiness::NeedsConfiguration
+            },
+            domains: vec![
+                ControlDomainV2::McpToolCall,
+                ControlDomainV2::PromptContent,
+                ControlDomainV2::TokenCost,
+                ControlDomainV2::FileAccess,
+                ControlDomainV2::NetworkEgress,
+            ],
+            privacy_note_en: "Provides exact tool/resource/model usage when an AI app is routed through an approved Pollek wrapper or proxy.".into(),
+            privacy_note_th: "ให้ข้อมูล tool/resource/model usage แบบ exact เมื่อ AI app วิ่งผ่าน wrapper หรือ proxy ของ Pollek ที่อนุญาตไว้".into(),
+            setup_action_ids: vec!["approve_mcp_config_wrapper".into()],
+        },
     ];
+
+    match os.family.as_str() {
+        "windows" => {
+            setup_actions.push(setup_action(
+                "enable_windows_etw_observer",
+                "Enable Windows activity observer",
+                "เปิดตัวสังเกตกิจกรรม Windows",
+                "Required before Pollek can collect deeper Windows process, file, and network metadata through ETW or OS audit sources.",
+                "จำเป็นก่อนที่ Pollek จะเก็บ metadata ระดับลึกของ process, file และ network บน Windows ผ่าน ETW หรือ OS audit source ได้",
+                true,
+            ));
+            observation_sources.push(ObservationSourceCapability {
+                source_id: "windows_etw_observer".into(),
+                display_name_en: "Windows ETW activity observer".into(),
+                display_name_th: "ตัวสังเกตกิจกรรม Windows ETW".into(),
+                status: if std::env::var("POLLEK_WINDOWS_ETW_OBSERVER_READY").ok().as_deref()
+                    == Some("1")
+                {
+                    MethodReadiness::Available
+                } else if os.elevated {
+                    MethodReadiness::NeedsConfiguration
+                } else {
+                    MethodReadiness::NeedsPermission
+                },
+                domains: vec![
+                    ControlDomainV2::ProcessLaunch,
+                    ControlDomainV2::FileAccess,
+                    ControlDomainV2::NetworkEgress,
+                    ControlDomainV2::Dns,
+                ],
+                privacy_note_en: "Uses Windows event tracing/audit metadata for process, file, DNS, and network signals where enabled; content bodies are not collected.".into(),
+                privacy_note_th: "ใช้ metadata จาก Windows event tracing/audit สำหรับ process, file, DNS และ network เมื่อเปิดใช้งาน โดยไม่เก็บเนื้อหา".into(),
+                setup_action_ids: vec!["enable_windows_etw_observer".into()],
+            });
+            observation_sources.push(ObservationSourceCapability {
+                source_id: "windows_directory_changes".into(),
+                display_name_en: "Windows folder change watcher".into(),
+                display_name_th: "ตัวติดตามการเปลี่ยนแปลงโฟลเดอร์ Windows".into(),
+                status: MethodReadiness::Degraded,
+                domains: vec![ControlDomainV2::FileAccess],
+                privacy_note_en: "Can watch selected folders for created, changed, renamed, or deleted files. It does not prove which process caused the change without another signal.".into(),
+                privacy_note_th: "ติดตามโฟลเดอร์ที่เลือกว่ามีไฟล์ถูกสร้าง แก้ไข เปลี่ยนชื่อ หรือลบ แต่ต้องใช้สัญญาณอื่นประกอบเพื่อยืนยัน process".into(),
+                setup_action_ids: vec![],
+            });
+        }
+        "macos" => {
+            observation_sources.push(ObservationSourceCapability {
+                source_id: "macos_endpoint_security".into(),
+                display_name_en: "macOS Endpoint Security observer".into(),
+                display_name_th: "ตัวสังเกต macOS Endpoint Security".into(),
+                status: MethodReadiness::NeedsPermission,
+                domains: vec![ControlDomainV2::ProcessLaunch, ControlDomainV2::FileAccess],
+                privacy_note_en: "Requires Apple Endpoint Security approval before Pollek can observe sensitive process and file events.".into(),
+                privacy_note_th: "ต้องอนุมัติ Apple Endpoint Security ก่อน Pollek จึงจะสังเกต process และ file event ที่อ่อนไหวได้".into(),
+                setup_action_ids: vec!["approve_macos_endpoint_security".into()],
+            });
+            observation_sources.push(ObservationSourceCapability {
+                source_id: "macos_fsevents".into(),
+                display_name_en: "macOS file-system event watcher".into(),
+                display_name_th: "ตัวติดตาม file-system event บน macOS".into(),
+                status: MethodReadiness::Degraded,
+                domains: vec![ControlDomainV2::FileAccess],
+                privacy_note_en: "Can watch folder-tree changes where allowed. It is useful context but not full per-process proof by itself.".into(),
+                privacy_note_th: "ติดตามการเปลี่ยนแปลงของ folder tree ที่อนุญาตได้ เป็นบริบทที่มีประโยชน์แต่ยังไม่ใช่หลักฐาน per-process แบบครบถ้วน".into(),
+                setup_action_ids: vec![],
+            });
+            observation_sources.push(ObservationSourceCapability {
+                source_id: "macos_network_extension".into(),
+                display_name_en: "macOS Network Extension observer".into(),
+                display_name_th: "ตัวสังเกต macOS Network Extension".into(),
+                status: MethodReadiness::NeedsPermission,
+                domains: vec![ControlDomainV2::NetworkEgress, ControlDomainV2::Dns],
+                privacy_note_en: "Requires Network Extension approval before device-level network observation or blocking can be real.".into(),
+                privacy_note_th: "ต้องอนุมัติ Network Extension ก่อนจึงจะสังเกตหรือบล็อก network ระดับเครื่องได้จริง".into(),
+                setup_action_ids: vec!["approve_macos_network_extension".into()],
+            });
+        }
+        "linux" => {
+            observation_sources.push(ObservationSourceCapability {
+                source_id: "linux_fanotify".into(),
+                display_name_en: "Linux fanotify file observer".into(),
+                display_name_th: "ตัวสังเกตไฟล์ Linux fanotify".into(),
+                status: if os.elevated {
+                    MethodReadiness::Degraded
+                } else {
+                    MethodReadiness::NeedsPermission
+                },
+                domains: vec![ControlDomainV2::FileAccess],
+                privacy_note_en: "Can observe file events and permission decisions when granted required privileges. Exact path/process depth depends on kernel and mount configuration.".into(),
+                privacy_note_th: "สังเกต file event และ permission decision ได้เมื่อได้สิทธิ์ที่จำเป็น ความละเอียดของ path/process ขึ้นกับ kernel และ mount configuration".into(),
+                setup_action_ids: vec!["grant_linux_fanotify_permissions".into()],
+            });
+            observation_sources.push(ObservationSourceCapability {
+                source_id: "linux_inotify_path_watcher".into(),
+                display_name_en: "Linux folder change watcher".into(),
+                display_name_th: "ตัวติดตามการเปลี่ยนแปลงโฟลเดอร์ Linux".into(),
+                status: MethodReadiness::Degraded,
+                domains: vec![ControlDomainV2::FileAccess],
+                privacy_note_en: "Can watch selected directories for changes without content capture, but it does not prove the responsible process by itself.".into(),
+                privacy_note_th: "ติดตาม directory ที่เลือกได้โดยไม่เก็บเนื้อหา แต่ยังไม่ยืนยัน process ที่ทำให้เกิด event ได้โดยลำพัง".into(),
+                setup_action_ids: vec![],
+            });
+            observation_sources.push(ObservationSourceCapability {
+                source_id: "linux_ebpf_observer".into(),
+                display_name_en: "Linux eBPF network observer".into(),
+                display_name_th: "ตัวสังเกต network Linux eBPF".into(),
+                status: if std::env::var("POLLEK_EBPF_PROGRAM_LOADED").ok().as_deref() == Some("1")
+                {
+                    MethodReadiness::Available
+                } else if os.elevated {
+                    MethodReadiness::NeedsConfiguration
+                } else {
+                    MethodReadiness::NeedsPermission
+                },
+                domains: vec![ControlDomainV2::NetworkEgress, ControlDomainV2::Dns],
+                privacy_note_en: "Can provide deeper network metadata when eBPF programs are loaded with required privileges. HTTPS contents are not collected by default.".into(),
+                privacy_note_th: "ให้ network metadata ระดับลึกขึ้นเมื่อโหลด eBPF program ด้วยสิทธิ์ที่จำเป็น โดยไม่เก็บเนื้อหา HTTPS เป็นค่าเริ่มต้น".into(),
+                setup_action_ids: vec!["grant_linux_ebpf_permissions".into()],
+            });
+        }
+        _ => {}
+    }
 
     if let Some(profile) = demo {
         apply_demo_profile(profile, &mut methods, &mut observation_sources);
@@ -637,9 +797,24 @@ fn apply_demo_profile(
     }
 
     for source in observation_sources {
-        if source.source_id == "browser_extension" {
+        if matches!(
+            source.source_id.as_str(),
+            "browser_extension"
+                | "wrapper_or_proxy_telemetry"
+                | "windows_etw_observer"
+                | "windows_directory_changes"
+                | "macos_endpoint_security"
+                | "macos_fsevents"
+                | "macos_network_extension"
+                | "linux_fanotify"
+                | "linux_inotify_path_watcher"
+                | "linux_ebpf_observer"
+        ) {
             source.status = readiness.clone();
-            source.privacy_note_en = format!("{} Browser AI data is simulated.", demo_note);
+            source.privacy_note_en = format!(
+                "{} Observation source readiness is simulated for this demo profile.",
+                demo_note
+            );
             source.privacy_note_th = source.privacy_note_en.clone();
         }
     }
