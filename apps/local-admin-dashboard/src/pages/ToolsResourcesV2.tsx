@@ -19,6 +19,7 @@ import {
 } from "../components/entity-360";
 import type { RelatedListItem } from "../components/entity-360/RelatedList";
 import { EntityCard } from "../components/master-detail/EntityCard";
+import { DetailPane } from "../components/master-detail/DetailPane";
 import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayout";
 import { entityIcon } from "../features/entity-graph/graphUtils";
 import type {
@@ -36,6 +37,9 @@ import {
   ReferenceIntelInline,
   ReferenceIntelMark,
 } from "../components/reference/ReferenceIntelMark";
+import { ReferenceIntelGuide } from "../components/reference/ReferenceIntelGuide";
+import { useMode } from "../context/ModeContext";
+import { isAdvanceMode } from "../lib/modes";
 
 interface ToolItem {
   tool_id: string;
@@ -78,12 +82,12 @@ function useToolsAndResources() {
         setTools(
           Array.isArray(toolPayload)
             ? toolPayload
-            : toolPayload?.items ?? toolPayload?.tools ?? [],
+            : (toolPayload?.items ?? toolPayload?.tools ?? []),
         );
         setResources(
           Array.isArray(resourcePayload)
             ? resourcePayload
-            : resourcePayload?.items ?? resourcePayload?.resources ?? [],
+            : (resourcePayload?.items ?? resourcePayload?.resources ?? []),
         );
       })
       .finally(() => setLoading(false));
@@ -92,7 +96,10 @@ function useToolsAndResources() {
   return { tools, resources, loading };
 }
 
-function buildRelatedSections(nodes: GraphNode[], centerId: string): RelatedSection[] {
+function buildRelatedSections(
+  nodes: GraphNode[],
+  centerId: string,
+): RelatedSection[] {
   const related = nodes.filter((node) => node.id !== centerId);
   const agents = related.filter((node) => node.type === "agent");
   const policies = related.filter((node) => node.type === "policy");
@@ -201,6 +208,32 @@ function referencesForResource(resource: ResourceItem) {
   });
 }
 
+function observedTermsForTool(tool: ToolItem) {
+  return [
+    tool.name,
+    tool.vendor,
+    tool.type,
+    tool.description,
+    tool.source,
+    tool.status,
+    tool.agent_id,
+  ];
+}
+
+function observedTermsForResource(resource: ResourceItem) {
+  return [
+    resource.name,
+    resource.type,
+    resource.description,
+    resource.source,
+    resource.status,
+    resource.path,
+    resource.uri,
+    resource.host,
+    resource.sensitivity,
+  ];
+}
+
 function referenceSectionFor(input: {
   entityKind: "tool" | "resource";
   name?: string;
@@ -242,7 +275,10 @@ function capabilityChecklistSection(
   references: ReferenceIntel[],
   observedCapabilities: string[],
 ): DetailSection | null {
-  const capabilities = assessExpectedCapabilities(references, observedCapabilities);
+  const capabilities = assessExpectedCapabilities(
+    references,
+    observedCapabilities,
+  );
   if (!capabilities.length) return null;
 
   return {
@@ -286,7 +322,8 @@ function toolDetailSections(
   const sections: DetailSection[] = [
     {
       title: "Current Status",
-      description: "Tool registration, runtime activity, and decision readiness.",
+      description:
+        "Tool registration, runtime activity, and decision readiness.",
       icon: Gauge,
       fields: [
         {
@@ -341,7 +378,8 @@ function toolDetailSections(
     },
     {
       title: "Data Sources & History",
-      description: "Where values came from and whether they are observed or declared.",
+      description:
+        "Where values came from and whether they are observed or declared.",
       icon: Clock3,
       fields: [
         {
@@ -445,8 +483,7 @@ function resourceDetailSections(
           label: "Path",
           value: emptyDash(resource.path),
           source: "filesystem/database/cloud observer",
-          note:
-            "For folders, files, and databases this should become folder, file, table, or query-level evidence when the OS/source supports it.",
+          note: "For folders, files, and databases this should become folder, file, table, or query-level evidence when the OS/source supports it.",
         },
       ],
     },
@@ -564,7 +601,11 @@ function ResourceDetailView({ resource }: { resource: ResourceItem }) {
           label: resource.status || "Registered",
           tone: resource.status === "active" ? "success" : "neutral",
         },
-        subtitle: resource.description ?? resource.path ?? resource.host ?? "No location available",
+        subtitle:
+          resource.description ??
+          resource.path ??
+          resource.host ??
+          "No location available",
         meta: [
           { label: "Type", value: resource.type },
           ...(resource.host ? [{ label: "Host", value: resource.host }] : []),
@@ -601,6 +642,307 @@ function ResourceDetailView({ resource }: { resource: ResourceItem }) {
   );
 }
 
+function ToolMasterDetailPane({
+  tool,
+  onOpenRecord,
+  showTechnicalDetails,
+}: {
+  tool: ToolItem;
+  onOpenRecord: () => void;
+  showTechnicalDetails: boolean;
+}) {
+  const reference = referencesForTool(tool)[0];
+  const capabilities = assessExpectedCapabilities(
+    reference ? [reference] : [],
+    observedTermsForTool(tool).filter((term): term is string => Boolean(term)),
+  );
+
+  return (
+    <DetailPane
+      title={tool.name}
+      subtitle={tool.description ?? tool.type}
+      status={tool.status === "active" ? "ok" : "info"}
+      statusLabel={tool.status || "Registered"}
+      actions={[
+        {
+          label: "Open full record",
+          primary: true,
+          icon: BookOpen,
+          onClick: onOpenRecord,
+        },
+      ]}
+      tabs={[
+        {
+          id: "overview",
+          label: "Overview",
+          content: (
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">Type</div>
+                  <div className="mt-1 break-words text-sm font-semibold">
+                    {tool.type}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">Calls</div>
+                  <div className="mt-1 text-sm font-semibold">
+                    {tool.call_count ?? 0}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">Last used</div>
+                  <div className="mt-1 text-sm font-semibold">
+                    {formatDateTime(tool.last_used)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">
+                    Owner AI app
+                  </div>
+                  <div className="mt-1 break-all text-sm font-semibold">
+                    {tool.agent_id ?? "Not linked yet"}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">Source</div>
+                  <div className="mt-1 break-words text-sm font-semibold">
+                    {tool.source ?? "registry/tools endpoint"}
+                  </div>
+                </div>
+              </div>
+
+              <ReferenceIntelGuide
+                reference={reference}
+                observedTerms={observedTermsForTool(tool)}
+              />
+            </div>
+          ),
+        },
+        {
+          id: "what-it-shows",
+          label: "What It Shows",
+          content: (
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-background/60 p-4">
+                <h4 className="text-sm font-semibold">
+                  What Pollek can show about this tool
+                </h4>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Tool activity helps explain what an AI app asked another
+                  program, MCP server, browser helper, shell wrapper, or model
+                  endpoint to do. Exact arguments and outputs depend on whether
+                  the tool is routed through a Pollek wrapper/proxy or another
+                  approved telemetry source.
+                </p>
+              </div>
+              {capabilities.length > 0 ? (
+                <div className="grid gap-2 md:grid-cols-2">
+                  {capabilities.map((capability) => (
+                    <div
+                      key={`${capability.referenceId}-${capability.id}`}
+                      className="rounded-lg border bg-background/60 p-4"
+                    >
+                      <div className="text-sm font-semibold">
+                        {capability.label}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {capability.detected
+                          ? "Observed in local evidence"
+                          : "Expected by definition, not observed yet"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  No well-known capability checklist matched this tool yet.
+                </div>
+              )}
+            </div>
+          ),
+        },
+        ...(showTechnicalDetails
+          ? [
+              {
+                id: "technical",
+                label: "Technical Details",
+                content: (
+                  <div className="space-y-3">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <PropertyRow label="Tool ID" value={tool.tool_id} />
+                      <PropertyRow label="Vendor" value={tool.vendor ?? "-"} />
+                      <PropertyRow label="Status" value={tool.status} />
+                      <PropertyRow label="Source" value={tool.source ?? "-"} />
+                    </div>
+                    <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
+                      {JSON.stringify(tool, null, 2)}
+                    </pre>
+                  </div>
+                ),
+              },
+            ]
+          : []),
+      ]}
+    />
+  );
+}
+
+function ResourceMasterDetailPane({
+  resource,
+  onOpenRecord,
+  showTechnicalDetails,
+}: {
+  resource: ResourceItem;
+  onOpenRecord: () => void;
+  showTechnicalDetails: boolean;
+}) {
+  const reference = referencesForResource(resource)[0];
+  const location =
+    resource.path ?? resource.uri ?? resource.host ?? "Location not captured";
+  const capabilities = assessExpectedCapabilities(
+    reference ? [reference] : [],
+    observedTermsForResource(resource).filter((term): term is string =>
+      Boolean(term),
+    ),
+  );
+
+  return (
+    <DetailPane
+      title={resource.name}
+      subtitle={resource.description ?? location}
+      status={resource.status === "active" ? "ok" : "info"}
+      statusLabel={resource.status || "Registered"}
+      actions={[
+        {
+          label: "Open full record",
+          primary: true,
+          icon: BookOpen,
+          onClick: onOpenRecord,
+        },
+      ]}
+      tabs={[
+        {
+          id: "overview",
+          label: "Overview",
+          content: (
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">Type</div>
+                  <div className="mt-1 break-words text-sm font-semibold">
+                    {resource.type}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">
+                    Sensitivity
+                  </div>
+                  <div className="mt-1 break-words text-sm font-semibold">
+                    {resource.sensitivity ?? "Unknown"}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-4">
+                  <div className="text-xs text-muted-foreground">
+                    Last accessed
+                  </div>
+                  <div className="mt-1 text-sm font-semibold">
+                    {formatDateTime(resource.last_accessed)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-background/60 p-4">
+                <div className="text-xs text-muted-foreground">
+                  Known location
+                </div>
+                <div className="mt-1 break-all text-sm font-semibold">
+                  {location}
+                </div>
+              </div>
+
+              <ReferenceIntelGuide
+                reference={reference}
+                observedTerms={observedTermsForResource(resource)}
+              />
+            </div>
+          ),
+        },
+        {
+          id: "what-it-shows",
+          label: "What It Shows",
+          content: (
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-background/60 p-4">
+                <h4 className="text-sm font-semibold">
+                  What Pollek can show about this resource
+                </h4>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Resource activity explains what files, folders, websites,
+                  email/calendar surfaces, local apps, commands, model APIs, or
+                  databases an AI app touched. Pollek records metadata first and
+                  only shows deeper per-process or per-request detail when the
+                  operating system and approved integrations support it.
+                </p>
+              </div>
+              {capabilities.length > 0 ? (
+                <div className="grid gap-2 md:grid-cols-2">
+                  {capabilities.map((capability) => (
+                    <div
+                      key={`${capability.referenceId}-${capability.id}`}
+                      className="rounded-lg border bg-background/60 p-4"
+                    >
+                      <div className="text-sm font-semibold">
+                        {capability.label}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {capability.detected
+                          ? "Observed in local evidence"
+                          : "Expected by definition, not observed yet"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  No well-known capability checklist matched this resource yet.
+                </div>
+              )}
+            </div>
+          ),
+        },
+        ...(showTechnicalDetails
+          ? [
+              {
+                id: "technical",
+                label: "Technical Details",
+                content: (
+                  <div className="space-y-3">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <PropertyRow
+                        label="Resource ID"
+                        value={resource.resource_id}
+                      />
+                      <PropertyRow label="URI" value={resource.uri ?? "-"} />
+                      <PropertyRow label="Path" value={resource.path ?? "-"} />
+                      <PropertyRow label="Host" value={resource.host ?? "-"} />
+                    </div>
+                    <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
+                      {JSON.stringify(resource, null, 2)}
+                    </pre>
+                  </div>
+                ),
+              },
+            ]
+          : []),
+      ]}
+    />
+  );
+}
+
 function PropertyRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-2 border-b border-border/30 pb-2 last:border-0 last:pb-0">
@@ -616,29 +958,40 @@ function PropertyRow({ label, value }: { label: string; value: ReactNode }) {
 
 export default function ToolsResourcesV2() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<"tools" | "resources">(
-    (searchParams.get("tab") as "tools" | "resources") ?? "tools",
-  );
-  const selectedId = searchParams.get("id") ?? undefined;
+  const { mode } = useMode();
+  const showTechnicalDetails = isAdvanceMode(mode);
+  const activeTab: "tools" | "resources" =
+    searchParams.get("tab") === "resources" ? "resources" : "tools";
+  const recordId = searchParams.get("id") ?? undefined;
+  const selectedId = searchParams.get("selected") ?? undefined;
   const { tools, resources, loading } = useToolsAndResources();
 
   const updateTab = (tab: "tools" | "resources") => {
-    setActiveTab(tab);
     setSearchParams({ tab });
   };
 
   const handleSelect = (id: string) => {
+    if (!id) {
+      setSearchParams({ tab: activeTab });
+      return;
+    }
+    setSearchParams({ tab: activeTab, selected: id });
+  };
+
+  const openFullRecord = (id: string) => {
     setSearchParams({ tab: activeTab, id });
   };
 
-  if (activeTab === "tools" && selectedId) {
-    const tool = tools.find((item) => item.tool_id === selectedId);
+  if (activeTab === "tools" && recordId) {
+    const tool = tools.find((item) => item.tool_id === recordId);
     if (tool) {
       return (
         <div className="space-y-4">
           <button
             type="button"
-            onClick={() => setSearchParams({ tab: "tools" })}
+            onClick={() =>
+              setSearchParams({ tab: "tools", selected: tool.tool_id })
+            }
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             Back to Tools & Resources
@@ -649,14 +1002,19 @@ export default function ToolsResourcesV2() {
     }
   }
 
-  if (activeTab === "resources" && selectedId) {
-    const resource = resources.find((item) => item.resource_id === selectedId);
+  if (activeTab === "resources" && recordId) {
+    const resource = resources.find((item) => item.resource_id === recordId);
     if (resource) {
       return (
         <div className="space-y-4">
           <button
             type="button"
-            onClick={() => setSearchParams({ tab: "resources" })}
+            onClick={() =>
+              setSearchParams({
+                tab: "resources",
+                selected: resource.resource_id,
+              })
+            }
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             Back to Tools & Resources
@@ -743,15 +1101,11 @@ export default function ToolsResourcesV2() {
             );
           }}
           renderDetail={(tool) => (
-            <div className="p-4">
-              <button
-                type="button"
-                onClick={() => handleSelect(tool.tool_id)}
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                Open Record View
-              </button>
-            </div>
+            <ToolMasterDetailPane
+              tool={tool}
+              onOpenRecord={() => openFullRecord(tool.tool_id)}
+              showTechnicalDetails={showTechnicalDetails}
+            />
           )}
         />
       )}
@@ -770,7 +1124,10 @@ export default function ToolsResourcesV2() {
                 title={resource.name}
                 subtitle={resource.description ?? resource.type}
                 summary={`Location: ${
-                  resource.path ?? resource.uri ?? resource.host ?? "not captured"
+                  resource.path ??
+                  resource.uri ??
+                  resource.host ??
+                  "not captured"
                 }`}
                 icon={Database}
                 visual={
@@ -802,15 +1159,11 @@ export default function ToolsResourcesV2() {
             );
           }}
           renderDetail={(resource) => (
-            <div className="p-4">
-              <button
-                type="button"
-                onClick={() => handleSelect(resource.resource_id)}
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                Open Record View
-              </button>
-            </div>
+            <ResourceMasterDetailPane
+              resource={resource}
+              onOpenRecord={() => openFullRecord(resource.resource_id)}
+              showTechnicalDetails={showTechnicalDetails}
+            />
           )}
         />
       )}
