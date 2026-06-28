@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -237,6 +237,134 @@ function presetStatus(
   };
 }
 
+function RuleRecordFrame({
+  row,
+  title,
+  subtitle,
+  status,
+  statusLabel,
+  children,
+}: {
+  row: RuleRow;
+  title: string;
+  subtitle: string;
+  status: UiStatus;
+  statusLabel: string;
+  children: ReactNode;
+}) {
+  const category = row.policy
+    ? labelize(row.policy.policy_type)
+    : row.preset.category === "unknown"
+      ? "All activity"
+      : categoryLabel(row.preset.category);
+  const behavior = row.policy
+    ? (row.policy.meta?.status ?? "Policy")
+    : labelize(row.preset.behavior);
+  const targetCount = row.policy
+    ? (row.policy.targets?.agent_ids?.length ?? 0) +
+      (row.policy.targets?.resource_ids?.length ?? 0)
+    : 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <ListChecks className="h-4 w-4 text-primary" />
+            Rule Record
+          </div>
+          <h2 className="mt-1 break-words text-2xl font-bold tracking-tight">
+            {title}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+        </div>
+        <span
+          className={cn(
+            "inline-flex w-fit rounded-full border px-3 py-1 text-xs font-medium",
+            status === "ok"
+              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700"
+              : status === "degraded"
+                ? "border-amber-500/25 bg-amber-500/10 text-amber-700"
+                : "border-border bg-card text-muted-foreground",
+          )}
+        >
+          {statusLabel}
+        </span>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)] lg:grid-cols-[300px_minmax(0,1fr)_320px]">
+        <aside className="space-y-3">
+          <section className="rounded-lg border bg-card/50 p-4">
+            <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              Record Summary
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="border-b border-border/40 pb-2">
+                <div className="text-xs text-muted-foreground">Group</div>
+                <div className="mt-0.5 font-medium">{row.group}</div>
+              </div>
+              <div className="border-b border-border/40 pb-2">
+                <div className="text-xs text-muted-foreground">Activity</div>
+                <div className="mt-0.5 font-medium">{category}</div>
+              </div>
+              <div className="border-b border-border/40 pb-2">
+                <div className="text-xs text-muted-foreground">Behavior</div>
+                <div className="mt-0.5 break-words font-medium">
+                  {behavior}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Targets</div>
+                <div className="mt-0.5 font-medium">
+                  {row.policy ? targetCount : "Preset"}
+                </div>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <section className="min-w-0">{children}</section>
+
+        <aside className="space-y-3 md:col-span-2 lg:col-span-1">
+          <section className="rounded-lg border bg-card/50 p-4">
+            <h3 className="text-sm font-semibold">Related Records</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Review matching timeline evidence and the advanced policy record
+              for this rule.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                to={`/activity?q=${encodeURIComponent(title)}`}
+                className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+              >
+                <Eye className="h-4 w-4" />
+                Activity
+              </Link>
+              <Link
+                to="/policies"
+                className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+              >
+                <FileKey className="h-4 w-4" />
+                Advanced policies
+              </Link>
+            </div>
+          </section>
+
+          <section className="rounded-lg border bg-card/50 p-4">
+            <h3 className="text-sm font-semibold">Capability Honesty</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              A rule can watch, ask, or block only where this OS and connector
+              setup can prove support. If Pollek can only observe, use the
+              activity evidence to adjust the AI app settings too.
+            </p>
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 function RuleDetail({
   row,
   snapshot,
@@ -249,12 +377,19 @@ function RuleDetail({
   if (row.policy) {
     const status = policyStatus(row.policy);
     return (
-      <DetailPane
+      <RuleRecordFrame
+        row={row}
         title={row.policy.name}
         subtitle={row.group}
         status={status.status}
         statusLabel={status.label}
-        tabs={[
+      >
+        <DetailPane
+          title="Detail Workspace"
+          subtitle="Plain-language rule behavior, evidence links, and technical details."
+          status={status.status}
+          statusLabel={status.label}
+          tabs={[
           {
             id: "overview",
             label: "Overview",
@@ -342,19 +477,27 @@ function RuleDetail({
                 },
               ]
             : []),
-        ]}
-      />
+          ]}
+        />
+      </RuleRecordFrame>
     );
   }
 
   const status = presetStatus(row.preset, snapshot);
   return (
-    <DetailPane
+    <RuleRecordFrame
+      row={row}
       title={row.preset.label}
       subtitle={row.group}
       status={status.status}
       statusLabel={status.label}
-      tabs={[
+    >
+      <DetailPane
+        title="Detail Workspace"
+        subtitle="Plain-language setup preview and next steps for this suggested rule."
+        status={status.status}
+        statusLabel={status.label}
+        tabs={[
         {
           id: "overview",
           label: "Overview",
@@ -437,8 +580,9 @@ function RuleDetail({
               },
             ]
           : []),
-      ]}
-    />
+        ]}
+      />
+    </RuleRecordFrame>
   );
 }
 
@@ -531,71 +675,86 @@ export function AllowedBlockedPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <ListChecks className="h-6 w-6 text-primary" />
-            Allowed & Blocked
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Choose what each AI app can do, and see when Pollek can only watch.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            to="/protect"
-            className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Create rule
-          </Link>
-          <Link
-            to="/policies"
-            className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
-          >
-            <FileKey className="h-4 w-4" />
-            Advanced policies
-          </Link>
-        </div>
-      </div>
-
-      <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border bg-card/60 p-4">
-          <div className="text-2xl font-semibold">{activePolicies.length}</div>
-          <p className="mt-1 text-xs text-muted-foreground">Active rules</p>
-        </div>
-        <div className="rounded-lg border bg-card/60 p-4">
-          <div className="text-2xl font-semibold">{draftPolicies.length}</div>
-          <p className="mt-1 text-xs text-muted-foreground">Draft rules</p>
-        </div>
-        <div className="rounded-lg border bg-card/60 p-4">
-          <div className="text-2xl font-semibold">
-            {SIMPLE_RULE_PRESETS.length}
+      {!selectedId && (
+        <>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+                <ListChecks className="h-6 w-6 text-primary" />
+                Allowed & Blocked
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Choose what each AI app can do, and see when Pollek can only
+                watch.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to="/protect"
+                className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90"
+              >
+                <Plus className="h-4 w-4" />
+                Create rule
+              </Link>
+              <Link
+                to="/policies"
+                className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+              >
+                <FileKey className="h-4 w-4" />
+                Advanced policies
+              </Link>
+            </div>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">Plain presets</p>
-        </div>
-      </section>
 
-      <section className="rounded-lg border bg-card/60 p-4">
-        <label className="relative block">
-          <span className="sr-only">Search rules</span>
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(event) => {
-              const value = event.target.value;
-              setSearch(value);
-              const next = new URLSearchParams(searchParams);
-              if (value.trim()) next.set("q", value.trim());
-              else next.delete("q");
-              next.delete("selected");
-              setSearchParams(next, { replace: true });
-            }}
-            placeholder="Search AI app, file, website, command, rule..."
-            className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm"
-          />
-        </label>
-      </section>
+          <section className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border bg-card/60 p-4">
+              <div className="text-2xl font-semibold">
+                {activePolicies.length}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Active rules
+              </p>
+            </div>
+            <div className="rounded-lg border bg-card/60 p-4">
+              <div className="text-2xl font-semibold">
+                {draftPolicies.length}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Draft rules
+              </p>
+            </div>
+            <div className="rounded-lg border bg-card/60 p-4">
+              <div className="text-2xl font-semibold">
+                {SIMPLE_RULE_PRESETS.length}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Plain presets
+              </p>
+            </div>
+          </section>
+
+          <section className="rounded-lg border bg-card/60 p-4">
+            <label className="relative block">
+              <span className="sr-only">Search rules</span>
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setSearch(value);
+                  const next = new URLSearchParams(searchParams);
+                  if (value.trim()) next.set("q", value.trim());
+                  else next.delete("q");
+                  next.delete("selected");
+                  setSearchParams(next, { replace: true });
+                }}
+                placeholder="Search AI app, file, website, command, rule..."
+                className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm"
+              />
+            </label>
+          </section>
+        </>
+      )}
 
       <MasterDetailLayout
         items={filteredRules}
@@ -603,6 +762,7 @@ export function AllowedBlockedPage() {
         onSelect={handleSelect}
         idSelector={(row) => row.id}
         loading={loading}
+        detailBackLabel="Back to all rules"
         emptyState={
           <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
             No rules match this view yet.

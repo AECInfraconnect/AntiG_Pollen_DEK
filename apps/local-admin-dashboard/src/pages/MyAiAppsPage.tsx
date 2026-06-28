@@ -22,11 +22,8 @@ import {
 import type { UserFriendlyActivityEvent } from "../features/user-activity/types";
 import { findAgentReferenceIntel } from "../lib/entityReferenceIntel";
 import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayout";
-import { DetailPane } from "../components/master-detail/DetailPane";
-import type { UiStatus } from "../lib/status";
-import { useMode } from "../context/ModeContext";
-import { isAdvanceMode } from "../lib/modes";
 import { cn } from "@/lib/utils";
+import { AgentDetailView } from "./AgentsV2";
 
 function agentSource(agent: AiAgent) {
   const source = agent.meta?.source ?? "registry";
@@ -62,13 +59,6 @@ function agentStatus(agent: AiAgent) {
     icon: Bot,
     className: "border-border bg-background text-muted-foreground",
   };
-}
-
-function agentUiStatus(agent: AiAgent): UiStatus {
-  if (agent.enforcement_mode === "Enforce") return "ok";
-  if (agent.enforcement_mode === "Observe") return "info";
-  if (agent.enforcement_mode === "NotEnforceable") return "degraded";
-  return "idle";
 }
 
 function eventsForAgent(agent: AiAgent, activity: UserFriendlyActivityEvent[]) {
@@ -226,209 +216,8 @@ function AgentCard({
   );
 }
 
-function AgentDetail({
-  agent,
-  activity,
-  showTechnicalDetails,
-}: {
-  agent: AiAgent;
-  activity: UserFriendlyActivityEvent[];
-  showTechnicalDetails: boolean;
-}) {
-  const status = agentStatus(agent);
-  const StatusIcon = status.icon;
-  const events = eventsForAgent(agent, activity);
-  const blocked = events.filter((event) => event.result === "blocked").length;
-  const lastEvent = events[0];
-  const reference = findAgentReferenceIntel({
-    name: agent.name,
-    vendor: agent.vendor,
-    agentType: agent.agent_type,
-    runtimeName: agent.runtime?.runtime_name,
-  })[0];
-  const observedTerms = [
-    agent.name,
-    agent.vendor,
-    agent.agent_type,
-    agent.runtime?.runtime_name,
-    ...(agent.capabilities ?? []),
-    ...(agent.declared_tools ?? []),
-    ...(agent.declared_resources ?? []),
-    ...events.slice(0, 12).flatMap((event) => [
-      event.category,
-      event.action,
-      event.access_mode,
-      event.target_label,
-      event.plain_summary,
-    ]),
-  ];
-
-  return (
-    <DetailPane
-      title={agent.name}
-      subtitle={`${labelize(agent.agent_type)} / ${agent.vendor ?? "Unknown vendor"}`}
-      status={agentUiStatus(agent)}
-      statusLabel={status.label}
-      tabs={[
-        {
-          id: "overview",
-          label: "Overview",
-          content: (
-            <div className="space-y-4">
-              <div className="rounded-lg border bg-background/60 p-4">
-                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <StatusIcon className="h-4 w-4" />
-                  Current visibility
-                </div>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Pollek has this AI app in the local registry. Use Activity to
-                  see files, websites, tools, commands, model usage, and policy
-                  decisions linked to it.
-                </p>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-lg border bg-background/60 p-4">
-                  <div className="text-xs text-muted-foreground">Activity</div>
-                  <div className="mt-1 text-lg font-semibold">
-                    {events.length}
-                  </div>
-                </div>
-                <div className="rounded-lg border bg-background/60 p-4">
-                  <div className="text-xs text-muted-foreground">Blocked</div>
-                  <div className="mt-1 text-lg font-semibold">{blocked}</div>
-                </div>
-                <div className="rounded-lg border bg-background/60 p-4">
-                  <div className="text-xs text-muted-foreground">Trust</div>
-                  <div className="mt-1 text-lg font-semibold capitalize">
-                    {agent.trust_level}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg border bg-background/60 p-4">
-                  <div className="text-xs text-muted-foreground">Source</div>
-                  <div className="mt-1 text-sm font-semibold">
-                    {agentSource(agent)}
-                  </div>
-                </div>
-                <div className="rounded-lg border bg-background/60 p-4">
-                  <div className="text-xs text-muted-foreground">Runtime</div>
-                  <div className="mt-1 text-sm font-semibold">
-                    {agent.runtime?.runtime_name ?? "Unknown runtime"}
-                  </div>
-                </div>
-              </div>
-
-              <ReferenceIntelGuide
-                reference={reference}
-                observedTerms={observedTerms}
-              />
-            </div>
-          ),
-        },
-        {
-          id: "activity",
-          label: "Activity",
-          content: (
-            <div className="space-y-3">
-              {lastEvent ? (
-                events.slice(0, 12).map((event) => (
-                  <div
-                    key={event.event_id}
-                    className="rounded-lg border bg-background/60 p-4"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <div className="text-sm font-medium">
-                          {event.plain_summary}
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {formatDateTime(event.timestamp)}
-                        </div>
-                      </div>
-                      <span className="rounded-full border bg-card px-2 py-0.5 text-[11px] text-muted-foreground">
-                        {event.result_label}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                      {event.capability_note}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                  No recent activity is linked to this AI app yet.
-                </div>
-              )}
-              <Link
-                to={`/activity?q=${encodeURIComponent(agent.name)}`}
-                className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
-              >
-                <Activity className="h-4 w-4" />
-                Open full activity
-              </Link>
-            </div>
-          ),
-        },
-        {
-          id: "control",
-          label: "Rules & Setup",
-          content: (
-            <div className="space-y-3">
-              <div className="rounded-lg border bg-background/60 p-4">
-                <h4 className="text-sm font-semibold">
-                  What to review for this AI app
-                </h4>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Start by observing. If the timeline shows file writes, web
-                  access, email use, terminal commands, or model spend that you
-                  do not want, create a rule in Pollek or apply the matching
-                  restriction inside the AI app settings.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Link
-                  to={`/allowed-blocked?q=${encodeURIComponent(agent.name)}`}
-                  className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
-                >
-                  <ShieldCheck className="h-4 w-4" />
-                  Rules
-                </Link>
-                <Link
-                  to="/setup"
-                  className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Setup
-                </Link>
-              </div>
-            </div>
-          ),
-        },
-        ...(showTechnicalDetails
-          ? [
-              {
-                id: "technical",
-                label: "Technical Details",
-                content: (
-                  <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
-                    {JSON.stringify(agent, null, 2)}
-                  </pre>
-                ),
-              },
-            ]
-          : []),
-      ]}
-    />
-  );
-}
-
 export function MyAiAppsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { mode } = useMode();
-  const showTechnicalDetails = isAdvanceMode(mode);
   const [agents, setAgents] = useState<AiAgent[]>([]);
   const [activity, setActivity] = useState<UserFriendlyActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -482,60 +271,66 @@ export function MyAiAppsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Bot className="h-6 w-6 text-primary" />
-            My AI Apps
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            AI assistants found on this computer, with what Pollek can currently
-            see.
-          </p>
-        </div>
-        <Link
-          to="/scan"
-          className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
-        >
-          <FolderSearch className="h-4 w-4" />
-          Find AI apps
-        </Link>
-      </div>
-
-      <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border bg-card/60 p-4">
-          <div className="text-2xl font-semibold">{agents.length}</div>
-          <p className="mt-1 text-xs text-muted-foreground">AI apps found</p>
-        </div>
-        <div className="rounded-lg border bg-card/60 p-4">
-          <div className="text-2xl font-semibold">{activity.length}</div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Recent activities
-          </p>
-        </div>
-        <div className="rounded-lg border bg-card/60 p-4">
-          <div className="flex items-center gap-2 text-2xl font-semibold">
-            <Clock3 className="h-5 w-5 text-primary" />
-            Live
+      {!selectedId && (
+        <>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+                <Bot className="h-6 w-6 text-primary" />
+                My AI Apps
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                AI assistants found on this computer, with what Pollek can
+                currently see.
+              </p>
+            </div>
+            <Link
+              to="/scan"
+              className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+            >
+              <FolderSearch className="h-4 w-4" />
+              Find AI apps
+            </Link>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Local dashboard data
-          </p>
-        </div>
-      </section>
 
-      <section className="rounded-lg border bg-card/60 p-4">
-        <label className="relative block">
-          <span className="sr-only">Search AI apps</span>
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search AI app, vendor, runtime..."
-            className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm"
-          />
-        </label>
-      </section>
+          <section className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border bg-card/60 p-4">
+              <div className="text-2xl font-semibold">{agents.length}</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                AI apps found
+              </p>
+            </div>
+            <div className="rounded-lg border bg-card/60 p-4">
+              <div className="text-2xl font-semibold">{activity.length}</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Recent activities
+              </p>
+            </div>
+            <div className="rounded-lg border bg-card/60 p-4">
+              <div className="flex items-center gap-2 text-2xl font-semibold">
+                <Clock3 className="h-5 w-5 text-primary" />
+                Live
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Local dashboard data
+              </p>
+            </div>
+          </section>
+
+          <section className="rounded-lg border bg-card/60 p-4">
+            <label className="relative block">
+              <span className="sr-only">Search AI apps</span>
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search AI app, vendor, runtime..."
+                className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm"
+              />
+            </label>
+          </section>
+        </>
+      )}
 
       <MasterDetailLayout
         items={filtered}
@@ -543,6 +338,9 @@ export function MyAiAppsPage() {
         onSelect={handleSelect}
         idSelector={(agent) => agent.agent_id}
         loading={loading && agents.length === 0}
+        masterLayout="grid"
+        masterListClassName="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"
+        detailBackLabel="Back to all AI apps"
         emptyState={
           <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
             No AI apps match this search yet.
@@ -552,11 +350,12 @@ export function MyAiAppsPage() {
           <AgentCard agent={agent} activity={activity} selected={selected} />
         )}
         renderDetail={(agent) => (
-          <AgentDetail
+          <AgentDetailView
             key={agent.agent_id}
             agent={agent}
-            activity={activity}
-            showTechnicalDetails={showTechnicalDetails}
+            onDelete={() => {
+              void RegistryApi.deleteAgent(agent.agent_id).then(load);
+            }}
           />
         )}
       />

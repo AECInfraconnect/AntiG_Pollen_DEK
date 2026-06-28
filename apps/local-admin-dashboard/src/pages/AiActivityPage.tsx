@@ -952,272 +952,282 @@ export function AiActivityPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Activity className="h-6 w-6 text-primary" />
-            AI Activity
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Files, websites, tools, commands, model usage, and decisions in
-            plain language.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={observeNow}
-            disabled={observing}
-            className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-          >
-            <Eye className={cn("h-4 w-4", observing && "animate-pulse")} />
-            {observing ? "Observing" : "Observe now"}
-          </button>
-          <button
-            type="button"
-            onClick={() => exportCsv(filtered)}
-            className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
-          >
-            <FileText className="h-4 w-4" />
-            CSV
-          </button>
-          <button
-            type="button"
-            onClick={() => exportJson(filtered)}
-            className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
-          >
-            <Download className="h-4 w-4" />
-            JSON
-          </button>
-          <button
-            type="button"
-            onClick={load}
-            className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
-          >
-            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {observeResult && (
-        <section className="rounded-lg border bg-card/60 p-4">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+      {!selectedEventId && (
+        <>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h3 className="text-sm font-semibold">
-                Latest local observe refresh
-              </h3>
-              <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
-                Pollek records activity metadata only here: redacted paths,
-                domains, tools, model usage fields, decisions, and timestamps.
-                It does not store file contents, email bodies, raw prompts, or
-                raw responses in this timeline.
+              <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+                <Activity className="h-6 w-6 text-primary" />
+                AI Activity
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Files, websites, tools, commands, model usage, and decisions in
+                plain language.
               </p>
             </div>
-            <span className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground">
-              Scan {observeResult.scan_id}
-            </span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={observeNow}
+                disabled={observing}
+                className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+              >
+                <Eye className={cn("h-4 w-4", observing && "animate-pulse")} />
+                {observing ? "Observing" : "Observe now"}
+              </button>
+              <button
+                type="button"
+                onClick={() => exportCsv(filtered)}
+                className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+              >
+                <FileText className="h-4 w-4" />
+                CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => exportJson(filtered)}
+                className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+              >
+                <Download className="h-4 w-4" />
+                JSON
+              </button>
+              <button
+                type="button"
+                onClick={load}
+                className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+              >
+                <RefreshCw
+                  className={cn("h-4 w-4", loading && "animate-spin")}
+                />
+                Refresh
+              </button>
+            </div>
           </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
-            <SummaryTile
-              label="AI apps observed"
-              value={observeResult.candidates_found}
-            />
-            <SummaryTile
-              label="Resources"
-              value={observeResult.resource_events}
-            />
-            <SummaryTile label="Tools" value={observeResult.tool_events} />
-            <SummaryTile
-              label="Identities"
-              value={observeResult.identity_events}
-            />
-            <SummaryTile
-              label="Exact usage"
-              value={observeResult.exact_usage_events}
-            />
-            <SummaryTile
-              label="Estimated usage"
-              value={observeResult.estimated_usage_events}
-            />
-          </div>
-          {(observeResult.capture_quality.length > 0 ||
-            observeResult.limitations.length > 0) && (
-            <div className="mt-3 grid gap-2 lg:grid-cols-2">
-              <div className="rounded-md border bg-background/60 p-3">
-                <div className="text-xs font-medium">Capture quality</div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {observeResult.capture_quality.length > 0
-                    ? observeResult.capture_quality.join(", ")
-                    : "Metadata observed; no exact usage source reported yet."}
-                </p>
+
+          {observeResult && (
+            <section className="rounded-lg border bg-card/60 p-4">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold">
+                    Latest local observe refresh
+                  </h3>
+                  <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
+                    Pollek records activity metadata only here: redacted paths,
+                    domains, tools, model usage fields, decisions, and
+                    timestamps. It does not store file contents, email bodies,
+                    raw prompts, or raw responses in this timeline.
+                  </p>
+                </div>
+                <span className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground">
+                  Scan {observeResult.scan_id}
+                </span>
               </div>
-              <div className="rounded-md border bg-background/60 p-3">
-                <div className="text-xs font-medium">What may need setup</div>
-                <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
-                  {observeResult.limitations.slice(0, 3).map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                  {observeResult.limitations.length === 0 && (
-                    <li>No limitations were reported by this refresh.</li>
-                  )}
-                </ul>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
+                <SummaryTile
+                  label="AI apps observed"
+                  value={observeResult.candidates_found}
+                />
+                <SummaryTile
+                  label="Resources"
+                  value={observeResult.resource_events}
+                />
+                <SummaryTile label="Tools" value={observeResult.tool_events} />
+                <SummaryTile
+                  label="Identities"
+                  value={observeResult.identity_events}
+                />
+                <SummaryTile
+                  label="Exact usage"
+                  value={observeResult.exact_usage_events}
+                />
+                <SummaryTile
+                  label="Estimated usage"
+                  value={observeResult.estimated_usage_events}
+                />
               </div>
+              {(observeResult.capture_quality.length > 0 ||
+                observeResult.limitations.length > 0) && (
+                <div className="mt-3 grid gap-2 lg:grid-cols-2">
+                  <div className="rounded-md border bg-background/60 p-3">
+                    <div className="text-xs font-medium">Capture quality</div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {observeResult.capture_quality.length > 0
+                        ? observeResult.capture_quality.join(", ")
+                        : "Metadata observed; no exact usage source reported yet."}
+                    </p>
+                  </div>
+                  <div className="rounded-md border bg-background/60 p-3">
+                    <div className="text-xs font-medium">
+                      What may need setup
+                    </div>
+                    <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                      {observeResult.limitations.slice(0, 3).map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                      {observeResult.limitations.length === 0 && (
+                        <li>No limitations were reported by this refresh.</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
+            <SummaryTile label="Events" value={summary.total} />
+            <SummaryTile label="File activity" value={summary.files} />
+            <SummaryTile label="Web activity" value={summary.web} />
+            <SummaryTile label="Commands" value={summary.commands} />
+            <SummaryTile label="Plugins" value={summary.plugins} />
+            <SummaryTile label="Safety" value={summary.safety} />
+            <SummaryTile label="Blocked" value={summary.blocked} />
+            <SummaryTile
+              label="Estimated cost"
+              value={`$${summary.costUsd.toFixed(2)}`}
+            />
+          </section>
+
+          <section className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-emerald-500/15 p-2 text-emerald-700">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                    Prompt Guard and private data safety
+                  </h3>
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
+                    Safety events appear here when Pollek sees prompt
+                    injection, secrets, PII, masking, or redaction metadata. No
+                    safety events usually means the AI app is not on a guarded
+                    path yet, or nothing risky was observed in this window.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex h-9 items-center rounded-md border border-emerald-500/25 bg-background/70 px-3 text-sm font-medium">
+                  {summary.safety} safety / {summary.redacted} redacted
+                </span>
+                <Link
+                  to="/protect?intent=enable_prompt_guard"
+                  className="inline-flex h-9 items-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  Enable Prompt Guard
+                </Link>
+                <Link
+                  to="/setup?category=safety"
+                  className="inline-flex h-9 items-center gap-2 rounded-md border border-emerald-500/25 bg-background/70 px-3 text-sm hover:bg-background"
+                >
+                  <Wrench className="h-4 w-4" />
+                  Check setup
+                </Link>
+              </div>
+            </div>
+            <div className="mt-4 rounded-lg border border-emerald-500/20 bg-background/70 p-3">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-semibold">
+                    Live Prompt Guard incidents
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    This stream stays empty until a guarded prompt/output path
+                    sends incident telemetry.
+                  </p>
+                </div>
+                <Link
+                  to="/alerts?tab=guard"
+                  className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-xs hover:bg-muted"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" />
+                  Open safety center
+                </Link>
+              </div>
+              <GuardIncidentFeed />
+            </div>
+          </section>
+
+          <section className="rounded-lg border bg-card/60 p-4">
+            <div className="grid gap-3 lg:grid-cols-[1.5fr_0.9fr_0.9fr_0.9fr]">
+              <label className="relative block">
+                <span className="sr-only">Search activity</span>
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <input
+                  value={filters.search}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      search: event.target.value,
+                    }))
+                  }
+                  placeholder="Search AI app, file, folder, website, command..."
+                  className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm"
+                />
+              </label>
+              <select
+                value={filters.agent}
+                onChange={(event) =>
+                  setFilters((current) => ({
+                    ...current,
+                    agent: event.target.value,
+                  }))
+                }
+                className="h-9 rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="">All AI apps</option>
+                {agentOptions.map((agent) => (
+                  <option key={agent} value={agent}>
+                    {agent}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filters.category}
+                onChange={(event) =>
+                  setFilters((current) => ({
+                    ...current,
+                    category: event.target.value as Filters["category"],
+                  }))
+                }
+                className="h-9 rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="">All activity</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {categoryLabel(category)}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filters.result}
+                onChange={(event) =>
+                  setFilters((current) => ({
+                    ...current,
+                    result: event.target.value as Filters["result"],
+                  }))
+                }
+                className="h-9 rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="">All results</option>
+                <option value="watched_only">Watched only</option>
+                <option value="allowed">Allowed</option>
+                <option value="blocked">Blocked</option>
+                <option value="asked_first">Ask first</option>
+                <option value="warned">Warned</option>
+                <option value="redacted">Redacted</option>
+                <option value="error">Error</option>
+              </select>
+            </div>
+          </section>
+
+          {error && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-700">
+              {error.message}
             </div>
           )}
-        </section>
-      )}
-
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
-        <SummaryTile label="Events" value={summary.total} />
-        <SummaryTile label="File activity" value={summary.files} />
-        <SummaryTile label="Web activity" value={summary.web} />
-        <SummaryTile label="Commands" value={summary.commands} />
-        <SummaryTile label="Plugins" value={summary.plugins} />
-        <SummaryTile label="Safety" value={summary.safety} />
-        <SummaryTile label="Blocked" value={summary.blocked} />
-        <SummaryTile
-          label="Estimated cost"
-          value={`$${summary.costUsd.toFixed(2)}`}
-        />
-      </section>
-
-      <section className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-emerald-500/15 p-2 text-emerald-700">
-              <ShieldCheck className="h-4 w-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
-                Prompt Guard and private data safety
-              </h3>
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
-                Safety events appear here when Pollek sees prompt injection,
-                secrets, PII, masking, or redaction metadata. No safety events
-                usually means the AI app is not on a guarded path yet, or
-                nothing risky was observed in this window.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex h-9 items-center rounded-md border border-emerald-500/25 bg-background/70 px-3 text-sm font-medium">
-              {summary.safety} safety / {summary.redacted} redacted
-            </span>
-            <Link
-              to="/protect?intent=enable_prompt_guard"
-              className="inline-flex h-9 items-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700"
-            >
-              <ShieldCheck className="h-4 w-4" />
-              Enable Prompt Guard
-            </Link>
-            <Link
-              to="/setup?category=safety"
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-emerald-500/25 bg-background/70 px-3 text-sm hover:bg-background"
-            >
-              <Wrench className="h-4 w-4" />
-              Check setup
-            </Link>
-          </div>
-        </div>
-        <div className="mt-4 rounded-lg border border-emerald-500/20 bg-background/70 p-3">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h4 className="text-sm font-semibold">Live Prompt Guard incidents</h4>
-              <p className="text-xs text-muted-foreground">
-                This stream stays empty until a guarded prompt/output path sends
-                incident telemetry.
-              </p>
-            </div>
-            <Link
-              to="/alerts?tab=guard"
-              className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-xs hover:bg-muted"
-            >
-              <ArrowRight className="h-3.5 w-3.5" />
-              Open safety center
-            </Link>
-          </div>
-          <GuardIncidentFeed />
-        </div>
-      </section>
-
-      <section className="rounded-lg border bg-card/60 p-4">
-        <div className="grid gap-3 lg:grid-cols-[1.5fr_0.9fr_0.9fr_0.9fr]">
-          <label className="relative block">
-            <span className="sr-only">Search activity</span>
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input
-              value={filters.search}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  search: event.target.value,
-                }))
-              }
-              placeholder="Search AI app, file, folder, website, command..."
-              className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm"
-            />
-          </label>
-          <select
-            value={filters.agent}
-            onChange={(event) =>
-              setFilters((current) => ({
-                ...current,
-                agent: event.target.value,
-              }))
-            }
-            className="h-9 rounded-md border bg-background px-3 text-sm"
-          >
-            <option value="">All AI apps</option>
-            {agentOptions.map((agent) => (
-              <option key={agent} value={agent}>
-                {agent}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filters.category}
-            onChange={(event) =>
-              setFilters((current) => ({
-                ...current,
-                category: event.target.value as Filters["category"],
-              }))
-            }
-            className="h-9 rounded-md border bg-background px-3 text-sm"
-          >
-            <option value="">All activity</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {categoryLabel(category)}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filters.result}
-            onChange={(event) =>
-              setFilters((current) => ({
-                ...current,
-                result: event.target.value as Filters["result"],
-              }))
-            }
-            className="h-9 rounded-md border bg-background px-3 text-sm"
-          >
-            <option value="">All results</option>
-            <option value="watched_only">Watched only</option>
-            <option value="allowed">Allowed</option>
-            <option value="blocked">Blocked</option>
-            <option value="asked_first">Ask first</option>
-            <option value="warned">Warned</option>
-            <option value="redacted">Redacted</option>
-            <option value="error">Error</option>
-          </select>
-        </div>
-      </section>
-
-      {error && (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-700">
-          {error.message}
-        </div>
+        </>
       )}
 
       <MasterDetailLayout
@@ -1226,6 +1236,7 @@ export function AiActivityPage() {
         onSelect={handleSelectEvent}
         idSelector={(item) => item.event_id}
         loading={loading && items.length === 0}
+        detailBackLabel="Back to all activity"
         emptyState={
           <div className="rounded-lg border border-dashed p-8 text-center">
             <Activity className="mx-auto h-8 w-8 text-muted-foreground/60" />

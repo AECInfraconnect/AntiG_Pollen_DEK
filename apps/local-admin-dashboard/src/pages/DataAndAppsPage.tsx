@@ -250,14 +250,70 @@ function DataDetail({
   showTechnicalDetails: boolean;
 }) {
   const Icon = tabs.find((tab) => tab.id === row.tab)?.icon ?? Database;
+  const status = rowStatus(row);
+  const statusLabel = rowStatusLabel(row);
 
   return (
-    <DetailPane
-      title={row.title}
-      subtitle={`${categoryLabel(row.category)} / ${row.subtitle}`}
-      status={rowStatus(row)}
-      statusLabel={rowStatusLabel(row)}
-      tabs={[
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <Icon className="h-4 w-4 text-primary" />
+            Data & App Record
+          </div>
+          <h2 className="mt-1 break-words text-2xl font-bold tracking-tight">
+            {row.title}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {categoryLabel(row.category)} / {row.subtitle}
+          </p>
+        </div>
+        <span className="inline-flex w-fit rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+          {statusLabel}
+        </span>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)] lg:grid-cols-[300px_minmax(0,1fr)_320px]">
+        <aside className="space-y-3">
+          <section className="rounded-lg border bg-card/50 p-4">
+            <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              Record Summary
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="border-b border-border/40 pb-2">
+                <div className="text-xs text-muted-foreground">Name</div>
+                <div className="mt-0.5 break-words font-medium">
+                  {row.title}
+                </div>
+              </div>
+              <div className="border-b border-border/40 pb-2">
+                <div className="text-xs text-muted-foreground">Category</div>
+                <div className="mt-0.5 font-medium">
+                  {categoryLabel(row.category)}
+                </div>
+              </div>
+              <div className="border-b border-border/40 pb-2">
+                <div className="text-xs text-muted-foreground">Source</div>
+                <div className="mt-0.5 font-medium">{row.source}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Kind</div>
+                <div className="mt-0.5 font-medium">
+                  {labelize(row.kind)}
+                </div>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <section className="min-w-0">
+          <DetailPane
+            title="Detail Workspace"
+            subtitle="Plain-language context, activity links, rules, and technical details for this record."
+            status={status}
+            statusLabel={statusLabel}
+            tabs={[
         {
           id: "overview",
           label: "Overview",
@@ -347,7 +403,46 @@ function DataDetail({
             ]
           : []),
       ]}
-    />
+          />
+        </section>
+
+        <aside className="space-y-3 md:col-span-2 lg:col-span-1">
+          <section className="rounded-lg border bg-card/50 p-4">
+            <h3 className="text-sm font-semibold">Related Records</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Use these links to inspect the activity timeline and matching
+              rules for this data, app, website, command, model, or tool.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                to={`/activity?q=${encodeURIComponent(row.title)}`}
+                className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Activity
+              </Link>
+              <Link
+                to={`/allowed-blocked?q=${encodeURIComponent(row.title)}`}
+                className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Rules
+              </Link>
+            </div>
+          </section>
+
+          <section className="rounded-lg border bg-card/50 p-4">
+            <h3 className="text-sm font-semibold">Observation Note</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Pollek shows metadata for this surface. Exact read/write,
+              contents, or blocking proof depends on the current OS capability,
+              connector setup, and whether the AI app routes activity through a
+              visible control point.
+            </p>
+          </section>
+        </aside>
+      </div>
+    </div>
   );
 }
 
@@ -499,56 +594,63 @@ export function DataAndAppsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <Database className="h-6 w-6 text-primary" />
-          Data & Apps
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Files, folders, websites, email, apps, commands, AI APIs, safety
-          guards, and tools touched by AI apps.
-        </p>
-      </div>
-
-      <section className="rounded-lg border bg-card/60 p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {tabs.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setTab(item.id)}
-                  className={cn(
-                    "inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted",
-                    tab === item.id && "bg-primary/10 text-primary",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </button>
-              );
-            })}
+      {!selectedId && (
+        <>
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <Database className="h-6 w-6 text-primary" />
+              Data & Apps
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Files, folders, websites, email, apps, commands, AI APIs, safety
+              guards, and tools touched by AI apps.
+            </p>
           </div>
-          <label className="relative block min-w-0 xl:w-80">
-            <span className="sr-only">Search data and apps</span>
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search data, website, app, tool..."
-              className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm"
-            />
-          </label>
-        </div>
-      </section>
+
+          <section className="rounded-lg border bg-card/60 p-4">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-wrap gap-2">
+                {tabs.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setTab(item.id)}
+                      className={cn(
+                        "inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted",
+                        tab === item.id && "bg-primary/10 text-primary",
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <label className="relative block min-w-0 xl:w-80">
+                <span className="sr-only">Search data and apps</span>
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search data, website, app, tool..."
+                  className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm"
+                />
+              </label>
+            </div>
+          </section>
+        </>
+      )}
 
       <MasterDetailLayout
         items={filtered}
         selectedId={selectedId}
         onSelect={handleSelect}
         idSelector={(row) => row.id}
+        masterLayout="grid"
+        masterListClassName="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"
+        detailBackLabel="Back to all data and apps"
         emptyState={
           <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
             No data or app records match this view yet.

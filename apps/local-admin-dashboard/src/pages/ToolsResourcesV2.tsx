@@ -962,8 +962,8 @@ export default function ToolsResourcesV2() {
   const showTechnicalDetails = isAdvanceMode(mode);
   const activeTab: "tools" | "resources" =
     searchParams.get("tab") === "resources" ? "resources" : "tools";
-  const recordId = searchParams.get("id") ?? undefined;
-  const selectedId = searchParams.get("selected") ?? undefined;
+  const recordId =
+    searchParams.get("id") ?? searchParams.get("selected") ?? undefined;
   const { tools, resources, loading } = useToolsAndResources();
 
   const updateTab = (tab: "tools" | "resources") => {
@@ -975,7 +975,7 @@ export default function ToolsResourcesV2() {
       setSearchParams({ tab: activeTab });
       return;
     }
-    setSearchParams({ tab: activeTab, selected: id });
+    setSearchParams({ tab: activeTab, id });
   };
 
   const openFullRecord = (id: string) => {
@@ -989,9 +989,7 @@ export default function ToolsResourcesV2() {
         <div className="space-y-4">
           <button
             type="button"
-            onClick={() =>
-              setSearchParams({ tab: "tools", selected: tool.tool_id })
-            }
+            onClick={() => setSearchParams({ tab: "tools" })}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             Back to Tools & Resources
@@ -1009,12 +1007,7 @@ export default function ToolsResourcesV2() {
         <div className="space-y-4">
           <button
             type="button"
-            onClick={() =>
-              setSearchParams({
-                tab: "resources",
-                selected: resource.resource_id,
-              })
-            }
+            onClick={() => setSearchParams({ tab: "resources" })}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             Back to Tools & Resources
@@ -1066,10 +1059,13 @@ export default function ToolsResourcesV2() {
       {activeTab === "tools" && (
         <MasterDetailLayout
           items={tools}
-          selectedId={selectedId}
+          selectedId={undefined}
           onSelect={handleSelect}
           idSelector={(tool) => tool.tool_id}
           loading={loading}
+          masterLayout="grid"
+          masterListClassName="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"
+          detailBackLabel="Back to Tools & Resources"
           renderCard={(tool, selected) => {
             const primaryReference = referencesForTool(tool)[0];
             return (
@@ -1113,10 +1109,13 @@ export default function ToolsResourcesV2() {
       {activeTab === "resources" && (
         <MasterDetailLayout
           items={resources}
-          selectedId={selectedId}
+          selectedId={undefined}
           onSelect={handleSelect}
           idSelector={(resource) => resource.resource_id}
           loading={loading}
+          masterLayout="grid"
+          masterListClassName="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"
+          detailBackLabel="Back to Tools & Resources"
           renderCard={(resource, selected) => {
             const primaryReference = referencesForResource(resource)[0];
             return (

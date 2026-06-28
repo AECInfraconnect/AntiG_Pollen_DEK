@@ -546,8 +546,8 @@ export default function PoliciesV2() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { mode } = useMode();
   const showTechnicalDetails = isAdvanceMode(mode);
-  const recordId = searchParams.get("id") ?? undefined;
-  const selectedId = searchParams.get("selected") ?? undefined;
+  const recordId =
+    searchParams.get("id") ?? searchParams.get("selected") ?? undefined;
   const { policies, loading } = usePolicies();
 
   const handleSelect = (id: string) => {
@@ -555,7 +555,7 @@ export default function PoliciesV2() {
       setSearchParams({});
       return;
     }
-    setSearchParams({ selected: id });
+    setSearchParams({ id });
   };
 
   const openFullRecord = (id: string) => {
@@ -568,7 +568,7 @@ export default function PoliciesV2() {
       <div className="space-y-4">
         <button
           type="button"
-          onClick={() => setSearchParams({ selected: recordPolicy.policy_id })}
+          onClick={() => setSearchParams({})}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           Back to all policies
@@ -590,10 +590,13 @@ export default function PoliciesV2() {
 
       <MasterDetailLayout
         items={policies}
-        selectedId={selectedId}
+        selectedId={undefined}
         onSelect={handleSelect}
         idSelector={(policy) => policy.policy_id}
         loading={loading}
+        masterLayout="grid"
+        masterListClassName="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"
+        detailBackLabel="Back to all policies"
         renderCard={(policy, selected) => {
           const status =
             policy.mode === "enforce"

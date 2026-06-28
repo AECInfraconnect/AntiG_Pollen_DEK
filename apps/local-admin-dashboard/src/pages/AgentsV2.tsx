@@ -530,7 +530,7 @@ function agentDetailSections(
   return sections;
 }
 
-function AgentDetailView({
+export function AgentDetailView({
   agent,
   onDelete,
 }: {

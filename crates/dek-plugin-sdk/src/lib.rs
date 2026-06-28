@@ -18,9 +18,10 @@ pub struct PluginIdentity {
     pub api_version: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum PluginType {
+    #[default]
     PolicyEvaluator,
     Transform,
     TelemetrySink,
@@ -34,23 +35,12 @@ pub enum PluginType {
     PdpConnector,
 }
 
-impl Default for PluginType {
-    fn default() -> Self {
-        Self::PolicyEvaluator
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum PluginAbi {
     Component,
+    #[default]
     Core,
-}
-
-impl Default for PluginAbi {
-    fn default() -> Self {
-        Self::Core
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -100,35 +90,20 @@ pub struct PluginCapabilities {
 impl PluginCapabilities {
     pub fn requested(&self) -> Vec<RequestedCapability> {
         let mut requested = Vec::new();
-        requested.extend(
-            self.host
-                .iter()
-                .cloned()
-                .map(|value| RequestedCapability::Host(value)),
-        );
+        requested.extend(self.host.iter().cloned().map(RequestedCapability::Host));
         requested.extend(
             self.http_out
                 .iter()
                 .cloned()
-                .map(|value| RequestedCapability::HttpOut(value)),
+                .map(RequestedCapability::HttpOut),
         );
-        requested.extend(
-            self.kv
-                .iter()
-                .cloned()
-                .map(|value| RequestedCapability::Kv(value)),
-        );
-        requested.extend(
-            self.native
-                .iter()
-                .cloned()
-                .map(|value| RequestedCapability::Native(value)),
-        );
+        requested.extend(self.kv.iter().cloned().map(RequestedCapability::Kv));
+        requested.extend(self.native.iter().cloned().map(RequestedCapability::Native));
         requested.extend(
             self.data_scope
                 .iter()
                 .cloned()
-                .map(|value| RequestedCapability::DataScope(value)),
+                .map(RequestedCapability::DataScope),
         );
         requested
     }
@@ -411,7 +386,7 @@ impl PluginManifest {
     pub fn entry_path(&self) -> &str {
         self.entry
             .as_deref()
-            .or_else(|| {
+            .or({
                 if self.entrypoint.is_empty() {
                     None
                 } else {

@@ -34,6 +34,8 @@ import { findAgentReferenceIntel } from "../lib/entityReferenceIntel";
 import { ReferenceIntelMark } from "../components/reference/ReferenceIntelMark";
 import { ReferenceIntelGuide } from "../components/reference/ReferenceIntelGuide";
 import { ContextualHelp } from "../components/help/ContextualHelp";
+import { useMode } from "../context/ModeContext";
+import { isAdvanceMode } from "../lib/modes";
 
 const DEEP_SCAN_SOURCES = [
   "process",
@@ -140,6 +142,8 @@ function friendlyCapabilityDetail(tag: string) {
 
 export function AutoDiscovery() {
   const { confirm } = useConfirm();
+  const { mode } = useMode();
+  const showTechnicalDetails = isAdvanceMode(mode);
 
   const [candidates, setCandidates] = useState<DiscoveredAgentCandidateV2[]>(
     [],
@@ -963,6 +967,9 @@ export function AutoDiscovery() {
                       ? caps.slice(0, 3).map(friendlyCapabilityLabel).join(", ")
                       : "Unknown",
                 },
+                ...(showTechnicalDetails && caps.length > 0
+                  ? [{ label: "Technical tags", value: caps.join(", ") }]
+                  : []),
                 ...(primaryReference
                   ? [{ label: "Known", value: primaryReference.title }]
                   : []),
