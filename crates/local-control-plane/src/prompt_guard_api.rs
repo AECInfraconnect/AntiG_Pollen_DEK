@@ -494,7 +494,9 @@ mod tests {
             text: req.text.clone(),
         });
         let event = build_guard_event("local", "request", &req, &result);
-        let serialized = serde_json::to_string(&event).expect("serialize event");
+        let serialized_result = serde_json::to_string(&event);
+        assert!(serialized_result.is_ok());
+        let serialized = serialized_result.unwrap_or_default();
         assert!(serialized.contains("browser_extension"));
         assert!(serialized.contains("raw_prompt_or_response_stored"));
         assert!(serialized.contains("enterprise_cloud_ner_supported"));
@@ -506,6 +508,9 @@ mod tests {
 
     #[test]
     fn maps_response_direction_alias() {
-        assert_eq!(normalize_direction("output").unwrap(), "response");
+        assert!(matches!(
+            normalize_direction("output").as_deref(),
+            Ok("response")
+        ));
     }
 }
