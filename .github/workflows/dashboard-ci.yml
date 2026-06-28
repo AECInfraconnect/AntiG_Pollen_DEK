@@ -39,11 +39,26 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Check i18n Coverage
+        run: npm run i18n:check
+
+      - name: Unit Tests
+        run: npm run test
+
       - name: Build
         run: npm run build
 
+      - name: Build Storybook
+        run: npm run build-storybook
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
+
+      - name: Axe WCAG Gate
+        run: npm run a11y
+
+      - name: Visual QA Screenshots
+        run: npm run visual:qa
 
       - name: Run E2E Smoke Tests
         run: npm run e2e

@@ -1,6 +1,7 @@
 import { type ReactNode, useMemo, useState } from "react";
 import { Activity, Bug, FileText, Network, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatDisplayValue, renderDisplayValue } from "@/lib/displayValue";
 import type {
   Entity360Response,
   GraphMetric,
@@ -190,7 +191,7 @@ function DetailSectionCard({ section }: { section: DetailSection }) {
             <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="break-words font-medium text-foreground">
-                  {field.value}
+                  {renderDisplayValue(field.value)}
                 </div>
                 {field.status && (
                   <span
@@ -208,20 +209,24 @@ function DetailSectionCard({ section }: { section: DetailSection }) {
                   {field.source && (
                     <span>
                       Source:{" "}
-                      <span className="text-foreground/70">{field.source}</span>
+                      <span className="text-foreground/70">
+                        {formatDisplayValue(field.source)}
+                      </span>
                     </span>
                   )}
                   {field.history && (
                     <span>
                       History:{" "}
-                      <span className="text-foreground/70">{field.history}</span>
+                      <span className="text-foreground/70">
+                        {formatDisplayValue(field.history)}
+                      </span>
                     </span>
                   )}
                   {field.confidence && (
                     <span>
                       Confidence:{" "}
                       <span className="text-foreground/70">
-                        {field.confidence}
+                        {formatDisplayValue(field.confidence)}
                       </span>
                     </span>
                   )}
@@ -229,7 +234,7 @@ function DetailSectionCard({ section }: { section: DetailSection }) {
               )}
               {field.note && (
                 <p className="text-xs leading-5 text-muted-foreground">
-                  {field.note}
+                  {formatDisplayValue(field.note)}
                 </p>
               )}
             </div>

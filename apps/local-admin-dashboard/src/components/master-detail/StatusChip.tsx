@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { renderDisplayValue } from "@/lib/displayValue";
 import { statusToken, type UiStatus } from "../../lib/status";
 
 export function StatusChip({
@@ -7,7 +9,7 @@ export function StatusChip({
   className,
 }: {
   status: UiStatus;
-  label: string;
+  label: ReactNode;
   className?: string;
 }) {
   const s = statusToken(status);
@@ -21,7 +23,7 @@ export function StatusChip({
       )}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full", s.dot)} />
-      {label}
+      {renderDisplayValue(label)}
     </span>
   );
 }

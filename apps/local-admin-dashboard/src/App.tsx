@@ -1,59 +1,21 @@
 import {
   BrowserRouter as Router,
-  Routes,
-  Route,
   Navigate,
   Outlet,
+  Route,
+  Routes,
   useLocation,
 } from "react-router-dom";
 import { useEffect } from "react";
-import { DashboardLayout } from "./components/layout/DashboardLayout";
-import { Overview } from "./pages/Overview";
-import { SimpleOverviewPage } from "./pages/SimpleOverviewPage";
-import { Resources } from "./pages/Resources";
-// import { Policies } from "./pages/Policies"; // Replaced by PoliciesV2
-import { Simulator } from "./pages/Simulator";
-import { Bundles } from "./pages/Bundles";
-import { Settings } from "./pages/Settings";
-import { PdpRoutingPage } from "./pages/PdpRoutingPage";
-import { AutoDiscovery } from "./pages/AutoDiscovery";
-import { PolicySuggestions } from "./pages/PolicySuggestions";
-import { CostLedger } from "./pages/CostLedger";
-import { PolicyPresets } from "./pages/PolicyPresets";
-import { Wizard } from "./pages/Wizard";
-import { ModeProvider, useMode } from "./context/ModeContext";
-import { Protect } from "./pages/Protect";
-import { NAV } from "./config/navigation";
-
-// Merged composite pages
-// import { AgentsAndModels } from "./pages/Ecosystem/AgentsAndModels"; // Replaced by AgentsV2
-import { Integrations } from "./pages/Ecosystem/Integrations";
-import { PluginMarketplace } from "./pages/Ecosystem/PluginMarketplace";
-import { IdentityNetwork } from "./pages/Data/IdentityNetwork";
-import { AlertsAndShadowAI } from "./pages/Monitoring/AlertsAndShadowAI";
-import { Entities } from "./pages/Entities";
-// import { Tools } from "./pages/Tools"; // Replaced by ToolsResourcesV2
-import { ActivityTimelineV2 } from "./features/activity/ActivityTimelineV2";
-import { EntityGraphPage } from "./features/entity-graph/EntityGraphPage";
-
-import { Deployments } from "./pages/Deployments";
-import { LocalEvidence } from "./pages/LocalEvidence";
-import { ControlMethods } from "./pages/ControlMethods";
-import { Capabilities } from "./pages/Capabilities";
-import { Health } from "./pages/Health";
-import { AiActivityPage } from "./pages/AiActivityPage";
-import { AllowedBlockedPage } from "./pages/AllowedBlockedPage";
-import { DataAndAppsPage } from "./pages/DataAndAppsPage";
-import { HistoryReportsPage } from "./pages/HistoryReportsPage";
-import { MyAiAppsPage } from "./pages/MyAiAppsPage";
-import { SetupCapabilitiesPage } from "./pages/SetupCapabilitiesPage";
-import AgentsV2 from "./pages/AgentsV2";
-import ToolsResourcesV2 from "./pages/ToolsResourcesV2";
-import PoliciesV2 from "./pages/PoliciesV2";
-
 import { Toaster } from "sonner";
+import { DashboardLayout } from "./components/layout/DashboardLayout";
+import { ConfirmProvider } from "./components/ui/ConfirmDialog";
+import { NAV } from "./config/navigation";
+import { ModeProvider, useMode } from "./context/ModeContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { cleanupLegacyDashboardStorage } from "./lib/storageMigrations";
+import { Wizard } from "./pages/Wizard";
+import { dashboardRoutes } from "./routes/dashboardRoutes";
 
 const ModeGuard = () => {
   const { mode } = useMode();
@@ -72,13 +34,6 @@ const ModeGuard = () => {
   return <Outlet />;
 };
 
-const HomeRoute = () => {
-  const { mode } = useMode();
-  return mode === "desktop_simple" ? <SimpleOverviewPage /> : <Overview />;
-};
-
-import { ConfirmProvider } from "./components/ui/ConfirmDialog";
-
 function AppContent() {
   const { resolvedTheme } = useTheme();
 
@@ -94,110 +49,23 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<DashboardLayout />}>
               <Route element={<ModeGuard />}>
-                <Route index element={<HomeRoute />} />
-
-                {/* New Navigation Routes */}
-                <Route path="scan" element={<AutoDiscovery />} />
-                <Route path="my-ai-apps" element={<MyAiAppsPage />} />
-                <Route path="data-apps" element={<DataAndAppsPage />} />
-                <Route
-                  path="allowed-blocked"
-                  element={<AllowedBlockedPage />}
-                />
-                <Route path="setup" element={<SetupCapabilitiesPage />} />
-                <Route path="history" element={<HistoryReportsPage />} />
-                <Route path="offline-scan" element={<LocalEvidence />} />
-                <Route
-                  path="recommended-policies"
-                  element={<PolicySuggestions />}
-                />
-                <Route path="policy-feasibility" element={<Protect />} />
-                <Route path="deployments" element={<Deployments />} />
-                <Route path="control-methods" element={<ControlMethods />} />
-                <Route path="capabilities" element={<Capabilities />} />
-                <Route
-                  path="pep-layers"
-                  element={<Navigate to="/capabilities" replace />}
-                />
-                <Route
-                  path="pdp-engines"
-                  element={<Navigate to="/capabilities" replace />}
-                />
-                <Route
-                  path="timeline"
-                  element={<Navigate to="/activity-timeline" replace />}
-                />
-                <Route path="local-evidence" element={<LocalEvidence />} />
-                <Route path="health" element={<Health />} />
-                <Route path="entity-graph" element={<EntityGraphPage />} />
-
-                {/* AI Ecosystem */}
-                <Route path="agents" element={<AgentsV2 />} />
-                <Route path="integrations" element={<Integrations />} />
-                <Route
-                  path="plugin-marketplace"
-                  element={<PluginMarketplace />}
-                />
-                <Route path="tools" element={<ToolsResourcesV2 />} />
-
-                {/* Data & Context */}
-                <Route path="resources" element={<Resources />} />
-                <Route path="identities" element={<IdentityNetwork />} />
-
-                {/* Security & Guardrails */}
-                <Route path="protect" element={<Protect />} />
-                <Route path="policy-presets" element={<PolicyPresets />} />
-                <Route
-                  path="policy-suggestions"
-                  element={<PolicySuggestions />}
-                />
-                <Route path="policies" element={<PoliciesV2 />} />
-                <Route path="simulator" element={<Simulator />} />
-
-                {/* Monitoring & Activity */}
-                <Route path="activity" element={<AiActivityPage />} />
-                <Route
-                  path="activity-timeline"
-                  element={<ActivityTimelineV2 />}
-                />
-                <Route path="alerts" element={<AlertsAndShadowAI />} />
-                <Route
-                  path="audit"
-                  element={<Navigate to="/activity-timeline" replace />}
-                />
-                <Route
-                  path="decision-logs"
-                  element={<Navigate to="/activity-timeline" replace />}
-                />
-                <Route path="cost-ledger" element={<CostLedger />} />
-
-                {/* System & Settings */}
-                <Route path="bundles" element={<Bundles />} />
-                <Route path="discovery" element={<AutoDiscovery />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="settings/pdp" element={<PdpRoutingPage />} />
-
-                {/* Legacy redirects */}
-                <Route
-                  path="blackbox-ai"
-                  element={<Navigate to="/agents" replace />}
-                />
-                <Route
-                  path="servers"
-                  element={<Navigate to="/integrations" replace />}
-                />
-                <Route path="entities" element={<Entities />} />
-                <Route
-                  path="relationships"
-                  element={<Navigate to="/entity-graph" replace />}
-                />
-                <Route
-                  path="shadow-ai"
-                  element={<Navigate to="/alerts" replace />}
-                />
+                {dashboardRoutes.map((route) =>
+                  route.index ? (
+                    <Route
+                      key={route.key}
+                      index
+                      element={route.element}
+                    />
+                  ) : (
+                    <Route
+                      key={route.key}
+                      path={route.path}
+                      element={route.element}
+                    />
+                  ),
+                )}
               </Route>
             </Route>
-            {/* Full screen Wizard outside DashboardLayout */}
             <Route path="/wizard" element={<Wizard />} />
           </Routes>
         </Router>

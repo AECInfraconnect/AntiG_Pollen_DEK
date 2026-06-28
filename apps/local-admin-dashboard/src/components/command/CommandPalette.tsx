@@ -9,7 +9,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Search } from "lucide-react";
-import { NAV } from "@/config/navigation";
+import { labelForLanguage, NAV } from "@/config/navigation";
 import { useMode } from "@/context/ModeContext";
 import { cn } from "@/lib/utils";
 
@@ -30,11 +30,10 @@ export function CommandPalette({
 }) {
   const navigate = useNavigate();
   const { mode } = useMode();
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
-  const isThai = i18n.language === "th";
 
   const commands = useMemo<CommandItem[]>(
     () =>
@@ -43,13 +42,13 @@ export function CommandPalette({
           .filter((item) => item.modes.includes(mode))
           .map((item) => ({
             id: item.id,
-            group: isThai ? group.th : group.en,
-            label: isThai ? item.th : item.en,
+            group: labelForLanguage(group, i18n.language),
+            label: labelForLanguage(item, i18n.language),
             href: item.href,
             icon: item.icon,
           })),
       ),
-    [isThai, mode],
+    [i18n.language, mode],
   );
 
   const results = useMemo(() => {
@@ -109,7 +108,7 @@ export function CommandPalette({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={isThai ? "ค้นหาเมนูและหน้า" : "Search pages and actions"}
+        aria-label={t("command.dialogLabel")}
         className="relative z-[61] w-full max-w-xl overflow-hidden rounded-lg border border-border bg-popover shadow-2xl"
       >
         <div className="flex items-center gap-2 border-b border-border px-4">
@@ -130,11 +129,7 @@ export function CommandPalette({
                 ? `command-${results[activeIndex].id}`
                 : undefined
             }
-            placeholder={
-              isThai
-                ? "ค้นหาหน้า เมนู หรือคำสั่ง..."
-                : "Search pages, menus, or actions..."
-            }
+            placeholder={t("command.searchPlaceholder")}
             className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           <kbd className="hidden rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:block">
@@ -149,7 +144,7 @@ export function CommandPalette({
         >
           {results.length === 0 ? (
             <li className="px-3 py-8 text-center text-sm text-muted-foreground">
-              {isThai ? "ไม่พบผลลัพธ์" : "No results found"}
+              {t("common.noResults")}
             </li>
           ) : (
             results.map((item, index) => {

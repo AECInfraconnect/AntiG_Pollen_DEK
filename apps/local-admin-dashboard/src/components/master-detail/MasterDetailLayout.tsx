@@ -91,7 +91,10 @@ export function MasterDetailLayout<T>({
             : null;
 
           return (
-            <div key={id} className={groupHeader ? "contents" : undefined}>
+            <div
+              key={`${id}-${index}`}
+              className={groupHeader ? "contents" : undefined}
+            >
               {groupHeader && (
                 <div className="col-span-full">{groupHeader}</div>
               )}

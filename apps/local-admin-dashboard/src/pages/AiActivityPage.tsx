@@ -1196,6 +1196,7 @@ export function AiActivityPage() {
                 />
               </label>
               <select
+                aria-label="Filter activity by AI app"
                 value={filters.agent}
                 onChange={(event) =>
                   setFilters((current) => ({
@@ -1213,6 +1214,7 @@ export function AiActivityPage() {
                 ))}
               </select>
               <select
+                aria-label="Filter activity by type"
                 value={filters.category}
                 onChange={(event) =>
                   setFilters((current) => ({
@@ -1230,6 +1232,7 @@ export function AiActivityPage() {
                 ))}
               </select>
               <select
+                aria-label="Filter activity by result"
                 value={filters.result}
                 onChange={(event) =>
                   setFilters((current) => ({

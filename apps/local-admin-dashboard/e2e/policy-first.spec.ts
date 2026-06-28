@@ -1,5 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { installMockApi } from "./mock-api";
+
+const mojibakePattern =
+  /[\u0080-\u009f]|\uFFFD|Ã|Â|à¸|à¹|โ€|๏ฟฝ|เน€เธ|เน\u0081เธ|เน\u0082เธ|เธ[\u0080-\u00ff]|เน[\u0080-\u00ff]/;
 
 test.describe("Policy-First Navigation", () => {
   test.beforeEach(async ({ page }) => {
@@ -13,12 +16,10 @@ test.describe("Policy-First Navigation", () => {
   test("should render sidebar and navigate to simple sections", async ({
     page,
   }) => {
-    // 1. Dashboard Overview
     await expect(
       page.getByRole("heading", { name: "Dashboard Overview" }),
     ).toBeVisible();
 
-    // 2. Find AI Apps / legacy Scan & Discover
     await page
       .getByRole("link", { name: /(find ai apps|scan & discover)/i })
       .click();
@@ -26,15 +27,13 @@ test.describe("Policy-First Navigation", () => {
       page.getByRole("heading", { name: "Auto Discovery" }),
     ).toBeVisible();
 
-    // 3. Activity
     await page.getByRole("link", { name: /^AI Activity$/i }).click();
     await expect(
       page
-        .getByRole("heading", { name: /(activity|กิจกรรม)/i, exact: false })
+        .getByRole("heading", { name: /(AI Activity|กิจกรรม AI)/i })
         .first(),
     ).toBeVisible();
 
-    // 4. Prompt Guard / alerts
     await page.getByRole("link", { name: "Prompt Guard", exact: true }).click();
     await expect(
       page.getByRole("heading", {
@@ -97,9 +96,7 @@ test.describe("Simple mode wording guard", () => {
   async function expectNormalUserCopy(pageText: string) {
     expect(pageText).not.toMatch(/\b(PEP|PDP|WFP|eBPF|NetworkExtension)\b/);
     expect(pageText.toLowerCase()).not.toContain("control plane");
-    expect(pageText).not.toMatch(
-      /โ[\u0080-\u00ff]|โ€|�|Â|à|เธ[\u0080-\u00ff]|เน[\u0080-\u00ff]/,
-    );
+    expect(pageText).not.toMatch(mojibakePattern);
   }
 
   test("normal-user pages hide technical jargon and mojibake", async ({
@@ -113,10 +110,14 @@ test.describe("Simple mode wording guard", () => {
     await expectNormalUserCopy(await page.locator("body").innerText());
 
     await page.goto("/activity");
-    await expect(page.getByRole("heading", { name: "AI Activity" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "AI Activity" }),
+    ).toBeVisible();
     await expectNormalUserCopy(await page.locator("body").innerText());
 
-    await page.goto("/protect?agent_id=agent-antigravity&target=repo%2Fsrc&event=evt-governance-loop-1&intent=block_folder_access");
+    await page.goto(
+      "/protect?agent_id=agent-antigravity&target=repo%2Fsrc&event=evt-governance-loop-1&intent=block_folder_access",
+    );
     await expect(
       page.getByRole("heading", { name: /Create AI Activity Rule/i }),
     ).toBeVisible();

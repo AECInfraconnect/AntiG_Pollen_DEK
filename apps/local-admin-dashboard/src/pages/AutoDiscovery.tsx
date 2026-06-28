@@ -254,8 +254,7 @@ export function AutoDiscovery() {
 
       setCandidates(mergedCandidates);
       return mergedCandidates;
-    } catch (e) {
-      console.error(e);
+    } catch {
       return [];
     } finally {
       if (showLoading) setLoading(false);

@@ -27,6 +27,7 @@ import type {
   GraphNode,
 } from "../features/entity-graph/types";
 import { useEntity360 } from "../features/entity-graph/useEntity360";
+import { renderDisplayValue } from "../lib/displayValue";
 import { defaultClient } from "../services/api";
 import {
   assessExpectedCapabilities,
@@ -950,7 +951,7 @@ function PropertyRow({ label, value }: { label: string; value: ReactNode }) {
         {label}
       </span>
       <span className="break-all text-right text-xs font-medium text-foreground/80">
-        {value}
+        {renderDisplayValue(value)}
       </span>
     </div>
   );

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatDisplayValue, renderDisplayValue } from "@/lib/displayValue";
 import { statusToken, type UiStatus } from "../../lib/status";
 
 export function EntityCard({
@@ -20,9 +21,9 @@ export function EntityCard({
   collapsedMetaCount = 4,
   className,
 }: {
-  title: string;
-  subtitle?: string;
-  summary?: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
+  summary?: ReactNode;
   icon: any;
   status: UiStatus;
   statusLabel: string;
@@ -43,7 +44,8 @@ export function EntityCard({
 }) {
   const s = statusToken(status);
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const hasLongSummary = (summary?.length ?? 0) > 140;
+  const summaryText = summary === undefined ? "" : formatDisplayValue(summary);
+  const hasLongSummary = summaryText.length > 140;
   const hasExtraMeta = meta.length > collapsedMetaCount;
   const canExpand = expandable && (hasLongSummary || hasExtraMeta);
   const visibleMeta = useMemo(
@@ -69,7 +71,9 @@ export function EntityCard({
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="truncate font-medium">{title}</span>
+            <span className="truncate font-medium">
+              {renderDisplayValue(title)}
+            </span>
             <span
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors",
@@ -78,12 +82,12 @@ export function EntityCard({
               )}
             >
               <span className={cn("h-1.5 w-1.5 rounded-full", s.dot)} />
-              {statusLabel}
+              {renderDisplayValue(statusLabel)}
             </span>
           </div>
           {subtitle && (
             <div className="truncate text-xs text-muted-foreground mt-0.5">
-              {subtitle}
+              {renderDisplayValue(subtitle)}
             </div>
           )}
           {summary && (
@@ -93,7 +97,7 @@ export function EntityCard({
                 !expanded && "line-clamp-2",
               )}
             >
-              {summary}
+              {renderDisplayValue(summary)}
             </p>
           )}
           {visibleMeta.length > 0 && (
@@ -102,7 +106,7 @@ export function EntityCard({
                 <span key={idx} className="flex items-center gap-1">
                   {m.label}:{" "}
                   <span className="text-foreground/80 font-medium">
-                    {m.value}
+                    {renderDisplayValue(m.value)}
                   </span>
                 </span>
               ))}

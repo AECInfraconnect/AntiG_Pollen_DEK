@@ -27,6 +27,7 @@ import type {
   GraphNode,
 } from "../features/entity-graph/types";
 import { useEntity360 } from "../features/entity-graph/useEntity360";
+import { formatDisplayValue, renderDisplayValue } from "../lib/displayValue";
 import { isAdvanceMode } from "../lib/modes";
 import { defaultClient } from "../services/api";
 
@@ -326,7 +327,9 @@ function PolicyDetailView({ policy }: { policy: PolicyItem }) {
         status: { label: modeLabel(policy), tone: modeTone(policy) },
         badges: [
           { label: policy.engine },
-          ...(policy.scope ? [{ label: policy.scope }] : []),
+          ...(policy.scope
+            ? [{ label: formatDisplayValue(policy.scope) }]
+            : []),
         ],
         subtitle: policy.description ?? "No description provided",
         meta: [
@@ -536,7 +539,7 @@ function PropertyRow({ label, value }: { label: string; value: ReactNode }) {
         {label}
       </span>
       <span className="break-all text-right text-xs font-medium text-foreground/80">
-        {value}
+        {renderDisplayValue(value)}
       </span>
     </div>
   );

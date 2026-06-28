@@ -26,6 +26,7 @@ export function ModeSwitcher({ collapsed }: { collapsed?: boolean }) {
     <select
       value={mode}
       onChange={(e) => setMode(e.target.value as any)}
+      aria-label={t("a11y.switchMode")}
       className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
     >
       {APP_MODES.map((appMode) => (

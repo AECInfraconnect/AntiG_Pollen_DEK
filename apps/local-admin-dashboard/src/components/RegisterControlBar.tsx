@@ -45,6 +45,7 @@ export const RegisterControlBar: React.FC<RegisterControlBarProps> = ({
   return (
     <div className="flex items-center gap-2">
       <select
+        aria-label="Deployment protection level"
         value={level}
         onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
           setLevel(e.target.value)

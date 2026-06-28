@@ -39,6 +39,7 @@ import { useConfirm } from "../components/ui/ConfirmDialog";
 import { RegistryApi, type AiAgent } from "../services/api";
 import type { UiStatus } from "../lib/status";
 import { cn } from "../lib/utils";
+import { formatDisplayValue, renderDisplayValue } from "../lib/displayValue";
 import {
   assessExpectedCapabilities,
   findAgentReferenceIntel,
@@ -903,7 +904,19 @@ function AgentObserveCoverage({
       next:
         "Create a rule from an activity event, then check setup to see whether Pollek can watch, ask first, or block.",
     },
-  ] as const;
+  ].map((item) => ({
+    ...item,
+    detail: formatDisplayValue(item.detail),
+    next: formatDisplayValue(item.next),
+  })) as Array<{
+    id: string;
+    label: string;
+    icon: typeof FolderTree;
+    state: CoverageState;
+    count: number;
+    detail: string;
+    next: string;
+  }>;
 
   const observedCount = coverage.filter((item) => item.state === "observed").length;
   const needsSetupCount = coverage.filter(
@@ -958,7 +971,7 @@ function AgentObserveCoverage({
                 </span>
               </div>
               <p className="mt-2 text-sm leading-6 text-emerald-950/80 dark:text-emerald-100/80">
-                {guardStatus.detail}
+                {renderDisplayValue(guardStatus.detail)}
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
                 <span className="rounded border border-emerald-500/20 bg-background/70 px-2 py-1">
@@ -969,7 +982,7 @@ function AgentObserveCoverage({
                 </span>
               </div>
               <p className="mt-3 text-xs leading-5 text-emerald-950/75 dark:text-emerald-100/75">
-                {guardStatus.next}
+                {renderDisplayValue(guardStatus.next)}
               </p>
             </div>
           </div>
@@ -1009,7 +1022,7 @@ function AgentObserveCoverage({
                   <div className="min-w-0">
                     <h4 className="text-sm font-semibold">{item.label}</h4>
                     <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
-                      {item.detail}
+                      {renderDisplayValue(item.detail)}
                     </p>
                   </div>
                 </div>
@@ -1028,7 +1041,7 @@ function AgentObserveCoverage({
                 </span>
               </div>
               <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                {item.next}
+                {renderDisplayValue(item.next)}
               </p>
             </section>
           );
@@ -1177,7 +1190,7 @@ function PropertyRow({ label, value }: { label: string; value: ReactNode }) {
         {label}
       </span>
       <span className="break-all text-right text-xs font-medium text-foreground/80">
-        {value}
+        {renderDisplayValue(value)}
       </span>
     </div>
   );
@@ -1219,10 +1232,12 @@ function AgentMasterCard({
     agentEvents.length +
     (agent.declared_tools?.length ?? 0) +
     (agent.declared_resources?.length ?? 0);
-  const summaryText = latestEvent
-    ? latestEvent.plain_summary
-    : (primaryReference?.description ??
-      "Start Observe to collect file, web, app, tool, command, model, and safety evidence.");
+  const summaryText = formatDisplayValue(
+    latestEvent
+      ? latestEvent.plain_summary
+      : (primaryReference?.description ??
+          "Start Observe to collect file, web, app, tool, command, model, and safety evidence."),
+  );
   const extraCapabilities = (agent.capabilities ?? []).slice(0, 5);
   const canExpand =
     summaryText.length > 130 ||
@@ -1281,7 +1296,7 @@ function AgentMasterCard({
               !expanded && "line-clamp-2",
             )}
           >
-            {summaryText}
+            {renderDisplayValue(summaryText)}
           </p>
         </div>
       </div>
@@ -1327,7 +1342,9 @@ function AgentMasterCard({
               <div className="text-muted-foreground">Latest activity</div>
               <div className="mt-0.5 font-medium">
                 {latestEvent
-                  ? `${latestEvent.result_label} - ${latestEvent.target_label}`
+                  ? `${formatDisplayValue(latestEvent.result_label)} - ${formatDisplayValue(
+                      latestEvent.target_label,
+                    )}`
                   : "No timeline event yet"}
               </div>
             </div>

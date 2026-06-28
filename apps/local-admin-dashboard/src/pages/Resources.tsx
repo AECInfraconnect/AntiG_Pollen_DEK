@@ -372,6 +372,7 @@ export function Resources() {
         toolbar={
           <div className="flex items-center gap-2 mb-4">
             <input
+              aria-label="Search resources"
               type="text"
               placeholder="Search resources..."
               value={search}
@@ -379,6 +380,7 @@ export function Resources() {
               className="px-3 py-1.5 text-sm rounded-md border bg-background"
             />
             <select
+              aria-label="Filter resources by scope"
               value={scopeFilter}
               onChange={(e) =>
                 setScopeFilter(e.target.value as "all" | "local" | "cloud")
@@ -390,6 +392,7 @@ export function Resources() {
               <option value="cloud">Cloud</option>
             </select>
             <select
+              aria-label="Filter resources by kind"
               value={kindFilter}
               onChange={(e) => setKindFilter(e.target.value)}
               className="px-3 py-1.5 text-sm rounded-md border bg-background"
@@ -404,6 +407,7 @@ export function Resources() {
               <option value="saas">SaaS</option>
             </select>
             <input
+              aria-label="Filter resources by agent ID"
               type="text"
               placeholder="Agent ID"
               value={agentFilter}

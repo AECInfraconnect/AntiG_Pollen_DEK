@@ -102,11 +102,27 @@ function syncLabel(status?: string) {
   return status.replace(/_/g, " ");
 }
 
+function usageEventKind(event: AiUsageEvent) {
+  const fallback = event as AiUsageEvent & {
+    kind?: string;
+    type?: string;
+    event_type?: string;
+  };
+  return (
+    event.event_kind ||
+    fallback.kind ||
+    fallback.type ||
+    fallback.event_type ||
+    "usage_event"
+  );
+}
+
 function usageEventTitle(event: AiUsageEvent) {
   const provider = event.provider || "AI provider";
   const model = event.model || "unknown model";
-  const kind = event.event_kind.replace(/_/g, " ");
-  if (event.event_kind.includes("model_call")) {
+  const eventKind = usageEventKind(event);
+  const kind = eventKind.replace(/_/g, " ");
+  if (eventKind.includes("model_call")) {
     return `${provider} ${model}`;
   }
   if (event.tool_name) return `${event.tool_name} tool usage`;
@@ -139,7 +155,7 @@ function usageEstimateReason(event: AiUsageEvent) {
 function usageEventMatches(event: AiUsageEvent, query: string) {
   if (!query.trim()) return true;
   const haystack = [
-    event.event_kind,
+    usageEventKind(event),
     event.provider,
     event.model,
     event.agent_id,
@@ -520,12 +536,12 @@ export function CostLedger() {
           <EmptyState />
         ) : (
           <div className="space-y-3">
-            {summary.by_agent.map((row) => {
+            {summary.by_agent.map((row, index) => {
               const label = agentLabels.get(row.key);
               const status = row.budget?.status || "ok";
               return (
                 <div
-                  key={row.key}
+                  key={`${row.key}-${index}`}
                   className="flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="min-w-0">
@@ -747,6 +763,7 @@ function UsageEventLedger({
           <label className="flex h-9 min-w-[220px] items-center gap-2 rounded-md border bg-background px-3 text-sm">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
+              aria-label="Search usage events"
               value={search}
               onChange={(event) => onSearch(event.target.value)}
               placeholder="Search provider, model, app..."
@@ -761,12 +778,12 @@ function UsageEventLedger({
       ) : (
         <div className="mt-4 grid min-h-[420px] gap-4 xl:grid-cols-[340px_minmax(0,1fr)_320px]">
           <div className="space-y-2 overflow-y-auto pr-1 xl:max-h-[560px]">
-            {events.map((event) => {
+            {events.map((event, index) => {
               const estimated = eventIsEstimated(event);
               const active = event.event_id === selectedId;
               return (
                 <button
-                  key={event.event_id}
+                  key={`${event.event_id}-${index}`}
                   type="button"
                   onClick={() => onSelect(event.event_id)}
                   className={`w-full rounded-lg border p-3 text-left transition hover:border-primary/40 hover:bg-primary/5 ${
@@ -1054,9 +1071,9 @@ function BreakdownTable({
       </div>
       <div className="space-y-2">
         {rows.length ? (
-          rows.map((row) => (
+          rows.map((row, index) => (
             <div
-              key={row.key}
+              key={`${row.key}-${index}`}
               className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-lg border p-3 text-sm"
             >
               <span className="min-w-0 truncate font-medium">{row.label}</span>

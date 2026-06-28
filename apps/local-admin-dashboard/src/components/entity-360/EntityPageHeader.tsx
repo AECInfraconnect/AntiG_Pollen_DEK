@@ -1,5 +1,6 @@
 import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { renderDisplayValue } from "@/lib/displayValue";
 import { ContextualHelp } from "../help/ContextualHelp";
 
 export interface EntityPageHeaderProps {
@@ -90,7 +91,7 @@ export function EntityPageHeader({
                 <span
                   className={cn("h-1.5 w-1.5 rounded-full", statusDot[status.tone])}
                 />
-                {status.label}
+                {renderDisplayValue(status.label)}
               </span>
             )}
             {badges.map((badge, idx) => (
@@ -98,13 +99,13 @@ export function EntityPageHeader({
                 key={idx}
                 className="inline-flex items-center rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
               >
-                {badge.label}
+                {renderDisplayValue(badge.label)}
               </span>
             ))}
           </div>
           {subtitle && (
             <p className="mt-0.5 text-xs text-muted-foreground truncate max-w-lg">
-              {subtitle}
+              {renderDisplayValue(subtitle)}
             </p>
           )}
         </div>
@@ -120,7 +121,10 @@ export function EntityPageHeader({
         <div className="mt-2 ml-[52px] flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-muted-foreground">
           {meta.map((m, idx) => (
             <span key={idx}>
-              {m.label}: <span className="font-medium text-foreground/70">{m.value}</span>
+              {m.label}:{" "}
+              <span className="font-medium text-foreground/70">
+                {renderDisplayValue(m.value)}
+              </span>
             </span>
           ))}
         </div>

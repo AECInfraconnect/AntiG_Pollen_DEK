@@ -7,7 +7,7 @@ import {
 } from "../services/api";
 import type { ContractDiscoveryResponse } from "../services/api";
 import { toast } from "sonner";
-import { Activity } from "lucide-react";
+import { Activity, CheckCircle2, CloudOff, FileCode2, ShieldAlert } from "lucide-react";
 
 export function Settings() {
   const [profile, setProfile] = useState<"local" | "mock-cloud">("local");
@@ -65,8 +65,11 @@ export function Settings() {
 
         <div className="space-y-4 max-w-md">
           <div className="grid gap-2">
-            <label className="text-sm font-medium">Active Profile</label>
+            <label htmlFor="settings-active-profile" className="text-sm font-medium">
+              Active Profile
+            </label>
             <select
+              id="settings-active-profile"
               value={profile}
               onChange={(e) => handleProfileChange(e.target.value as any)}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -80,8 +83,11 @@ export function Settings() {
             </select>
           </div>
           <div className="grid gap-2">
-            <label className="text-sm font-medium">API Endpoint</label>
+            <label htmlFor="settings-api-endpoint" className="text-sm font-medium">
+              API Endpoint
+            </label>
             <input
+              id="settings-api-endpoint"
               type="text"
               className="flex h-10 w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
               value={
@@ -94,8 +100,11 @@ export function Settings() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-sm font-medium">Mock Role</label>
+            <label htmlFor="settings-mock-role" className="text-sm font-medium">
+              Mock Role
+            </label>
             <input
+              id="settings-mock-role"
               type="text"
               className="flex h-10 w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
               value={profile === "mock-cloud" ? "admin" : ""}
@@ -122,6 +131,8 @@ export function Settings() {
           </div>
         ) : discovery ? (
           <div className="space-y-4">
+            <ContractHubStatusCard discovery={discovery} />
+
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="space-y-1">
                 <span className="text-muted-foreground block">
@@ -205,5 +216,73 @@ export function Settings() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ContractHubStatusCard({
+  discovery,
+}: {
+  discovery: ContractDiscoveryResponse;
+}) {
+  const hasCloudInterface = Boolean(
+    (discovery as any)?.interfaces?.["pollek.cloud.telemetry"],
+  );
+  return (
+    <section className="rounded-lg border bg-card/60 p-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <h4 className="text-sm font-semibold">Contract Hub status</h4>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+            The dashboard is using the shared Pollek contract discovery endpoint
+            to understand local routes, generated types, and optional cloud sync
+            capability. Local observation remains usable even when cloud
+            interfaces are not advertised.
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Local contract reachable
+        </span>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="rounded-md border bg-background/60 p-3">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <FileCode2 className="h-3.5 w-3.5" />
+            Dashboard types
+          </div>
+          <div className="mt-1 text-sm font-semibold">
+            Generated/shared API client
+          </div>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            UI reads contract-shaped responses instead of separate ad-hoc
+            dashboard models.
+          </p>
+        </div>
+        <div className="rounded-md border bg-background/60 p-3">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <ShieldAlert className="h-3.5 w-3.5" />
+            Preferred contract
+          </div>
+          <div className="mt-1 break-words text-sm font-semibold">
+            {discovery.preferred}
+          </div>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Schema version {discovery.schema_version}
+          </p>
+        </div>
+        <div className="rounded-md border bg-background/60 p-3">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <CloudOff className="h-3.5 w-3.5" />
+            Cloud sync
+          </div>
+          <div className="mt-1 text-sm font-semibold">
+            {hasCloudInterface ? "Available if enabled" : "Optional / not required"}
+          </div>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Local history and Observe views do not require Pollek Cloud.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }

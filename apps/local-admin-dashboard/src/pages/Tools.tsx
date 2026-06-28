@@ -212,6 +212,7 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
         toolbar={
           <div className="flex items-center gap-2 mb-4">
             <input
+              aria-label="Search tools"
               type="text"
               placeholder="Search tools..."
               value={search}
@@ -219,6 +220,7 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
               className="px-3 py-1.5 text-sm rounded-md border bg-background"
             />
             <select
+              aria-label="Filter tools by kind"
               value={kindFilter}
               onChange={(e) => setKindFilter(e.target.value)}
               className="px-3 py-1.5 text-sm rounded-md border bg-background"
@@ -232,6 +234,7 @@ export function Tools({ hideHeader = false }: { hideHeader?: boolean }) {
               <option value="browser_action">Browser</option>
             </select>
             <input
+              aria-label="Filter tools by agent ID"
               type="text"
               placeholder="Agent ID"
               value={agentFilter}

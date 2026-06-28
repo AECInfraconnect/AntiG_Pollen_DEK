@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { NAV } from "../../config/navigation";
+import { labelForLanguage, NAV } from "../../config/navigation";
 import { useMode } from "../../context/ModeContext";
 import { ModeSwitcher } from "./ModeSwitcher";
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
@@ -18,7 +18,6 @@ export function Sidebar({
   const { mode } = useMode();
   const { pathname } = useLocation();
   const { i18n } = useTranslation();
-  const th = i18n.language === "th";
   const navRef = useRef<HTMLElement | null>(null);
   const navScrollTop = useRef(0);
 
@@ -124,7 +123,7 @@ export function Sidebar({
             >
               {!collapsed && (
                 <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {th ? group.th : group.en}
+                  {labelForLanguage(group, i18n.language)}
                 </div>
               )}
               {collapsed && <div className="mb-2 h-px w-8 bg-border" />}
@@ -141,7 +140,7 @@ export function Sidebar({
                       to={item.href}
                       title={
                         collapsed
-                          ? `${th ? item.th : item.en}${badge ? ` (${badge})` : ""}`
+                          ? `${labelForLanguage(item, i18n.language)}${badge ? ` (${badge})` : ""}`
                           : undefined
                       }
                       aria-current={active ? "page" : undefined}
@@ -172,7 +171,7 @@ export function Sidebar({
                       {!collapsed && (
                         <>
                           <span className="min-w-0 flex-1 truncate">
-                            {th ? item.th : item.en}
+                            {labelForLanguage(item, i18n.language)}
                           </span>
                           {badge && (
                             <span className="shrink-0 rounded border border-border bg-background/70 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -193,6 +192,7 @@ export function Sidebar({
       <div className="border-t border-border p-3 flex flex-col gap-2 relative">
         <button
           onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
           className={cn(
             "hidden md:flex absolute -right-3 -top-3 h-6 w-6 items-center justify-center rounded-full border border-border bg-background shadow-sm text-muted-foreground hover:text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             collapsed && "rotate-180",

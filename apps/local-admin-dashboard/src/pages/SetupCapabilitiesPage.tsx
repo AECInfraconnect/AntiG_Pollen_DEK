@@ -365,6 +365,7 @@ export function SetupCapabilitiesPage() {
               </div>
               {demoTarget !== "host" && (
                 <select
+                  aria-label="Select setup demonstration profile"
                   value={demoProfile}
                   onChange={(event) =>
                     setDemoProfile(event.target.value as DemoProfile)

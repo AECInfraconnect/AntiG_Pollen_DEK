@@ -794,6 +794,52 @@ const usageEvents = {
   next_cursor: null,
 };
 
+const pluginMarketItem = {
+  id: "browser-observe-connector",
+  name: "Browser Observe Connector",
+  version: "0.1.0",
+  kind: "observe.collector",
+  publisher: "Pollek",
+  verified: true,
+  rating: 4.8,
+  installs: 1200,
+  capabilities: ["browser:metadata:read", "telemetry:activity:write"],
+  human_capabilities: [
+    "Observe AI websites opened in the browser",
+    "Write local activity metadata to Pollek",
+  ],
+  os: ["windows", "macos", "linux"],
+  min_engine_version: "0.1.0",
+  signature_ok: true,
+  signature_state: "valid",
+  description_en:
+    "Adds browser-tab observation for ChatGPT, Claude, DeepSeek, Manus, and similar AI websites without reading prompt text by default.",
+  privacy_note:
+    "Metadata-only by default. Prompt and response bodies require explicit browser permission later.",
+  source: "local_catalog",
+};
+
+const installedPlugin = {
+  schema_version: "pollek.installed_plugin.v1",
+  id: "prompt-guard-local",
+  name: "Prompt Guard Local",
+  version: "0.1.0",
+  kind: "resource.classifier",
+  enabled: true,
+  granted_caps: ["prompt_guard:check", "telemetry:guard_event:write"],
+  human_grants: [
+    "Check prompt and output safety locally",
+    "Write guard incidents to local history",
+  ],
+  health: "healthy",
+  source: "local_catalog",
+  signature_state: "valid",
+  privacy_note:
+    "Runs local deterministic checks and stores findings, counts, and redaction status without raw prompt text.",
+  installed_at: now,
+  last_seen: now,
+};
+
 const policySuggestion = {
   suggestion_id: "suggest-protect-workspace-files",
   title: "Protect workspace source files",
@@ -856,6 +902,7 @@ export async function installMockApi(page: Page) {
   let scanStarted = false;
   let suggestionsGenerated = false;
   const policies = [policy];
+  let installedPlugins = [installedPlugin];
 
   await page.route("**/.well-known/pollek-contract", (route) =>
     json(route, {
@@ -875,22 +922,22 @@ export async function installMockApi(page: Page) {
     (route) => json(route, capabilitySnapshot),
   );
 
-  await page.route("**/v1/tenants/local/registry/agents", (route) =>
+  await page.route("**/v1/tenants/local/registry/agents**", (route) =>
     json(route, { items: scanStarted ? [agent] : [] }),
   );
-  await page.route("**/v1/tenants/local/registry/mcp-servers", (route) =>
+  await page.route("**/v1/tenants/local/registry/mcp-servers**", (route) =>
     json(route, { items: [] }),
   );
-  await page.route("**/v1/tenants/local/registry/tools", (route) =>
+  await page.route("**/v1/tenants/local/registry/tools**", (route) =>
     json(route, { items: scanStarted ? [tool] : [] }),
   );
-  await page.route("**/v1/tenants/local/registry/resources", (route) =>
+  await page.route("**/v1/tenants/local/registry/resources**", (route) =>
     json(route, { items: scanStarted ? [resource] : [] }),
   );
-  await page.route("**/v1/tenants/local/registry/entities", (route) =>
+  await page.route("**/v1/tenants/local/registry/entities**", (route) =>
     json(route, { items: scanStarted ? [agent, tool, resource] : [] }),
   );
-  await page.route("**/v1/tenants/local/registry/relationships", (route) =>
+  await page.route("**/v1/tenants/local/registry/relationships**", (route) =>
     json(route, { items: scanStarted ? graphEdges : [] }),
   );
 
@@ -982,6 +1029,9 @@ export async function installMockApi(page: Page) {
       route,
       scanStarted ? activityTimeline : { ...activityTimeline, items: [] },
     ),
+  );
+  await page.route(/\/v1\/tenants\/local\/activity(?:\?.*)?$/, (route) =>
+    json(route, scanStarted ? activitySummary : { activity_sets: [] }),
   );
   await page.route("**/v1/tenants/local/user-friendly-activity**", (route) =>
     json(
@@ -1198,6 +1248,145 @@ export async function installMockApi(page: Page) {
   );
   await page.route("**/v1/tenants/local/usage/events**", (route) =>
     json(route, usageEvents),
+  );
+  await page.route("**/v1/tenants/local/marketplace/items", (route) =>
+    json(route, {
+      schema_version: "pollek.marketplace.v1",
+      items: [pluginMarketItem],
+    }),
+  );
+  await page.route("**/v1/tenants/local/plugins", (route) =>
+    json(route, {
+      schema_version: "pollek.installed_plugins.v1",
+      items: installedPlugins,
+    }),
+  );
+  await page.route("**/v1/tenants/local/plugins/install", (route) => {
+    const body = route.request().postDataJSON() as {
+      id: string;
+      granted_caps?: string[];
+    };
+    const nextPlugin = {
+      schema_version: "pollek.installed_plugin.v1",
+      id: body.id,
+      name: pluginMarketItem.name,
+      version: pluginMarketItem.version,
+      kind: pluginMarketItem.kind,
+      enabled: true,
+      granted_caps: body.granted_caps ?? pluginMarketItem.capabilities,
+      human_grants: pluginMarketItem.human_capabilities,
+      health: "healthy",
+      source: pluginMarketItem.source,
+      signature_state: pluginMarketItem.signature_state,
+      privacy_note: pluginMarketItem.privacy_note,
+      installed_at: now,
+      last_seen: now,
+    };
+    installedPlugins = [
+      ...installedPlugins.filter((plugin) => plugin.id !== nextPlugin.id),
+      nextPlugin,
+    ];
+    return json(route, nextPlugin);
+  });
+  await page.route(/\/v1\/tenants\/local\/plugins\/[^/]+\/toggle$/, (route) => {
+    const id = route.request().url().split("/plugins/")[1].split("/")[0];
+    const body = route.request().postDataJSON() as { enabled?: boolean };
+    installedPlugins = installedPlugins.map((plugin) =>
+      plugin.id === id ? { ...plugin, enabled: Boolean(body.enabled) } : plugin,
+    );
+    return json(
+      route,
+      installedPlugins.find((plugin) => plugin.id === id) ?? installedPlugin,
+    );
+  });
+  await page.route(/\/v1\/tenants\/local\/plugins\/(?!install$)[^/]+$/, (route) => {
+    const id = route.request().url().split("/plugins/")[1];
+    if (route.request().method() === "DELETE") {
+      installedPlugins = installedPlugins.filter((plugin) => plugin.id !== id);
+      return json(route, {
+        status: "uninstalled",
+        id,
+        revoked_caps: true,
+        cleared_plugin_namespace: true,
+      });
+    }
+    return json(route, { error: "unsupported method" }, 405);
+  });
+  await page.route("**/v1/tenants/local/usage/stream", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      body: "",
+    }),
+  );
+  await page.route("**/v1/tenants/local/tools", (route) =>
+    json(route, [tool]),
+  );
+  await page.route("**/v1/tenants/local/resources", (route) =>
+    json(route, [resource]),
+  );
+  await page.route("**/v1/tenants/local/telemetry/tools", (route) =>
+    json(route, {
+      items: [
+        {
+          ...tool,
+          observed_details: {
+            use_count: 3,
+            agents: [agent.agent_id],
+            actions: ["read", "list"],
+            last_used: now,
+            governed: true,
+          },
+        },
+      ],
+    }),
+  );
+  await page.route("**/v1/tenants/local/telemetry/resources", (route) =>
+    json(route, {
+      items: [
+        {
+          ...resource,
+          observed_details: {
+            access_count: 2,
+            agents: [agent.agent_id],
+            modes: ["read"],
+            last_accessed: now,
+            governed: true,
+          },
+        },
+      ],
+    }),
+  );
+  await page.route("**/v1/tenants/local/telemetry/identities", (route) =>
+    json(route, {
+      items: [
+        {
+          entity_id: "identity-antigravity",
+          identity_id: "identity-antigravity",
+          display_name: "Google Antigravity workload",
+          entity_type: "workload",
+          external_ids: [{ provider: "spiffe", id: agent.identity.spiffe_id }],
+          roles: ["local-ai-agent"],
+          meta: objectMeta("telemetry", "active"),
+          observed_details: {
+            access_count: 1,
+            agents: [agent.agent_id],
+            actions: ["read"],
+            spiffe_id: agent.identity.spiffe_id,
+            last_seen: now,
+          },
+        },
+      ],
+    }),
+  );
+  await page.route(
+    "**/v1/tenants/local/telemetry/identities/stream",
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body: "",
+      }),
   );
   await page.route("**/v1/tenants/local/local-observe/refresh", (route) => {
     scanStarted = true;

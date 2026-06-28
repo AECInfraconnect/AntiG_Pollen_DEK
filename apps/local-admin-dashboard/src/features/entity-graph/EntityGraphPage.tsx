@@ -42,6 +42,7 @@ export function EntityGraphPage() {
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
+              aria-label="Search relationship map"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search graph..."
@@ -49,6 +50,7 @@ export function EntityGraphPage() {
             />
           </div>
           <select
+            aria-label="Filter relationship map by entity type"
             value={types}
             onChange={(event) => setTypes(event.target.value)}
             className="h-9 rounded-md border bg-background px-3 text-sm"

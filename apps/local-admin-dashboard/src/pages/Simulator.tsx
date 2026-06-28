@@ -153,6 +153,7 @@ export function Simulator() {
                 Target Policy
               </label>
               <select
+                aria-label="Target policy"
                 value={selectedPolicyId}
                 onChange={(e) => setSelectedPolicyId(e.target.value)}
                 className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
@@ -191,6 +192,7 @@ export function Simulator() {
                 Target PEP for Deployment Test
               </label>
               <select
+                aria-label="Target PEP for deployment test"
                 value={targetPep}
                 onChange={(e) => setTargetPep(e.target.value)}
                 className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
@@ -206,6 +208,7 @@ export function Simulator() {
                 Principal ID
               </label>
               <input
+                aria-label="Principal ID"
                 value={principal}
                 onChange={(e) => setPrincipal(e.target.value)}
                 className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
@@ -216,6 +219,7 @@ export function Simulator() {
                 Action
               </label>
               <input
+                aria-label="Action"
                 value={action}
                 onChange={(e) => setAction(e.target.value)}
                 className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
@@ -226,6 +230,7 @@ export function Simulator() {
                 Resource ID
               </label>
               <input
+                aria-label="Resource ID"
                 value={resource}
                 onChange={(e) => setResource(e.target.value)}
                 className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
@@ -236,6 +241,7 @@ export function Simulator() {
                 Additional Context (JSON)
               </label>
               <textarea
+                aria-label="Additional context JSON"
                 value={contextStr}
                 onChange={(e) => setContextStr(e.target.value)}
                 rows={5}

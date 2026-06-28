@@ -10,7 +10,7 @@ export function Header({
   toggleMobileMenu?: () => void;
   onOpenCommandPalette?: () => void;
 }) {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const { theme, resolvedTheme, cycleTheme } = useTheme();
 
   const toggleLanguage = () => {
@@ -20,10 +20,10 @@ export function Header({
   };
   const themeLabel =
     theme === "system"
-      ? `System (${resolvedTheme})`
+      ? `${t("theme.system")} (${t(`theme.${resolvedTheme}`)})`
       : theme === "dark"
-        ? "Dark"
-        : "Light";
+        ? t("theme.dark")
+        : t("theme.light");
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card/50 px-4 md:px-6 backdrop-blur-xl shrink-0">
@@ -31,7 +31,7 @@ export function Header({
         {toggleMobileMenu && (
           <button
             onClick={toggleMobileMenu}
-            aria-label="Open navigation"
+            aria-label={t("a11y.openNavigation")}
             className="md:hidden rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <Menu className="h-5 w-5" />
@@ -42,11 +42,11 @@ export function Header({
           <input
             id="global-search-input"
             type="search"
-            placeholder="Search resources, policies, or agents... (Ctrl K)"
+            placeholder={t("command.placeholder")}
             readOnly
             onFocus={onOpenCommandPalette}
             onClick={onOpenCommandPalette}
-            aria-label="Open command palette"
+            aria-label={t("command.dialogLabel")}
             className="h-9 w-full cursor-pointer rounded-md border bg-background pl-9 pr-16 text-sm outline-none transition-all hover:border-primary/60 focus:border-primary focus:ring-1 focus:ring-primary"
           />
           <kbd className="pointer-events-none absolute right-2.5 top-2.5 hidden h-4 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex text-muted-foreground">
@@ -58,7 +58,7 @@ export function Header({
         <ModeSwitcher />
         <button
           onClick={toggleLanguage}
-          aria-label="Switch language"
+          aria-label={t("a11y.switchLanguage")}
           className="flex items-center gap-1 rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-xs font-semibold"
         >
           <Languages className="h-5 w-5" />
@@ -66,8 +66,8 @@ export function Header({
         </button>
         <button
           onClick={cycleTheme}
-          aria-label={`Change theme. Current theme: ${themeLabel}`}
-          title={`Theme: ${themeLabel}`}
+          aria-label={t("a11y.changeTheme", { theme: themeLabel })}
+          title={t("theme.current", { theme: themeLabel })}
           className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           {theme === "system" ? (
@@ -79,7 +79,7 @@ export function Header({
           )}
         </button>
         <button
-          aria-label="Notifications"
+          aria-label={t("a11y.notifications")}
           className="relative rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <Bell className="h-5 w-5" />

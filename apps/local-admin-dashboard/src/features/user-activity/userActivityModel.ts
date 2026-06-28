@@ -57,8 +57,40 @@ const resultLabels: Record<UserActivityResult, string> = {
   error: "Error",
 };
 
-function knownAgentName(value?: string | null) {
-  const text = (value ?? "").toLowerCase();
+function textValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "bigint") {
+    return value.toString();
+  }
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value)) {
+    return value.map(textValue).filter(Boolean).join(", ");
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const friendly =
+      record.label ??
+      record.name ??
+      record.display_name ??
+      record.title ??
+      record.entity_id ??
+      record.id ??
+      record.type;
+    if (friendly !== undefined && friendly !== null) {
+      return textValue(friendly);
+    }
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+function knownAgentName(value?: unknown) {
+  const text = textValue(value).toLowerCase();
   if (!text) return undefined;
   if (text.includes("pollek-plugin-marketplace")) {
     return "Pollek Plugin Marketplace";
@@ -74,16 +106,16 @@ function knownAgentName(value?: string | null) {
   return undefined;
 }
 
-function compactRawId(value?: string | null) {
-  const text = (value ?? "").trim();
+function compactRawId(value?: unknown) {
+  const text = textValue(value).trim();
   if (!text) return "";
   const withoutPrefix = text.replace(/^agent[_:-]/i, "");
   const match = withoutPrefix.match(/[a-f0-9]{6,}/i);
   return (match?.[0] ?? withoutPrefix).slice(0, 8);
 }
 
-function looksLikeRawId(value?: string | null) {
-  const text = (value ?? "").trim().toLowerCase();
+function looksLikeRawId(value?: unknown) {
+  const text = textValue(value).trim().toLowerCase();
   if (!text) return true;
   if (text === "unknown" || text === "unknown ai app") return true;
   if (text.includes("unknown-observed-session")) return true;
@@ -97,21 +129,22 @@ function looksLikeRawId(value?: string | null) {
   return false;
 }
 
-function friendlyAgentName(label?: string | null, id?: string | null) {
+function friendlyAgentName(label?: unknown, id?: unknown) {
   const known = knownAgentName(label) ?? knownAgentName(id);
   if (known) return known;
-  if (!looksLikeRawId(label)) return label!.trim();
+  const labelText = textValue(label).trim();
+  if (!looksLikeRawId(labelText)) return labelText;
   const suffix = compactRawId(id ?? label);
   return suffix ? `Unidentified AI app (${suffix})` : "Unidentified AI app";
 }
 
 function friendlyTargetLabel(
-  label: string | undefined | null,
+  label: unknown,
   category: UserActivityCategory,
 ) {
   const known = knownAgentName(label);
   if (known) return known;
-  const text = (label ?? "").trim();
+  const text = textValue(label).trim();
   const lower = text.toLowerCase();
   if (!text || lower === "an unknown target" || lower === "unknown") {
     if (category === "files") return "a file or folder Pollek could not name";
@@ -490,16 +523,35 @@ export function normalizeUserFriendlyActivity(
 ): UserFriendlyActivityEvent {
   const category = item.category ?? "unknown";
   const action = item.action ?? "watch";
+  const result = item.result ?? "watched_only";
   const agentName = friendlyAgentName(
     item.agent_name,
     item.agent_id ?? item.advanced?.raw_item?.actor?.entity_id,
   );
   const target = friendlyTargetLabel(item.target_label, category);
+  const targetKind = textValue(item.target_kind) || categoryLabels[category];
+  const resultLabel = textValue(item.result_label) || resultLabels[result];
+  const ruleLabel = textValue(item.rule_label);
+  const capability =
+    textValue(item.capability_note) || capabilityNote(result, category);
+  const next = textValue(item.next_step) || nextStep(result, category);
+  const privacy =
+    textValue(item.privacy_note) ||
+    "Pollek shows activity metadata here, not file contents, email bodies, raw prompts, or raw responses.";
   return {
     ...item,
     agent_name: agentName,
+    category,
+    action,
+    target_kind: targetKind,
     target_label: target,
+    result,
+    result_label: resultLabel,
     plain_summary: userFriendlySummary(agentName, action, target, category),
+    rule_label: ruleLabel || undefined,
+    capability_note: capability,
+    next_step: next,
+    privacy_note: privacy,
     advanced: {
       ...item.advanced,
       raw_agent_label:

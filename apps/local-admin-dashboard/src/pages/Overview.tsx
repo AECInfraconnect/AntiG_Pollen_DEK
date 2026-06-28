@@ -27,6 +27,7 @@ import type {
 } from "../services/types";
 import { cn } from "@/lib/utils";
 import { ContextualHelp } from "../components/help/ContextualHelp";
+import { formatDisplayValue, renderDisplayValue } from "../lib/displayValue";
 
 type Metrics = {
   agents: number;
@@ -46,9 +47,9 @@ const readinessTone: Record<string, string> = {
   failed: "bg-red-500/10 text-red-500 border-red-500/20",
 };
 
-function pretty(value?: string | null) {
+function pretty(value?: unknown) {
   if (!value) return "-";
-  return value.replace(/_/g, " ");
+  return formatDisplayValue(value).replace(/_/g, " ");
 }
 
 function formatDateTime(value?: string) {
@@ -149,15 +150,17 @@ function Fact({
   source,
 }: {
   label: string;
-  value: string;
-  source: string;
+  value: unknown;
+  source: unknown;
 }) {
   return (
     <div className="rounded-lg border border-border/60 bg-background/40 p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 truncate text-sm font-semibold capitalize">{value}</p>
+      <p className="mt-1 truncate text-sm font-semibold capitalize">
+        {formatDisplayValue(value)}
+      </p>
       <p className="mt-1 truncate text-[11px] text-muted-foreground">
-        Source: {source}
+        Source: {formatDisplayValue(source)}
       </p>
     </div>
   );
@@ -232,10 +235,12 @@ function CapabilityList({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold">
-                    {controlMethod ? row.display_name_en : row.display_name_en}
+                    {renderDisplayValue(
+                      controlMethod ? row.display_name_en : row.display_name_en,
+                    )}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {row.domains.map(pretty).join(", ")}
+                    {renderDisplayValue(row.domains.map(pretty).join(", "))}
                   </p>
                 </div>
                 <span
@@ -256,12 +261,12 @@ function CapabilityList({
               )}
               {controlMethod && row.limitations_en.length > 0 && (
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  {row.limitations_en[0]}
+                  {renderDisplayValue(row.limitations_en[0])}
                 </p>
               )}
               {!controlMethod && (
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  {row.privacy_note_en}
+                  {renderDisplayValue(row.privacy_note_en)}
                 </p>
               )}
             </div>
@@ -291,9 +296,11 @@ function SetupActions({ actions }: { actions: SetupActionV2[] }) {
           <div key={action.action_id} className="p-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="text-sm font-semibold">{action.title_en}</p>
+                <p className="text-sm font-semibold">
+                  {renderDisplayValue(action.title_en)}
+                </p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {action.detail_en}
+                  {renderDisplayValue(action.detail_en)}
                 </p>
               </div>
               <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
@@ -338,8 +345,8 @@ export function Overview() {
         ? await CapabilityApi.refreshSnapshotV2("desktop_advanced")
         : await CapabilityApi.getSnapshotV2("desktop_advanced");
       setSnapshot(next);
-    } catch (error) {
-      console.error("Failed to load capability snapshot:", error);
+    } catch {
+      setSnapshot(null);
     } finally {
       setSnapshotLoading(false);
     }
@@ -360,13 +367,15 @@ export function Overview() {
           resources: resources.length,
         });
       })
-      .catch(console.error);
+      .catch(() => {
+        setMetrics({ agents: 0, mcps: 0, tools: 0, resources: 0 });
+      });
 
     void loadSnapshot();
 
     ActivityApi.getActivity()
       .then((res: any) => setActivities(res.activity_sets || []))
-      .catch(console.error);
+      .catch(() => setActivities([]));
   }, []);
 
   const capabilitySummary = useMemo(() => {
@@ -461,11 +470,16 @@ export function Overview() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
-                      {item.event_type ?? item.action ?? "activity"} -{" "}
-                      {item.decision ?? "observed"}
+                      {renderDisplayValue(
+                        `${formatDisplayValue(item.event_type ?? item.action ?? "activity")} - ${formatDisplayValue(
+                          item.decision ?? "observed",
+                        )}`,
+                      )}
                     </p>
                     <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {item.resource ?? item.reason ?? "No resource detail"}
+                      {renderDisplayValue(
+                        item.resource ?? item.reason ?? "No resource detail",
+                      )}
                     </p>
                   </div>
                   <span className="shrink-0 text-xs text-muted-foreground">

@@ -11,6 +11,7 @@ import { MasterDetailLayout } from "../../components/master-detail/MasterDetailL
 import { EntityCard } from "../../components/master-detail/EntityCard";
 import { DetailPane } from "../../components/master-detail/DetailPane";
 import { EmptyState } from "../../components/master-detail/EmptyState";
+import { formatDisplayValue } from "../../lib/displayValue";
 
 function SummaryMetric({
   label,
@@ -163,6 +164,7 @@ export function IdentityNetwork() {
         toolbar={
           <div className="flex items-center gap-2 mb-4">
             <input
+              aria-label="Search identities"
               type="text"
               placeholder="Search identities..."
               value={search}
@@ -170,6 +172,7 @@ export function IdentityNetwork() {
               className="px-3 py-1.5 text-sm rounded-md border bg-background"
             />
             <select
+              aria-label="Filter identities by scope"
               value={scopeFilter}
               onChange={(event) =>
                 setScopeFilter(event.target.value as "all" | "local" | "cloud")
@@ -181,6 +184,7 @@ export function IdentityNetwork() {
               <option value="cloud">Cloud</option>
             </select>
             <input
+              aria-label="Filter identities by agent ID"
               type="text"
               placeholder="Agent ID"
               value={agentFilter}
@@ -198,13 +202,14 @@ export function IdentityNetwork() {
         }
         renderCard={(e, selected) => {
           const isGoverned = e.meta?.status === "active";
+          const observedAgents = e.observed_details?.agents ?? [];
           return (
             <EntityCard
               title={e.display_name}
               subtitle={e.entity_type}
               summary={
                 e.observed_details
-                  ? `${e.observed_details.access_count} identity event(s) from ${e.observed_details.agents.length || 0} agent(s). ${e.observed_details.spiffe_id ? "SPIFFE-linked workload." : "No SPIFFE ID observed yet."}`
+                  ? `${e.observed_details.access_count ?? 0} identity event(s) from ${observedAgents.length} agent(s). ${e.observed_details.spiffe_id ? "SPIFFE-linked workload." : "No SPIFFE ID observed yet."}`
                   : `${e.entity_type} identity from ${e.external_ids?.[0]?.provider ?? "registry"} is ready for relationship and policy targeting.`
               }
               icon={UserCircle}
@@ -224,7 +229,7 @@ export function IdentityNetwork() {
                   ? [
                       {
                         label: "Agents",
-                        value: e.observed_details.agents.length,
+                        value: observedAgents.length,
                       },
                     ]
                   : []),
@@ -235,6 +240,8 @@ export function IdentityNetwork() {
         }}
         renderDetail={(e) => {
           const isGoverned = e.meta?.status === "active";
+          const observedAgents = e.observed_details?.agents ?? [];
+          const observedActions = e.observed_details?.actions ?? [];
           const related = relationships.filter(
             (r) =>
               r.subject.object_id === e.entity_id ||
@@ -293,12 +300,17 @@ export function IdentityNetwork() {
                             />
                             <SummaryMetric
                               label="Agents using it"
-                              value={e.observed_details.agents.length}
-                              helper={e.observed_details.agents.join(", ") || "No agent linked yet."}
+                              value={observedAgents.length}
+                              helper={
+                                formatDisplayValue(observedAgents) ||
+                                "No agent linked yet."
+                              }
                             />
                             <SummaryMetric
                               label="Actions"
-                              value={e.observed_details.actions.join(", ") || "access"}
+                              value={
+                                formatDisplayValue(observedActions) || "access"
+                              }
                               helper="Authentication, token, delegation, or access actions observed."
                             />
                             <SummaryMetric

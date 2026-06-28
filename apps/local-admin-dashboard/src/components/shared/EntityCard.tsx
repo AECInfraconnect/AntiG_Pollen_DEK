@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { renderDisplayValue } from "@/lib/displayValue";
 
 export type EntityKind =
   | "agent"
@@ -28,13 +30,13 @@ export type ChipTone = "neutral" | "success" | "warning" | "danger" | "info";
 export interface EntityCardProps {
   id: string;
   kind: EntityKind;
-  title: string;
-  subtitle?: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
   status: EntityStatus;
-  statusLabel: string;
-  summary: string;
-  chips: { label: string; tone: ChipTone }[];
-  metrics?: { label: string; value: string }[];
+  statusLabel: ReactNode;
+  summary: ReactNode;
+  chips: { label: ReactNode; tone: ChipTone }[];
+  metrics?: { label: ReactNode; value: ReactNode }[];
   lastUpdatedAt?: string;
   onClick?: () => void;
   selected?: boolean;
@@ -84,9 +86,13 @@ export function EntityCard({
     >
       <div className="flex justify-between items-start mb-2">
         <div>
-          <h3 className="font-semibold text-base tracking-tight">{title}</h3>
+          <h3 className="font-semibold text-base tracking-tight">
+            {renderDisplayValue(title)}
+          </h3>
           {subtitle && (
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
+            <p className="text-sm text-muted-foreground">
+              {renderDisplayValue(subtitle)}
+            </p>
           )}
         </div>
         <div
@@ -95,12 +101,12 @@ export function EntityCard({
             statusColors[status],
           )}
         >
-          {statusLabel}
+          {renderDisplayValue(statusLabel)}
         </div>
       </div>
 
       <p className="text-sm text-muted-foreground mt-3 mb-4 line-clamp-2">
-        {summary}
+        {renderDisplayValue(summary)}
       </p>
 
       {chips.length > 0 && (
@@ -113,7 +119,7 @@ export function EntityCard({
                 toneColors[chip.tone],
               )}
             >
-              {chip.label}
+              {renderDisplayValue(chip.label)}
             </span>
           ))}
         </div>
@@ -125,9 +131,11 @@ export function EntityCard({
             <div className="flex gap-4">
               {metrics.map((m, i) => (
                 <div key={i} className="flex flex-col">
-                  <span className="font-medium text-foreground">{m.value}</span>
+                  <span className="font-medium text-foreground">
+                    {renderDisplayValue(m.value)}
+                  </span>
                   <span className="text-[10px] uppercase tracking-wider">
-                    {m.label}
+                    {renderDisplayValue(m.label)}
                   </span>
                 </div>
               ))}

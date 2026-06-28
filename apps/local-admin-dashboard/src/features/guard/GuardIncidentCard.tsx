@@ -52,6 +52,41 @@ const BROWSER_CONNECTOR_OPTIONS = [
   },
 ];
 
+const PROMPT_CAPTURE_ADAPTERS = [
+  {
+    id: "cli_hook",
+    label: "CLI hook",
+    bestFor: "Codex CLI, Claude Code, shell-driven agents",
+    dataPath:
+      "Wrap the command so prompt/output text is checked before it reaches the agent or after output is produced.",
+    status: "Supported event source",
+  },
+  {
+    id: "sdk_adapter",
+    label: "SDK adapter",
+    bestFor: "Custom Python, TypeScript, or app-embedded AI agents",
+    dataPath:
+      "Call the local Prompt Guard API from the application code before provider calls and after model responses.",
+    status: "Supported event source",
+  },
+  {
+    id: "mcp_proxy",
+    label: "MCP proxy",
+    bestFor: "Agents that use MCP tools or tool servers",
+    dataPath:
+      "Route tool prompts, tool outputs, and sensitive responses through a local MCP proxy that emits metadata-only guard events.",
+    status: "Supported event source",
+  },
+  {
+    id: "local_proxy",
+    label: "Local proxy or wrapper",
+    bestFor: "Desktop apps without extension or SDK support",
+    dataPath:
+      "Place a user-approved proxy or launch wrapper in front of the app. OS observe alone can see process/file/network metadata, not encrypted prompt bodies.",
+    status: "Needs per-app setup",
+  },
+];
+
 const SEVERITY_STYLE: Record<string, string> = {
   critical: "border-red-500/80 bg-red-500/10 text-red-950 dark:text-red-100",
   warn: "border-amber-500/80 bg-amber-500/10 text-amber-950 dark:text-amber-100",
@@ -763,6 +798,72 @@ function BrowserConnectorInstallPanel() {
   );
 }
 
+function PromptCaptureAdapterPanel() {
+  return (
+    <section className="rounded-lg border bg-card/70 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">
+            Capture desktop-agent prompts through a real data path
+          </h3>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Desktop AI apps do not expose raw prompt bodies to a normal OS
+            observer. To observe or protect prompts, the agent must use a
+            wrapper, local proxy, SDK adapter, CLI hook, MCP proxy, or browser
+            connector that is actually in the prompt/output path.
+          </p>
+        </div>
+        <span className="inline-flex w-fit items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-800 dark:text-amber-200">
+          Setup required per app
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-4">
+        {PROMPT_CAPTURE_ADAPTERS.map((adapter) => (
+          <div
+            key={adapter.id}
+            className="rounded-lg border bg-background/70 p-4"
+          >
+            <div className="text-sm font-semibold">{adapter.label}</div>
+            <p className="mt-1 text-xs font-medium text-primary">
+              {adapter.status}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {adapter.bestFor}
+            </p>
+            <div className="mt-3 rounded-md border border-dashed p-2 text-xs leading-5 text-muted-foreground">
+              {adapter.dataPath}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EnterpriseNerExtensionPointPanel() {
+  return (
+    <section className="rounded-lg border bg-card/70 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">
+            Enterprise Cloud NER is a consented extension point
+          </h3>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Local mode uses the deterministic on-device guard engine. Enterprise
+            Cloud can later route selected metadata or redacted text to an
+            approved third-party NER provider, but only after tenant consent,
+            provider disclosure, routing policy, and audit events are configured.
+          </p>
+        </div>
+        <span className="inline-flex w-fit items-center rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-1 text-xs font-medium text-sky-800 dark:text-sky-200">
+          Designed, not enabled locally
+        </span>
+      </div>
+    </section>
+  );
+}
+
 function EmptyState({
   feedStatus,
   streamStatus,
@@ -907,6 +1008,8 @@ export function GuardIncidentFeed() {
       <div className="space-y-4">
         <PromptGuardCheckPanel onEvent={addCheckedEvent} />
         <BrowserConnectorInstallPanel />
+        <PromptCaptureAdapterPanel />
+        <EnterpriseNerExtensionPointPanel />
         <EmptyState feedStatus={feedStatus} streamStatus={streamStatus} />
       </div>
     );
@@ -916,6 +1019,8 @@ export function GuardIncidentFeed() {
     <div className="space-y-4">
       <PromptGuardCheckPanel onEvent={addCheckedEvent} />
       <BrowserConnectorInstallPanel />
+      <PromptCaptureAdapterPanel />
+      <EnterpriseNerExtensionPointPanel />
       <div className="grid gap-4 xl:grid-cols-[minmax(260px,0.75fr)_minmax(0,1.2fr)_minmax(240px,0.7fr)]">
         <section className="rounded-lg border bg-card/60">
           <div className="border-b p-4">

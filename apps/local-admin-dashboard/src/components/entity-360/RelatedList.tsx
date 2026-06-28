@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { renderDisplayValue } from "@/lib/displayValue";
 
 export interface RelatedListItem {
   id: string;
@@ -116,7 +117,7 @@ export function RelatedList({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-medium text-foreground">
-                      {item.title}
+                      {renderDisplayValue(item.title)}
                     </span>
                     {item.badge && (
                       <span
@@ -125,7 +126,7 @@ export function RelatedList({
                           toneBg[item.badge.tone],
                         )}
                       >
-                        {item.badge.label}
+                        {renderDisplayValue(item.badge.label)}
                       </span>
                     )}
                     {item.href && (
@@ -134,7 +135,7 @@ export function RelatedList({
                   </div>
                   {item.subtitle && (
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {item.subtitle}
+                      {renderDisplayValue(item.subtitle)}
                     </p>
                   )}
                   {item.meta && item.meta.length > 0 && (
@@ -143,7 +144,7 @@ export function RelatedList({
                         <span key={idx}>
                           {m.label}:{" "}
                           <span className="font-medium text-foreground/70">
-                            {m.value}
+                            {renderDisplayValue(m.value)}
                           </span>
                         </span>
                       ))}

@@ -1,12 +1,14 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { renderDisplayValue } from "@/lib/displayValue";
 import type { UiStatus } from "../../lib/status";
 import { StatusChip } from "./StatusChip";
 
 export interface DetailTab {
   id: string;
   label: string;
-  content: React.ReactNode;
+  content: ReactNode;
 }
 
 export interface DetailAction {
@@ -27,13 +29,13 @@ export function DetailPane({
   actions = [],
   children,
 }: {
-  title: string;
-  subtitle?: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
   status: UiStatus;
-  statusLabel: string;
+  statusLabel: ReactNode;
   tabs?: DetailTab[];
   actions?: DetailAction[];
-  children?: React.ReactNode;
+  children?: ReactNode;
 }) {
   const [activeTab, setActiveTab] = useState(tabs?.[0]?.id);
 
@@ -41,9 +43,13 @@ export function DetailPane({
     <div className="flex flex-col h-full rounded-xl bg-card/40 overflow-hidden">
       <div className="border-b px-6 py-5 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h3 className="text-xl font-semibold tracking-tight break-words">{title}</h3>
+          <h3 className="text-xl font-semibold tracking-tight break-words">
+            {renderDisplayValue(title)}
+          </h3>
           {subtitle && (
-            <p className="text-sm text-muted-foreground mt-1 break-words">{subtitle}</p>
+            <p className="text-sm text-muted-foreground mt-1 break-words">
+              {renderDisplayValue(subtitle)}
+            </p>
           )}
           <div className="mt-3 flex items-center gap-3">
             <StatusChip status={status} label={statusLabel} />

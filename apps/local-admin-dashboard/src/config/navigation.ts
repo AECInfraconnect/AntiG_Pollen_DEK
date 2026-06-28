@@ -22,14 +22,16 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
+import type { ComponentType } from "react";
+import type { AppMode } from "@/lib/modes";
 
 export interface NavItem {
   id: string;
   en: string;
   th: string;
   href: string;
-  icon: any;
-  modes: string[];
+  icon: ComponentType<{ className?: string }>;
+  modes: AppMode[];
   primary?: boolean;
 }
 
@@ -40,19 +42,19 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-const ALL: string[] = [
+const ALL: AppMode[] = [
   "desktop_simple",
   "desktop_advanced",
   "enterprise_cloud",
 ];
-const ADV: string[] = ["desktop_advanced", "enterprise_cloud"];
-const ENT: string[] = ["enterprise_cloud"];
+const ADV: AppMode[] = ["desktop_advanced", "enterprise_cloud"];
+const ENT: AppMode[] = ["enterprise_cloud"];
 
 export const NAV: NavGroup[] = [
   {
     id: "home",
     en: "Home",
-    th: "หน้าแรก",
+    th: "หน้าหลัก",
     items: [
       {
         id: "overview",
@@ -73,7 +75,7 @@ export const NAV: NavGroup[] = [
       {
         id: "scan",
         en: "Find AI Apps",
-        th: "ค้นหา AI",
+        th: "ค้นหา AI Apps",
         href: "/scan",
         icon: ScanSearch,
         modes: ALL,
@@ -81,7 +83,7 @@ export const NAV: NavGroup[] = [
       {
         id: "my-ai-apps",
         en: "My AI Apps",
-        th: "AI ของฉัน",
+        th: "AI Apps ของฉัน",
         href: "/my-ai-apps",
         icon: Bot,
         modes: ALL,
@@ -113,7 +115,7 @@ export const NAV: NavGroup[] = [
       {
         id: "allowed-blocked",
         en: "Allowed & Blocked",
-        th: "อนุญาตและห้าม",
+        th: "อนุญาตและบล็อก",
         href: "/allowed-blocked",
         icon: ListChecks,
         modes: ALL,
@@ -121,7 +123,7 @@ export const NAV: NavGroup[] = [
       {
         id: "data-apps",
         en: "Data & Apps",
-        th: "ไฟล์ เว็บ แอป",
+        th: "ไฟล์ เว็บไซต์ และแอป",
         href: "/data-apps",
         icon: Database,
         modes: ALL,
@@ -160,7 +162,7 @@ export const NAV: NavGroup[] = [
       {
         id: "agents",
         en: "Agents & Models",
-        th: "เอเจนต์และโมเดล",
+        th: "Agents และ Models",
         href: "/agents",
         icon: Bot,
         modes: ADV,
@@ -215,7 +217,7 @@ export const NAV: NavGroup[] = [
       {
         id: "deployments",
         en: "Deployments",
-        th: "การใช้งานกฎ",
+        th: "การปรับใช้กฎ",
         href: "/deployments",
         icon: SlidersHorizontal,
         modes: ADV,
@@ -233,7 +235,7 @@ export const NAV: NavGroup[] = [
   {
     id: "observe",
     en: "Advanced Observe",
-    th: "ตรวจสอบขั้นสูง",
+    th: "การสังเกตขั้นสูง",
     items: [
       {
         id: "activity-timeline",
@@ -275,6 +277,14 @@ export const NAV: NavGroup[] = [
         modes: ADV,
       },
       {
+        id: "plugin-marketplace",
+        en: "Plugins",
+        th: "ปลั๊กอิน",
+        href: "/plugin-marketplace",
+        icon: Puzzle,
+        modes: ALL,
+      },
+      {
         id: "bundles",
         en: "Bundles & Sync",
         th: "แพ็กเกจและซิงก์",
@@ -293,3 +303,12 @@ export const NAV: NavGroup[] = [
     ],
   },
 ];
+
+export function labelForLanguage(
+  item: Pick<NavGroup | NavItem, "en" | "th">,
+  language: string,
+) {
+  return language === "th" ? item.th : item.en;
+}
+
+export const NAV_ITEMS = NAV.flatMap((group) => group.items);
