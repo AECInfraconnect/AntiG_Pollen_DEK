@@ -8,6 +8,7 @@ export type UserActivityCategory =
   | "commands"
   | "ai_models"
   | "tools"
+  | "plugins"
   | "safety"
   | "cost"
   | "unknown";
@@ -20,6 +21,11 @@ export type UserActivityAction =
   | "send"
   | "use_model"
   | "call_tool"
+  | "install"
+  | "enable"
+  | "disable"
+  | "uninstall"
+  | "check"
   | "redact"
   | "spend"
   | "watch";
@@ -45,7 +51,14 @@ export interface UserFriendlyActivityEvent {
   action: UserActivityAction;
   target_label: string;
   target_kind: string;
-  access_mode: "read" | "write" | "connect" | "run" | "send" | "unknown";
+  access_mode:
+    | "read"
+    | "write"
+    | "connect"
+    | "run"
+    | "send"
+    | "manage"
+    | "unknown";
   result: UserActivityResult;
   result_label: string;
   plain_summary: string;
@@ -58,6 +71,7 @@ export interface UserFriendlyActivityEvent {
   trace_id?: string;
   advanced?: {
     raw_item?: ActivityTimelineItem;
+    raw_agent_label?: string;
     decision?: string;
     mode?: string;
     pep_plane?: string | null;

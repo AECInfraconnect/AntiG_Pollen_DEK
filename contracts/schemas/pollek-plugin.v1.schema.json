@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollek.local/schemas/pollek-plugin.v1.schema.json",
+  "title": "Pollek Plugin Manifest",
+  "type": "object",
+  "required": ["schema_version", "id", "name", "version", "kind", "entry", "capabilities"],
+  "properties": {
+    "schema_version": { "const": "pollek.plugin.v1" },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_.-]+$" },
+    "name": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$" },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "discovery.scanner",
+        "discovery.signature",
+        "observe.collector",
+        "enforce.method",
+        "policy.evaluator",
+        "policy.preset",
+        "telemetry.exporter",
+        "telemetry.transform",
+        "resource.classifier",
+        "risk.scorer",
+        "definition.feed",
+        "notify.channel",
+        "compliance.profile"
+      ]
+    },
+    "wit_world": { "type": "string" },
+    "abi": { "type": "string", "enum": ["component", "core"], "default": "component" },
+    "min_engine_version": { "type": "string" },
+    "max_engine_version": { "type": ["string", "null"] },
+    "os": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["windows", "linux", "macos"] },
+      "uniqueItems": true
+    },
+    "entry": { "type": "string" },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "host": { "type": "array", "items": { "type": "string" } },
+        "http_out": { "type": "array", "items": { "type": "string" } },
+        "kv": { "type": "array", "items": { "type": "string" } },
+        "native": { "type": "array", "items": { "type": "string" } },
+        "data_scope": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "config_schema": { "type": "object" },
+    "author": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "url": { "type": "string" },
+        "verified": { "type": "boolean", "default": false }
+      }
+    },
+    "homepage": { "type": "string" },
+    "license": { "type": "string" },
+    "signature": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "bundle": { "type": "string" },
+        "status": { "type": "string", "enum": ["valid", "invalid", "missing", "test_only", "unknown"] }
+      }
+    },
+    "sbom": { "type": "string" },
+    "checksum": { "type": "string", "pattern": "^sha256:[0-9a-fA-F]{64}$" }
+  },
+  "additionalProperties": false
+}

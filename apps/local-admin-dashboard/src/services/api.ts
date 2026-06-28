@@ -26,6 +26,9 @@ import type {
   ControlLevel,
   LocalCapabilitySnapshotV2,
   RuntimeModeV2,
+  PluginMarketItem,
+  InstalledPlugin,
+  PluginInstallRequest,
 } from "./types";
 export type * from "./types";
 import type { components } from "../../../../contracts/generated/typescript/api";
@@ -185,7 +188,10 @@ export class ControlPlaneClient {
     return parseJsonResponse<ContractDiscoveryResponse>(res, url);
   }
 
-  public async fetchRootApi<T = any>(path: string, options?: RequestInit): Promise<T> {
+  public async fetchRootApi<T = any>(
+    path: string,
+    options?: RequestInit,
+  ): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
@@ -204,7 +210,10 @@ export class ControlPlaneClient {
     return parseJsonResponse<T>(res, url);
   }
 
-  public async fetchApi<T = any>(path: string, options?: RequestInit): Promise<T> {
+  public async fetchApi<T = any>(
+    path: string,
+    options?: RequestInit,
+  ): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
@@ -228,7 +237,10 @@ export class ControlPlaneClient {
   }
   async getHostCapabilitiesV2(
     mode: RuntimeModeV2 = "desktop_advanced",
-    demo?: { os: "windows" | "linux" | "macos"; profile?: "ready" | "observe_only" | "needs_setup" },
+    demo?: {
+      os: "windows" | "linux" | "macos";
+      profile?: "ready" | "observe_only" | "needs_setup";
+    },
   ): Promise<LocalCapabilitySnapshotV2> {
     const params = new URLSearchParams({ mode });
     if (demo) {
@@ -241,7 +253,10 @@ export class ControlPlaneClient {
   }
   async refreshHostCapabilitiesV2(
     mode: RuntimeModeV2 = "desktop_advanced",
-    demo?: { os: "windows" | "linux" | "macos"; profile?: "ready" | "observe_only" | "needs_setup" },
+    demo?: {
+      os: "windows" | "linux" | "macos";
+      profile?: "ready" | "observe_only" | "needs_setup";
+    },
   ): Promise<LocalCapabilitySnapshotV2> {
     const params = new URLSearchParams({ mode });
     if (demo) {
@@ -422,6 +437,34 @@ export class ControlPlaneClient {
   }
   async testConnector(id: string): Promise<unknown> {
     return this.fetchApi(`/connectors/${id}/test`, { method: "POST" });
+  }
+
+  async listMarketplaceItems(): Promise<PluginMarketItem[]> {
+    const data = await this.fetchApi("/marketplace/items");
+    return data.items ?? data;
+  }
+
+  async listInstalledPlugins(): Promise<InstalledPlugin[]> {
+    const data = await this.fetchApi("/plugins");
+    return data.items ?? data;
+  }
+
+  async installPlugin(request: PluginInstallRequest): Promise<InstalledPlugin> {
+    return this.fetchApi("/plugins/install", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async togglePlugin(id: string, enabled: boolean): Promise<InstalledPlugin> {
+    return this.fetchApi(`/plugins/${id}/toggle`, {
+      method: "POST",
+      body: JSON.stringify({ enabled }),
+    });
+  }
+
+  async uninstallPlugin(id: string): Promise<unknown> {
+    return this.fetchApi(`/plugins/${id}`, { method: "DELETE" });
   }
 
   // PDP Runtimes
@@ -767,11 +810,17 @@ export const DeploymentApi = {
 export const CapabilityApi = {
   getSnapshotV2: (
     mode?: RuntimeModeV2,
-    demo?: { os: "windows" | "linux" | "macos"; profile?: "ready" | "observe_only" | "needs_setup" },
+    demo?: {
+      os: "windows" | "linux" | "macos";
+      profile?: "ready" | "observe_only" | "needs_setup";
+    },
   ) => defaultClient.getHostCapabilitiesV2(mode, demo),
   refreshSnapshotV2: (
     mode?: RuntimeModeV2,
-    demo?: { os: "windows" | "linux" | "macos"; profile?: "ready" | "observe_only" | "needs_setup" },
+    demo?: {
+      os: "windows" | "linux" | "macos";
+      profile?: "ready" | "observe_only" | "needs_setup";
+    },
   ) => defaultClient.refreshHostCapabilitiesV2(mode, demo),
 };
 
@@ -841,8 +890,9 @@ export const ObservationApi = {
 };
 
 export const UsageApi = {
-  getSummary: (params?: Parameters<ControlPlaneClient["getAiUsageSummary"]>[0]) =>
-    defaultClient.getAiUsageSummary(params),
+  getSummary: (
+    params?: Parameters<ControlPlaneClient["getAiUsageSummary"]>[0],
+  ) => defaultClient.getAiUsageSummary(params),
   getEvents: (params?: Parameters<ControlPlaneClient["getAiUsageEvents"]>[0]) =>
     defaultClient.getAiUsageEvents(params),
   streamUrl: () =>
@@ -851,10 +901,13 @@ export const UsageApi = {
 
 export const LocalObserveApi = {
   refresh: (payload?: LocalObserveRefreshRequest) =>
-    defaultClient.fetchApi<LocalObserveRefreshResponse>("/local-observe/refresh", {
-      method: "POST",
-      body: JSON.stringify(payload ?? { include_estimates: true }),
-    }),
+    defaultClient.fetchApi<LocalObserveRefreshResponse>(
+      "/local-observe/refresh",
+      {
+        method: "POST",
+        body: JSON.stringify(payload ?? { include_estimates: true }),
+      },
+    ),
 };
 
 export const PolicyApi = {
@@ -895,15 +948,22 @@ export const BundleApi = {
 export const TelemetryApi = {
   listDecisionLogs: () => defaultClient.listDecisionLogs(),
   clearDecisionLogs: () => defaultClient.clearDecisionLogs(),
-  getObservations: (params?: { agentId?: string, target?: string, toolId?: string }) => {
+  getObservations: (params?: {
+    agentId?: string;
+    target?: string;
+    toolId?: string;
+  }) => {
     let url = `/telemetry/observations?`;
     if (params?.agentId) url += `agent_id=${params.agentId}&`;
-    if (params?.target) url += `target_redacted=${encodeURIComponent(params.target)}&`;
+    if (params?.target)
+      url += `target_redacted=${encodeURIComponent(params.target)}&`;
     if (params?.toolId) url += `tool_id=${encodeURIComponent(params.toolId)}&`;
     return defaultClient.fetchApi(url).catch(() => ({ items: [] }));
   },
   getEnforcementStatus: (agentId?: string) => {
-    const url = agentId ? `/v1/telemetry/enforcement-status?agent_id=${agentId}` : `/v1/telemetry/enforcement-status`;
+    const url = agentId
+      ? `/v1/telemetry/enforcement-status?agent_id=${agentId}`
+      : `/v1/telemetry/enforcement-status`;
     return defaultClient.fetchRootApi(url);
   },
   streamUrl: (
@@ -952,6 +1012,16 @@ export const ConnectorApi = {
   list: () => defaultClient.listConnectors(),
   upsert: (cfg: ConnectorConfig) => defaultClient.upsertConnector(cfg),
   test: (id: string) => defaultClient.testConnector(id),
+};
+
+export const PluginApi = {
+  marketplaceItems: () => defaultClient.listMarketplaceItems(),
+  installed: () => defaultClient.listInstalledPlugins(),
+  install: (request: PluginInstallRequest) =>
+    defaultClient.installPlugin(request),
+  toggle: (id: string, enabled: boolean) =>
+    defaultClient.togglePlugin(id, enabled),
+  uninstall: (id: string) => defaultClient.uninstallPlugin(id),
 };
 
 export const PdpRuntimeApi = {
@@ -1019,5 +1089,3 @@ export const SimpleWizardApi = {
   confirmDeploySession: (id: string) => defaultClient.confirmDeploySession(id),
   applyDeploySession: (id: string) => defaultClient.applyDeploySession(id),
 };
-
-

@@ -1,0 +1,26 @@
+package pollek:telemetry@0.1.0;
+
+interface exporter {
+  record envelope {
+    event-type: string,
+    payload-json: string,
+    timestamp-ms: u64,
+  }
+
+  export-batch: func(events: list<envelope>) -> result<u32, string>;
+}
+
+interface transform {
+  transform-batch: func(events-json: string) -> result<string, string>;
+}
+
+world telemetry-exporter {
+  import pollek:host/logging;
+  import pollek:host/httpout;
+  export exporter;
+}
+
+world telemetry-transform {
+  import pollek:host/logging;
+  export transform;
+}

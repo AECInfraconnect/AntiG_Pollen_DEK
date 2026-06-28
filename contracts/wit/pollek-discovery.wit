@@ -1,0 +1,27 @@
+package pollek:discovery@0.1.0;
+
+interface scanner {
+  record process-facts {
+    pid: u32,
+    name: string,
+    exe-path: string,
+    cmdline: string,
+  }
+
+  record candidate {
+    id: string,
+    display-name: string,
+    vendor: option<string>,
+    agent-type: string,
+    confidence: f64,
+    evidence-json: string,
+  }
+
+  match-process: func(facts: process-facts) -> list<candidate>;
+}
+
+world discovery-plugin {
+  import pollek:host/logging;
+  import pollek:host/clock;
+  export scanner;
+}

@@ -491,6 +491,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/{tenant_id}/marketplace/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List locally available plugin marketplace items. */
+        get: operations["PluginMarketplaceApi_listMarketplaceItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/marketplace/items/{plugin_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get one plugin marketplace item. */
+        get: operations["PluginMarketplaceApi_getMarketplaceItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/{tenant_id}/observations/agents/{agent_id}": {
         parameters: {
             query?: never;
@@ -778,6 +812,74 @@ export interface paths {
         put?: never;
         /** @description Check PEP capabilities */
         post: operations["PepCapabilitiesApi_checkCapabilities"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List installed local plugins. */
+        get: operations["InstalledPluginsApi_listInstalledPlugins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugins/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Install a plugin after consent. */
+        post: operations["InstalledPluginsApi_installPlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugins/{plugin_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Uninstall a plugin and revoke local grants. */
+        delete: operations["InstalledPluginsApi_uninstallPlugin"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugins/{plugin_id}/toggle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Toggle an installed plugin. */
+        post: operations["InstalledPluginsApi_togglePlugin"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1769,6 +1871,28 @@ export interface components {
         };
         /** @enum {string} */
         IdentityKind: "user" | "service_account" | "workload" | "device" | "oauth_client" | "spiffe_id" | "api_key" | "browser_profile" | "cloud_account";
+        InstalledPlugin: {
+            /** @enum {string} */
+            schema_version?: "pollek.installed_plugin.v1";
+            id: string;
+            name?: string;
+            version?: string;
+            kind?: components["schemas"]["PluginKind"];
+            enabled: boolean;
+            granted_caps: string[];
+            human_grants?: string[];
+            health: string;
+            source: components["schemas"]["PluginSource"];
+            signature_state?: components["schemas"]["PluginSignatureState"];
+            privacy_note?: string;
+            installed_at?: string;
+            last_seen?: string;
+        };
+        InstalledPluginListResponse: {
+            /** @enum {string} */
+            schema_version: "pollek.installed_plugins.v1";
+            items: components["schemas"]["InstalledPlugin"][];
+        };
         MissingControl: {
             control_type: string;
             reason: string;
@@ -1939,6 +2063,57 @@ export interface components {
             rule_ids: string[];
             capabilities: string[];
             limitations: string[];
+        };
+        PluginInstallRequest: {
+            id: string;
+            granted_caps: string[];
+        };
+        /** @enum {string} */
+        PluginKind: "discovery.scanner" | "discovery.signature" | "observe.collector" | "enforce.method" | "policy.evaluator" | "policy.preset" | "telemetry.exporter" | "telemetry.transform" | "resource.classifier" | "risk.scorer" | "definition.feed" | "notify.channel" | "compliance.profile" | "unknown";
+        PluginMarketItem: {
+            id: string;
+            name: string;
+            version: string;
+            kind: components["schemas"]["PluginKind"];
+            publisher: string;
+            verified: boolean;
+            /** Format: float */
+            rating: number;
+            /** Format: int64 */
+            installs: number;
+            capabilities: string[];
+            human_capabilities?: string[];
+            os: string[];
+            min_engine_version: string;
+            signature_ok: boolean;
+            signature_state: components["schemas"]["PluginSignatureState"];
+            description_en: string;
+            description_th?: string;
+            privacy_note?: string;
+            source: components["schemas"]["PluginSource"];
+        };
+        PluginMarketplaceItemResponse: {
+            /** @enum {string} */
+            schema_version: "pollek.marketplace.item.v1";
+            item?: components["schemas"]["PluginMarketItem"];
+        };
+        PluginMarketplaceListResponse: {
+            /** @enum {string} */
+            schema_version: "pollek.marketplace.v1";
+            items: components["schemas"]["PluginMarketItem"][];
+        };
+        /** @enum {string} */
+        PluginSignatureState: "valid" | "invalid" | "missing" | "test_only" | "unknown";
+        /** @enum {string} */
+        PluginSource: "local_catalog" | "marketplace" | "sideload" | "private_registry";
+        PluginToggleRequest: {
+            enabled: boolean;
+        };
+        PluginUninstallResponse: {
+            status: string;
+            id: string;
+            revoked_caps: boolean;
+            cleared_plugin_namespace: boolean;
         };
         PolicyArtifact: {
             name: string;
@@ -3276,6 +3451,77 @@ export interface operations {
             };
         };
     };
+    PluginMarketplaceApi_listMarketplaceItems: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginMarketplaceListResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    PluginMarketplaceApi_getMarketplaceItem: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginMarketplaceItemResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
     ObservationApi_getAgentObservations: {
         parameters: {
             query?: never;
@@ -4027,6 +4273,156 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    InstalledPluginsApi_listInstalledPlugins: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstalledPluginListResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    InstalledPluginsApi_installPlugin: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginInstallRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstalledPlugin"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    InstalledPluginsApi_uninstallPlugin: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginUninstallResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    InstalledPluginsApi_togglePlugin: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginToggleRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstalledPlugin"];
                 };
             };
             /** @description An unexpected error response. */

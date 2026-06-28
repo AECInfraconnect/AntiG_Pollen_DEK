@@ -1,0 +1,24 @@
+package pollek:observe@0.1.0;
+
+interface collector {
+  record observe-request {
+    tenant-id: string,
+    agent-id: option<string>,
+    scope-json: string,
+  }
+
+  record observed-event {
+    event-type: string,
+    payload-json: string,
+    timestamp-ms: u64,
+  }
+
+  collect: func(request: observe-request) -> result<list<observed-event>, string>;
+}
+
+world observe-plugin {
+  import pollek:host/logging;
+  import pollek:host/clock;
+  import pollek:host/native-cap;
+  export collector;
+}

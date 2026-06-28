@@ -8,13 +8,17 @@ import {
   FileText,
   History,
   RefreshCw,
+  ShieldCheck,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { UserActivityApi } from "../features/user-activity/api";
 import {
   categoryLabel,
   summarizeActivities,
 } from "../features/user-activity/userActivityModel";
 import type { UserFriendlyActivityEvent } from "../features/user-activity/types";
+import { useConfirm } from "../components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
 
 type Range = "7d" | "30d" | "all";
@@ -121,6 +125,7 @@ function ReportRow({
 }
 
 export function HistoryReportsPage() {
+  const { confirm } = useConfirm();
   const [allItems, setAllItems] = useState<UserFriendlyActivityEvent[]>([]);
   const [range, setRange] = useState<Range>("7d");
   const [loading, setLoading] = useState(true);
@@ -136,6 +141,32 @@ export function HistoryReportsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const clearLocalHistory = useCallback(async () => {
+    if (
+      !(await confirm({
+        title: "Delete local activity history",
+        description:
+          "This clears local observation and decision history used by AI Activity. It does not delete exported files or separate cloud records.",
+        danger: true,
+        confirmText: "Delete history",
+      }))
+    ) {
+      return;
+    }
+
+    try {
+      const result = await UserActivityApi.clearLocalHistory();
+      setAllItems([]);
+      toast.success(
+        `Deleted ${result.observation_events + result.decision_logs + result.decisions} local history record(s).`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to delete history";
+      toast.error(message);
+    }
+  }, [confirm]);
 
   const items = useMemo(
     () => allItems.filter((item) => inRange(item, range)),
@@ -207,10 +238,36 @@ export function HistoryReportsPage() {
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
             Refresh
           </button>
+          <button
+            type="button"
+            onClick={() => void clearLocalHistory()}
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 text-sm font-medium text-red-700 hover:bg-red-500/15"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete local history
+          </button>
         </div>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      <section className="rounded-lg border bg-card/60 p-4">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-700">
+            <ShieldCheck className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold">Privacy and retention</h3>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              This view shows activity metadata such as AI app, file or website
+              label, result, timestamp, and rule. It does not display file
+              contents, email bodies, raw prompts, or raw responses. Use the
+              range selector for review, export CSV/JSON when you need a copy,
+              or delete local observation and decision history from this device.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
         <div className="rounded-lg border bg-card/60 p-4">
           <div className="text-2xl font-semibold">{summary.total}</div>
           <p className="mt-1 text-xs text-muted-foreground">Events</p>
@@ -226,6 +283,10 @@ export function HistoryReportsPage() {
         <div className="rounded-lg border bg-card/60 p-4">
           <div className="text-2xl font-semibold">{summary.blocked}</div>
           <p className="mt-1 text-xs text-muted-foreground">Blocked</p>
+        </div>
+        <div className="rounded-lg border bg-card/60 p-4">
+          <div className="text-2xl font-semibold">{summary.plugins}</div>
+          <p className="mt-1 text-xs text-muted-foreground">Plugins</p>
         </div>
         <div className="rounded-lg border bg-card/60 p-4">
           <div className="text-2xl font-semibold">{summary.safety}</div>

@@ -23,7 +23,8 @@ async fn get_discovery() -> Json<serde_json::Value> {
             "telemetry.batch": "telemetry-envelope.v1.schema.json",
             "identity.access": "identity-access.v1.schema.json",
             "resource.access": "resource-access.v1.schema.json",
-            "tool.usage": "tool-usage.v1.schema.json"
+            "tool.usage": "tool-usage.v1.schema.json",
+            "plugin.manifest": "pollek-plugin.v1.schema.json"
         },
         "interfaces": {
             "local.dashboard.capability_cards": {
@@ -70,6 +71,8 @@ async fn get_discovery() -> Json<serde_json::Value> {
             "policy.cedar.v1",
             "policy.openfga.v1",
             "policy.wasm-plugin.v1",
+            "plugin.manifest.v1",
+            "plugin.marketplace.v1",
             "pdp.routing.v1",
             "pdp.cloud-sync.v1",
             "pdp.system-managed-runtimes.v1"

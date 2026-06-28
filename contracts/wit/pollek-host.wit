@@ -1,0 +1,23 @@
+package pollek:host@0.1.0;
+
+interface logging {
+  log: func(level: string, message: string);
+}
+
+interface clock {
+  now-unix-ms: func() -> u64;
+}
+
+interface kv {
+  get: func(key: string) -> option<list<u8>>;
+  set: func(key: string, value: list<u8>);
+  delete: func(key: string) -> bool;
+}
+
+interface httpout {
+  fetch: func(url: string, body: list<u8>) -> result<list<u8>, string>;
+}
+
+interface native-cap {
+  invoke: func(cap-id: string, request: list<u8>) -> result<list<u8>, string>;
+}

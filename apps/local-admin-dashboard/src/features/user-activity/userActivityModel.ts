@@ -21,6 +21,7 @@ const categoryLabels: Record<UserActivityCategory, string> = {
   commands: "Commands",
   ai_models: "AI models",
   tools: "AI tools",
+  plugins: "Plugins & connectors",
   safety: "Prompt & data safety",
   cost: "Cost",
   unknown: "Other activity",
@@ -34,6 +35,11 @@ const actionText: Record<UserActivityAction, string> = {
   send: "sent",
   use_model: "used",
   call_tool: "called",
+  install: "installed",
+  enable: "enabled",
+  disable: "disabled",
+  uninstall: "uninstalled",
+  check: "checked",
   redact: "protected",
   spend: "spent tokens on",
   watch: "was seen using",
@@ -50,6 +56,99 @@ const resultLabels: Record<UserActivityResult, string> = {
   redacted: "Redacted",
   error: "Error",
 };
+
+function knownAgentName(value?: string | null) {
+  const text = (value ?? "").toLowerCase();
+  if (!text) return undefined;
+  if (text.includes("pollek-plugin-marketplace")) {
+    return "Pollek Plugin Marketplace";
+  }
+  if (text.includes("antigravity") || text.includes("gemini")) {
+    return "Google Antigravity";
+  }
+  if (text.includes("chatgpt") || text.includes("openai")) return "ChatGPT";
+  if (text.includes("claude") || text.includes("anthropic")) return "Claude";
+  if (text.includes("codex")) return "Codex";
+  if (text.includes("deepseek")) return "DeepSeek";
+  if (text.includes("manus")) return "Manus AI";
+  return undefined;
+}
+
+function compactRawId(value?: string | null) {
+  const text = (value ?? "").trim();
+  if (!text) return "";
+  const withoutPrefix = text.replace(/^agent[_:-]/i, "");
+  const match = withoutPrefix.match(/[a-f0-9]{6,}/i);
+  return (match?.[0] ?? withoutPrefix).slice(0, 8);
+}
+
+function looksLikeRawId(value?: string | null) {
+  const text = (value ?? "").trim().toLowerCase();
+  if (!text) return true;
+  if (text === "unknown" || text === "unknown ai app") return true;
+  if (text.includes("unknown-observed-session")) return true;
+  if (/^agent[_:-][a-f0-9-]{8,}$/i.test(text)) return true;
+  if (/^[a-f0-9]{16,}$/i.test(text)) return true;
+  if (
+    /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(text)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function friendlyAgentName(label?: string | null, id?: string | null) {
+  const known = knownAgentName(label) ?? knownAgentName(id);
+  if (known) return known;
+  if (!looksLikeRawId(label)) return label!.trim();
+  const suffix = compactRawId(id ?? label);
+  return suffix ? `Unidentified AI app (${suffix})` : "Unidentified AI app";
+}
+
+function friendlyTargetLabel(
+  label: string | undefined | null,
+  category: UserActivityCategory,
+) {
+  const known = knownAgentName(label);
+  if (known) return known;
+  const text = (label ?? "").trim();
+  const lower = text.toLowerCase();
+  if (!text || lower === "an unknown target" || lower === "unknown") {
+    if (category === "files") return "a file or folder Pollek could not name";
+    if (category === "web") return "a website or network destination";
+    if (category === "commands" || category === "apps") {
+      return "a local app or command";
+    }
+    if (category === "ai_models") return "an AI model session";
+    return "local AI activity";
+  }
+  if (lower.includes("unknown-observed-session")) {
+    if (category === "ai_models" || category === "cost") {
+      return "AI model usage observed from this session";
+    }
+    return "AI session activity";
+  }
+  if (looksLikeRawId(text)) return "local AI session";
+  return text;
+}
+
+function userFriendlySummary(
+  agentName: string,
+  action: UserActivityAction,
+  target: string,
+  category: UserActivityCategory,
+) {
+  if (target === "AI session activity" || target === "local AI activity") {
+    return `${agentName} had activity Pollek could observe`;
+  }
+  if (category === "ai_models" && target.includes("AI model")) {
+    return `${agentName} used an AI model session`;
+  }
+  if (category === "plugins") {
+    return `${agentName} ${actionText[action]} ${target}`;
+  }
+  return `${agentName} ${actionText[action]} ${target}`;
+}
 
 export const SIMPLE_RULE_PRESETS: SimpleRulePreset[] = [
   {
@@ -167,6 +266,14 @@ function inferCategory(item: ActivityTimelineItem): UserActivityCategory {
     return "safety";
   }
   if (
+    text.includes("plugin") ||
+    text.includes("marketplace") ||
+    text.includes("connector") ||
+    text.includes("definition feed")
+  ) {
+    return "plugins";
+  }
+  if (
     resourceType.includes("file") ||
     resourceType.includes("folder") ||
     text.includes("file") ||
@@ -223,6 +330,13 @@ function inferAction(
   if (text.includes("read") || text.includes("open")) return "read";
   if (category === "web") return "connect";
   if (category === "commands" || category === "apps") return "run";
+  if (category === "plugins") {
+    if (text.includes("uninstall")) return "uninstall";
+    if (text.includes("disable")) return "disable";
+    if (text.includes("enable")) return "enable";
+    if (text.includes("health")) return "check";
+    return "install";
+  }
   if (category === "email") return text.includes("send") ? "send" : "read";
   if (category === "ai_models") return "use_model";
   if (category === "tools") return "call_tool";
@@ -255,16 +369,27 @@ function accessMode(
   if (action === "connect") return "connect";
   if (action === "run") return "run";
   if (action === "send") return "send";
+  if (
+    action === "install" ||
+    action === "enable" ||
+    action === "disable" ||
+    action === "uninstall" ||
+    action === "check"
+  ) {
+    return "manage";
+  }
   return "unknown";
 }
 
 function targetLabel(item: ActivityTimelineItem) {
-  return (
+  const category = inferCategory(item);
+  return friendlyTargetLabel(
     item.resource?.label ??
-    item.tool?.label ??
-    item.cost?.model ??
-    item.cost?.provider ??
-    "an unknown target"
+      item.tool?.label ??
+      item.cost?.model ??
+      item.cost?.provider ??
+      "an unknown target",
+    category,
   );
 }
 
@@ -284,6 +409,9 @@ function capabilityNote(
   }
   if (category === "safety") {
     return "Pollek can watch prompt and data-safety signals. Blocking or redaction depends on which guard is in the AI app path.";
+  }
+  if (category === "plugins") {
+    return "Pollek recorded this plugin registry change so you can audit what extensions were enabled, disabled, or removed.";
   }
   return "Pollek can watch this activity and explain what to review next.";
 }
@@ -305,6 +433,9 @@ function nextStep(result: UserActivityResult, category: UserActivityCategory) {
   if (category === "email") {
     return "Keep email access opt-in and review the connector permissions.";
   }
+  if (category === "plugins") {
+    return "Review installed plugins, granted capabilities, and whether any connector can send data off this device.";
+  }
   if (category === "safety") {
     return "Keep watching, enable Prompt Guard for this AI app, or tighten the AI app's own safety settings.";
   }
@@ -317,9 +448,9 @@ export function toUserFriendlyActivity(
   const category = inferCategory(item);
   const action = inferAction(item, category);
   const result = inferResult(item);
-  const agentName = item.actor?.label ?? "Unknown AI app";
+  const agentName = friendlyAgentName(item.actor?.label, item.actor?.entity_id);
   const target = targetLabel(item);
-  const summary = `${agentName} ${actionText[action]} ${target}`;
+  const summary = userFriendlySummary(agentName, action, target, category);
 
   return {
     schema_version: "user-friendly-activity.v1",
@@ -345,10 +476,36 @@ export function toUserFriendlyActivity(
     trace_id: item.trace_id ?? undefined,
     advanced: {
       raw_item: item,
+      raw_agent_label: item.actor?.label,
       decision: item.decision,
       mode: item.enforcement_mode,
       pep_plane: item.pep_plane,
       pdp_engine: item.pdp_engine,
+    },
+  };
+}
+
+export function normalizeUserFriendlyActivity(
+  item: UserFriendlyActivityEvent,
+): UserFriendlyActivityEvent {
+  const category = item.category ?? "unknown";
+  const action = item.action ?? "watch";
+  const agentName = friendlyAgentName(
+    item.agent_name,
+    item.agent_id ?? item.advanced?.raw_item?.actor?.entity_id,
+  );
+  const target = friendlyTargetLabel(item.target_label, category);
+  return {
+    ...item,
+    agent_name: agentName,
+    target_label: target,
+    plain_summary: userFriendlySummary(agentName, action, target, category),
+    advanced: {
+      ...item.advanced,
+      raw_agent_label:
+        item.advanced?.raw_agent_label ??
+        item.advanced?.raw_item?.actor?.label ??
+        item.agent_name,
     },
   };
 }
@@ -359,6 +516,7 @@ export function summarizeActivities(items: UserFriendlyActivityEvent[]) {
     files: items.filter((item) => item.category === "files").length,
     web: items.filter((item) => item.category === "web").length,
     commands: items.filter((item) => item.category === "commands").length,
+    plugins: items.filter((item) => item.category === "plugins").length,
     safety: items.filter((item) => item.category === "safety").length,
     blocked: items.filter((item) => item.result === "blocked").length,
     watched: items.filter((item) => item.result === "watched_only").length,
@@ -384,6 +542,7 @@ function domainsForCategory(category: UserActivityCategory) {
     commands: ["process_launch"],
     ai_models: ["token_cost", "prompt_content"],
     tools: ["mcp_tool_call"],
+    plugins: ["mcp_tool_call", "prompt_content"],
     safety: ["prompt_content", "mcp_tool_call"],
     cost: ["token_cost"],
     unknown: [],
@@ -424,6 +583,7 @@ export function buildUserCapabilityMatrix(
     "email",
     "commands",
     "tools",
+    "plugins",
     "safety",
     "ai_models",
     "cost",

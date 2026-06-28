@@ -10,7 +10,9 @@ const SEVERITY_STYLE: Record<string, string> = {
   info: "border-slate-500/80 bg-card/70 text-foreground",
 };
 
-function normalizeGuardEvent(raw: GuardEvent | GuardIncidentEnvelope): GuardEvent | null {
+function normalizeGuardEvent(
+  raw: GuardEvent | GuardIncidentEnvelope,
+): GuardEvent | null {
   const envelope = raw as GuardIncidentEnvelope;
   const payload = envelope.payload;
   const nested =
@@ -54,7 +56,7 @@ export function GuardIncidentCard({ ev }: { ev: GuardEvent }) {
   const severityStyle =
     SEVERITY_STYLE[ev.severity] ?? "border-border bg-card/70 text-foreground";
   const categoryLabel = ev.categories.length ? ev.categories.join(", ") : "-";
-  const timestamp = ev.ts ? new Date(ev.ts).toLocaleString("th-TH") : "-";
+  const timestamp = ev.ts ? new Date(ev.ts).toLocaleString() : "-";
 
   return (
     <div className={`rounded-lg border border-l-4 p-4 ${severityStyle}`}>
@@ -62,10 +64,12 @@ export function GuardIncidentCard({ ev }: { ev: GuardEvent }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <ShieldAlert className="h-4 w-4 shrink-0" />
-            <span>{ev.action.toUpperCase()} · {categoryLabel}</span>
+            <span>
+              {ev.action.toUpperCase()} / {categoryLabel}
+            </span>
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            {ev.direction} · {ev.agent_id || "local-agent"} · {timestamp}
+            {ev.direction} / {ev.agent_id || "local-agent"} / {timestamp}
           </div>
         </div>
         <span className="rounded-full border border-current/20 px-2 py-1 text-xs">
@@ -82,7 +86,7 @@ export function GuardIncidentCard({ ev }: { ev: GuardEvent }) {
               key={finding.kind}
               className="rounded-full border border-current/20 px-2 py-1"
             >
-              {finding.kind}: {finding.count} รายการ
+              {finding.kind}: {finding.count} finding(s)
             </span>
           ))}
         </div>
@@ -99,7 +103,7 @@ export function GuardIncidentCard({ ev }: { ev: GuardEvent }) {
       {ev.remediation.can_override && (
         <button className="mt-3 inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground">
           <ShieldCheck className="h-4 w-4" />
-          ขออนุมัติ
+          Request approval
         </button>
       )}
     </div>
@@ -130,7 +134,7 @@ export function GuardIncidentFeed() {
   if (events.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border/70 bg-card/30 p-8 text-center text-sm text-muted-foreground">
-        ยังไม่มี Guard Incident จาก telemetry stream
+        No Prompt Guard incidents have arrived from the telemetry stream yet.
       </div>
     );
   }

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   CheckCircle2,
   Eye,
   HelpCircle,
+  Plug,
   RefreshCw,
   Shield,
   ShieldCheck,
@@ -16,7 +18,7 @@ import type {
   SetupActionV2,
 } from "../services/types";
 import { useMode } from "../context/ModeContext";
-import { appModeToRuntimeMode } from "../lib/modes";
+import { appModeToRuntimeMode, isAdvanceMode } from "../lib/modes";
 import {
   buildUserCapabilityMatrix,
   capabilityTone,
@@ -165,6 +167,7 @@ function SetupActionCard({ action }: { action: SetupActionV2 }) {
 export function SetupCapabilitiesPage() {
   const { mode } = useMode();
   const runtimeMode: RuntimeModeV2 = appModeToRuntimeMode(mode);
+  const showDemoControls = isAdvanceMode(mode);
   const [snapshot, setSnapshot] = useState<LocalCapabilitySnapshotV2 | null>(
     null,
   );
@@ -201,6 +204,8 @@ export function SetupCapabilitiesPage() {
   const needsSetup = matrix.filter(
     (item) => item.status === "needs_setup",
   ).length;
+  const safetyCapability = matrix.find((item) => item.category === "safety");
+  const pluginCapability = matrix.find((item) => item.category === "plugins");
 
   return (
     <div className="space-y-5">
@@ -216,35 +221,43 @@ export function SetupCapabilitiesPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex h-9 overflow-hidden rounded-md border bg-background">
-            {(["host", "windows", "linux", "macos"] as DemoTarget[]).map(
-              (target) => (
-                <button
-                  key={target}
-                  type="button"
-                  onClick={() => setDemoTarget(target)}
-                  className={cn(
-                    "px-3 text-sm capitalize hover:bg-muted",
-                    demoTarget === target && "bg-muted text-foreground",
-                  )}
+          {showDemoControls ? (
+            <>
+              <div className="inline-flex h-9 overflow-hidden rounded-md border bg-background">
+                {(["host", "windows", "linux", "macos"] as DemoTarget[]).map(
+                  (target) => (
+                    <button
+                      key={target}
+                      type="button"
+                      onClick={() => setDemoTarget(target)}
+                      className={cn(
+                        "px-3 text-sm capitalize hover:bg-muted",
+                        demoTarget === target && "bg-muted text-foreground",
+                      )}
+                    >
+                      {target}
+                    </button>
+                  ),
+                )}
+              </div>
+              {demoTarget !== "host" && (
+                <select
+                  value={demoProfile}
+                  onChange={(event) =>
+                    setDemoProfile(event.target.value as DemoProfile)
+                  }
+                  className="h-9 rounded-md border bg-background px-3 text-sm"
                 >
-                  {target}
-                </button>
-              ),
-            )}
-          </div>
-          {demoTarget !== "host" && (
-            <select
-              value={demoProfile}
-              onChange={(event) =>
-                setDemoProfile(event.target.value as DemoProfile)
-              }
-              className="h-9 rounded-md border bg-background px-3 text-sm"
-            >
-              <option value="ready">Ready</option>
-              <option value="observe_only">Observe only</option>
-              <option value="needs_setup">Needs setup</option>
-            </select>
+                  <option value="ready">Ready</option>
+                  <option value="observe_only">Observe only</option>
+                  <option value="needs_setup">Needs setup</option>
+                </select>
+              )}
+            </>
+          ) : (
+            <span className="inline-flex h-9 items-center rounded-md border bg-background px-3 text-sm font-medium">
+              This computer
+            </span>
           )}
           <button
             type="button"
@@ -283,6 +296,90 @@ export function SetupCapabilitiesPage() {
         <div className="rounded-lg border bg-card/60 p-4">
           <div className="text-2xl font-semibold">{needsSetup}</div>
           <p className="mt-1 text-xs text-muted-foreground">Need setup</p>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-emerald-500/15 p-2 text-emerald-700">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                Prompt Guard setup
+              </h3>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
+                Prompt Guard watches for prompt injection, secrets, PII, and
+                unsafe prompt/output paths. If Pollek can only watch this
+                category, also tighten the safety settings inside each AI app.
+              </p>
+              {safetyCapability && (
+                <p className="mt-2 text-xs leading-5 text-emerald-900/75 dark:text-emerald-100/75">
+                  Current computer: {safetyCapability.plain_description}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/protect?intent=enable_prompt_guard"
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Enable Prompt Guard
+            </Link>
+            <Link
+              to="/activity?q=prompt"
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-emerald-500/25 bg-background/70 px-3 text-sm hover:bg-background"
+            >
+              <Eye className="h-4 w-4" />
+              View safety activity
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-blue-500/15 p-2 text-blue-700">
+              <Plug className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-blue-950 dark:text-blue-100">
+                Plugins and connectors
+              </h3>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-blue-950/80 dark:text-blue-100/80">
+                Some observe coverage needs a connector or plugin, such as a
+                browser connector, Prompt Guard path, email connector,
+                definition feed, or telemetry exporter. Pollek records plugin
+                install, enable, disable, and uninstall events in Activity and
+                History.
+              </p>
+              {pluginCapability && (
+                <p className="mt-2 text-xs leading-5 text-blue-950/75 dark:text-blue-100/75">
+                  Current computer: {pluginCapability.plain_description}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/plugin-marketplace"
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              <Plug className="h-4 w-4" />
+              Open Marketplace
+            </Link>
+            <Link
+              to="/activity?category=plugins"
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-blue-500/25 bg-background/70 px-3 text-sm hover:bg-background"
+            >
+              <Eye className="h-4 w-4" />
+              View plugin activity
+            </Link>
+          </div>
         </div>
       </section>
 

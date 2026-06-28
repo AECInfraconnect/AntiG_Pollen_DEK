@@ -72,11 +72,7 @@ export interface AiAgent {
       subject?: string;
       audience: string[];
       scopes: string[];
-      confirmation:
-        | "mtls_certificate"
-        | "dpop_key"
-        | "spiffe_svid"
-        | "none";
+      confirmation: "mtls_certificate" | "dpop_key" | "spiffe_svid" | "none";
       token_hash?: string;
       expires_at?: string;
       last_rotated_at?: string;
@@ -972,3 +968,8 @@ export interface EntityCardModel {
 export type ObservedResource = components["schemas"]["ObservedResource"];
 export type ObservedTool = components["schemas"]["ObservedTool"];
 export type ObservedIdentity = components["schemas"]["ObservedIdentity"];
+
+export type PluginKind = components["schemas"]["PluginKind"];
+export type PluginMarketItem = components["schemas"]["PluginMarketItem"];
+export type InstalledPlugin = components["schemas"]["InstalledPlugin"];
+export type PluginInstallRequest = components["schemas"]["PluginInstallRequest"];

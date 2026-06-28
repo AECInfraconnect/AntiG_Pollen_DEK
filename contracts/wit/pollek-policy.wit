@@ -1,0 +1,23 @@
+package pollek:policy@0.1.0;
+
+interface evaluator {
+  record eval-request {
+    request-id: string,
+    tenant-id: option<string>,
+    payload-json: string,
+  }
+
+  record decision {
+    effect: string,
+    reason: string,
+    obligations-json: string,
+  }
+
+  evaluate: func(request: eval-request) -> result<decision, string>;
+}
+
+world policy-plugin {
+  import pollek:host/logging;
+  import pollek:host/clock;
+  export evaluator;
+}

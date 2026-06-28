@@ -26,6 +26,7 @@ import type {
 import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayout";
 import { EntityCard } from "../components/master-detail/EntityCard";
 import { DetailPane } from "../components/master-detail/DetailPane";
+import { StatusChip } from "../components/master-detail/StatusChip";
 import { EmptyState } from "../components/master-detail/EmptyState";
 import type { UiStatus } from "../lib/status";
 import { SimplePolicyWizard } from "../components/simple/SimplePolicyWizard";
@@ -825,355 +826,494 @@ export function AutoDiscovery() {
           const relationships = inventory?.relationships ?? [];
           const capabilityLoading = capabilityLoadingId === c.candidate_id;
 
-          return (
-            <DetailPane
-              title={displayNameForCandidate(c)}
-              subtitle={c.inferred_agent_type}
-              status={status}
-              statusLabel={isRegistered ? "Registered" : "Pending"}
-              actions={[
-                ...(isRegistered
-                  ? []
-                  : [
-                      {
-                        label:
-                          confirmingId === c.candidate_id
-                            ? "Confirming..."
-                            : "Confirm Agent",
-                        primary: true,
-                        icon: CheckCircle,
-                        disabled: confirmingId === c.candidate_id,
-                        onClick: () => openConfirmDialog(c),
-                      },
-                    ]),
-                {
-                  label: "Protect",
-                  primary: isRegistered,
-                  onClick: () => setProtectTarget(c.candidate_id),
-                },
-                {
-                  label: "Delete",
-                  danger: true,
-                  onClick: () => deleteCandidate(c),
-                },
-              ]}
-              tabs={[
-                {
-                  id: "overview",
-                  label: "Overview",
-                  content: (
-                    <div className="space-y-6">
-                      <div className="p-4 bg-muted/30 rounded-xl border">
-                        <h4 className="text-sm font-semibold mb-3">
-                          Friendly Details
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <span className="text-muted-foreground block">
-                              Provider
-                            </span>
-                            <span className="font-medium">
-                              {c.vendor || "Unknown"}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground block">
-                              Runtime
-                            </span>
-                            <span className="font-medium">
-                              {browserName || c.inferred_agent_type}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground block">
-                              Detected Via
-                            </span>
-                            <span className="font-medium">
-                              {sourceSummary || "Discovery evidence"}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground block">
-                              Scan
-                            </span>
-                            <span className="font-medium">
-                              {scanLabelForCandidate(c)}
-                            </span>
-                          </div>
-                        </div>
+          const actions = [
+            ...(isRegistered
+              ? []
+              : [
+                  {
+                    label:
+                      confirmingId === c.candidate_id
+                        ? "Confirming..."
+                        : "Confirm Agent",
+                    primary: true,
+                    icon: CheckCircle,
+                    disabled: confirmingId === c.candidate_id,
+                    onClick: () => openConfirmDialog(c),
+                  },
+                ]),
+            {
+              label: "Protect",
+              primary: isRegistered,
+              onClick: () => setProtectTarget(c.candidate_id),
+            },
+            {
+              label: "Delete",
+              danger: true,
+              onClick: () => deleteCandidate(c),
+            },
+          ];
+          const tabs = [
+            {
+              id: "overview",
+              label: "Overview",
+              content: (
+                <div className="space-y-6">
+                  <div className="p-4 bg-muted/30 rounded-xl border">
+                    <h4 className="text-sm font-semibold mb-3">
+                      Friendly Details
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground block">
+                          Provider
+                        </span>
+                        <span className="font-medium">
+                          {c.vendor || "Unknown"}
+                        </span>
                       </div>
-
-                      <ReferenceIntelGuide
-                        reference={primaryReference}
-                        observedTerms={observedTermsForCandidate(c)}
-                      />
-
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="p-4 bg-muted/30 rounded-xl border">
-                          <span className="text-muted-foreground block mb-1">
-                            Confidence
-                          </span>
-                          <span className="font-semibold">
-                            {(c.confidence * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                        <div className="p-4 bg-muted/30 rounded-xl border">
-                          <span className="text-muted-foreground block mb-1">
-                            Risk Score
-                          </span>
-                          <span className="font-semibold text-amber-500">
-                            {c.risk_score}
-                          </span>
-                        </div>
-                        <div className="p-4 bg-muted/30 rounded-xl border">
-                          <span className="text-muted-foreground block mb-1">
-                            First Seen
-                          </span>
-                          <span>{new Date(c.first_seen).toLocaleString()}</span>
-                        </div>
-                        <div className="p-4 bg-muted/30 rounded-xl border">
-                          <span className="text-muted-foreground block mb-1">
-                            Last Seen
-                          </span>
-                          <span>{new Date(c.last_seen).toLocaleString()}</span>
-                        </div>
+                      <div>
+                        <span className="text-muted-foreground block">
+                          Runtime
+                        </span>
+                        <span className="font-medium">
+                          {browserName || c.inferred_agent_type}
+                        </span>
                       </div>
-
-                      <div className="p-4 bg-muted/30 rounded-xl border">
-                        <h4 className="text-sm font-semibold mb-3">
-                          Detected Capabilities
-                        </h4>
-                        {caps.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {caps.map((cap) => (
-                              <span
-                                key={cap}
-                                className="rounded-md border bg-background px-2 py-1 text-xs font-medium text-foreground/80"
-                              >
-                                {cap}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No capabilities inferred yet.
-                          </p>
-                        )}
+                      <div>
+                        <span className="text-muted-foreground block">
+                          Detected Via
+                        </span>
+                        <span className="font-medium">
+                          {sourceSummary || "Discovery evidence"}
+                        </span>
                       </div>
-
-                      {c.discovered_mcp_servers &&
-                        c.discovered_mcp_servers.length > 0 && (
-                          <div className="p-4 bg-muted/30 rounded-xl border">
-                            <h4 className="text-sm font-semibold mb-2">
-                              Discovered MCP Servers
-                            </h4>
-                            <ul className="text-sm space-y-1.5 text-muted-foreground">
-                              {c.discovered_mcp_servers.map(
-                                (mcp: any, i: number) => (
-                                  <li
-                                    key={i}
-                                    className="flex items-center gap-2"
-                                  >
-                                    <Play className="h-3 w-3 text-primary" />
-                                    <span className="text-foreground/80">
-                                      {mcp.server_name} ({mcp.transport})
-                                    </span>
-                                  </li>
-                                ),
-                              )}
-                            </ul>
-                          </div>
-                        )}
-                    </div>
-                  ),
-                },
-                {
-                  id: "capabilities",
-                  label: "Capabilities",
-                  content: (
-                    <div className="space-y-5">
-                      <div className="flex flex-col gap-3 rounded-xl border bg-muted/30 p-4 md:flex-row md:items-center md:justify-between">
-                        <div>
-                          <h4 className="text-sm font-semibold">
-                            Canonical Entity Inventory
-                          </h4>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            Derived from local discovery metadata only. No MCP
-                            tools are invoked and no resource contents are read.
-                          </p>
-                        </div>
-                        <button
-                          onClick={() =>
-                            void loadCapabilities(c.candidate_id, true)
-                          }
-                          disabled={capabilityLoading}
-                          className="inline-flex items-center justify-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-                        >
-                          <RefreshCw
-                            className={`h-4 w-4 ${
-                              capabilityLoading ? "animate-spin" : ""
-                            }`}
-                          />
-                          Refresh inventory
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
-                        <div className="rounded-xl border bg-muted/30 p-4">
-                          <span className="block text-muted-foreground">
-                            Entity Kind
-                          </span>
-                          <span className="font-semibold">
-                            {entity?.entity_kind?.replace(/_/g, " ") ||
-                              c.inferred_agent_type}
-                          </span>
-                        </div>
-                        <div className="rounded-xl border bg-muted/30 p-4">
-                          <span className="block text-muted-foreground">
-                            Privacy
-                          </span>
-                          <span className="font-semibold">
-                            {entity?.privacy_profile?.replace(/_/g, " ") ||
-                              "metadata only"}
-                          </span>
-                        </div>
-                        <div className="rounded-xl border bg-muted/30 p-4">
-                          <span className="block text-muted-foreground">
-                            Collection Cost
-                          </span>
-                          <span className="font-semibold">
-                            {entity?.performance_cost_class?.replace(
-                              /_/g,
-                              " ",
-                            ) || "passive metadata"}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border bg-muted/30 p-4">
-                        <div className="mb-3 flex items-center justify-between gap-2">
-                          <h4 className="text-sm font-semibold">
-                            Capabilities
-                          </h4>
-                          <span className="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground">
-                            {canonicalCapabilities.length} found
-                          </span>
-                        </div>
-                        {canonicalCapabilities.length > 0 ? (
-                          <div className="space-y-3">
-                            {canonicalCapabilities.map((capability) => (
-                              <div
-                                key={capability.capability_id}
-                                className="rounded-lg border bg-background/70 p-3"
-                              >
-                                <div className="flex flex-wrap items-start justify-between gap-2">
-                                  <div>
-                                    <div className="font-medium">
-                                      {capability.name}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {capability.capability_kind.replace(
-                                        /_/g,
-                                        " ",
-                                      )}{" "}
-                                      from {capability.source}
-                                    </div>
-                                  </div>
-                                  <span className="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">
-                                    {(capability.confidence * 100).toFixed(0)}%
-                                  </span>
-                                </div>
-                                {capability.description && (
-                                  <p className="mt-2 text-sm text-muted-foreground">
-                                    {capability.description}
-                                  </p>
-                                )}
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                  {[
-                                    ...capability.modality,
-                                    ...capability.actions,
-                                    ...capability.risk_tags,
-                                  ].map((tag) => (
-                                    <span
-                                      key={`${capability.capability_id}-${tag}`}
-                                      className="rounded-md border px-2 py-1 text-xs text-muted-foreground"
-                                    >
-                                      {tag.replace(/_/g, " ")}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            Select Refresh inventory to derive capabilities from
-                            the latest discovery evidence.
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="rounded-xl border bg-muted/30 p-4">
-                        <div className="mb-3 flex items-center justify-between gap-2">
-                          <h4 className="text-sm font-semibold">
-                            Relationships
-                          </h4>
-                          <span className="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground">
-                            {relationships.length} link(s)
-                          </span>
-                        </div>
-                        {relationships.length > 0 ? (
-                          <div className="space-y-2">
-                            {relationships.map((relationship) => (
-                              <div
-                                key={relationship.relationship_id}
-                                className="flex items-start gap-2 rounded-lg border bg-background/70 p-3 text-sm"
-                              >
-                                <Link2 className="mt-0.5 h-4 w-4 text-primary" />
-                                <div>
-                                  <div className="font-medium">
-                                    {relationship.relation.replace(/_/g, " ")}
-                                  </div>
-                                  <div className="break-all text-xs text-muted-foreground">
-                                    {relationship.subject_candidate_id} to{" "}
-                                    {relationship.object_candidate_id}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No relationships derived yet.
-                          </p>
-                        )}
+                      <div>
+                        <span className="text-muted-foreground block">
+                          Scan
+                        </span>
+                        <span className="font-medium">
+                          {scanLabelForCandidate(c)}
+                        </span>
                       </div>
                     </div>
-                  ),
-                },
-                {
-                  id: "advanced",
-                  label: "Advanced Evidence",
-                  content: (
-                    <div className="space-y-4">
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Raw evidence details and system telemetry used to
-                        identify this candidate.
+                  </div>
+
+                  <ReferenceIntelGuide
+                    reference={primaryReference}
+                    observedTerms={observedTermsForCandidate(c)}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="p-4 bg-muted/30 rounded-xl border">
+                      <span className="text-muted-foreground block mb-1">
+                        Confidence
+                      </span>
+                      <span className="font-semibold">
+                        {(c.confidence * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="p-4 bg-muted/30 rounded-xl border">
+                      <span className="text-muted-foreground block mb-1">
+                        Risk Score
+                      </span>
+                      <span className="font-semibold text-amber-500">
+                        {c.risk_score}
+                      </span>
+                    </div>
+                    <div className="p-4 bg-muted/30 rounded-xl border">
+                      <span className="text-muted-foreground block mb-1">
+                        First Seen
+                      </span>
+                      <span>{new Date(c.first_seen).toLocaleString()}</span>
+                    </div>
+                    <div className="p-4 bg-muted/30 rounded-xl border">
+                      <span className="text-muted-foreground block mb-1">
+                        Last Seen
+                      </span>
+                      <span>{new Date(c.last_seen).toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-muted/30 rounded-xl border">
+                    <h4 className="text-sm font-semibold mb-3">
+                      Detected Capabilities
+                    </h4>
+                    {caps.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {caps.map((cap) => (
+                          <span
+                            key={cap}
+                            className="rounded-md border bg-background px-2 py-1 text-xs font-medium text-foreground/80"
+                          >
+                            {cap}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No capabilities inferred yet.
                       </p>
-                      <pre className="text-[10px] font-mono bg-muted/50 p-4 rounded-lg overflow-x-auto border">
-                        {JSON.stringify(c.evidence, null, 2)}
-                      </pre>
-                      <h4 className="font-medium mt-4 mb-2 flex items-center gap-2 text-sm">
-                        <Info className="h-4 w-4" /> Full JSON payload
+                    )}
+                  </div>
+
+                  {c.discovered_mcp_servers &&
+                    c.discovered_mcp_servers.length > 0 && (
+                      <div className="p-4 bg-muted/30 rounded-xl border">
+                        <h4 className="text-sm font-semibold mb-2">
+                          Discovered MCP Servers
+                        </h4>
+                        <ul className="text-sm space-y-1.5 text-muted-foreground">
+                          {c.discovered_mcp_servers.map(
+                            (mcp: any, i: number) => (
+                              <li key={i} className="flex items-center gap-2">
+                                <Play className="h-3 w-3 text-primary" />
+                                <span className="text-foreground/80">
+                                  {mcp.server_name} ({mcp.transport})
+                                </span>
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                </div>
+              ),
+            },
+            {
+              id: "capabilities",
+              label: "Capabilities",
+              content: (
+                <div className="space-y-5">
+                  <div className="flex flex-col gap-3 rounded-xl border bg-muted/30 p-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h4 className="text-sm font-semibold">
+                        Canonical Entity Inventory
                       </h4>
-                      <pre className="text-[10px] font-mono bg-muted/50 p-4 rounded-lg overflow-x-auto border">
-                        {JSON.stringify(c, null, 2)}
-                      </pre>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Derived from local discovery metadata only. No MCP tools
+                        are invoked and no resource contents are read.
+                      </p>
                     </div>
-                  ),
-                },
-              ]}
-            />
+                    <button
+                      onClick={() =>
+                        void loadCapabilities(c.candidate_id, true)
+                      }
+                      disabled={capabilityLoading}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+                    >
+                      <RefreshCw
+                        className={`h-4 w-4 ${
+                          capabilityLoading ? "animate-spin" : ""
+                        }`}
+                      />
+                      Refresh inventory
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+                    <div className="rounded-xl border bg-muted/30 p-4">
+                      <span className="block text-muted-foreground">
+                        Entity Kind
+                      </span>
+                      <span className="font-semibold">
+                        {entity?.entity_kind?.replace(/_/g, " ") ||
+                          c.inferred_agent_type}
+                      </span>
+                    </div>
+                    <div className="rounded-xl border bg-muted/30 p-4">
+                      <span className="block text-muted-foreground">
+                        Privacy
+                      </span>
+                      <span className="font-semibold">
+                        {entity?.privacy_profile?.replace(/_/g, " ") ||
+                          "metadata only"}
+                      </span>
+                    </div>
+                    <div className="rounded-xl border bg-muted/30 p-4">
+                      <span className="block text-muted-foreground">
+                        Collection Cost
+                      </span>
+                      <span className="font-semibold">
+                        {entity?.performance_cost_class?.replace(/_/g, " ") ||
+                          "passive metadata"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border bg-muted/30 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <h4 className="text-sm font-semibold">Capabilities</h4>
+                      <span className="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground">
+                        {canonicalCapabilities.length} found
+                      </span>
+                    </div>
+                    {canonicalCapabilities.length > 0 ? (
+                      <div className="space-y-3">
+                        {canonicalCapabilities.map((capability) => (
+                          <div
+                            key={capability.capability_id}
+                            className="rounded-lg border bg-background/70 p-3"
+                          >
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <div>
+                                <div className="font-medium">
+                                  {capability.name}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {capability.capability_kind.replace(
+                                    /_/g,
+                                    " ",
+                                  )}{" "}
+                                  from {capability.source}
+                                </div>
+                              </div>
+                              <span className="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">
+                                {(capability.confidence * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                            {capability.description && (
+                              <p className="mt-2 text-sm text-muted-foreground">
+                                {capability.description}
+                              </p>
+                            )}
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {[
+                                ...capability.modality,
+                                ...capability.actions,
+                                ...capability.risk_tags,
+                              ].map((tag) => (
+                                <span
+                                  key={`${capability.capability_id}-${tag}`}
+                                  className="rounded-md border px-2 py-1 text-xs text-muted-foreground"
+                                >
+                                  {tag.replace(/_/g, " ")}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Select Refresh inventory to derive capabilities from the
+                        latest discovery evidence.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border bg-muted/30 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <h4 className="text-sm font-semibold">Relationships</h4>
+                      <span className="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground">
+                        {relationships.length} link(s)
+                      </span>
+                    </div>
+                    {relationships.length > 0 ? (
+                      <div className="space-y-2">
+                        {relationships.map((relationship) => (
+                          <div
+                            key={relationship.relationship_id}
+                            className="flex items-start gap-2 rounded-lg border bg-background/70 p-3 text-sm"
+                          >
+                            <Link2 className="mt-0.5 h-4 w-4 text-primary" />
+                            <div>
+                              <div className="font-medium">
+                                {relationship.relation.replace(/_/g, " ")}
+                              </div>
+                              <div className="break-all text-xs text-muted-foreground">
+                                {relationship.subject_candidate_id} to{" "}
+                                {relationship.object_candidate_id}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No relationships derived yet.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ),
+            },
+            {
+              id: "advanced",
+              label: "Advanced Evidence",
+              content: (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Raw evidence details and system telemetry used to identify
+                    this candidate.
+                  </p>
+                  <pre className="text-[10px] font-mono bg-muted/50 p-4 rounded-lg overflow-x-auto border">
+                    {JSON.stringify(c.evidence, null, 2)}
+                  </pre>
+                  <h4 className="font-medium mt-4 mb-2 flex items-center gap-2 text-sm">
+                    <Info className="h-4 w-4" /> Full JSON payload
+                  </h4>
+                  <pre className="text-[10px] font-mono bg-muted/50 p-4 rounded-lg overflow-x-auto border">
+                    {JSON.stringify(c, null, 2)}
+                  </pre>
+                </div>
+              ),
+            },
+          ];
+
+          return (
+            <div className="flex h-full flex-col overflow-hidden rounded-xl bg-card/40">
+              <div className="border-b px-5 py-4">
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                      Discovery Candidate
+                    </div>
+                    <h3 className="mt-1 break-words text-xl font-semibold tracking-tight">
+                      {displayNameForCandidate(c)}
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {primaryReference?.category ?? c.inferred_agent_type} -
+                      detected from {sourceSummary || "local metadata"}
+                    </p>
+                  </div>
+                  <StatusChip
+                    status={status}
+                    label={isRegistered ? "Registered" : "Pending"}
+                  />
+                </div>
+              </div>
+
+              <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[240px_minmax(0,1fr)] 2xl:grid-cols-[260px_minmax(0,1fr)_300px]">
+                <aside className="space-y-3">
+                  <section className="rounded-lg border bg-background/50 p-4">
+                    <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      Candidate Summary
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="border-b border-border/40 pb-2">
+                        <div className="text-xs text-muted-foreground">
+                          Provider
+                        </div>
+                        <div className="mt-0.5 break-words font-medium">
+                          {c.vendor || primaryReference?.vendor || "Unknown"}
+                        </div>
+                      </div>
+                      <div className="border-b border-border/40 pb-2">
+                        <div className="text-xs text-muted-foreground">
+                          Runtime
+                        </div>
+                        <div className="mt-0.5 break-words font-medium">
+                          {browserName || c.inferred_agent_type}
+                        </div>
+                      </div>
+                      <div className="border-b border-border/40 pb-2">
+                        <div className="text-xs text-muted-foreground">
+                          Confidence
+                        </div>
+                        <div className="mt-0.5 font-medium">
+                          {(c.confidence * 100).toFixed(0)}%
+                        </div>
+                      </div>
+                      <div className="border-b border-border/40 pb-2">
+                        <div className="text-xs text-muted-foreground">
+                          Risk score
+                        </div>
+                        <div className="mt-0.5 font-medium text-amber-600">
+                          {c.risk_score}
+                        </div>
+                      </div>
+                      <div className="border-b border-border/40 pb-2">
+                        <div className="text-xs text-muted-foreground">
+                          Evidence
+                        </div>
+                        <div className="mt-0.5 font-medium">
+                          {c.evidence?.length ?? 0} signal(s)
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">
+                          Scan
+                        </div>
+                        <div className="mt-0.5 break-words font-medium">
+                          {scanLabelForCandidate(c)}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </aside>
+
+                <section className="min-w-0">
+                  <DetailPane
+                    title="Detail Workspace"
+                    subtitle="Review friendly details, canonical capabilities, and raw evidence for this candidate."
+                    status={status}
+                    statusLabel={isRegistered ? "Registered" : "Pending"}
+                    tabs={tabs}
+                  />
+                </section>
+
+                <aside className="space-y-3 xl:col-span-2 2xl:col-span-1">
+                  <section className="rounded-lg border bg-background/50 p-4">
+                    <h3 className="text-sm font-semibold">Actions</h3>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {actions.map((action) => {
+                        const ActionIcon = action.icon;
+                        return (
+                          <button
+                            key={action.label}
+                            type="button"
+                            onClick={action.onClick}
+                            disabled={action.disabled}
+                            className={`inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium disabled:opacity-50 ${
+                              action.danger
+                                ? "border border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/15"
+                                : action.primary
+                                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                                  : "border bg-background hover:bg-muted"
+                            }`}
+                          >
+                            {ActionIcon && <ActionIcon className="h-4 w-4" />}
+                            {action.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  <section className="rounded-lg border bg-background/50 p-4">
+                    <h3 className="text-sm font-semibold">What this means</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      Pollek found this AI-related entity from metadata and
+                      local signals. Confirm it when the identity looks right,
+                      then observe activity before adding stricter controls.
+                    </p>
+                  </section>
+
+                  {primaryReference ? (
+                    <section className="rounded-lg border bg-background/50 p-4">
+                      <h3 className="text-sm font-semibold">Known Profile</h3>
+                      <div className="mt-3">
+                        <ReferenceIntelMark reference={primaryReference} />
+                      </div>
+                      <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                        Matched definitions explain what this AI app commonly
+                        does. Local evidence remains the source of truth.
+                      </p>
+                    </section>
+                  ) : null}
+
+                  <section className="rounded-lg border bg-background/50 p-4">
+                    <h3 className="text-sm font-semibold">Privacy</h3>
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                      Discovery uses local metadata such as process names,
+                      browser titles, config references, and redacted paths. It
+                      does not read file contents or raw prompts for this view.
+                    </p>
+                  </section>
+                </aside>
+              </div>
+            </div>
           );
         }}
       />

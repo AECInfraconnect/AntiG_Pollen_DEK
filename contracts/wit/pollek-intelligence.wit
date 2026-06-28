@@ -1,0 +1,47 @@
+package pollek:intelligence@0.1.0;
+
+interface classify {
+  classify-resource: func(resource-json: string) -> result<string, string>;
+}
+
+interface risk {
+  score: func(activity-json: string) -> result<string, string>;
+}
+
+interface defs {
+  parse-feed: func(feed-bytes: list<u8>) -> result<string, string>;
+}
+
+interface notify {
+  send: func(notification-json: string) -> result<string, string>;
+}
+
+interface compliance {
+  evaluate-profile: func(profile-json: string, evidence-json: string) -> result<string, string>;
+}
+
+world classifier-plugin {
+  import pollek:host/logging;
+  export classify;
+}
+
+world risk-plugin {
+  import pollek:host/logging;
+  export risk;
+}
+
+world definition-feed-plugin {
+  import pollek:host/logging;
+  export defs;
+}
+
+world notify-plugin {
+  import pollek:host/logging;
+  import pollek:host/httpout;
+  export notify;
+}
+
+world compliance-plugin {
+  import pollek:host/logging;
+  export compliance;
+}

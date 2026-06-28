@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   AppWindow,
@@ -15,6 +15,7 @@ import {
   Globe2,
   Info,
   Mail,
+  Plug,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -24,10 +25,13 @@ import {
   Wrench,
 } from "lucide-react";
 import { UserActivityApi } from "../features/user-activity/api";
+import { GuardIncidentFeed } from "../features/guard/GuardIncidentCard";
 import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayout";
 import { EntityCard } from "../components/master-detail/EntityCard";
 import { DetailPane } from "../components/master-detail/DetailPane";
+import { StatusChip } from "../components/master-detail/StatusChip";
 import { ReferenceIntelGuide } from "../components/reference/ReferenceIntelGuide";
+import { ReferenceIntelMark } from "../components/reference/ReferenceIntelMark";
 import {
   categoryLabel,
   formatDateTime,
@@ -64,6 +68,7 @@ const categories: UserActivityCategory[] = [
   "safety",
   "ai_models",
   "tools",
+  "plugins",
   "cost",
   "unknown",
 ];
@@ -76,6 +81,7 @@ const categoryIcons: Record<UserActivityCategory, any> = {
   commands: Terminal,
   ai_models: Sparkles,
   tools: Wrench,
+  plugins: Plug,
   safety: ShieldCheck,
   cost: Database,
   unknown: Activity,
@@ -127,12 +133,27 @@ function observedTermsForActivity(item: UserFriendlyActivityEvent) {
 }
 
 function actionPhrase(item: UserFriendlyActivityEvent) {
+  if (
+    item.target_label === "AI session activity" ||
+    item.target_label === "local AI activity"
+  ) {
+    return "had activity Pollek could observe";
+  }
+  if (item.category === "ai_models" && item.target_label.includes("AI model")) {
+    return "used an AI model session";
+  }
   const action = item.action.replace(/_/g, " ");
-  if (item.access_mode === "write") return `tried to change ${item.target_label}`;
-  if (item.access_mode === "read") return `read or inspected ${item.target_label}`;
-  if (item.access_mode === "connect") return `connected to ${item.target_label}`;
+  if (item.access_mode === "write")
+    return `tried to change ${item.target_label}`;
+  if (item.access_mode === "read")
+    return `read or inspected ${item.target_label}`;
+  if (item.access_mode === "connect")
+    return `connected to ${item.target_label}`;
   if (item.access_mode === "run") return `ran ${item.target_label}`;
-  if (item.access_mode === "send") return `sent data through ${item.target_label}`;
+  if (item.access_mode === "send")
+    return `sent data through ${item.target_label}`;
+  if (item.access_mode === "manage")
+    return `${item.action.replace(/_/g, " ")} ${item.target_label}`;
   return `${action} ${item.target_label}`;
 }
 
@@ -158,6 +179,16 @@ function resultExplanation(item: UserFriendlyActivityEvent) {
   return "Pollek observed this action and it was allowed.";
 }
 
+function targetSummary(item: UserFriendlyActivityEvent) {
+  if (
+    item.target_label === "AI session activity" ||
+    item.target_label === "local AI activity"
+  ) {
+    return "Exact file, site, or tool was not available from this observe source yet.";
+  }
+  return `Target: ${item.target_label}`;
+}
+
 function setupHint(item: UserFriendlyActivityEvent) {
   if (item.result === "blocked" || item.result === "redacted") {
     return "This path is already controlled by a local rule or guard.";
@@ -174,7 +205,120 @@ function setupHint(item: UserFriendlyActivityEvent) {
   if (item.category === "email") {
     return "To control this, review connector permissions in the AI app and keep email access opt-in.";
   }
+  if (item.category === "plugins") {
+    return "Review the plugin's granted capabilities, health, and whether it can send activity metadata off this device.";
+  }
   return "Keep observing first, then create a rule when the same activity matters enough to control.";
+}
+
+function ruleIntentForActivity(item: UserFriendlyActivityEvent) {
+  if (item.category === "files" && item.access_mode === "write") {
+    return "ask_before_writing_files";
+  }
+  if (item.category === "files") return "block_folder_access";
+  if (item.category === "web") return "allow_website_domain";
+  if (item.category === "commands" || item.category === "apps") {
+    return "ask_before_terminal_command";
+  }
+  if (item.category === "safety") return "enable_prompt_guard";
+  if (item.category === "cost" || item.category === "ai_models") {
+    return "limit_ai_model_cost";
+  }
+  if (item.category === "plugins") return "watch_all_activity";
+  return "watch_all_activity";
+}
+
+function ruleActionLabel(item: UserFriendlyActivityEvent) {
+  if (item.category === "files" && item.access_mode === "write") {
+    return "Ask before changes here";
+  }
+  if (item.category === "files") return "Set a file or folder rule";
+  if (item.category === "web") return "Set a website rule";
+  if (item.category === "commands" || item.category === "apps") {
+    return "Ask before running this";
+  }
+  if (item.category === "safety") return "Enable Prompt Guard";
+  if (item.category === "cost" || item.category === "ai_models") {
+    return "Set cost or model limit";
+  }
+  if (item.category === "plugins") return "Review plugin access";
+  return "Create a watch rule";
+}
+
+function ruleShortcutHref(item: UserFriendlyActivityEvent) {
+  const params = new URLSearchParams({
+    intent: ruleIntentForActivity(item),
+    category: item.category,
+    target: item.target_label,
+    event: item.event_id,
+  });
+  if (item.agent_id) params.set("agent_id", item.agent_id);
+  return `/protect?${params.toString()}`;
+}
+
+function aiAppHref(item: UserFriendlyActivityEvent) {
+  if (item.category === "plugins") return "/plugin-marketplace";
+  if (!item.agent_id) return "/my-ai-apps";
+  return `/my-ai-apps?selected=${encodeURIComponent(item.agent_id)}`;
+}
+
+function ActivityShortcutActions({
+  item,
+}: {
+  item: UserFriendlyActivityEvent;
+}) {
+  if (item.category === "plugins") {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Link
+          to="/plugin-marketplace"
+          className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          <Plug className="h-4 w-4" />
+          Review plugin access
+        </Link>
+        <Link
+          to="/setup?category=plugins"
+          className="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm hover:bg-muted"
+        >
+          <Wrench className="h-4 w-4" />
+          Check setup
+        </Link>
+        <Link
+          to="/history?category=plugins"
+          className="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm hover:bg-muted"
+        >
+          <ArrowRight className="h-4 w-4" />
+          Plugin history
+        </Link>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Link
+        to={ruleShortcutHref(item)}
+        className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+      >
+        <ShieldCheck className="h-4 w-4" />
+        {ruleActionLabel(item)}
+      </Link>
+      <Link
+        to={`/setup?category=${encodeURIComponent(item.category)}`}
+        className="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm hover:bg-muted"
+      >
+        <Wrench className="h-4 w-4" />
+        Check setup
+      </Link>
+      <Link
+        to={aiAppHref(item)}
+        className="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm hover:bg-muted"
+      >
+        <ArrowRight className="h-4 w-4" />
+        AI app settings
+      </Link>
+    </div>
+  );
 }
 
 function exportJson(items: UserFriendlyActivityEvent[]) {
@@ -270,318 +414,438 @@ function ActivityDetail({
   const status = statusForResult(item.result);
   const Icon = categoryIcons[item.category] ?? Activity;
 
-  return (
-    <DetailPane
-      title={item.plain_summary}
-      subtitle={`${item.agent_name} - ${formatDateTime(item.timestamp)}`}
-      status={status}
-      statusLabel={item.result_label}
-      tabs={[
-        {
-          id: "overview",
-          label: "Overview",
-          content: (
-            <div className="space-y-4">
-              <div className="rounded-lg border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  What happened
-                </div>
-                <p className="mt-2 text-sm leading-6">
-                  <span className="font-semibold">{item.agent_name}</span>{" "}
-                  {actionPhrase(item)}.
-                </p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {resultExplanation(item)}
-                </p>
-              </div>
+  const tabs = [
+    {
+      id: "overview",
+      label: "Overview",
+      content: (
+        <div className="space-y-4">
+          <div className="rounded-lg border bg-background/60 p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              What happened
+            </div>
+            <p className="mt-2 text-sm leading-6">
+              <span className="font-semibold">{item.agent_name}</span>{" "}
+              {actionPhrase(item)}.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {resultExplanation(item)}
+            </p>
+          </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-lg border bg-background/60 p-4">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <ActivityResultIcon result={item.result} />
-                    Result
-                  </div>
-                  <div className="mt-2 text-sm font-semibold">
-                    {item.result_label}
-                  </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-lg border bg-background/60 p-4">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <ActivityResultIcon result={item.result} />
+                Result
+              </div>
+              <div className="mt-2 text-sm font-semibold">
+                {item.result_label}
+              </div>
+            </div>
+            <div className="rounded-lg border bg-background/60 p-4">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Icon className="h-4 w-4" />
+                Activity type
+              </div>
+              <div className="mt-2 text-sm font-semibold">
+                {categoryLabel(item.category)}
+              </div>
+            </div>
+            <div className="rounded-lg border bg-background/60 p-4">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock3 className="h-4 w-4" />
+                Time
+              </div>
+              <div className="mt-2 text-sm font-semibold">
+                {formatShortTime(item.timestamp)}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-lg border bg-background/60 p-4">
+              <div className="text-xs text-muted-foreground">AI app</div>
+              <div className="mt-1 break-words text-sm font-semibold">
+                {item.agent_name}
+              </div>
+            </div>
+            <div className="rounded-lg border bg-background/60 p-4">
+              <div className="text-xs text-muted-foreground">
+                Touched or used
+              </div>
+              <div className="mt-1 break-words text-sm font-semibold">
+                {item.target_label}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {item.target_kind} - {item.access_mode}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-background/60 p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              What you can do next
+            </div>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {setupHint(item)}
+            </p>
+            <div className="mt-3">
+              <ActivityShortcutActions item={item} />
+            </div>
+          </div>
+
+          <ReferenceIntelGuide
+            reference={reference}
+            observedTerms={observedTerms}
+          />
+        </div>
+      ),
+    },
+    {
+      id: "evidence",
+      label: "Evidence",
+      content: (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-700">
+            {item.capability_note}
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-lg border bg-background/60 p-4">
+              <h4 className="text-sm font-semibold">What Pollek saw</h4>
+              <dl className="mt-3 space-y-2 text-sm">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Action</dt>
+                  <dd className="text-right font-medium">
+                    {item.action.replace(/_/g, " ")}
+                  </dd>
                 </div>
-                <div className="rounded-lg border bg-background/60 p-4">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Icon className="h-4 w-4" />
-                    Activity type
-                  </div>
-                  <div className="mt-2 text-sm font-semibold">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Access</dt>
+                  <dd className="text-right font-medium">{item.access_mode}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Category</dt>
+                  <dd className="font-medium">
                     {categoryLabel(item.category)}
-                  </div>
+                  </dd>
                 </div>
-                <div className="rounded-lg border bg-background/60 p-4">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Clock3 className="h-4 w-4" />
-                    Time
-                  </div>
-                  <div className="mt-2 text-sm font-semibold">
-                    {formatShortTime(item.timestamp)}
-                  </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Trace</dt>
+                  <dd className="break-all text-right font-medium">
+                    {item.trace_id ?? "Not linked"}
+                  </dd>
                 </div>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg border bg-background/60 p-4">
-                  <div className="text-xs text-muted-foreground">AI app</div>
-                  <div className="mt-1 break-words text-sm font-semibold">
-                    {item.agent_name}
-                  </div>
-                </div>
-                <div className="rounded-lg border bg-background/60 p-4">
-                  <div className="text-xs text-muted-foreground">
-                    Touched or used
-                  </div>
-                  <div className="mt-1 break-words text-sm font-semibold">
-                    {item.target_label}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {item.target_kind} - {item.access_mode}
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-lg border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  What you can do next
-                </div>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {setupHint(item)}
-                </p>
-              </div>
-
-              <ReferenceIntelGuide
-                reference={reference}
-                observedTerms={observedTerms}
-              />
+              </dl>
             </div>
-          ),
-        },
-        {
-          id: "evidence",
-          label: "Evidence",
-          content: (
-            <div className="space-y-3">
-              <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-700">
-                {item.capability_note}
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg border bg-background/60 p-4">
-                  <h4 className="text-sm font-semibold">What Pollek saw</h4>
-                  <dl className="mt-3 space-y-2 text-sm">
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-muted-foreground">Action</dt>
-                      <dd className="text-right font-medium">
-                        {item.action.replace(/_/g, " ")}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-muted-foreground">Access</dt>
-                      <dd className="text-right font-medium">
-                        {item.access_mode}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-muted-foreground">Category</dt>
-                      <dd className="font-medium">
-                        {categoryLabel(item.category)}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-muted-foreground">Trace</dt>
-                      <dd className="break-all text-right font-medium">
-                        {item.trace_id ?? "Not linked"}
-                      </dd>
-                    </div>
-                  </dl>
+            <div className="rounded-lg border bg-background/60 p-4">
+              <h4 className="text-sm font-semibold">Rule and result</h4>
+              <dl className="mt-3 space-y-2 text-sm">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Rule</dt>
+                  <dd className="break-words text-right font-medium">
+                    {item.rule_label ?? "No rule matched"}
+                  </dd>
                 </div>
-                <div className="rounded-lg border bg-background/60 p-4">
-                  <h4 className="text-sm font-semibold">Policy result</h4>
-                  <dl className="mt-3 space-y-2 text-sm">
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-muted-foreground">Rule</dt>
-                      <dd className="break-words text-right font-medium">
-                        {item.rule_label ?? "No rule matched"}
-                      </dd>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Result</dt>
+                  <dd className="text-right font-medium">
+                    {item.result_label}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">What Pollek did</dt>
+                  <dd className="text-right font-medium">
+                    {resultExplanation(item)}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Evidence source</dt>
+                  <dd className="break-words text-right font-medium">
+                    {item.advanced?.mode?.includes("observe")
+                      ? "Local watch"
+                      : "Local activity record"}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+          <p className="rounded-lg border bg-background/60 p-4 text-xs leading-5 text-muted-foreground">
+            {item.privacy_note}
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: "next",
+      label: "Next Steps",
+      content: (
+        <div className="space-y-3">
+          <div className="rounded-lg border bg-background/60 p-4">
+            <h4 className="flex items-center gap-2 text-sm font-semibold">
+              <ArrowRight className="h-4 w-4 text-primary" />
+              Suggested action
+            </h4>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {item.next_step}
+            </p>
+          </div>
+          <div className="rounded-lg border bg-background/60 p-4">
+            <h4 className="flex items-center gap-2 text-sm font-semibold">
+              <Info className="h-4 w-4 text-primary" />
+              Plain explanation
+            </h4>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              This event means {item.agent_name} {actionPhrase(item)}. You can
+              keep watching it, ask before similar actions, or block this kind
+              of activity where your device supports that control.
+            </p>
+          </div>
+          <div className="rounded-lg border bg-background/60 p-4">
+            <h4 className="flex items-center gap-2 text-sm font-semibold">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              Actions
+            </h4>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              When Pollek can only observe this path, use this record as a
+              checklist for the AI app's own settings: file permissions, web
+              access, connector permissions, terminal access, and model usage
+              controls.
+            </p>
+            <div className="mt-3">
+              <ActivityShortcutActions item={item} />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    ...(showTechnicalDetails
+      ? [
+          {
+            id: "technical",
+            label: "Technical Details",
+            content: (
+              <div className="space-y-3">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-lg border bg-background/60 p-4">
+                    <div className="text-xs text-muted-foreground">
+                      Event ID
                     </div>
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-muted-foreground">Decision</dt>
-                      <dd className="font-medium">
-                        {item.advanced?.decision ?? item.result}
-                      </dd>
+                    <div className="mt-1 break-all text-sm font-semibold">
+                      {item.event_id}
                     </div>
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-muted-foreground">Mode</dt>
-                      <dd className="font-medium">
-                        {item.advanced?.mode ?? "watch"}
-                      </dd>
+                  </div>
+                  <div className="rounded-lg border bg-background/60 p-4">
+                    <div className="text-xs text-muted-foreground">
+                      Agent ID
                     </div>
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-muted-foreground">Source</dt>
-                      <dd className="break-words text-right font-medium">
-                        {item.advanced?.pep_plane ?? "local observe"}
-                      </dd>
+                    <div className="mt-1 break-all text-sm font-semibold">
+                      {item.agent_id ?? "Not linked"}
                     </div>
-                  </dl>
+                  </div>
+                  <div className="rounded-lg border bg-background/60 p-4">
+                    <div className="text-xs text-muted-foreground">
+                      Trace ID
+                    </div>
+                    <div className="mt-1 break-all text-sm font-semibold">
+                      {item.trace_id ?? "Not linked"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-lg border bg-background/60 p-4">
+                    <h4 className="text-sm font-semibold">Decision metadata</h4>
+                    <dl className="mt-3 space-y-2 text-sm">
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">Decision</dt>
+                        <dd className="font-medium">
+                          {item.advanced?.decision ?? item.result}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">Mode</dt>
+                        <dd className="font-medium">
+                          {item.advanced?.mode ?? "unknown"}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">PEP plane</dt>
+                        <dd className="break-words text-right font-medium">
+                          {item.advanced?.pep_plane ?? "unknown"}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">PDP engine</dt>
+                        <dd className="break-words text-right font-medium">
+                          {item.advanced?.pdp_engine ?? "unknown"}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                  <div className="rounded-lg border bg-background/60 p-4">
+                    <h4 className="text-sm font-semibold">Usage fields</h4>
+                    <dl className="mt-3 space-y-2 text-sm">
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">
+                          Raw agent label
+                        </dt>
+                        <dd className="break-words text-right font-medium">
+                          {item.advanced?.raw_agent_label ?? "Not reported"}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">Tokens</dt>
+                        <dd className="font-medium">
+                          {item.tokens?.toLocaleString() ?? "Not reported"}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">Cost</dt>
+                        <dd className="font-medium">
+                          {item.cost_usd
+                            ? `$${item.cost_usd.toFixed(4)}`
+                            : "None"}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">
+                          Schema version
+                        </dt>
+                        <dd className="font-medium">{item.schema_version}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                </div>
+
+                <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
+                  {JSON.stringify(item.advanced ?? {}, null, 2)}
+                </pre>
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-xl bg-card/40">
+      <div className="border-b px-5 py-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0">
+            <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              AI Activity Record
+            </div>
+            <h3 className="mt-1 break-words text-xl font-semibold tracking-tight">
+              {item.plain_summary}
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {item.agent_name} - {formatDateTime(item.timestamp)}
+            </p>
+          </div>
+          <StatusChip status={status} label={item.result_label} />
+        </div>
+      </div>
+
+      <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[240px_minmax(0,1fr)] 2xl:grid-cols-[260px_minmax(0,1fr)_300px]">
+        <aside className="space-y-3">
+          <section className="rounded-lg border bg-background/50 p-4">
+            <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              Record Summary
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="border-b border-border/40 pb-2">
+                <div className="text-xs text-muted-foreground">AI app</div>
+                <div className="mt-0.5 break-words font-medium">
+                  {item.agent_name}
                 </div>
               </div>
-              <p className="rounded-lg border bg-background/60 p-4 text-xs leading-5 text-muted-foreground">
-                {item.privacy_note}
+              <div className="border-b border-border/40 pb-2">
+                <div className="text-xs text-muted-foreground">
+                  Touched or used
+                </div>
+                <div className="mt-0.5 break-words font-medium">
+                  {item.target_label}
+                </div>
+              </div>
+              <div className="border-b border-border/40 pb-2">
+                <div className="text-xs text-muted-foreground">Activity</div>
+                <div className="mt-0.5 flex items-center gap-2 font-medium">
+                  <Icon className="h-4 w-4 text-primary" />
+                  {categoryLabel(item.category)}
+                </div>
+              </div>
+              <div className="border-b border-border/40 pb-2">
+                <div className="text-xs text-muted-foreground">Access</div>
+                <div className="mt-0.5 font-medium">{item.access_mode}</div>
+              </div>
+              <div className="border-b border-border/40 pb-2">
+                <div className="text-xs text-muted-foreground">Rule</div>
+                <div className="mt-0.5 break-words font-medium">
+                  {item.rule_label ?? "No rule matched"}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Time</div>
+                <div className="mt-0.5 font-medium">
+                  {formatShortTime(item.timestamp)}
+                </div>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <section className="min-w-0">
+          <DetailPane
+            title="Detail Workspace"
+            subtitle="Plain-language evidence, next steps, and technical details for this activity."
+            status={status}
+            statusLabel={item.result_label}
+            tabs={tabs}
+          />
+        </section>
+
+        <aside className="space-y-3 xl:col-span-2 2xl:col-span-1">
+          <section className="rounded-lg border bg-background/50 p-4">
+            <h3 className="text-sm font-semibold">Related Records</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Direct actions and settings connected to this activity.
+            </p>
+            <div className="mt-3">
+              <ActivityShortcutActions item={item} />
+            </div>
+          </section>
+
+          <section className="rounded-lg border bg-background/50 p-4">
+            <h3 className="text-sm font-semibold">What Pollek can do</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {setupHint(item)}
+            </p>
+          </section>
+
+          {reference ? (
+            <section className="rounded-lg border bg-background/50 p-4">
+              <h3 className="text-sm font-semibold">Known Profile</h3>
+              <div className="mt-3">
+                <ReferenceIntelMark reference={reference} />
+              </div>
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                Well-known definitions add context to this record. They do not
+                replace local observation evidence.
               </p>
-            </div>
-          ),
-        },
-        {
-          id: "next",
-          label: "Next Steps",
-          content: (
-            <div className="space-y-3">
-              <div className="rounded-lg border bg-background/60 p-4">
-                <h4 className="flex items-center gap-2 text-sm font-semibold">
-                  <ArrowRight className="h-4 w-4 text-primary" />
-                  Suggested action
-                </h4>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {item.next_step}
-                </p>
-              </div>
-              <div className="rounded-lg border bg-background/60 p-4">
-                <h4 className="flex items-center gap-2 text-sm font-semibold">
-                  <Info className="h-4 w-4 text-primary" />
-                  Plain explanation
-                </h4>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  This event means {item.agent_name} {actionPhrase(item)}. You
-                  can keep watching it, ask before similar actions, or block
-                  this kind of activity where your device supports that control.
-                </p>
-              </div>
-              <div className="rounded-lg border bg-background/60 p-4">
-                <h4 className="flex items-center gap-2 text-sm font-semibold">
-                  <ShieldCheck className="h-4 w-4 text-primary" />
-                  Agent-side option
-                </h4>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  When Pollek can only observe this path, use this record as a
-                  checklist for the AI app's own settings: file permissions,
-                  web access, connector permissions, terminal access, and model
-                  usage controls.
-                </p>
-              </div>
-            </div>
-          ),
-        },
-        ...(showTechnicalDetails
-          ? [
-              {
-                id: "technical",
-                label: "Technical Details",
-                content: (
-                  <div className="space-y-3">
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <div className="rounded-lg border bg-background/60 p-4">
-                        <div className="text-xs text-muted-foreground">
-                          Event ID
-                        </div>
-                        <div className="mt-1 break-all text-sm font-semibold">
-                          {item.event_id}
-                        </div>
-                      </div>
-                      <div className="rounded-lg border bg-background/60 p-4">
-                        <div className="text-xs text-muted-foreground">
-                          Agent ID
-                        </div>
-                        <div className="mt-1 break-all text-sm font-semibold">
-                          {item.agent_id ?? "Not linked"}
-                        </div>
-                      </div>
-                      <div className="rounded-lg border bg-background/60 p-4">
-                        <div className="text-xs text-muted-foreground">
-                          Trace ID
-                        </div>
-                        <div className="mt-1 break-all text-sm font-semibold">
-                          {item.trace_id ?? "Not linked"}
-                        </div>
-                      </div>
-                    </div>
+            </section>
+          ) : null}
 
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="rounded-lg border bg-background/60 p-4">
-                        <h4 className="text-sm font-semibold">
-                          Decision metadata
-                        </h4>
-                        <dl className="mt-3 space-y-2 text-sm">
-                          <div className="flex justify-between gap-3">
-                            <dt className="text-muted-foreground">Decision</dt>
-                            <dd className="font-medium">
-                              {item.advanced?.decision ?? item.result}
-                            </dd>
-                          </div>
-                          <div className="flex justify-between gap-3">
-                            <dt className="text-muted-foreground">Mode</dt>
-                            <dd className="font-medium">
-                              {item.advanced?.mode ?? "unknown"}
-                            </dd>
-                          </div>
-                          <div className="flex justify-between gap-3">
-                            <dt className="text-muted-foreground">PEP plane</dt>
-                            <dd className="break-words text-right font-medium">
-                              {item.advanced?.pep_plane ?? "unknown"}
-                            </dd>
-                          </div>
-                          <div className="flex justify-between gap-3">
-                            <dt className="text-muted-foreground">
-                              PDP engine
-                            </dt>
-                            <dd className="break-words text-right font-medium">
-                              {item.advanced?.pdp_engine ?? "unknown"}
-                            </dd>
-                          </div>
-                        </dl>
-                      </div>
-                      <div className="rounded-lg border bg-background/60 p-4">
-                        <h4 className="text-sm font-semibold">Usage fields</h4>
-                        <dl className="mt-3 space-y-2 text-sm">
-                          <div className="flex justify-between gap-3">
-                            <dt className="text-muted-foreground">Tokens</dt>
-                            <dd className="font-medium">
-                              {item.tokens?.toLocaleString() ?? "Not reported"}
-                            </dd>
-                          </div>
-                          <div className="flex justify-between gap-3">
-                            <dt className="text-muted-foreground">Cost</dt>
-                            <dd className="font-medium">
-                              {item.cost_usd
-                                ? `$${item.cost_usd.toFixed(4)}`
-                                : "None"}
-                            </dd>
-                          </div>
-                          <div className="flex justify-between gap-3">
-                            <dt className="text-muted-foreground">
-                              Schema version
-                            </dt>
-                            <dd className="font-medium">
-                              {item.schema_version}
-                            </dd>
-                          </div>
-                        </dl>
-                      </div>
-                    </div>
-
-                    <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
-                      {JSON.stringify(item.advanced ?? {}, null, 2)}
-                    </pre>
-                  </div>
-                ),
-              },
-            ]
-          : []),
-      ]}
-    />
+          <section className="rounded-lg border bg-background/50 p-4">
+            <h3 className="text-sm font-semibold">Privacy</h3>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              {item.privacy_note}
+            </p>
+          </section>
+        </aside>
+      </div>
+    </div>
   );
 }
 
@@ -597,9 +861,13 @@ export function AiActivityPage() {
   const [observing, setObserving] = useState(false);
   const [observeResult, setObserveResult] =
     useState<LocalObserveRefreshResponse | null>(null);
+  const initialCategory = searchParams.get("category") as UserActivityCategory | null;
   const [filters, setFilters] = useState<Filters>({
     search: searchParams.get("q") ?? "",
-    category: "",
+    category:
+      initialCategory && categories.includes(initialCategory)
+        ? initialCategory
+        : "",
     result: "",
     agent: "",
   });
@@ -800,17 +1068,77 @@ export function AiActivityPage() {
         </section>
       )}
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
         <SummaryTile label="Events" value={summary.total} />
         <SummaryTile label="File activity" value={summary.files} />
         <SummaryTile label="Web activity" value={summary.web} />
         <SummaryTile label="Commands" value={summary.commands} />
+        <SummaryTile label="Plugins" value={summary.plugins} />
         <SummaryTile label="Safety" value={summary.safety} />
         <SummaryTile label="Blocked" value={summary.blocked} />
         <SummaryTile
           label="Estimated cost"
           value={`$${summary.costUsd.toFixed(2)}`}
         />
+      </section>
+
+      <section className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-emerald-500/15 p-2 text-emerald-700">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                Prompt Guard and private data safety
+              </h3>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
+                Safety events appear here when Pollek sees prompt injection,
+                secrets, PII, masking, or redaction metadata. No safety events
+                usually means the AI app is not on a guarded path yet, or
+                nothing risky was observed in this window.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex h-9 items-center rounded-md border border-emerald-500/25 bg-background/70 px-3 text-sm font-medium">
+              {summary.safety} safety / {summary.redacted} redacted
+            </span>
+            <Link
+              to="/protect?intent=enable_prompt_guard"
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Enable Prompt Guard
+            </Link>
+            <Link
+              to="/setup?category=safety"
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-emerald-500/25 bg-background/70 px-3 text-sm hover:bg-background"
+            >
+              <Wrench className="h-4 w-4" />
+              Check setup
+            </Link>
+          </div>
+        </div>
+        <div className="mt-4 rounded-lg border border-emerald-500/20 bg-background/70 p-3">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 className="text-sm font-semibold">Live Prompt Guard incidents</h4>
+              <p className="text-xs text-muted-foreground">
+                This stream stays empty until a guarded prompt/output path sends
+                incident telemetry.
+              </p>
+            </div>
+            <Link
+              to="/alerts?tab=guard"
+              className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-xs hover:bg-muted"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+              Open safety center
+            </Link>
+          </div>
+          <GuardIncidentFeed />
+        </div>
       </section>
 
       <section className="rounded-lg border bg-card/60 p-4">
@@ -941,7 +1269,7 @@ export function AiActivityPage() {
               subtitle={`${item.agent_name} - ${formatShortTime(
                 item.timestamp,
               )}`}
-              summary={`${resultExplanation(item)} Target: ${item.target_label}`}
+              summary={`${resultExplanation(item)} ${targetSummary(item)}`}
               icon={Icon}
               status={statusForResult(item.result)}
               statusLabel={item.result_label}

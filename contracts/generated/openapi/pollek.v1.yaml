@@ -20,6 +20,7 @@ tags:
   - name: A2A Mediator
   - name: PDPConfig
   - name: LocalDashboard
+  - name: Plugins
 paths:
   /.well-known/pollek-contract:
     get:
@@ -834,6 +835,67 @@ paths:
         content:
           application/json:
             schema: {}
+  /v1/tenants/{tenant_id}/marketplace/items:
+    get:
+      operationId: PluginMarketplaceApi_listMarketplaceItems
+      description: List locally available plugin marketplace items.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginMarketplaceListResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Plugins
+  /v1/tenants/{tenant_id}/marketplace/items/{plugin_id}:
+    get:
+      operationId: PluginMarketplaceApi_getMarketplaceItem
+      description: Get one plugin marketplace item.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginMarketplaceItemResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Plugins
   /v1/tenants/{tenant_id}/observations/agents/{agent_id}:
     get:
       operationId: ObservationApi_getAgentObservations
@@ -1500,6 +1562,140 @@ paths:
         content:
           application/json:
             schema: {}
+  /v1/tenants/{tenant_id}/plugins:
+    get:
+      operationId: InstalledPluginsApi_listInstalledPlugins
+      description: List installed local plugins.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstalledPluginListResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Plugins
+  /v1/tenants/{tenant_id}/plugins/install:
+    post:
+      operationId: InstalledPluginsApi_installPlugin
+      description: Install a plugin after consent.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstalledPlugin'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Plugins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginInstallRequest'
+  /v1/tenants/{tenant_id}/plugins/{plugin_id}:
+    delete:
+      operationId: InstalledPluginsApi_uninstallPlugin
+      description: Uninstall a plugin and revoke local grants.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginUninstallResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Plugins
+  /v1/tenants/{tenant_id}/plugins/{plugin_id}/toggle:
+    post:
+      operationId: InstalledPluginsApi_togglePlugin
+      description: Toggle an installed plugin.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstalledPlugin'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Plugins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginToggleRequest'
   /v1/tenants/{tenant_id}/policy-presets:
     get:
       operationId: PolicyPresetsApi_listPresets
@@ -4156,6 +4352,63 @@ components:
         - api_key
         - browser_profile
         - cloud_account
+    InstalledPlugin:
+      type: object
+      required:
+        - id
+        - enabled
+        - granted_caps
+        - health
+        - source
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - pollek.installed_plugin.v1
+        id:
+          type: string
+        name:
+          type: string
+        version:
+          type: string
+        kind:
+          $ref: '#/components/schemas/PluginKind'
+        enabled:
+          type: boolean
+        granted_caps:
+          type: array
+          items:
+            type: string
+        human_grants:
+          type: array
+          items:
+            type: string
+        health:
+          type: string
+        source:
+          $ref: '#/components/schemas/PluginSource'
+        signature_state:
+          $ref: '#/components/schemas/PluginSignatureState'
+        privacy_note:
+          type: string
+        installed_at:
+          type: string
+        last_seen:
+          type: string
+    InstalledPluginListResponse:
+      type: object
+      required:
+        - schema_version
+        - items
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - pollek.installed_plugins.v1
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InstalledPlugin'
     MissingControl:
       type: object
       required:
@@ -4629,6 +4882,161 @@ components:
           type: array
           items:
             type: string
+    PluginInstallRequest:
+      type: object
+      required:
+        - id
+        - granted_caps
+      properties:
+        id:
+          type: string
+        granted_caps:
+          type: array
+          items:
+            type: string
+    PluginKind:
+      type: string
+      enum:
+        - discovery.scanner
+        - discovery.signature
+        - observe.collector
+        - enforce.method
+        - policy.evaluator
+        - policy.preset
+        - telemetry.exporter
+        - telemetry.transform
+        - resource.classifier
+        - risk.scorer
+        - definition.feed
+        - notify.channel
+        - compliance.profile
+        - unknown
+    PluginMarketItem:
+      type: object
+      required:
+        - id
+        - name
+        - version
+        - kind
+        - publisher
+        - verified
+        - rating
+        - installs
+        - capabilities
+        - os
+        - min_engine_version
+        - signature_ok
+        - signature_state
+        - description_en
+        - source
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        version:
+          type: string
+        kind:
+          $ref: '#/components/schemas/PluginKind'
+        publisher:
+          type: string
+        verified:
+          type: boolean
+        rating:
+          type: number
+          format: float
+        installs:
+          type: integer
+          format: int64
+        capabilities:
+          type: array
+          items:
+            type: string
+        human_capabilities:
+          type: array
+          items:
+            type: string
+        os:
+          type: array
+          items:
+            type: string
+        min_engine_version:
+          type: string
+        signature_ok:
+          type: boolean
+        signature_state:
+          $ref: '#/components/schemas/PluginSignatureState'
+        description_en:
+          type: string
+        description_th:
+          type: string
+        privacy_note:
+          type: string
+        source:
+          $ref: '#/components/schemas/PluginSource'
+    PluginMarketplaceItemResponse:
+      type: object
+      required:
+        - schema_version
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - pollek.marketplace.item.v1
+        item:
+          $ref: '#/components/schemas/PluginMarketItem'
+    PluginMarketplaceListResponse:
+      type: object
+      required:
+        - schema_version
+        - items
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - pollek.marketplace.v1
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PluginMarketItem'
+    PluginSignatureState:
+      type: string
+      enum:
+        - valid
+        - invalid
+        - missing
+        - test_only
+        - unknown
+    PluginSource:
+      type: string
+      enum:
+        - local_catalog
+        - marketplace
+        - sideload
+        - private_registry
+    PluginToggleRequest:
+      type: object
+      required:
+        - enabled
+      properties:
+        enabled:
+          type: boolean
+    PluginUninstallResponse:
+      type: object
+      required:
+        - status
+        - id
+        - revoked_caps
+        - cleared_plugin_namespace
+      properties:
+        status:
+          type: string
+        id:
+          type: string
+        revoked_caps:
+          type: boolean
+        cleared_plugin_namespace:
+          type: boolean
     PolicyArtifact:
       type: object
       required:

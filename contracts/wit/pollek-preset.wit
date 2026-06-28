@@ -1,0 +1,22 @@
+package pollek:preset@0.1.0;
+
+interface generator {
+  record preset-request {
+    tenant-id: string,
+    intent: string,
+    context-json: string,
+  }
+
+  record preset-result {
+    draft-json: string,
+    explanation: string,
+  }
+
+  generate: func(request: preset-request) -> result<preset-result, string>;
+}
+
+world preset-plugin {
+  import pollek:host/logging;
+  import pollek:host/clock;
+  export generator;
+}

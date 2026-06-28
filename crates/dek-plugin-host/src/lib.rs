@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
+pub mod capabilities;
 pub mod manifest;
 
+pub use capabilities::{grant_capabilities, CapabilitySet, ConsentSet};
 use dek_plugin_sdk::{EvalRequest, PluginError, PolicyEvaluator, TransformPlugin};
 use dek_policy_router::{PolicyRouter, Route};
 use dek_policy_runtime::{

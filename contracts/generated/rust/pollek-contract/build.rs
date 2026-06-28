@@ -28,6 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "ai-budget-limit.v1.schema.json",
         "ai-budget-event.v1.schema.json",
         "price-catalog.v2.schema.json",
+        "pollek-plugin.v1.schema.json",
     ];
 
     let mut generated = String::new();

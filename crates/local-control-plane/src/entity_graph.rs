@@ -35,7 +35,7 @@ pub fn router() -> Router<AppState> {
         )
         .route(
             "/v1/tenants/:tenant/user-friendly-activity",
-            get(user_friendly_activity),
+            get(user_friendly_activity).delete(clear_user_friendly_activity),
         )
         .route("/v1/tenants/:tenant/graph/entities", get(entity_graph))
         .route("/v1/tenants/:tenant/graph/entity", get(entity_360_query))
@@ -190,6 +190,8 @@ pub struct ActivityTimelineResponse {
 pub struct UserFriendlyActivityAdvanced {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw_item: Option<ActivityTimelineItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw_agent_label: Option<String>,
     pub decision: Option<String>,
     pub mode: Option<String>,
     pub pep_plane: Option<String>,
@@ -487,6 +489,49 @@ async fn user_friendly_activity(
         }
         Err(err) => internal_error(err),
     }
+}
+
+async fn clear_user_friendly_activity(
+    State(state): State<AppState>,
+    Path(tenant): Path<String>,
+) -> impl IntoResponse {
+    let observation_events = match state
+        .observability_store
+        .clear_observation_events(&tenant)
+        .await
+    {
+        Ok(count) => count,
+        Err(err) => return internal_error(err),
+    };
+
+    let decision_logs = match state
+        .telemetry_store
+        .clear_telemetry(&tenant, "decision_log")
+        .await
+    {
+        Ok(count) => count,
+        Err(err) => return internal_error(err),
+    };
+
+    let decisions = match state
+        .telemetry_store
+        .clear_telemetry(&tenant, "decision")
+        .await
+    {
+        Ok(count) => count,
+        Err(err) => return internal_error(err),
+    };
+
+    (
+        StatusCode::OK,
+        Json(json!({
+            "status": "cleared",
+            "scope": "local_observation_and_decision_history",
+            "observation_events": observation_events,
+            "decision_logs": decision_logs,
+            "decisions": decisions
+        })),
+    )
 }
 
 async fn build_read_model(state: &AppState, tenant: &str) -> anyhow::Result<ReadModel> {
@@ -835,8 +880,10 @@ async fn build_read_model(state: &AppState, tenant: &str) -> anyhow::Result<Read
             .clone()
             .or_else(|| event.shadow_candidate_id.clone())
             .unwrap_or_else(|| "unknown-agent".to_string());
-        if event.agent_id.is_none() && event.shadow_candidate_id.is_none() {
-            builder.ensure_node("agent", &actor_id, "Unknown agent", "Observed activity");
+        if let Some(label) = system_actor_label(&actor_id) {
+            builder.ensure_node("agent", &actor_id, label, "Pollek system activity");
+        } else if event.agent_id.is_none() && event.shadow_candidate_id.is_none() {
+            builder.ensure_node("agent", &actor_id, "Unknown AI app", "Observed activity");
         }
 
         let tool_id = event
@@ -849,6 +896,16 @@ async fn build_read_model(state: &AppState, tenant: &str) -> anyhow::Result<Read
                 .as_ref()
                 .map(|resource| resource.target_redacted.clone())
         });
+        if let (Some(resource_id), Some(resource)) = (&resource_id, &event.resource_access) {
+            if resource.resource_type == "plugin" {
+                builder.ensure_node(
+                    "resource",
+                    resource_id,
+                    &resource.target_redacted,
+                    "Plugin marketplace audit event",
+                );
+            }
+        }
 
         if let Some(tool_id) = &tool_id {
             builder.add_edge(
@@ -1152,9 +1209,16 @@ fn activity_from_observation(
         tool: tool_id
             .as_ref()
             .map(|tool_id| graph_ref(nodes, "tool", tool_id)),
-        resource: resource_id
-            .as_ref()
-            .map(|resource_id| graph_ref(nodes, "resource", resource_id)),
+        resource: resource_id.as_ref().map(|resource_id| {
+            let mut reference = graph_ref(nodes, "resource", resource_id);
+            if let Some(resource) = &event.resource_access {
+                if resource.resource_type == "plugin" {
+                    reference.entity_type = "plugin".to_string();
+                    reference.label = resource.target_redacted.clone();
+                }
+            }
+            reference
+        }),
         policies,
         decision,
         enforcement_mode,
@@ -1229,19 +1293,17 @@ fn user_friendly_activity_from_timeline(item: &ActivityTimelineItem) -> UserFrie
     let category = infer_user_activity_category(item);
     let action = infer_user_activity_action(item, &category);
     let result = infer_user_activity_result(item);
-    let agent_name = item
-        .actor
-        .as_ref()
-        .map(|actor| actor.label.clone())
-        .unwrap_or_else(|| "Unknown AI app".to_string());
-    let target = user_activity_target(item);
-    let plain_summary = format!("{} {} {}", agent_name, action_text(&action), target);
+    let raw_agent_label = item.actor.as_ref().map(|actor| actor.label.clone());
+    let agent_id = item.actor.as_ref().map(|actor| actor.entity_id.clone());
+    let agent_name = friendly_agent_name(raw_agent_label.as_deref(), agent_id.as_deref());
+    let target = friendly_target_label(&user_activity_target(item), &category);
+    let plain_summary = user_activity_summary(&agent_name, &action, &target, &category);
 
     UserFriendlyActivityEvent {
         schema_version: "user-friendly-activity.v1".to_string(),
         event_id: item.event_id.clone(),
         timestamp: item.timestamp.clone(),
-        agent_id: item.actor.as_ref().map(|actor| actor.entity_id.clone()),
+        agent_id,
         agent_name,
         category: category.clone(),
         action: action.clone(),
@@ -1260,12 +1322,129 @@ fn user_friendly_activity_from_timeline(item: &ActivityTimelineItem) -> UserFrie
         trace_id: item.trace_id.clone(),
         advanced: UserFriendlyActivityAdvanced {
             raw_item: None,
+            raw_agent_label,
             decision: Some(item.decision.clone()),
             mode: Some(item.enforcement_mode.clone()),
             pep_plane: item.pep_plane.clone(),
             pdp_engine: item.pdp_engine.clone(),
         },
     }
+}
+
+fn known_agent_name(value: Option<&str>) -> Option<&'static str> {
+    let text = value?.to_lowercase();
+    if text.contains("pollek-plugin-marketplace") {
+        Some("Pollek Plugin Marketplace")
+    } else if text.contains("antigravity") || text.contains("gemini") {
+        Some("Google Antigravity")
+    } else if text.contains("chatgpt") || text.contains("openai") {
+        Some("ChatGPT")
+    } else if text.contains("claude") || text.contains("anthropic") {
+        Some("Claude")
+    } else if text.contains("codex") {
+        Some("Codex")
+    } else if text.contains("deepseek") {
+        Some("DeepSeek")
+    } else if text.contains("manus") {
+        Some("Manus AI")
+    } else {
+        None
+    }
+}
+
+fn compact_raw_id(value: &str) -> Option<String> {
+    let candidate = value
+        .trim()
+        .trim_start_matches("agent_")
+        .trim_start_matches("agent-")
+        .trim_start_matches("agent:");
+    let compact: String = candidate
+        .chars()
+        .filter(|ch| ch.is_ascii_hexdigit())
+        .take(8)
+        .collect();
+    if compact.len() >= 6 {
+        Some(compact)
+    } else {
+        None
+    }
+}
+
+fn looks_like_raw_id(value: Option<&str>) -> bool {
+    let Some(value) = value else {
+        return true;
+    };
+    let text = value.trim().to_lowercase();
+    if text.is_empty()
+        || text == "unknown"
+        || text == "unknown ai app"
+        || text.contains("unknown-observed-session")
+    {
+        return true;
+    }
+    if text.starts_with("agent_") || text.starts_with("agent-") || text.starts_with("agent:") {
+        let idish = text
+            .chars()
+            .filter(|ch| ch.is_ascii_hexdigit() || *ch == '-')
+            .count();
+        return idish >= 8;
+    }
+    text.len() >= 16 && text.chars().all(|ch| ch.is_ascii_hexdigit() || ch == '-')
+}
+
+fn friendly_agent_name(label: Option<&str>, id: Option<&str>) -> String {
+    if let Some(name) = known_agent_name(label).or_else(|| known_agent_name(id)) {
+        return name.to_string();
+    }
+    if !looks_like_raw_id(label) {
+        return label.unwrap_or("Unknown AI app").trim().to_string();
+    }
+    let suffix = id
+        .and_then(compact_raw_id)
+        .or_else(|| label.and_then(compact_raw_id));
+    suffix
+        .map(|value| format!("Unidentified AI app ({value})"))
+        .unwrap_or_else(|| "Unidentified AI app".to_string())
+}
+
+fn friendly_target_label(label: &str, category: &str) -> String {
+    if let Some(name) = known_agent_name(Some(label)) {
+        return name.to_string();
+    }
+    let text = label.trim();
+    let lower = text.to_lowercase();
+    if text.is_empty() || lower == "an unknown target" || lower == "unknown" {
+        return match category {
+            "files" => "a file or folder Pollek could not name",
+            "web" => "a website or network destination",
+            "commands" | "apps" => "a local app or command",
+            "ai_models" => "an AI model session",
+            _ => "local AI activity",
+        }
+        .to_string();
+    }
+    if lower.contains("unknown-observed-session") {
+        return if category == "ai_models" || category == "cost" {
+            "AI model usage observed from this session"
+        } else {
+            "AI session activity"
+        }
+        .to_string();
+    }
+    if looks_like_raw_id(Some(text)) {
+        return "local AI session".to_string();
+    }
+    text.to_string()
+}
+
+fn user_activity_summary(agent_name: &str, action: &str, target: &str, category: &str) -> String {
+    if target == "AI session activity" || target == "local AI activity" {
+        return format!("{agent_name} had activity Pollek could observe");
+    }
+    if category == "ai_models" && target.contains("AI model") {
+        return format!("{agent_name} used an AI model session");
+    }
+    format!("{agent_name} {} {target}", action_text(action))
 }
 
 fn user_activity_raw_text(item: &ActivityTimelineItem) -> String {
@@ -1314,6 +1493,13 @@ fn infer_user_activity_category(item: &ActivityTimelineItem) -> String {
         || text.contains("guard")
     {
         return "safety".to_string();
+    }
+    if text.contains("plugin")
+        || text.contains("marketplace")
+        || text.contains("connector")
+        || text.contains("definition feed")
+    {
+        return "plugins".to_string();
     }
     if resource_type.contains("file")
         || resource_type.contains("folder")
@@ -1374,6 +1560,19 @@ fn infer_user_activity_action(item: &ActivityTimelineItem, category: &str) -> St
     match category {
         "web" => "connect".to_string(),
         "commands" | "apps" => "run".to_string(),
+        "plugins" => {
+            if text.contains("uninstall") {
+                "uninstall".to_string()
+            } else if text.contains("disable") {
+                "disable".to_string()
+            } else if text.contains("enable") {
+                "enable".to_string()
+            } else if text.contains("health") {
+                "check".to_string()
+            } else {
+                "install".to_string()
+            }
+        }
         "email" if text.contains("send") => "send".to_string(),
         "email" => "read".to_string(),
         "ai_models" => "use_model".to_string(),
@@ -1433,6 +1632,7 @@ fn category_label(category: &str) -> &'static str {
         "commands" => "Commands",
         "ai_models" => "AI models",
         "tools" => "AI tools",
+        "plugins" => "Plugins & connectors",
         "safety" => "Prompt & data safety",
         "cost" => "Cost",
         _ => "Other activity",
@@ -1448,6 +1648,11 @@ fn action_text(action: &str) -> &'static str {
         "send" => "sent",
         "use_model" => "used",
         "call_tool" => "called",
+        "install" => "installed",
+        "enable" => "enabled",
+        "disable" => "disabled",
+        "uninstall" => "uninstalled",
+        "check" => "checked",
         "redact" => "protected",
         "spend" => "spent tokens on",
         _ => "was seen using",
@@ -1461,6 +1666,7 @@ fn access_mode(action: &str) -> &'static str {
         "connect" => "connect",
         "run" => "run",
         "send" => "send",
+        "install" | "enable" | "disable" | "uninstall" | "check" => "manage",
         _ => "unknown",
     }
 }
@@ -1502,6 +1708,9 @@ fn capability_note(result: &str, category: &str) -> &'static str {
     if category == "safety" {
         return "Pollek can watch prompt and data-safety signals. Blocking or redaction depends on which guard is in the AI app path.";
     }
+    if category == "plugins" {
+        return "Pollek recorded this plugin registry change so you can audit what extensions were enabled, disabled, or removed.";
+    }
     "Pollek can watch this activity and explain what to review next."
 }
 
@@ -1521,6 +1730,7 @@ fn next_step(result: &str, category: &str) -> &'static str {
             "Ask before commands, or disable command execution inside the AI app."
         }
         "email" => "Keep email access opt-in and review the connector permissions.",
+        "plugins" => "Review installed plugins, granted capabilities, and whether any connector can send data off this device.",
         "safety" => {
             "Keep watching, enable Prompt Guard for this AI app, or tighten the AI app's own safety settings."
         }
@@ -1745,6 +1955,7 @@ fn normalize_type(value: &str) -> String {
         | "device" => "identity".to_string(),
         "blackbox_ai" | "provider" | "model_provider" => "provider".to_string(),
         "llm_model" | "model" => "model".to_string(),
+        "plugin" | "plugins" | "connector" | "connectors" => "plugin".to_string(),
         other => other.to_string(),
     }
 }
@@ -1764,6 +1975,7 @@ fn edge_label(relation: &str) -> String {
         "touches" => "touches".to_string(),
         "uses_provider" => "uses provider".to_string(),
         "uses_model" => "uses model".to_string(),
+        "uses_plugin" => "uses plugin".to_string(),
         other => other.replace('_', " "),
     }
 }
@@ -1777,6 +1989,14 @@ fn route_for(node_type: &str, entity_id: &str) -> Option<String> {
         "policy" => Some(format!("/policies?selected={encoded}")),
         "identity" => Some(format!("/identities?selected={encoded}")),
         "provider" => Some(format!("/agents?tab=models&selected={encoded}")),
+        "plugin" => Some(format!("/plugin-marketplace?selected={encoded}")),
+        _ => None,
+    }
+}
+
+fn system_actor_label(actor_id: &str) -> Option<&'static str> {
+    match actor_id {
+        "pollek-plugin-marketplace" => Some("Pollek Plugin Marketplace"),
         _ => None,
     }
 }

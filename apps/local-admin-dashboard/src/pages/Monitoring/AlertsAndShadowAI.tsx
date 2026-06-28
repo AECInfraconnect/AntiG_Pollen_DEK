@@ -1,12 +1,15 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AlertTriangle, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Alerts } from "../Alerts";
 import { ShadowAI } from "../ShadowAI";
 import { GuardIncidentFeed } from "../../features/guard/GuardIncidentCard";
 
 export function AlertsAndShadowAI() {
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState<"alerts" | "guard" | "shadow">(
-    "alerts",
+    initialTab === "guard" || initialTab === "shadow" ? initialTab : "alerts",
   );
 
   return (

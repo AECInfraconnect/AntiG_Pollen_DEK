@@ -1,0 +1,24 @@
+package pollek:enforce@0.1.0;
+
+interface control {
+  record rule {
+    domain: string,
+    action: string,
+    target: string,
+    level: string,
+  }
+
+  record result {
+    plane-state: string,
+    success: bool,
+    message: string,
+  }
+
+  bind: func(agent-id: string, rules: list<rule>) -> result<result, string>;
+}
+
+world enforce-plugin {
+  import pollek:host/logging;
+  import pollek:host/native-cap;
+  export control;
+}
