@@ -1,7 +1,7 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 AEC Infraconnect
 
-//! spooler.rs โ€” durable, bounded telemetry spool (SQLite-backed).
+//! spooler.rs -- durable, bounded telemetry spool (SQLite-backed).
 //!
 //! Production hardening (vs. previous):
 //!  - Bounded on disk: a hard row cap with drop-oldest/lowest-priority eviction
@@ -292,11 +292,66 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
     use serde_json::json;
+    use std::{
+        path::PathBuf,
+        sync::{Mutex, MutexGuard},
+    };
+
+    static TEST_ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    struct TestEnv {
+        _guard: MutexGuard<'static, ()>,
+        tmp: PathBuf,
+        old_data_dir: Option<String>,
+        old_state_dir: Option<String>,
+        old_disable_keyring: Option<String>,
+    }
+
+    impl TestEnv {
+        fn new(name: &str) -> Self {
+            let guard = TEST_ENV_LOCK.lock().unwrap();
+            let tmp =
+                std::env::temp_dir().join(format!("spooler_test_{}_{}", std::process::id(), name));
+            let old_data_dir = std::env::var("DEK_DATA_DIR").ok();
+            let old_state_dir = std::env::var("DEK_STATE_DIR").ok();
+            let old_disable_keyring = std::env::var("DEK_TELEMETRY_DISABLE_KEYRING").ok();
+
+            let _ = std::fs::remove_dir_all(&tmp);
+            std::env::set_var("DEK_DATA_DIR", &tmp);
+            std::env::remove_var("DEK_STATE_DIR");
+            std::env::set_var("DEK_TELEMETRY_DISABLE_KEYRING", "1");
+
+            Self {
+                _guard: guard,
+                tmp,
+                old_data_dir,
+                old_state_dir,
+                old_disable_keyring,
+            }
+        }
+    }
+
+    impl Drop for TestEnv {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.tmp);
+            match &self.old_data_dir {
+                Some(value) => std::env::set_var("DEK_DATA_DIR", value),
+                None => std::env::remove_var("DEK_DATA_DIR"),
+            }
+            match &self.old_state_dir {
+                Some(value) => std::env::set_var("DEK_STATE_DIR", value),
+                None => std::env::remove_var("DEK_STATE_DIR"),
+            }
+            match &self.old_disable_keyring {
+                Some(value) => std::env::set_var("DEK_TELEMETRY_DISABLE_KEYRING", value),
+                None => std::env::remove_var("DEK_TELEMETRY_DISABLE_KEYRING"),
+            }
+        }
+    }
 
     #[test]
     fn evicts_oldest_when_over_capacity() {
-        let tmp = std::env::temp_dir().join(format!("spooler_test_{}", std::process::id()));
-        std::env::set_var("DEK_DATA_DIR", &tmp);
+        let _env = TestEnv::new("evicts_oldest");
         let s = Spooler::with_capacity(":memory:", 3).unwrap(); //
         for i in 0..5 {
             s.push(Priority::Normal, &json!({ "n": i })).unwrap(); //
@@ -308,13 +363,11 @@ mod tests {
             .map(|(_, v)| v["n"].as_i64().unwrap()) //
             .collect();
         assert_eq!(ns, vec![2, 3, 4]); // 0,1 evicted
-        let _ = std::fs::remove_dir_all(&tmp);
     }
 
     #[test]
     fn critical_survives_eviction_over_low() {
-        let tmp = std::env::temp_dir().join(format!("spooler_test_{}_2", std::process::id()));
-        std::env::set_var("DEK_DATA_DIR", &tmp);
+        let _env = TestEnv::new("critical_survives");
         let s = Spooler::with_capacity(":memory:", 2).unwrap(); //
         s.push(Priority::Critical, &json!({ "k": "keep" })).unwrap(); //
         s.push(Priority::Low, &json!({ "k": "a" })).unwrap(); //
@@ -326,6 +379,5 @@ mod tests {
             .collect();
         assert!(ks.contains(&"keep".to_string()), "critical must survive");
         assert_eq!(batch.len(), 2);
-        let _ = std::fs::remove_dir_all(&tmp);
     }
 }
