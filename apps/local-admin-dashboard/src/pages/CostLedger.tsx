@@ -27,6 +27,8 @@ import {
   type LocalObserveRefreshResponse,
 } from "../services/api";
 import { RegisterControlBar } from "../components/RegisterControlBar";
+import { useMode } from "../context/ModeContext";
+import { isAdvanceMode } from "../lib/modes";
 
 type RangeKey = "5m" | "1h" | "24h" | "7d" | "month";
 
@@ -184,6 +186,8 @@ function buildUsageEvidence(
 }
 
 export function CostLedger() {
+  const { mode } = useMode();
+  const showTechnicalDetails = isAdvanceMode(mode);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [observeLoading, setObserveLoading] = useState(false);
@@ -457,36 +461,55 @@ export function CostLedger() {
         onSetup={() => navigate("/setup")}
       />
 
-      <div className="grid gap-3 xl:grid-cols-[1.15fr_0.85fr]">
-        <section className="glass rounded-lg p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-semibold">Token Classes</h3>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {tokenBreakdown.map((item) => (
-              <div key={item.label} className="rounded-lg border p-3">
-                <div className="text-xs text-muted-foreground">{item.label}</div>
-                <div className="mt-1 text-lg font-semibold tabular-nums">
-                  {number(item.value)}
+      {showTechnicalDetails && (
+        <div className="grid gap-3 xl:grid-cols-[1.15fr_0.85fr]">
+          <section className="glass rounded-lg p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-semibold">Token Classes</h3>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {tokenBreakdown.map((item) => (
+                <div key={item.label} className="rounded-lg border p-3">
+                  <div className="text-xs text-muted-foreground">
+                    {item.label}
+                  </div>
+                  <div className="mt-1 text-lg font-semibold tabular-nums">
+                    {number(item.value)}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
 
-        <section className="glass rounded-lg p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-semibold">Top Usage</h3>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div className="space-y-3">
-            <TopRow label="Agent" value={agentName(topAgent?.key, agentLabels)} cost={topAgent?.total_cost} currency={currency} />
-            <TopRow label="Provider" value={topProvider?.label || "-"} cost={topProvider?.total_cost} currency={currency} />
-            <TopRow label="Model" value={topModel?.label || "-"} cost={topModel?.total_cost} currency={currency} />
-          </div>
-        </section>
-      </div>
+          <section className="glass rounded-lg p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-semibold">Top Usage</h3>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="space-y-3">
+              <TopRow
+                label="Agent"
+                value={agentName(topAgent?.key, agentLabels)}
+                cost={topAgent?.total_cost}
+                currency={currency}
+              />
+              <TopRow
+                label="Provider"
+                value={topProvider?.label || "-"}
+                cost={topProvider?.total_cost}
+                currency={currency}
+              />
+              <TopRow
+                label="Model"
+                value={topModel?.label || "-"}
+                cost={topModel?.total_cost}
+                currency={currency}
+              />
+            </div>
+          </section>
+        </div>
+      )}
 
       <section className="glass rounded-lg p-5">
         <div className="mb-4 flex items-center justify-between">
@@ -538,20 +561,22 @@ export function CostLedger() {
         )}
       </section>
 
-      <div className="grid gap-3 xl:grid-cols-2">
-        <BreakdownTable
-          title="Providers"
-          icon={Server}
-          rows={summary?.by_provider ?? []}
-          currency={currency}
-        />
-        <BreakdownTable
-          title="Models"
-          icon={ShieldAlert}
-          rows={summary?.by_model ?? []}
-          currency={currency}
-        />
-      </div>
+      {showTechnicalDetails && (
+        <div className="grid gap-3 xl:grid-cols-2">
+          <BreakdownTable
+            title="Providers"
+            icon={Server}
+            rows={summary?.by_provider ?? []}
+            currency={currency}
+          />
+          <BreakdownTable
+            title="Models"
+            icon={ShieldAlert}
+            rows={summary?.by_model ?? []}
+            currency={currency}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -582,12 +607,13 @@ function UsageProvenancePanel({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-emerald-500" />
-            <h3 className="font-semibold">Exact-first usage provenance</h3>
+            <h3 className="font-semibold">How reliable are these numbers?</h3>
           </div>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            POLLEK records provider-reported usage from wrappers, proxy/browser
-            events, and known local agent logs before it falls back to labeled
-            metadata estimates.
+            Pollek uses exact provider, wrapper, proxy, or local log usage when
+            it is available. If an AI app only leaves browser or surface
+            metadata, Pollek labels the number as an estimate instead of
+            pretending it is exact.
           </p>
         </div>
         <button
@@ -595,7 +621,7 @@ function UsageProvenancePanel({
           onClick={onSetup}
           className="inline-flex h-9 items-center justify-center rounded-md border bg-background px-3 text-sm font-medium hover:bg-muted"
         >
-          Setup exact sources
+          Improve exact tracking
         </button>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-4">
@@ -607,7 +633,7 @@ function UsageProvenancePanel({
         </div>
         <div className="rounded-lg border p-3">
           <div className="text-xs text-muted-foreground">
-            Estimated fallback
+            Estimated events
           </div>
           <div className="mt-1 text-xl font-semibold tabular-nums">
             {number(estimated)}
@@ -627,7 +653,8 @@ function UsageProvenancePanel({
               ))
             ) : (
               <span className="text-sm text-muted-foreground">
-                Waiting for wrapper, proxy, browser, or local log telemetry.
+                Waiting for AI app, browser, wrapper, proxy, or local log
+                telemetry.
               </span>
             )}
           </div>

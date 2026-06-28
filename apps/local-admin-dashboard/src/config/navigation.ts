@@ -119,6 +119,14 @@ export const NAV: NavGroup[] = [
         modes: ALL,
       },
       {
+        id: "cost",
+        en: "AI Usage & Cost",
+        th: "การใช้งานและค่าใช้จ่าย AI",
+        href: "/cost-ledger",
+        icon: Zap,
+        modes: ALL,
+      },
+      {
         id: "setup",
         en: "Setup",
         th: "ตั้งค่า",
@@ -199,7 +207,7 @@ export const NAV: NavGroup[] = [
       {
         id: "deployments",
         en: "Deployments",
-        th: "การใช้กฎ",
+        th: "การใช้งานกฎ",
         href: "/deployments",
         icon: SlidersHorizontal,
         modes: ADV,
@@ -233,14 +241,6 @@ export const NAV: NavGroup[] = [
         th: "แจ้งเตือนและ Shadow AI",
         href: "/alerts",
         icon: ShieldAlert,
-        modes: ADV,
-      },
-      {
-        id: "cost",
-        en: "AI Usage & Cost",
-        th: "การใช้งานและค่าใช้จ่าย AI",
-        href: "/cost-ledger",
-        icon: Zap,
         modes: ADV,
       },
       {
