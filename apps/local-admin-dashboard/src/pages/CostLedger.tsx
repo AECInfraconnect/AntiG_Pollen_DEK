@@ -4,7 +4,10 @@ import {
   Bot,
   CircleDollarSign,
   Clock,
+  FileText,
   Gauge,
+  Info,
+  ListFilter,
   RefreshCw,
   Search,
   Server,
@@ -46,6 +49,9 @@ type UsageEvidence = {
   latest?: string;
 };
 
+type AiUsageEvent = AiUsageEventPage["items"][number];
+type UsageEventFilter = "all" | "exact" | "estimated" | "pending";
+
 const ranges: Array<{ key: RangeKey; label: string; bucket: string }> = [
   { key: "5m", label: "5m", bucket: "1m" },
   { key: "1h", label: "1h", bucket: "1m" },
@@ -80,6 +86,72 @@ function statusClass(status?: string) {
   if (status === "hard_exceeded") return "text-red-600 bg-red-500/10";
   if (status === "soft_exceeded") return "text-amber-600 bg-amber-500/10";
   return "text-emerald-600 bg-emerald-500/10";
+}
+
+function eventIsEstimated(event: AiUsageEvent) {
+  return Boolean(event.tokens?.estimated || event.cost?.estimated);
+}
+
+function syncLabel(status?: string) {
+  if (!status || status === "pending") return "Local only";
+  if (status === "sent") return "Sent";
+  if (status === "acked") return "Synced";
+  if (status === "failed") return "Sync failed";
+  return status.replace(/_/g, " ");
+}
+
+function usageEventTitle(event: AiUsageEvent) {
+  const provider = event.provider || "AI provider";
+  const model = event.model || "unknown model";
+  const kind = event.event_kind.replace(/_/g, " ");
+  if (event.event_kind.includes("model_call")) {
+    return `${provider} ${model}`;
+  }
+  if (event.tool_name) return `${event.tool_name} tool usage`;
+  return kind.charAt(0).toUpperCase() + kind.slice(1);
+}
+
+function usageEstimateReason(event: AiUsageEvent) {
+  const metadata = event.metadata as Record<string, unknown>;
+  const quality =
+    typeof metadata.capture_quality === "string"
+      ? metadata.capture_quality.replace(/_/g, " ")
+      : "";
+  if (!eventIsEstimated(event)) {
+    return event.provider_request_id
+      ? "Exact provider or wrapper usage was attached to this event."
+      : "Usage was recorded as exact by the local collector.";
+  }
+  if (quality.includes("browser")) {
+    return "Estimated from browser or surface metadata because provider usage was not attached.";
+  }
+  if (event.tokens?.source) {
+    return `Estimated from ${String(event.tokens.source).replace(/_/g, " ")} because exact provider tokens were unavailable.`;
+  }
+  if (!event.provider_request_id) {
+    return "Estimated because this event has no provider request id or provider usage payload.";
+  }
+  return "Estimated by local fallback because exact token/cost telemetry was unavailable.";
+}
+
+function usageEventMatches(event: AiUsageEvent, query: string) {
+  if (!query.trim()) return true;
+  const haystack = [
+    event.event_kind,
+    event.provider,
+    event.model,
+    event.agent_id,
+    event.agent_type,
+    event.surface,
+    event.tool_name,
+    event.resource_type,
+    event.status,
+    event.cloud_sync_status,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query.trim().toLowerCase());
 }
 
 function buildUsageEvidence(
@@ -124,6 +196,10 @@ export function CostLedger() {
     estimated: 0,
     captureQuality: [],
   });
+  const [usageEvents, setUsageEvents] = useState<AiUsageEvent[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [eventFilter, setEventFilter] = useState<UsageEventFilter>("all");
+  const [eventSearch, setEventSearch] = useState("");
   const [agentLabels, setAgentLabels] = useState<Map<string, AgentLabel>>(
     new Map(),
   );
@@ -177,6 +253,13 @@ export function CostLedger() {
       }
 
       setSummary(usage);
+      setUsageEvents(events.items ?? []);
+      setSelectedEventId((current) => {
+        if (current && events.items?.some((event) => event.event_id === current)) {
+          return current;
+        }
+        return events.items?.[0]?.event_id ?? null;
+      });
       setAgentLabels(names);
       setSyncCounts(counts);
       setUsageEvidence(buildUsageEvidence(events.items ?? []));
@@ -227,6 +310,23 @@ export function CostLedger() {
   const topAgent = summary?.by_agent?.[0];
   const topProvider = summary?.by_provider?.[0];
   const topModel = summary?.by_model?.[0];
+  const visibleUsageEvents = useMemo(
+    () =>
+      usageEvents.filter((event) => {
+        if (!usageEventMatches(event, eventSearch)) return false;
+        if (eventFilter === "exact") return !eventIsEstimated(event);
+        if (eventFilter === "estimated") return eventIsEstimated(event);
+        if (eventFilter === "pending") {
+          return !event.cloud_sync_status || event.cloud_sync_status === "pending";
+        }
+        return true;
+      }),
+    [eventFilter, eventSearch, usageEvents],
+  );
+  const selectedUsageEvent =
+    visibleUsageEvents.find((event) => event.event_id === selectedEventId) ??
+    visibleUsageEvents[0] ??
+    null;
 
   const budgetStatus = useMemo(() => {
     const statuses = summary?.by_agent
@@ -341,6 +441,20 @@ export function CostLedger() {
         evidence={usageEvidence}
         observeResult={observeResult}
         onSetup={() => navigate("/capabilities")}
+      />
+
+      <UsageEventLedger
+        events={visibleUsageEvents}
+        selected={selectedUsageEvent}
+        selectedId={selectedUsageEvent?.event_id ?? null}
+        onSelect={setSelectedEventId}
+        agentLabels={agentLabels}
+        currency={currency}
+        filter={eventFilter}
+        onFilter={setEventFilter}
+        search={eventSearch}
+        onSearch={setEventSearch}
+        onSetup={() => navigate("/setup")}
       />
 
       <div className="grid gap-3 xl:grid-cols-[1.15fr_0.85fr]">
@@ -540,6 +654,333 @@ function UsageProvenancePanel({
         </div>
       )}
     </section>
+  );
+}
+
+function UsageEventLedger({
+  events,
+  selected,
+  selectedId,
+  onSelect,
+  agentLabels,
+  currency,
+  filter,
+  onFilter,
+  search,
+  onSearch,
+  onSetup,
+}: {
+  events: AiUsageEvent[];
+  selected: AiUsageEvent | null;
+  selectedId: string | null;
+  onSelect: (eventId: string) => void;
+  agentLabels: Map<string, AgentLabel>;
+  currency: string;
+  filter: UsageEventFilter;
+  onFilter: (filter: UsageEventFilter) => void;
+  search: string;
+  onSearch: (query: string) => void;
+  onSetup: () => void;
+}) {
+  const filters: Array<{ id: UsageEventFilter; label: string }> = [
+    { id: "all", label: "All" },
+    { id: "exact", label: "Exact" },
+    { id: "estimated", label: "Estimated" },
+    { id: "pending", label: "Local only" },
+  ];
+
+  return (
+    <section className="glass rounded-lg p-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" />
+            <h3 className="font-semibold">Usage event ledger</h3>
+          </div>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+            Inspect individual model calls, tool usage, estimates, and sync
+            state. This page stores usage metadata, not prompts or responses.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex h-9 overflow-hidden rounded-md border bg-background">
+            {filters.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onFilter(item.id)}
+                className={`px-3 text-sm hover:bg-muted ${
+                  filter === item.id ? "bg-muted text-foreground" : ""
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <label className="flex h-9 min-w-[220px] items-center gap-2 rounded-md border bg-background px-3 text-sm">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(event) => onSearch(event.target.value)}
+              placeholder="Search provider, model, app..."
+              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+            />
+          </label>
+        </div>
+      </div>
+
+      {events.length === 0 ? (
+        <UsageEventEmptyState onSetup={onSetup} />
+      ) : (
+        <div className="mt-4 grid min-h-[420px] gap-4 xl:grid-cols-[340px_minmax(0,1fr)_320px]">
+          <div className="space-y-2 overflow-y-auto pr-1 xl:max-h-[560px]">
+            {events.map((event) => {
+              const estimated = eventIsEstimated(event);
+              const active = event.event_id === selectedId;
+              return (
+                <button
+                  key={event.event_id}
+                  type="button"
+                  onClick={() => onSelect(event.event_id)}
+                  className={`w-full rounded-lg border p-3 text-left transition hover:border-primary/40 hover:bg-primary/5 ${
+                    active ? "border-primary/60 bg-primary/10" : "bg-card/60"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">
+                        {usageEventTitle(event)}
+                      </div>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
+                        {agentName(event.agent_id, agentLabels)} /{" "}
+                        {event.surface || "local"}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${
+                        estimated
+                          ? "bg-amber-500/10 text-amber-700"
+                          : "bg-emerald-500/10 text-emerald-700"
+                      }`}
+                    >
+                      {estimated ? "Estimated" : "Exact"}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span>{number(event.tokens?.total_tokens ?? 0)} tokens</span>
+                    <span>{money(event.cost?.total_cost ?? 0, currency)}</span>
+                    <span>{syncLabel(event.cloud_sync_status)}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="rounded-lg border bg-card/60">
+            {selected ? (
+              <UsageEventDetail
+                event={selected}
+                agentLabels={agentLabels}
+                currency={currency}
+              />
+            ) : (
+              <div className="p-5 text-sm text-muted-foreground">
+                Select a usage event to inspect details.
+              </div>
+            )}
+          </div>
+
+          <aside className="space-y-3">
+            <section className="rounded-lg border bg-card/60 p-4">
+              <h4 className="flex items-center gap-2 text-sm font-semibold">
+                <Info className="h-4 w-4 text-primary" />
+                What to look for
+              </h4>
+              <ul className="mt-3 space-y-2 text-xs leading-5 text-muted-foreground">
+                <li>Exact means provider, wrapper, or proxy usage was attached.</li>
+                <li>
+                  Estimated means Pollek had metadata but not exact provider
+                  usage. Treat it as directional.
+                </li>
+                <li>
+                  Local only means the local ledger works without Pollek Cloud.
+                  Cloud sync is optional.
+                </li>
+              </ul>
+            </section>
+            <section className="rounded-lg border bg-card/60 p-4">
+              <h4 className="flex items-center gap-2 text-sm font-semibold">
+                <ListFilter className="h-4 w-4 text-primary" />
+                Better exact data
+              </h4>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Connect a provider usage source, wrapper, proxy, or plugin when
+                you need exact tokens for browser-only AI apps.
+              </p>
+              <button
+                type="button"
+                onClick={onSetup}
+                className="mt-3 inline-flex h-9 items-center rounded-md border bg-background px-3 text-sm hover:bg-muted"
+              >
+                Open setup
+              </button>
+            </section>
+          </aside>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function UsageEventDetail({
+  event,
+  agentLabels,
+  currency,
+}: {
+  event: AiUsageEvent;
+  agentLabels: Map<string, AgentLabel>;
+  currency: string;
+}) {
+  const estimated = eventIsEstimated(event);
+  const metadata = event.metadata as Record<string, unknown>;
+
+  return (
+    <div className="divide-y">
+      <div className="p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Usage event
+            </p>
+            <h4 className="mt-1 break-words text-lg font-semibold">
+              {usageEventTitle(event)}
+            </h4>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {new Date(event.occurred_at).toLocaleString()}
+            </p>
+          </div>
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+              estimated
+                ? "bg-amber-500/10 text-amber-700"
+                : "bg-emerald-500/10 text-emerald-700"
+            }`}
+          >
+            {estimated ? "Estimated usage" : "Exact usage"}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid gap-3 p-5 md:grid-cols-2">
+        <UsageField label="AI app" value={agentName(event.agent_id, agentLabels)} />
+        <UsageField label="Provider" value={event.provider || "Not recorded"} />
+        <UsageField label="Model" value={event.model || "Not recorded"} />
+        <UsageField label="Surface" value={event.surface || "Local"} />
+        <UsageField label="Result" value={event.status || "Recorded"} />
+        <UsageField label="Cloud sync" value={syncLabel(event.cloud_sync_status)} />
+      </div>
+
+      <div className="grid gap-3 p-5 md:grid-cols-3">
+        <UsageMetric
+          label="Total tokens"
+          value={number(event.tokens?.total_tokens ?? 0)}
+        />
+        <UsageMetric
+          label="Input / output"
+          value={`${number(event.tokens?.input_tokens ?? 0)} / ${number(
+            event.tokens?.output_tokens ?? 0,
+          )}`}
+        />
+        <UsageMetric
+          label="Cost"
+          value={money(event.cost?.total_cost ?? 0, event.cost?.currency || currency)}
+        />
+      </div>
+
+      <div className="space-y-3 p-5">
+        <div>
+          <h5 className="text-sm font-semibold">Why this label?</h5>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {usageEstimateReason(event)}
+          </p>
+        </div>
+        <div className="rounded-lg border bg-background/60 p-3 text-xs leading-5 text-muted-foreground">
+          <div className="font-medium text-foreground">Privacy note</div>
+          Usage events keep metadata such as provider, model, token classes,
+          cost, timing, sync state, and ids. Pollek does not show raw prompts or
+          completions in this ledger.
+        </div>
+      </div>
+
+      <div className="grid gap-3 p-5 md:grid-cols-2">
+        <UsageField label="Token source" value={String(event.tokens?.source ?? "unknown").replace(/_/g, " ")} />
+        <UsageField label="Cost source" value={String(event.cost?.cost_source ?? "unknown").replace(/_/g, " ")} />
+        <UsageField label="Provider request" value={event.provider_request_id || "Not recorded"} />
+        <UsageField label="Idempotency key" value={event.idempotency_key} mono />
+        <UsageField label="Trace" value={event.trace_id} mono />
+        <UsageField
+          label="Capture quality"
+          value={
+            typeof metadata.capture_quality === "string"
+              ? metadata.capture_quality.replace(/_/g, " ")
+              : "Not recorded"
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+function UsageField({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value?: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border bg-background/60 p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div
+        className={`mt-1 break-words text-sm font-medium ${
+          mono ? "font-mono text-xs" : ""
+        }`}
+      >
+        {value || "-"}
+      </div>
+    </div>
+  );
+}
+
+function UsageMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-background/60 p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-lg font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function UsageEventEmptyState({ onSetup }: { onSetup: () => void }) {
+  return (
+    <div className="mt-4 rounded-lg border border-dashed bg-background/40 p-5">
+      <h4 className="text-sm font-semibold">No usage events match this view</h4>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+        For ChatGPT, Claude, Codex, DeepSeek, Manus AI, and Antigravity, exact
+        tokens usually require provider telemetry, a wrapper/proxy, local logs,
+        or a browser/plugin connector. Browser-only observation may only produce
+        estimated usage, and no usage appears until an AI app emits activity.
+      </p>
+      <button
+        type="button"
+        onClick={onSetup}
+        className="mt-4 inline-flex h-9 items-center rounded-md border bg-background px-3 text-sm hover:bg-muted"
+      >
+        Check setup
+      </button>
+    </div>
   );
 }
 

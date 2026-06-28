@@ -13,6 +13,9 @@ export function MasterDetailLayout<T>({
   toolbar,
   emptyState,
   loading,
+  masterLayout = "list",
+  masterListClassName,
+  detailBackLabel = "Back to all records",
 }: {
   items: T[];
   selectedId?: string;
@@ -24,25 +27,28 @@ export function MasterDetailLayout<T>({
   toolbar?: ReactNode;
   emptyState?: ReactNode;
   loading?: boolean;
+  masterLayout?: "list" | "grid";
+  masterListClassName?: string;
+  detailBackLabel?: string;
 }) {
-  const selected = items.find((i) => idSelector(i) === selectedId) ?? items[0];
+  const selected = selectedId
+    ? items.find((i) => idSelector(i) === selectedId)
+    : undefined;
+  const masterListClass = cn(
+    masterLayout === "grid"
+      ? "grid gap-3 sm:grid-cols-2 2xl:grid-cols-3"
+      : "space-y-2",
+    masterListClassName,
+  );
 
   if (loading) {
     return (
-      <div className="space-y-4 flex flex-col h-[calc(100vh-10rem)]">
+      <div className="space-y-4">
         {toolbar}
-        <div className="flex-1 min-h-0 grid gap-4 md:grid-cols-[320px_1fr]">
-          <div className="space-y-2 overflow-y-auto pr-1 pb-4 no-scrollbar">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <CardSkeleton key={i} />
-            ))}
-          </div>
-          <div className="hidden md:flex flex-col min-h-0 bg-card/30 rounded-xl border shadow-sm p-6 items-center justify-center">
-            <div className="animate-pulse space-y-4 w-full max-w-md">
-              <div className="h-8 bg-muted rounded w-1/3 mx-auto" />
-              <div className="h-32 bg-muted rounded w-full" />
-            </div>
-          </div>
+        <div className={masterListClass}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
         </div>
       </div>
     );
@@ -57,78 +63,56 @@ export function MasterDetailLayout<T>({
     );
   }
 
-  return (
-    <div className="space-y-4 flex flex-col h-[calc(100vh-10rem)]">
-      {toolbar && (
-        <div
-          className={cn(
-            "transition-all",
-            selectedId ? "hidden md:block" : "block",
-          )}
+  if (selectedId && selected) {
+    return (
+      <div className="space-y-4">
+        <button
+          type="button"
+          onClick={() => onSelect("")}
+          className="inline-flex items-center gap-2 rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
-          {toolbar}
-        </div>
-      )}
-      <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4">
-        <div
-          role="listbox"
-          aria-label="Items"
-          className={cn(
-            "w-full md:w-80 shrink-0 space-y-2 overflow-y-auto pr-1 pb-4 no-scrollbar",
-            selectedId ? "hidden md:block" : "block",
-          )}
-        >
-          {items.map((item, index) => {
-            const id = idSelector(item);
-            const isSelected =
-              id === (selected ? idSelector(selected) : selectedId);
-            const prevItem = index > 0 ? items[index - 1] : null;
-            const groupHeader = renderGroupHeader ? renderGroupHeader(item, index, prevItem) : null;
+          <ChevronLeft className="h-4 w-4" />
+          {detailBackLabel}
+        </button>
+        <div className="min-w-0">{renderDetail(selected)}</div>
+      </div>
+    );
+  }
 
-            return (
-              <div key={id}>
-                {groupHeader}
-                <div
-                  role="option"
-                  tabIndex={0}
-                  aria-selected={isSelected}
-                  onClick={() => onSelect(id)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      onSelect(id);
-                    }
-                  }}
-                  className="block w-full text-left focus-visible:outline-none"
-                >
-                  {renderCard(item, isSelected)}
-                </div>
+  return (
+    <div className="space-y-4">
+      {toolbar}
+      <div role="listbox" aria-label="Items" className={masterListClass}>
+        {items.map((item, index) => {
+          const id = idSelector(item);
+          const prevItem = index > 0 ? items[index - 1] : null;
+          const groupHeader = renderGroupHeader
+            ? renderGroupHeader(item, index, prevItem)
+            : null;
+
+          return (
+            <div key={id} className={groupHeader ? "contents" : undefined}>
+              {groupHeader && (
+                <div className="col-span-full">{groupHeader}</div>
+              )}
+              <div
+                role="option"
+                tabIndex={0}
+                aria-selected={false}
+                onClick={() => onSelect(id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSelect(id);
+                  }
+                }}
+                className="block h-full w-full text-left focus-visible:outline-none"
+              >
+                {renderCard(item, false)}
               </div>
-            );
-          })}
-        </div>
-        <div
-          className={cn(
-            "flex-1 min-w-0 flex-col min-h-0 bg-card/30 rounded-xl border shadow-sm",
-            selectedId ? "flex" : "hidden md:flex",
-          )}
-        >
-          {selected && (
-            <>
-              <div className="md:hidden flex items-center p-2 border-b border-border bg-card">
-                <button
-                  onClick={() => {
-                    onSelect("");
-                  }}
-                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground px-2 py-1 rounded-md"
-                >
-                  <ChevronLeft className="h-4 w-4" /> Back
-                </button>
-              </div>
-              {renderDetail(selected)}
-            </>
-          )}
-        </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

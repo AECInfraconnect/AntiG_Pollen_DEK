@@ -927,15 +927,17 @@ export default function AgentsV2() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Agents & Models</h1>
-          <p className="text-sm text-muted-foreground">
-            AI apps and agents found on this device, with what Pollek knows,
-            what it has observed, and what to watch next.
-          </p>
+      {!selectedId && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Agents & Models</h1>
+            <p className="text-sm text-muted-foreground">
+              AI apps and agents found on this device, with what Pollek knows,
+              what it has observed, and what to watch next.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {loading ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -956,58 +958,67 @@ export default function AgentsV2() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-4">
-            <div className="rounded-xl border bg-card/60 p-4">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <Bot className="h-3.5 w-3.5" />
-                Found
+          {!selectedId && (
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="rounded-xl border bg-card/60 p-4">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Bot className="h-3.5 w-3.5" />
+                  Found
+                </div>
+                <div className="mt-2 text-2xl font-semibold">
+                  {agents.length}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  AI apps and local agents
+                </p>
               </div>
-              <div className="mt-2 text-2xl font-semibold">{agents.length}</div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                AI apps and local agents
-              </p>
+              <div className="rounded-xl border bg-card/60 p-4">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Known
+                </div>
+                <div className="mt-2 text-2xl font-semibold">
+                  {knownProfiles}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  matched with reference definitions
+                </p>
+              </div>
+              <div className="rounded-xl border bg-card/60 p-4">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Activity className="h-3.5 w-3.5" />
+                  Observed
+                </div>
+                <div className="mt-2 text-2xl font-semibold">
+                  {agentsWithActivity}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  have timeline evidence
+                </p>
+              </div>
+              <div className="rounded-xl border bg-card/60 p-4">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Guarded
+                </div>
+                <div className="mt-2 text-2xl font-semibold">
+                  {protectedAgents}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {observedOnlyAgents} watch-only setups
+                </p>
+              </div>
             </div>
-            <div className="rounded-xl border bg-card/60 p-4">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <BookOpen className="h-3.5 w-3.5" />
-                Known
-              </div>
-              <div className="mt-2 text-2xl font-semibold">{knownProfiles}</div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                matched with reference definitions
-              </p>
-            </div>
-            <div className="rounded-xl border bg-card/60 p-4">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <Activity className="h-3.5 w-3.5" />
-                Observed
-              </div>
-              <div className="mt-2 text-2xl font-semibold">
-                {agentsWithActivity}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                have timeline evidence
-              </p>
-            </div>
-            <div className="rounded-xl border bg-card/60 p-4">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Guarded
-              </div>
-              <div className="mt-2 text-2xl font-semibold">
-                {protectedAgents}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {observedOnlyAgents} watch-only setups
-              </p>
-            </div>
-          </div>
+          )}
 
           <MasterDetailLayout
             items={agents}
             selectedId={selectedId}
             onSelect={handleSelect}
             idSelector={(agent) => agent.agent_id}
+            masterLayout="grid"
+            masterListClassName="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"
+            detailBackLabel="Back to all agents"
             renderCard={(agent, selected) => (
               <AgentMasterCard
                 agent={agent}

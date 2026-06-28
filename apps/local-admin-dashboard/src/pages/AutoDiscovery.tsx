@@ -48,6 +48,96 @@ const DEEP_SCAN_SOURCES = [
   "python_framework",
 ];
 
+const SOURCE_LABELS: Record<string, { label: string; detail: string }> = {
+  process: {
+    label: "Running apps",
+    detail: "Process metadata for local desktop and CLI AI apps.",
+  },
+  mcp_config: {
+    label: "MCP configs",
+    detail: "Known MCP server config files and safe metadata.",
+  },
+  local_model: {
+    label: "Local model servers",
+    detail: "OpenAI-compatible and common local model endpoints.",
+  },
+  ide_extension: {
+    label: "IDE agents",
+    detail: "Installed coding assistants and IDE extension metadata.",
+  },
+  cli_agent: {
+    label: "CLI agents",
+    detail: "Command-line AI agent processes and known configs.",
+  },
+  container: {
+    label: "Containers",
+    detail: "Container metadata that looks like AI tooling.",
+  },
+  browser_extension: {
+    label: "Browser connectors",
+    detail: "Browser extension or connector metadata when available.",
+  },
+  installed_app: {
+    label: "Installed apps",
+    detail: "Desktop app install records and known AI app signatures.",
+  },
+  web_ai: {
+    label: "AI websites",
+    detail: "Browser/window metadata for ChatGPT, Claude, DeepSeek, and similar surfaces.",
+  },
+  python_framework: {
+    label: "Frameworks",
+    detail: "Local framework/library metadata such as agent or LLM SDK usage.",
+  },
+};
+
+function friendlyCapabilityLabel(tag: string) {
+  const normalized = tag.toLowerCase();
+  if (normalized.includes("llm.chat")) return "AI chat";
+  if (normalized.includes("web.chat")) return "Web AI session";
+  if (normalized.includes("code.agentic")) return "Coding agent";
+  if (normalized.includes("tool.use")) return "Can use tools";
+  if (normalized.includes("mcp")) return "MCP tools or resources";
+  if (normalized.includes("local.model")) return "Local model server";
+  if (normalized.includes("net.egress") || normalized.includes("network")) {
+    return "Network access";
+  }
+  if (normalized.includes("file")) return "File access";
+  if (normalized.includes("prompt")) return "Prompt and data safety";
+  return tag
+    .replace(/[_.:-]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function friendlyCapabilityDetail(tag: string) {
+  const normalized = tag.toLowerCase();
+  if (normalized.includes("llm.chat")) {
+    return "Likely supports AI conversation or model prompts.";
+  }
+  if (normalized.includes("web.chat")) {
+    return "Detected as an AI website or browser-based chat surface.";
+  }
+  if (normalized.includes("code.agentic")) {
+    return "Likely can plan or edit code through an IDE, CLI, or coding agent.";
+  }
+  if (normalized.includes("tool.use") || normalized.includes("mcp")) {
+    return "May call tools, connectors, or MCP resources when integrated.";
+  }
+  if (normalized.includes("local.model")) {
+    return "Looks like a local model endpoint or model runtime.";
+  }
+  if (normalized.includes("net.egress") || normalized.includes("network")) {
+    return "May connect to websites or network destinations.";
+  }
+  if (normalized.includes("file")) {
+    return "May read or write local files depending on app permissions.";
+  }
+  return "Reference or discovery metadata suggests this capability, but local activity still needs observation.";
+}
+
 export function AutoDiscovery() {
   const { confirm } = useConfirm();
 
@@ -296,7 +386,11 @@ export function AutoDiscovery() {
 
   const select = (id: string) =>
     setParams((p) => {
-      p.set("selected", id);
+      if (id) {
+        p.set("selected", id);
+      } else {
+        p.delete("selected");
+      }
       return p;
     });
 
@@ -459,6 +553,11 @@ export function AutoDiscovery() {
     (total, candidate) => total + (candidate.evidence?.length ?? 0),
     0,
   );
+  const latestScan = scans[0] ?? scanJob ?? null;
+  const latestScanSources = new Set(latestScan?.sources ?? []);
+  const checkedSourceCount = DEEP_SCAN_SOURCES.filter((source) =>
+    latestScanSources.has(source),
+  ).length;
 
   const openConfirmDialog = (candidate: DiscoveredAgentCandidateV2) => {
     setConfirmTarget(candidate);
@@ -569,111 +668,191 @@ export function AutoDiscovery() {
 
   return (
     <div className="p-6 md:p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            <span className="inline-flex items-center gap-2">
-              Auto Discovery
-              <ContextualHelp topicId="discovery.auto_scan" />
-            </span>
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Find and manage local AI agents, MCP servers, and model endpoints.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={clearHistory}
-            className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20 shadow-sm transition-colors"
-          >
-            Clear History
-          </button>
-          <button
-            onClick={observeNow}
-            disabled={isObserving}
-            className="flex items-center gap-2 rounded-lg border bg-background px-4 py-2 text-sm font-medium hover:bg-muted shadow-sm disabled:opacity-50"
-          >
-            <Eye className={`h-4 w-4 ${isObserving ? "animate-pulse" : ""}`} />
-            {isObserving ? "Observing" : "Observe Now"}
-          </button>
-          <button
-            onClick={triggerScan}
-            disabled={scanBusy}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-sm disabled:opacity-50"
-          >
-            {scanBusy ? (
-              <Activity className="h-4 w-4 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4" />
-            )}
-            {scanButtonLabel}
-          </button>
-        </div>
-      </div>
-
-      {observeResult && (
-        <section className="rounded-lg border bg-card/60 p-4 text-sm">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+      {!selectedId && (
+        <>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h3 className="font-semibold">Latest observe refresh</h3>
-              <p className="text-xs leading-5 text-muted-foreground">
-                {observeResult.candidates_found} AI app(s),{" "}
-                {observeResult.resource_events} resource event(s),{" "}
-                {observeResult.tool_events} tool event(s),{" "}
-                {observeResult.exact_usage_events} exact usage event(s), and{" "}
-                {observeResult.estimated_usage_events} estimated usage event(s)
-                were written into the activity timeline.
+              <h2 className="text-lg font-semibold tracking-tight">
+                <span className="inline-flex items-center gap-2">
+                  Auto Discovery
+                  <ContextualHelp topicId="discovery.auto_scan" />
+                </span>
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Find and manage local AI agents, MCP servers, and model
+                endpoints.
               </p>
             </div>
-            <span className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground">
-              {observeResult.capture_quality.join(", ") || "metadata observed"}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={clearHistory}
+                className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20 shadow-sm transition-colors"
+              >
+                Clear History
+              </button>
+              <button
+                onClick={observeNow}
+                disabled={isObserving}
+                className="flex items-center gap-2 rounded-lg border bg-background px-4 py-2 text-sm font-medium hover:bg-muted shadow-sm disabled:opacity-50"
+              >
+                <Eye
+                  className={`h-4 w-4 ${isObserving ? "animate-pulse" : ""}`}
+                />
+                {isObserving ? "Observing" : "Observe Now"}
+              </button>
+              <button
+                onClick={triggerScan}
+                disabled={scanBusy}
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-sm disabled:opacity-50"
+              >
+                {scanBusy ? (
+                  <Activity className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+                {scanButtonLabel}
+              </button>
+            </div>
           </div>
-        </section>
-      )}
 
-      <section className="grid gap-3 md:grid-cols-4">
-        <div className="rounded-xl border bg-card/60 p-4">
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <Search className="h-3.5 w-3.5" />
-            Found
-          </div>
-          <div className="mt-2 text-2xl font-semibold">{candidates.length}</div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            discovery candidates
-          </p>
-        </div>
-        <div className="rounded-xl border bg-card/60 p-4">
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <CheckCircle className="h-3.5 w-3.5" />
-            Registered
-          </div>
-          <div className="mt-2 text-2xl font-semibold">{registeredCount}</div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {pendingCount} still need review
-          </p>
-        </div>
-        <div className="rounded-xl border bg-card/60 p-4">
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <Info className="h-3.5 w-3.5" />
-            Known
-          </div>
-          <div className="mt-2 text-2xl font-semibold">{knownCount}</div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            matched reference profiles
-          </p>
-        </div>
-        <div className="rounded-xl border bg-card/60 p-4">
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <Eye className="h-3.5 w-3.5" />
-            Evidence
-          </div>
-          <div className="mt-2 text-2xl font-semibold">{evidenceCount}</div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            local metadata signals
-          </p>
-        </div>
-      </section>
+          {observeResult && (
+            <section className="rounded-lg border bg-card/60 p-4 text-sm">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h3 className="font-semibold">Latest observe refresh</h3>
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    {observeResult.candidates_found} AI app(s),{" "}
+                    {observeResult.resource_events} resource event(s),{" "}
+                    {observeResult.tool_events} tool event(s),{" "}
+                    {observeResult.exact_usage_events} exact usage event(s), and{" "}
+                    {observeResult.estimated_usage_events} estimated usage
+                    event(s) were written into the activity timeline.
+                  </p>
+                </div>
+                <span className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground">
+                  {observeResult.capture_quality.join(", ") ||
+                    "metadata observed"}
+                </span>
+              </div>
+            </section>
+          )}
+
+          <section className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-xl border bg-card/60 p-4">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Search className="h-3.5 w-3.5" />
+                Found
+              </div>
+              <div className="mt-2 text-2xl font-semibold">
+                {candidates.length}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                discovery candidates
+              </p>
+            </div>
+            <div className="rounded-xl border bg-card/60 p-4">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <CheckCircle className="h-3.5 w-3.5" />
+                Registered
+              </div>
+              <div className="mt-2 text-2xl font-semibold">
+                {registeredCount}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {pendingCount} still need review
+              </p>
+            </div>
+            <div className="rounded-xl border bg-card/60 p-4">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Info className="h-3.5 w-3.5" />
+                Known
+              </div>
+              <div className="mt-2 text-2xl font-semibold">{knownCount}</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                matched reference profiles
+              </p>
+            </div>
+            <div className="rounded-xl border bg-card/60 p-4">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Eye className="h-3.5 w-3.5" />
+                Evidence
+              </div>
+              <div className="mt-2 text-2xl font-semibold">
+                {evidenceCount}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                local metadata signals
+              </p>
+            </div>
+          </section>
+
+          <section className="rounded-xl border bg-card/60 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold">Scan source coverage</h3>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+                  Discovery means Pollek found AI apps or surfaces from local
+                  metadata. Observe means Pollek later saw real activity. This
+                  scan coverage shows what was checked, what still needs setup,
+                  and what remains metadata-only.
+                </p>
+              </div>
+              <span className="rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground">
+                {checkedSourceCount}/{DEEP_SCAN_SOURCES.length} sources checked
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              {DEEP_SCAN_SOURCES.map((source) => {
+                const copy = SOURCE_LABELS[source] ?? {
+                  label: source.replace(/_/g, " "),
+                  detail: "Local metadata source.",
+                };
+                const checked = latestScanSources.has(source);
+                const running =
+                  latestScan?.status === "queued" ||
+                  latestScan?.status === "running";
+                const label = checked
+                  ? running
+                    ? "Checking"
+                    : "Checked"
+                  : source === "browser_extension"
+                    ? "Needs connector"
+                    : "Not checked";
+                return (
+                  <div
+                    key={source}
+                    className="rounded-lg border bg-background/60 p-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 truncate text-sm font-medium">
+                        {copy.label}
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${
+                          checked
+                            ? "bg-emerald-500/10 text-emerald-700"
+                            : "bg-amber-500/10 text-amber-700"
+                        }`}
+                      >
+                        {label}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                      {copy.detail}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              Privacy guardrail: discovery uses metadata such as process names,
+              browser titles, domains, configs, and redacted paths. It does not
+              read prompts, responses, email bodies, or file contents for this
+              view.
+            </p>
+          </section>
+        </>
+      )}
 
       <MasterDetailLayout
         items={visibleCandidates}
@@ -681,6 +860,9 @@ export function AutoDiscovery() {
         selectedId={selectedId}
         onSelect={select}
         idSelector={(c) => c.candidate_id}
+        masterLayout="grid"
+        masterListClassName="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3"
+        detailBackLabel="Back to all discovered AI apps"
         toolbar={
           <div className="flex flex-col gap-3 mb-4">
             <div className="flex items-center gap-2">
@@ -777,7 +959,9 @@ export function AutoDiscovery() {
                 {
                   label: "Capabilities",
                   value:
-                    caps.length > 0 ? caps.slice(0, 3).join(", ") : "Unknown",
+                    caps.length > 0
+                      ? caps.slice(0, 3).map(friendlyCapabilityLabel).join(", ")
+                      : "Unknown",
                 },
                 ...(primaryReference
                   ? [{ label: "Known", value: primaryReference.title }]
@@ -939,14 +1123,19 @@ export function AutoDiscovery() {
                       Detected Capabilities
                     </h4>
                     {caps.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="grid gap-2 md:grid-cols-2">
                         {caps.map((cap) => (
-                          <span
+                          <div
                             key={cap}
-                            className="rounded-md border bg-background px-2 py-1 text-xs font-medium text-foreground/80"
+                            className="rounded-lg border bg-background/70 p-3"
                           >
-                            {cap}
-                          </span>
+                            <div className="text-sm font-medium">
+                              {friendlyCapabilityLabel(cap)}
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                              {friendlyCapabilityDetail(cap)}
+                            </p>
+                          </div>
                         ))}
                       </div>
                     ) : (
