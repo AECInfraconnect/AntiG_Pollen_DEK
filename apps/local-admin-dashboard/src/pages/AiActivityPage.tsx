@@ -858,10 +858,13 @@ export function AiActivityPage() {
   const [items, setItems] = useState<UserFriendlyActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [dataSource, setDataSource] = useState<string>("loading");
   const [observing, setObserving] = useState(false);
   const [observeResult, setObserveResult] =
     useState<LocalObserveRefreshResponse | null>(null);
-  const initialCategory = searchParams.get("category") as UserActivityCategory | null;
+  const initialCategory = searchParams.get(
+    "category",
+  ) as UserActivityCategory | null;
   const [filters, setFilters] = useState<Filters>({
     search: searchParams.get("q") ?? "",
     category:
@@ -877,6 +880,7 @@ export function AiActivityPage() {
     UserActivityApi.list({ limit: 300 })
       .then((response) => {
         setItems(response.items ?? []);
+        setDataSource(response.source ?? "local-control-plane-read-model");
         setError(null);
       })
       .catch((err) =>
@@ -1074,6 +1078,31 @@ export function AiActivityPage() {
             </section>
           )}
 
+          <section className="rounded-lg border bg-card/60 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold">Activity data source</h3>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {dataSource === "dashboard-timeline-fallback"
+                    ? "The user-friendly activity endpoint did not respond, so Pollek is showing the raw activity timeline with dashboard-side friendly labels."
+                    : "Pollek is reading from local activity history and observe data stored on this device."}
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium",
+                  dataSource === "dashboard-timeline-fallback"
+                    ? "border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+                    : "border-emerald-500/25 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200",
+                )}
+              >
+                {dataSource === "dashboard-timeline-fallback"
+                  ? "Timeline fallback"
+                  : "Local history"}
+              </span>
+            </div>
+          </section>
+
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
             <SummaryTile label="Events" value={summary.total} />
             <SummaryTile label="File activity" value={summary.files} />
@@ -1099,10 +1128,10 @@ export function AiActivityPage() {
                     Prompt Guard and private data safety
                   </h3>
                   <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
-                    Safety events appear here when Pollek sees prompt
-                    injection, secrets, PII, masking, or redaction metadata. No
-                    safety events usually means the AI app is not on a guarded
-                    path yet, or nothing risky was observed in this window.
+                    Safety events appear here when Pollek sees prompt injection,
+                    secrets, PII, masking, or redaction metadata. No safety
+                    events usually means the AI app is not on a guarded path
+                    yet, or nothing risky was observed in this window.
                   </p>
                 </div>
               </div>

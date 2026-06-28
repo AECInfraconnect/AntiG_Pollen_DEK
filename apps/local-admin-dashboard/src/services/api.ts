@@ -32,10 +32,18 @@ import type {
 } from "./types";
 export type * from "./types";
 import type { components } from "../../../../contracts/generated/typescript/api";
+import type { GuardEvent, GuardIncidentEnvelope } from "../types/guard";
 
 export type AiUsageSummary = components["schemas"]["AiUsageSummaryV1"];
 export type AiUsageEventPage = components["schemas"]["AiUsageEventPageV1"];
 export type AiBudgetLimit = components["schemas"]["AiBudgetLimitV1"];
+
+export type GuardEventPage = {
+  schema_version?: string;
+  count?: number;
+  items: Array<GuardEvent | GuardIncidentEnvelope>;
+  unavailable?: boolean;
+};
 
 export type LocalObserveRefreshRequest = {
   include_estimates?: boolean;
@@ -966,6 +974,15 @@ export const TelemetryApi = {
       : `/v1/telemetry/enforcement-status`;
     return defaultClient.fetchRootApi(url);
   },
+  listGuardEvents: (): Promise<GuardEventPage> =>
+    defaultClient
+      .fetchApi<GuardEventPage>("/telemetry/guard-events")
+      .catch(() => ({
+        schema_version: "guard-events.v1",
+        count: 0,
+        items: [],
+        unavailable: true,
+      })),
   streamUrl: (
     channel:
       | "observations"

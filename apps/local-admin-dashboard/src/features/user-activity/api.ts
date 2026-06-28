@@ -51,6 +51,9 @@ export const UserActivityApi = {
     observation_events: number;
     decision_logs: number;
     decisions: number;
+    guard_incidents?: number;
+    guard_events?: number;
+    plugin_audit?: number;
   }> {
     return defaultClient.fetchApi("/user-friendly-activity", {
       method: "DELETE",

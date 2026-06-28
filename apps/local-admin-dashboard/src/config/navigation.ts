@@ -95,6 +95,14 @@ export const NAV: NavGroup[] = [
         modes: ALL,
       },
       {
+        id: "prompt-guard",
+        en: "Prompt Guard",
+        th: "Prompt Guard",
+        href: "/alerts",
+        icon: ShieldAlert,
+        modes: ALL,
+      },
+      {
         id: "create-rule",
         en: "Create Rule",
         th: "สร้างกฎ",
@@ -233,14 +241,6 @@ export const NAV: NavGroup[] = [
         th: "ไทม์ไลน์กิจกรรม",
         href: "/activity-timeline",
         icon: Activity,
-        modes: ADV,
-      },
-      {
-        id: "alerts",
-        en: "Alerts & Shadow AI",
-        th: "แจ้งเตือนและ Shadow AI",
-        href: "/alerts",
-        icon: ShieldAlert,
         modes: ADV,
       },
       {

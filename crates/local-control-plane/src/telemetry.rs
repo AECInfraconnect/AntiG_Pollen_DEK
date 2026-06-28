@@ -86,6 +86,10 @@ pub fn router() -> Router<AppState> {
             "/v1/tenants/:tenant/telemetry/guard-events/stream",
             get(telemetry_stream),
         )
+        .route(
+            "/v1/tenants/:tenant/telemetry/guard-events",
+            get(list_guard_events),
+        )
         .route("/v1/telemetry/enforcement-status", get(enforcement_status))
         .route("/v1/decisions/:id/explain", get(explain_decision))
 }
@@ -174,6 +178,46 @@ async fn telemetry_stream(
     });
 
     Sse::new(stream).keep_alive(axum::response::sse::KeepAlive::new())
+}
+
+/// Dashboard read-side: return Prompt Guard incidents for history and live views.
+async fn list_guard_events(
+    Path(tenant): Path<String>,
+    State(st): State<AppState>,
+) -> impl IntoResponse {
+    let mut items = vec![];
+    for kind in ["guard_incident", "guard_event"] {
+        if let Ok(mut events) = st.telemetry_store.list_telemetry(&tenant, kind).await {
+            items.append(&mut events);
+        }
+    }
+
+    items.sort_by_key(guard_event_time_key);
+    items.reverse();
+
+    (
+        StatusCode::OK,
+        Json(json!({
+            "schema_version": "guard-events.v1",
+            "count": items.len(),
+            "items": items
+        })),
+    )
+}
+
+fn guard_event_time_key(event: &serde_json::Value) -> String {
+    first_string(
+        event,
+        &[
+            "/timestamp",
+            "/ts",
+            "/payload/timestamp",
+            "/payload/ts",
+            "/payload/guard_event/timestamp",
+            "/payload/guard_event/ts",
+        ],
+    )
+    .unwrap_or_default()
 }
 
 async fn explain_decision(Path(id): Path<String>, State(st): State<AppState>) -> impl IntoResponse {

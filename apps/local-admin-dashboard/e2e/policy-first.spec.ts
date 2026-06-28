@@ -34,10 +34,12 @@ test.describe("Policy-First Navigation", () => {
         .first(),
     ).toBeVisible();
 
-    // 4. Alerts
-    await page.getByRole("link", { name: /alerts & shadow ai/i }).click();
+    // 4. Prompt Guard / alerts
+    await page.getByRole("link", { name: "Prompt Guard", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: "Alerts & Shadow AI" }),
+      page.getByRole("heading", {
+        name: "Prompt Guard, alerts, and Shadow AI",
+      }),
     ).toBeVisible();
   });
 

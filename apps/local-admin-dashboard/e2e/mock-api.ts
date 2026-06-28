@@ -441,11 +441,73 @@ const activityItem = {
   },
 };
 
+const guardIncident = {
+  schema_version: "telemetry-envelope.v1",
+  event_id: "guard-e2e-prompt-injection",
+  event_type: "guard_incident",
+  timestamp: now,
+  tenant_id: "local",
+  agent_id: agent.agent_id,
+  redaction_applied: true,
+  payload: {
+    guard_event: {
+      event_id: "guard-e2e-prompt-injection",
+      ts: now,
+      tenant_id: "local",
+      agent_id: agent.agent_id,
+      direction: "request",
+      action: "redact",
+      categories: ["llm01_prompt_injection"],
+      injection_score: 0.93,
+      findings_summary: [{ kind: "api_key", count: 1 }],
+      severity: "warn",
+      remediation: {
+        user_message: "Redacted prompt safety event.",
+        recommended_actions: [],
+        doc_url: null,
+        can_override: false,
+      },
+      redaction_applied: true,
+    },
+    findings: [{ kind: "api_key", count: 1 }],
+    redaction: { applied: true },
+  },
+};
+
+const guardActivityItem = {
+  schema_version: "activity-timeline.v1",
+  event_id: guardIncident.event_id,
+  timestamp: now,
+  actor: {
+    id: `agent:${agent.agent_id}`,
+    type: "agent",
+    entity_id: agent.agent_id,
+    label: agent.name,
+  },
+  action: "prompt_guard_redact",
+  tool: null,
+  resource: {
+    id: "resource:prompt-guard:llm01_prompt_injection",
+    type: "resource",
+    entity_id: "prompt-guard:llm01_prompt_injection",
+    label: "Prompt injection attempt",
+  },
+  policies: [],
+  decision: "redact",
+  enforcement_mode: "guarded_path",
+  pep_plane: "prompt_guard",
+  pdp_engine: null,
+  trace_id: "trace-guard-e2e",
+  cost: null,
+  explanation: "Prompt injection attempt - redacted",
+  raw: guardIncident,
+};
+
 const activityTimeline = {
   schema_version: "activity-timeline.v1",
   tenant_id: "local",
   generated_at: now,
-  items: [activityItem],
+  items: [activityItem, guardActivityItem],
   next_cursor: null,
 };
 
@@ -483,6 +545,34 @@ const userFriendlyActivity = {
         mode: activityItem.enforcement_mode,
         pep_plane: activityItem.pep_plane,
         pdp_engine: activityItem.pdp_engine,
+      },
+    },
+    {
+      schema_version: "user-friendly-activity.v1",
+      event_id: guardActivityItem.event_id,
+      timestamp: guardActivityItem.timestamp,
+      agent_id: agent.agent_id,
+      agent_name: agent.name,
+      category: "safety",
+      action: "redact",
+      target_label: "Prompt injection attempt",
+      target_kind: "Prompt & data safety",
+      access_mode: "unknown",
+      result: "redacted",
+      result_label: "Redacted",
+      plain_summary: `${agent.name} protected Prompt injection attempt`,
+      rule_label: undefined,
+      capability_note:
+        "Pollek removed or masked sensitive content before it could continue.",
+      next_step:
+        "Review the safety rule and confirm the AI app is using the guard path for prompts and outputs.",
+      privacy_note:
+        "Pollek shows activity metadata here, not file contents, email bodies, raw prompts, or raw responses.",
+      trace_id: guardActivityItem.trace_id,
+      advanced: {
+        decision: guardActivityItem.decision,
+        mode: guardActivityItem.enforcement_mode,
+        pep_plane: guardActivityItem.pep_plane,
       },
     },
   ],
@@ -864,6 +954,22 @@ export async function installMockApi(page: Page) {
         ? userFriendlyActivity
         : { ...userFriendlyActivity, items: [] },
     ),
+  );
+  await page.route("**/v1/tenants/local/telemetry/guard-events", (route) =>
+    json(route, {
+      schema_version: "guard-events.v1",
+      count: 1,
+      items: [guardIncident],
+    }),
+  );
+  await page.route(
+    "**/v1/tenants/local/telemetry/guard-events/stream",
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body: `data: ${JSON.stringify(guardIncident)}\n\n`,
+      }),
   );
   await page.route("**/v1/tenants/local/activity", (route) =>
     json(route, scanStarted ? activitySummary : { activity_sets: [] }),

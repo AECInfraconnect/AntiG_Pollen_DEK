@@ -163,7 +163,7 @@ export function HistoryReportsPage() {
       !(await confirm({
         title: "Delete local activity history",
         description:
-          "This clears local observation and decision history used by AI Activity. It does not delete exported files or separate cloud records.",
+          "This clears local activity, decision, Prompt Guard, and plugin audit history used by AI Activity. It does not delete exported files or separate cloud records.",
         danger: true,
         confirmText: "Delete history",
       }))
@@ -174,9 +174,14 @@ export function HistoryReportsPage() {
     try {
       const result = await UserActivityApi.clearLocalHistory();
       setAllItems([]);
-      toast.success(
-        `Deleted ${result.observation_events + result.decision_logs + result.decisions} local history record(s).`,
-      );
+      const deleted =
+        result.observation_events +
+        result.decision_logs +
+        result.decisions +
+        (result.guard_incidents ?? 0) +
+        (result.guard_events ?? 0) +
+        (result.plugin_audit ?? 0);
+      toast.success(`Deleted ${deleted} local history record(s).`);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to delete history";

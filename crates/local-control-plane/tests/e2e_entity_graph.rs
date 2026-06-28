@@ -134,6 +134,45 @@ async fn entity_graph_joins_registry_policy_observation_and_activity() {
         .unwrap();
     assert_eq!(res.status(), 201);
 
+    let guard_incident = json!({
+        "schema_version": "telemetry-envelope.v1",
+        "event_id": "guard-graph-e2e",
+        "event_type": "guard_incident",
+        "timestamp": "2026-06-26T00:00:30Z",
+        "tenant_id": "local",
+        "agent_id": "agent-graph-e2e",
+        "redaction_applied": true,
+        "payload": {
+            "guard_event": {
+                "event_id": "guard-graph-e2e",
+                "ts": "2026-06-26T00:00:30Z",
+                "tenant_id": "local",
+                "agent_id": "agent-graph-e2e",
+                "direction": "request",
+                "action": "redact",
+                "categories": ["llm01_prompt_injection"],
+                "injection_score": 0.93,
+                "findings_summary": [{ "kind": "api_key", "count": 1 }],
+                "severity": "warn",
+                "remediation": {
+                    "user_message": "Redacted prompt safety event.",
+                    "recommended_actions": [],
+                    "doc_url": null,
+                    "can_override": false
+                },
+                "redaction_applied": true
+            }
+        }
+    });
+
+    let res = client
+        .post(format!("{base}/v1/tenants/local/telemetry/events"))
+        .json(&json!({ "events": [guard_incident] }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 200);
+
     let graph = client
         .get(format!("{base}/v1/tenants/local/entity-graph"))
         .send()
@@ -203,6 +242,11 @@ async fn entity_graph_joins_registry_policy_observation_and_activity() {
     assert_eq!(timeline["schema_version"], "activity-timeline.v1");
     assert_eq!(timeline["items"][0]["decision"], "deny");
     assert_eq!(timeline["items"][0]["enforcement_mode"], "enforce");
+    assert!(timeline["items"].as_array().unwrap().iter().any(|item| {
+        item["event_id"] == "guard-graph-e2e"
+            && item["decision"] == "redact"
+            && item["resource"]["label"] == "Prompt injection attempt"
+    }));
 
     let user_activity = client
         .get(format!(
@@ -224,9 +268,54 @@ async fn entity_graph_joins_registry_policy_observation_and_activity() {
     );
     assert_eq!(user_activity["items"][0]["agent_name"], "Graph E2E Agent");
     assert_eq!(user_activity["items"][0]["result"], "blocked");
+    assert!(user_activity["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| {
+            item["event_id"] == "guard-graph-e2e"
+                && item["category"] == "safety"
+                && item["result"] == "redacted"
+                && item["target_label"] == "Prompt injection attempt"
+        }));
     assert_eq!(
         user_activity["items"][0]["privacy_note"],
         "Pollek shows activity metadata here, not file contents, email bodies, raw prompts, or raw responses."
+    );
+
+    let plugin_install = client
+        .post(format!("{base}/v1/tenants/local/plugins/install"))
+        .json(&json!({
+            "id": "com.pollek.pii-redactor",
+            "granted_caps": ["telemetry:read", "telemetry:write"]
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert!(plugin_install.status().is_success());
+
+    let plugin_activity = client
+        .get(format!(
+            "{base}/v1/tenants/local/user-friendly-activity?limit=50"
+        ))
+        .send()
+        .await
+        .unwrap()
+        .json::<serde_json::Value>()
+        .await
+        .unwrap();
+    assert!(
+        plugin_activity["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| {
+                item["agent_name"] == "Pollek Plugin Marketplace"
+                    && item["category"] == "plugins"
+                    && item["action"] == "install"
+                    && item["target_label"] == "PII Redactor"
+            }),
+        "{plugin_activity}"
     );
 }
 

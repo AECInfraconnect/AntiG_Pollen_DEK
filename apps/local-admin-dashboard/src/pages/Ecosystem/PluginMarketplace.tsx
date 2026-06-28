@@ -60,7 +60,7 @@ function MarketCard({
         <div className="min-w-0">
           <h3 className="break-words text-sm font-semibold">{item.name}</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            v{item.version} • {item.publisher}
+            v{item.version} - {item.publisher}
           </p>
         </div>
         <div
@@ -160,7 +160,7 @@ function InstalledRow({
         <div>
           <h3 className="text-sm font-semibold">{plugin.name ?? plugin.id}</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            {plugin.kind ?? "plugin"} • {plugin.version ?? "unknown version"} •{" "}
+            {plugin.kind ?? "plugin"} - {plugin.version ?? "unknown version"} -{" "}
             {plugin.health}
           </p>
           <div className="mt-3 flex flex-wrap gap-1.5">

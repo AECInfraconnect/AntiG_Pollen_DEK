@@ -521,15 +521,42 @@ async fn clear_user_friendly_activity(
         Ok(count) => count,
         Err(err) => return internal_error(err),
     };
+    let guard_incidents = match state
+        .telemetry_store
+        .clear_telemetry(&tenant, "guard_incident")
+        .await
+    {
+        Ok(count) => count,
+        Err(err) => return internal_error(err),
+    };
+    let guard_events = match state
+        .telemetry_store
+        .clear_telemetry(&tenant, "guard_event")
+        .await
+    {
+        Ok(count) => count,
+        Err(err) => return internal_error(err),
+    };
+    let plugin_audit = match state
+        .telemetry_store
+        .clear_telemetry(&tenant, "plugin_audit")
+        .await
+    {
+        Ok(count) => count,
+        Err(err) => return internal_error(err),
+    };
 
     (
         StatusCode::OK,
         Json(json!({
             "status": "cleared",
-            "scope": "local_observation_and_decision_history",
+            "scope": "local_activity_history",
             "observation_events": observation_events,
             "decision_logs": decision_logs,
-            "decisions": decisions
+            "decisions": decisions,
+            "guard_incidents": guard_incidents,
+            "guard_events": guard_events,
+            "plugin_audit": plugin_audit
         })),
     )
 }
@@ -587,6 +614,18 @@ async fn build_read_model(state: &AppState, tenant: &str) -> anyhow::Result<Read
         })
         .await
         .unwrap_or_default();
+    let mut guard_events = state
+        .telemetry_store
+        .list_telemetry(tenant, "guard_incident")
+        .await
+        .unwrap_or_default();
+    if let Ok(mut events) = state
+        .telemetry_store
+        .list_telemetry(tenant, "guard_event")
+        .await
+    {
+        guard_events.append(&mut events);
+    }
 
     for agent in agents {
         let raw = serde_json::to_value(&agent).unwrap_or(Value::Null);
@@ -969,6 +1008,33 @@ async fn build_read_model(state: &AppState, tenant: &str) -> anyhow::Result<Read
         ));
     }
 
+    for event in guard_events {
+        let (actor_id, resource_id, label) = guard_event_refs(&event);
+        builder.ensure_node(
+            "agent",
+            &actor_id,
+            &actor_id,
+            "Prompt Guard incident source",
+        );
+        builder.ensure_node(
+            "resource",
+            &resource_id,
+            &label,
+            "Prompt Guard safety category",
+        );
+        builder.add_edge(
+            "agent",
+            &actor_id,
+            "resource",
+            &resource_id,
+            "guarded",
+            "Prompt Guard incident",
+            true,
+            guard_event_action(&event) == "deny",
+        );
+        activity.push(activity_from_guard_event(&builder.nodes, &event));
+    }
+
     for event in usage_events {
         let agent_id = event
             .agent_id
@@ -1289,6 +1355,154 @@ fn activity_from_usage(
     }
 }
 
+fn activity_from_guard_event(
+    nodes: &BTreeMap<String, GraphNode>,
+    event: &Value,
+) -> ActivityTimelineItem {
+    let action = guard_event_action(event);
+    let actor_id = guard_event_actor_id(event).unwrap_or_else(|| "unknown-agent".to_string());
+    let category = guard_event_category(event);
+    let label = guard_category_label(&category).to_string();
+    let resource_id = guard_resource_id(&category);
+    let timestamp = guard_event_string(
+        event,
+        &[
+            "/payload/guard_event/ts",
+            "/payload/guard_event/timestamp",
+            "/payload/ts",
+            "/timestamp",
+            "/ts",
+        ],
+    )
+    .unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
+    let event_id = guard_event_string(
+        event,
+        &["/payload/guard_event/event_id", "/event_id", "/id"],
+    )
+    .unwrap_or_else(|| format!("guard-{category}-{timestamp}"));
+
+    ActivityTimelineItem {
+        event_id,
+        timestamp,
+        actor: Some(graph_ref(nodes, "agent", &actor_id)),
+        action: format!("prompt_guard_{action}"),
+        tool: None,
+        resource: Some(graph_ref(nodes, "resource", &resource_id)),
+        policies: Vec::new(),
+        decision: guard_decision(&action).to_string(),
+        enforcement_mode: if action == "allow" {
+            "observe".to_string()
+        } else {
+            "guarded_path".to_string()
+        },
+        pep_plane: Some(
+            guard_event_string(
+                event,
+                &[
+                    "/payload/source_integration",
+                    "/payload/integration",
+                    "/payload/source",
+                    "/source",
+                ],
+            )
+            .unwrap_or_else(|| "prompt_guard".to_string()),
+        ),
+        pdp_engine: None,
+        trace_id: guard_event_string(event, &["/trace_id", "/payload/trace_id"]),
+        cost: None,
+        explanation: Some(format!("{} - {}", label, guard_action_outcome(&action))),
+        raw: Some(event.clone()),
+    }
+}
+
+fn guard_event_refs(event: &Value) -> (String, String, String) {
+    let actor_id = guard_event_actor_id(event).unwrap_or_else(|| "unknown-agent".to_string());
+    let category = guard_event_category(event);
+    let resource_id = guard_resource_id(&category);
+    let label = guard_category_label(&category).to_string();
+    (actor_id, resource_id, label)
+}
+
+fn guard_event_string(event: &Value, pointers: &[&str]) -> Option<String> {
+    pointers.iter().find_map(|pointer| {
+        event
+            .pointer(pointer)
+            .and_then(Value::as_str)
+            .map(ToString::to_string)
+    })
+}
+
+fn guard_event_actor_id(event: &Value) -> Option<String> {
+    guard_event_string(
+        event,
+        &[
+            "/payload/guard_event/agent_id",
+            "/payload/agent_id",
+            "/agent_id",
+        ],
+    )
+}
+
+fn guard_event_action(event: &Value) -> String {
+    guard_event_string(
+        event,
+        &["/payload/guard_event/action", "/payload/action", "/action"],
+    )
+    .unwrap_or_else(|| "allow".to_string())
+    .to_ascii_lowercase()
+}
+
+fn guard_event_category(event: &Value) -> String {
+    for pointer in [
+        "/payload/guard_event/categories",
+        "/payload/categories",
+        "/categories",
+    ] {
+        if let Some(category) = event
+            .pointer(pointer)
+            .and_then(Value::as_array)
+            .and_then(|items| items.iter().find_map(Value::as_str))
+        {
+            return category.to_string();
+        }
+    }
+    "prompt_data_safety".to_string()
+}
+
+fn guard_resource_id(category: &str) -> String {
+    format!("prompt-guard:{category}")
+}
+
+fn guard_decision(action: &str) -> &'static str {
+    match action {
+        "deny" => "deny",
+        "redact" => "redact",
+        "warn" => "warn",
+        _ => "observe",
+    }
+}
+
+fn guard_action_outcome(action: &str) -> &'static str {
+    match action {
+        "deny" => "blocked",
+        "redact" => "redacted",
+        "warn" => "warned",
+        _ => "watched only",
+    }
+}
+
+fn guard_category_label(category: &str) -> &'static str {
+    match category {
+        "llm01_prompt_injection" | "prompt_injection" => "Prompt injection attempt",
+        "llm02_sensitive_information_disclosure" => "Sensitive information disclosure",
+        "llm07_system_prompt_leakage" | "system_prompt_leak" => "System prompt leak",
+        "secret" | "credential" => "Secret or credential",
+        "pii" => "Private personal data",
+        "unsafe_output" => "Unsafe output",
+        _ => "Prompt and data safety",
+    }
+}
+
 fn user_friendly_activity_from_timeline(item: &ActivityTimelineItem) -> UserFriendlyActivityEvent {
     let category = infer_user_activity_category(item);
     let action = infer_user_activity_action(item, &category);
@@ -1482,6 +1696,14 @@ fn infer_user_activity_category(item: &ActivityTimelineItem) -> String {
         .map(|tool| tool.entity_type.to_lowercase())
         .unwrap_or_default();
 
+    if text.contains("plugin")
+        || text.contains("marketplace")
+        || text.contains("connector")
+        || text.contains("definition feed")
+        || resource_type.contains("plugin")
+    {
+        return "plugins".to_string();
+    }
     if text.contains("prompt")
         || text.contains("injection")
         || text.contains("redact")
@@ -1493,13 +1715,6 @@ fn infer_user_activity_category(item: &ActivityTimelineItem) -> String {
         || text.contains("guard")
     {
         return "safety".to_string();
-    }
-    if text.contains("plugin")
-        || text.contains("marketplace")
-        || text.contains("connector")
-        || text.contains("definition feed")
-    {
-        return "plugins".to_string();
     }
     if resource_type.contains("file")
         || resource_type.contains("folder")
