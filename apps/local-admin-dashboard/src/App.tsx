@@ -52,13 +52,6 @@ import PoliciesV2 from "./pages/PoliciesV2";
 
 import { Toaster } from "sonner";
 
-// Placeholders for new structure
-const Placeholder = ({ name }: { name: string }) => (
-  <div className="p-8">
-    <h1>{name}</h1>
-  </div>
-);
-
 const ModeGuard = () => {
   const { mode } = useMode();
   const { pathname } = useLocation();
@@ -115,11 +108,11 @@ function App() {
                 <Route path="capabilities" element={<Capabilities />} />
                 <Route
                   path="pep-layers"
-                  element={<Placeholder name="PEP Layers" />}
+                  element={<Navigate to="/capabilities" replace />}
                 />
                 <Route
                   path="pdp-engines"
-                  element={<Placeholder name="PDP Engines" />}
+                  element={<Navigate to="/capabilities" replace />}
                 />
                 <Route
                   path="timeline"

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Activity,
   BarChart3,
+  CalendarClock,
   CalendarDays,
   Download,
   FileText,
@@ -22,6 +23,7 @@ import { useConfirm } from "../components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
 
 type Range = "7d" | "30d" | "all";
+type RetentionPreference = "7d" | "30d" | "until_deleted";
 
 function exportReport(
   items: UserFriendlyActivityEvent[],
@@ -128,6 +130,13 @@ export function HistoryReportsPage() {
   const { confirm } = useConfirm();
   const [allItems, setAllItems] = useState<UserFriendlyActivityEvent[]>([]);
   const [range, setRange] = useState<Range>("7d");
+  const [retentionPreference, setRetentionPreference] =
+    useState<RetentionPreference>(() => {
+      const saved = localStorage.getItem("pollek.history.retentionPreference");
+      return saved === "7d" || saved === "30d" || saved === "until_deleted"
+        ? saved
+        : "30d";
+    });
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(() => {
@@ -141,6 +150,13 @@ export function HistoryReportsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "pollek.history.retentionPreference",
+      retentionPreference,
+    );
+  }, [retentionPreference]);
 
   const clearLocalHistory = useCallback(async () => {
     if (
@@ -263,6 +279,45 @@ export function HistoryReportsPage() {
               range selector for review, export CSV/JSON when you need a copy,
               or delete local observation and decision history from this device.
             </p>
+            <div className="mt-4 rounded-md border bg-background/60 p-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-start gap-2">
+                  <CalendarClock className="mt-0.5 h-4 w-4 text-primary" />
+                  <div>
+                    <div className="text-sm font-medium">
+                      Local retention preference
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      Saved on this dashboard so review/export defaults are
+                      clear. Automatic deletion is not enabled yet; use Delete
+                      local history when you want to erase records now.
+                    </p>
+                  </div>
+                </div>
+                <div className="inline-flex h-9 overflow-hidden rounded-md border bg-background">
+                  {(
+                    [
+                      ["7d", "7 days"],
+                      ["30d", "30 days"],
+                      ["until_deleted", "Keep until deleted"],
+                    ] as Array<[RetentionPreference, string]>
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setRetentionPreference(value)}
+                      className={cn(
+                        "px-3 text-xs hover:bg-muted sm:text-sm",
+                        retentionPreference === value &&
+                          "bg-muted text-foreground",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

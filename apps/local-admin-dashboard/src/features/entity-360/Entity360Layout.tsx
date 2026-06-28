@@ -32,7 +32,7 @@ export function Entity360Layout({
     { id: "relationships", label: "Relationships" },
     { id: "policies", label: isPolicy ? "Impact" : "Policies" },
     { id: "activity", label: "Activity" },
-    { id: "cost", label: "Cost & Tokens" },
+    { id: "cost", label: "AI Usage & Cost" },
     { id: "debug", label: "Raw JSON" },
   ];
 

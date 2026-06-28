@@ -5,11 +5,18 @@ import {
   Activity,
   Bot,
   CheckCircle2,
+  DollarSign,
   Eye,
+  FileText,
   FolderSearch,
+  Globe2,
   History,
   ListChecks,
+  Mail,
+  Plug,
+  ShieldAlert,
   ShieldCheck,
+  TerminalSquare,
   Wrench,
 } from "lucide-react";
 import {
@@ -28,6 +35,7 @@ import {
   summarizeActivities,
 } from "../features/user-activity/userActivityModel";
 import type {
+  UserActivityCategory,
   UserCapabilityItem,
   UserFriendlyActivityEvent,
 } from "../features/user-activity/types";
@@ -39,6 +47,87 @@ const toneClass: Record<string, string> = {
   warning: "border-amber-500/25 bg-amber-500/10 text-amber-700",
   neutral: "border-border bg-background text-muted-foreground",
 };
+
+const observeSurfaceCopy: Array<{
+  category: UserActivityCategory;
+  icon: any;
+  title: string;
+  description: string;
+  setup: string;
+}> = [
+  {
+    category: "files",
+    icon: FileText,
+    title: "Files and folders",
+    description:
+      "Shows when an AI app reads, changes, or tries to reach local files and folders.",
+    setup:
+      "Folder-level blocking may need OS permission, a file guard, or the AI app's own folder settings.",
+  },
+  {
+    category: "web",
+    icon: Globe2,
+    title: "Websites and network",
+    description:
+      "Shows websites, domains, and network destinations Pollek can identify from local signals.",
+    setup:
+      "Exact browser actions may need a browser connector, network permission, proxy, or plugin.",
+  },
+  {
+    category: "commands",
+    icon: TerminalSquare,
+    title: "Apps and commands",
+    description:
+      "Shows when an AI app launches tools, scripts, terminals, or other local programs.",
+    setup:
+      "Blocking command execution depends on host capability and how the AI app launches commands.",
+  },
+  {
+    category: "email",
+    icon: Mail,
+    title: "Email and calendar",
+    description:
+      "Shows connector-level access when email or calendar integrations are installed and allowed.",
+    setup:
+      "Pollek will show this as setup-required until an email/calendar connector is installed.",
+  },
+  {
+    category: "tools",
+    icon: Plug,
+    title: "AI tools and MCP",
+    description:
+      "Shows tool calls, MCP resources, and connector activity when they emit local telemetry.",
+    setup:
+      "Use a wrapper, connector, or plugin for exact tool/resource call visibility.",
+  },
+  {
+    category: "safety",
+    icon: ShieldAlert,
+    title: "Prompts and private data",
+    description:
+      "Shows Prompt Guard incidents, redactions, secrets, PII, or prompt-injection signals.",
+    setup:
+      "Enable Prompt Guard in the AI app path for warning, ask-first, or redaction behavior.",
+  },
+  {
+    category: "ai_models",
+    icon: Bot,
+    title: "Model usage",
+    description:
+      "Shows model/provider usage when exact provider data, wrapper logs, or estimates are available.",
+    setup:
+      "Exact tokens need provider telemetry or a wrapper; browser-only activity may stay estimated.",
+  },
+  {
+    category: "cost",
+    icon: DollarSign,
+    title: "AI usage and cost",
+    description:
+      "Shows exact or estimated spend as observe evidence, not only as a billing report.",
+    setup:
+      "Exact cost needs provider usage data; otherwise Pollek labels estimates clearly.",
+  },
+];
 
 function QuickAction({
   to,
@@ -101,6 +190,56 @@ function CapabilityMini({ item }: { item: UserCapabilityItem }) {
   );
 }
 
+function ObserveSurfaceCard({
+  surface,
+  item,
+}: {
+  surface: (typeof observeSurfaceCopy)[number];
+  item?: UserCapabilityItem;
+}) {
+  const Icon = surface.icon;
+  const canWatch = Boolean(item?.can_watch);
+  const tone = item ? capabilityTone(item.status) : "neutral";
+  const statusLabel = item?.can_block
+    ? "Watch and block"
+    : item?.can_ask_first
+      ? "Can ask first"
+      : canWatch
+        ? "Watch now"
+        : item?.status === "needs_setup"
+          ? "Needs setup"
+          : "Not available yet";
+
+  return (
+    <div className="rounded-lg border bg-card/60 p-4">
+      <div className="flex items-start gap-3">
+        <div className={cn("rounded-lg p-2", toneClass[tone])}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold">{surface.title}</h3>
+            <span
+              className={cn(
+                "rounded-full border px-2 py-0.5 text-[11px]",
+                toneClass[tone],
+              )}
+            >
+              {statusLabel}
+            </span>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            {surface.description}
+          </p>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            {item?.plain_description ?? surface.setup}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SimpleOverviewPage() {
   const [agents, setAgents] = useState<AiAgent[]>([]);
   const [activity, setActivity] = useState<UserFriendlyActivityEvent[]>([]);
@@ -151,6 +290,14 @@ export function SimpleOverviewPage() {
 
   const summary = useMemo(() => summarizeActivities(activity), [activity]);
   const matrix = useMemo(() => buildUserCapabilityMatrix(snapshot), [snapshot]);
+  const observeSurfaces = useMemo(
+    () =>
+      observeSurfaceCopy.map((surface) => ({
+        surface,
+        item: matrix.find((item) => item.category === surface.category),
+      })),
+    [matrix],
+  );
   const needsSetup = matrix.filter(
     (item) => item.status === "needs_setup",
   ).length;
@@ -211,6 +358,37 @@ export function SimpleOverviewPage() {
           </p>
         </section>
       )}
+
+      <section className="space-y-3">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">
+              What Pollek can see on this device
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+              Coverage depends on this OS, permissions, connectors, and how each
+              AI app is launched. Pollek labels watch-only or setup-required
+              areas so you know when to configure the AI app itself.
+            </p>
+          </div>
+          <Link
+            to="/setup"
+            className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+          >
+            <Wrench className="h-4 w-4" />
+            Setup details
+          </Link>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {observeSurfaces.map(({ surface, item }) => (
+            <ObserveSurfaceCard
+              key={surface.category}
+              surface={surface}
+              item={item}
+            />
+          ))}
+        </div>
+      </section>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-lg border bg-card/60 p-4">

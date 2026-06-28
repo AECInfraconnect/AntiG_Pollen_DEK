@@ -52,7 +52,7 @@ export const NAV: NavGroup[] = [
   {
     id: "home",
     en: "Home",
-    th: "หน้าหลัก",
+    th: "หน้าแรก",
     items: [
       {
         id: "overview",
@@ -191,7 +191,7 @@ export const NAV: NavGroup[] = [
       {
         id: "policy-presets",
         en: "Policy Presets",
-        th: "เทมเพลตกฎ",
+        th: "ชุดกฎสำเร็จรูป",
         href: "/policy-presets",
         icon: ShieldCheck,
         modes: ADV,
@@ -199,7 +199,7 @@ export const NAV: NavGroup[] = [
       {
         id: "deployments",
         en: "Deployments",
-        th: "การใช้งานกฎ",
+        th: "การใช้กฎ",
         href: "/deployments",
         icon: SlidersHorizontal,
         modes: ADV,
@@ -230,15 +230,15 @@ export const NAV: NavGroup[] = [
       {
         id: "alerts",
         en: "Alerts & Shadow AI",
-        th: "แจ้งเตือน",
+        th: "แจ้งเตือนและ Shadow AI",
         href: "/alerts",
         icon: ShieldAlert,
         modes: ADV,
       },
       {
         id: "cost",
-        en: "Cost & Tokens",
-        th: "ค่าใช้จ่าย",
+        en: "AI Usage & Cost",
+        th: "การใช้งานและค่าใช้จ่าย AI",
         href: "/cost-ledger",
         icon: Zap,
         modes: ADV,
@@ -261,7 +261,7 @@ export const NAV: NavGroup[] = [
       {
         id: "capabilities",
         en: "Capabilities",
-        th: "ความสามารถระบบ",
+        th: "ความสามารถของระบบ",
         href: "/capabilities",
         icon: FolderSearch,
         modes: ADV,

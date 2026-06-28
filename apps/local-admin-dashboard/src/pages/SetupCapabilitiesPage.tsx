@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  Bot,
   CheckCircle2,
+  DollarSign,
   Eye,
+  FileText,
+  Globe2,
   HelpCircle,
+  Mail,
   Plug,
   RefreshCw,
   Shield,
+  ShieldAlert,
   ShieldCheck,
+  TerminalSquare,
   Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,6 +44,62 @@ const toneClass: Record<string, string> = {
   warning: "border-amber-500/25 bg-amber-500/10 text-amber-700",
   neutral: "border-border bg-background text-muted-foreground",
 };
+
+const setupSurfaceCopy: Array<{
+  id: UserCapabilityItem["category"];
+  icon: any;
+  title: string;
+  plain: string;
+}> = [
+  {
+    id: "files",
+    icon: FileText,
+    title: "Files and folders",
+    plain: "Observe reads and writes. Blocking private folders may need OS permission or a file guard.",
+  },
+  {
+    id: "web",
+    icon: Globe2,
+    title: "Websites and network",
+    plain: "Observe browser/network destinations where the host exposes metadata. Exact actions may need a connector.",
+  },
+  {
+    id: "commands",
+    icon: TerminalSquare,
+    title: "Apps and commands",
+    plain: "Observe local programs and terminal commands. Blocking depends on how the AI app launches them.",
+  },
+  {
+    id: "email",
+    icon: Mail,
+    title: "Email and calendar",
+    plain: "Observe connector-level email/calendar access only after the user installs and authorizes a connector.",
+  },
+  {
+    id: "tools",
+    icon: Plug,
+    title: "AI tools and MCP",
+    plain: "Observe tool calls and MCP resources through wrappers, connectors, or telemetry plugins.",
+  },
+  {
+    id: "safety",
+    icon: ShieldAlert,
+    title: "Prompts and private data",
+    plain: "Observe prompt-injection, secrets, and PII signals through Prompt Guard when it is in the AI app path.",
+  },
+  {
+    id: "ai_models",
+    icon: Bot,
+    title: "Model usage",
+    plain: "Observe model/provider usage from exact provider data, wrappers, logs, or estimates.",
+  },
+  {
+    id: "cost",
+    icon: DollarSign,
+    title: "AI usage and cost",
+    plain: "Show exact or estimated usage as activity evidence, with estimates labeled honestly.",
+  },
+];
 
 function CapabilityPill({ label, active }: { label: string; active: boolean }) {
   return (
@@ -164,6 +227,58 @@ function SetupActionCard({ action }: { action: SetupActionV2 }) {
   );
 }
 
+function SetupSurfaceCard({
+  item,
+  title,
+  plain,
+  icon: Icon,
+}: {
+  item?: UserCapabilityItem;
+  title: string;
+  plain: string;
+  icon: any;
+}) {
+  const tone = item ? capabilityTone(item.status) : "neutral";
+  const label = item?.can_block
+    ? "Can block"
+    : item?.can_ask_first
+      ? "Can ask first"
+      : item?.can_watch
+        ? "Can watch"
+        : item?.status === "needs_setup"
+          ? "Needs setup"
+          : "Not available";
+
+  return (
+    <article className="rounded-lg border bg-card/60 p-4">
+      <div className="flex items-start gap-3">
+        <div className={cn("rounded-lg p-2", toneClass[tone])}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold">{title}</h3>
+            <span
+              className={cn(
+                "rounded-full border px-2 py-0.5 text-[11px]",
+                toneClass[tone],
+              )}
+            >
+              {label}
+            </span>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            {plain}
+          </p>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            {item?.why ?? "No matching local source has reported support yet."}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export function SetupCapabilitiesPage() {
   const { mode } = useMode();
   const runtimeMode: RuntimeModeV2 = appModeToRuntimeMode(mode);
@@ -199,6 +314,14 @@ export function SetupCapabilitiesPage() {
   }, [runtimeMode, demoTarget, demoProfile]);
 
   const matrix = useMemo(() => buildUserCapabilityMatrix(snapshot), [snapshot]);
+  const setupSurfaces = useMemo(
+    () =>
+      setupSurfaceCopy.map((surface) => ({
+        ...surface,
+        item: matrix.find((item) => item.category === surface.id),
+      })),
+    [matrix],
+  );
   const ready = matrix.filter((item) => item.status === "ready").length;
   const partial = matrix.filter((item) => item.status === "partial").length;
   const needsSetup = matrix.filter(
@@ -296,6 +419,30 @@ export function SetupCapabilitiesPage() {
         <div className="rounded-lg border bg-card/60 p-4">
           <div className="text-2xl font-semibold">{needsSetup}</div>
           <p className="mt-1 text-xs text-muted-foreground">Need setup</p>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold">
+            What Pollek can see on this device
+          </h3>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+            This is the practical observe map for the current computer. It
+            separates what works now from what needs OS permission, an app
+            setting, a connector, or a plugin.
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {setupSurfaces.map((surface) => (
+            <SetupSurfaceCard
+              key={surface.id}
+              title={surface.title}
+              plain={surface.plain}
+              icon={surface.icon}
+              item={surface.item}
+            />
+          ))}
         </div>
       </section>
 
