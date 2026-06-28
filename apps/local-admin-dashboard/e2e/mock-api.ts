@@ -496,6 +496,14 @@ const guardIncident = {
         can_override: false,
       },
       redaction_applied: true,
+      source: "content_guard_local_engine",
+      analysis_pipeline: {
+        mode: "local_only",
+        steps: ["deterministic_prompt_guard_rules"],
+        enterprise_cloud_ner_supported: true,
+        enterprise_cloud_ner_enabled: false,
+        third_party_provider: null,
+      },
     },
     findings: [{ kind: "api_key", count: 1 }],
     redaction: { applied: true },
@@ -999,6 +1007,65 @@ export async function installMockApi(page: Page) {
         body: `data: ${JSON.stringify(guardIncident)}\n\n`,
       }),
   );
+  await page.route("**/v1/tenants/local/prompt-guard/check", (route) => {
+    const request = route.request().postDataJSON() as {
+      direction?: string;
+      source?: string;
+      persist?: boolean;
+    };
+    const checkedEvent = {
+      event_id: "guard-e2e-local-check",
+      ts: now,
+      tenant_id: "local",
+      agent_id: "dashboard-local-check",
+      direction: request.direction ?? "request",
+      action: "redact",
+      categories: ["llm01_prompt_injection"],
+      injection_score: 0.7,
+      findings_summary: [{ kind: "prompt_injection", count: 2 }],
+      severity: "warn",
+      remediation: {
+        user_message:
+          "Prompt Guard found a prompt safety signal and recommends redaction or review before this prompt continues.",
+        recommended_actions: [
+          "Route this AI app through the Prompt Guard browser extension, CLI hook, SDK wrapper, or MCP proxy before similar prompts continue.",
+        ],
+        doc_url: null,
+        can_override: false,
+      },
+      redaction_applied: true,
+      source: request.source ?? "dashboard_manual_check",
+      raw_prompt_or_response_stored: false,
+      matched_rules: ["instruction_override", "role_rebinding"],
+      normalization_steps: [],
+      capture: {
+        source: request.source ?? "dashboard_manual_check",
+        engine: "content_guard_local_engine",
+        surface: "local_dashboard",
+        text_length: 48,
+        raw_text_persisted: false,
+      },
+      analysis_pipeline: {
+        mode: "local_only",
+        steps: ["deterministic_prompt_guard_rules"],
+        enterprise_cloud_ner_supported: true,
+        enterprise_cloud_ner_enabled: false,
+        third_party_provider: null,
+      },
+    };
+    return json(route, {
+      schema_version: "pollek.prompt_guard.check.v1",
+      event_id: checkedEvent.event_id,
+      action: checkedEvent.action,
+      severity: checkedEvent.severity,
+      persisted: request.persist !== false,
+      raw_prompt_or_response_stored: false,
+      storage_error: null,
+      guard_event: checkedEvent,
+      recommended_actions: checkedEvent.remediation.recommended_actions,
+      message: checkedEvent.remediation.user_message,
+    });
+  });
   await page.route("**/v1/tenants/local/activity", (route) =>
     json(route, scanStarted ? activitySummary : { activity_sets: [] }),
   );

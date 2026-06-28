@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Activity,
   Bot,
@@ -684,6 +684,60 @@ function hasCapability(agent: AiAgent, terms: string[]) {
   return terms.some((term) => haystack.includes(term));
 }
 
+function promptGuardStatus(
+  agent: AiAgent,
+  safetyEvents: UserFriendlyActivityEvent[],
+): {
+  label: string;
+  state: CoverageState;
+  source: string;
+  detail: string;
+  next: string;
+} {
+  if (safetyEvents.length > 0) {
+    return {
+      label: "Active in path",
+      state: "observed",
+      source: "Prompt Guard telemetry",
+      detail:
+        safetyEvents[0]?.plain_summary ||
+        "Prompt or private-data safety telemetry is linked to this AI app.",
+      next: "Open the safety center to review watched, redacted, or blocked incidents.",
+    };
+  }
+
+  if (hasCapability(agent, ["prompt", "guard", "pii", "redact", "safety"])) {
+    return {
+      label: "Watching only",
+      state: "watching",
+      source: "Declared capability or definition",
+      detail:
+        "Pollek has a safety-related signal for this AI app, but no incident has been observed yet.",
+      next: "Run the AI app through a guarded path, then verify an incident or clean watch result appears in Prompt Guard.",
+    };
+  }
+
+  if (hasCapability(agent, ["browser", "web", "chat", "llm"])) {
+    return {
+      label: "Needs browser/proxy integration",
+      state: "needs_setup",
+      source: "Browser or model-surface definition",
+      detail:
+        "Pollek can identify this AI surface, but prompt filtering requires a browser extension, local proxy, wrapper, response filter, SDK adapter, or MCP proxy in the data path.",
+      next: "Use Check setup to choose the safest integration available on this OS and AI app.",
+    };
+  }
+
+  return {
+    label: "Not configured",
+    state: "needs_setup",
+    source: "No guarded path detected",
+    detail:
+      "No Prompt Guard, redaction, secret, PII, or prompt-injection path is linked to this AI app yet.",
+    next: "Enable Prompt Guard only where you want prompt/output safety checks, or use the AI app's own safety settings.",
+  };
+}
+
 function AgentObserveCoverage({
   agent,
   activity,
@@ -709,6 +763,7 @@ function AgentObserveCoverage({
     (event) => event.category === "cost" || event.category === "ai_models",
   );
   const safetyEvents = agentEvents.filter((event) => event.category === "safety");
+  const guardStatus = promptGuardStatus(agent, safetyEvents);
   const eventsWithRules = agentEvents.filter((event) => event.rule_label);
   const tokenTotal =
     agentEvents.reduce((total, event) => total + (event.tokens ?? 0), 0) +
@@ -875,6 +930,64 @@ function AgentObserveCoverage({
             <span className="rounded-full border bg-background px-2.5 py-1">
               {needsSetupCount} need setup
             </span>
+          </div>
+        </div>
+      </section>
+
+      <section
+        data-testid="agent-prompt-guard-status"
+        className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4"
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="rounded-lg bg-emerald-500/15 p-2 text-emerald-700 dark:text-emerald-200">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm font-semibold">
+                  Prompt Guard status for this AI app
+                </h3>
+                <span
+                  className={cn(
+                    "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                    coverageStateClass(guardStatus.state),
+                  )}
+                >
+                  {guardStatus.label}
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-emerald-950/80 dark:text-emerald-100/80">
+                {guardStatus.detail}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                <span className="rounded border border-emerald-500/20 bg-background/70 px-2 py-1">
+                  Source: {guardStatus.source}
+                </span>
+                <span className="rounded border border-emerald-500/20 bg-background/70 px-2 py-1">
+                  Incidents: {safetyEvents.length}
+                </span>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-emerald-950/75 dark:text-emerald-100/75">
+                {guardStatus.next}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Link
+              to="/alerts?tab=guard"
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Open safety center
+            </Link>
+            <Link
+              to="/setup?category=safety"
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-emerald-500/25 bg-background/70 px-3 text-sm hover:bg-background"
+            >
+              <Wrench className="h-4 w-4" />
+              Check setup
+            </Link>
           </div>
         </div>
       </section>

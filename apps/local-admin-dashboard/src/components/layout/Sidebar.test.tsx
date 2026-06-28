@@ -50,7 +50,9 @@ describe("Sidebar Configuration", () => {
     const costItem = activityGroup?.items.find((item) => item.id === "cost");
 
     expect(costItem?.en).toBe("AI Usage & Cost");
-    expect(costItem?.th).toBe("การใช้งานและค่าใช้จ่าย AI");
+    expect(costItem?.th).toBe(
+      "\u0e01\u0e32\u0e23\u0e43\u0e0a\u0e49\u0e07\u0e32\u0e19\u0e41\u0e25\u0e30\u0e04\u0e48\u0e32\u0e43\u0e0a\u0e49\u0e08\u0e48\u0e32\u0e22 AI",
+    );
     expect(costItem?.href).toBe("/cost-ledger");
     expect(costItem?.modes).toEqual([...modes]);
   });

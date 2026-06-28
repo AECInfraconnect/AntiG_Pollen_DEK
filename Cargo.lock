@@ -4684,6 +4684,7 @@ dependencies = [
  "axum 0.7.9",
  "base64 0.22.1",
  "chrono",
+ "content-guard",
  "dek-agent-binding",
  "dek-agent-discovery",
  "dek-agent-observer",

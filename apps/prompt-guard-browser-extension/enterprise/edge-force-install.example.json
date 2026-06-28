@@ -1,0 +1,11 @@
+{
+  "ExtensionInstallForcelist": [
+    "REPLACE_WITH_EXTENSION_ID;https://edge.microsoft.com/extensionwebstorebase/v1/crx"
+  ],
+  "ExtensionSettings": {
+    "REPLACE_WITH_EXTENSION_ID": {
+      "installation_mode": "force_installed",
+      "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx"
+    }
+  }
+}

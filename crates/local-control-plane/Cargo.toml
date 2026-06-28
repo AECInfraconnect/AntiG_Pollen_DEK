@@ -59,6 +59,7 @@ serde_jcs = "0.2.0"
 dek-deployment-planner = { version = "1.0.0-beta.10", path = "../dek-deployment-planner" }
 dek-enforcement-api = { path = "../dek-enforcement-api" }
 dek-secure-spool = { path = "../dek-secure-spool" }
+content-guard = { path = "../../plugins/content-guard" }
 [dev-dependencies]
 tempfile = "3.27.0"
 

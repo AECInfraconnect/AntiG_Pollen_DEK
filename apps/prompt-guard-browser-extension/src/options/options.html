@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Pollek Prompt Guard Connector</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Pollek Prompt Guard Connector</h1>
+      <p class="hint">
+        This extension sends prompts from supported AI web apps to the Local
+        Control Plane on this device. Pollek stores guard metadata only; raw
+        prompt text is not stored in history by the Local Control Plane.
+      </p>
+
+      <label class="row">
+        <input id="enabled" type="checkbox" />
+        Enable browser prompt capture
+      </label>
+
+      <label for="endpoint">Local Control Plane endpoint</label>
+      <input id="endpoint" type="url" />
+
+      <label for="apiToken">Bearer token, if local auth is enabled</label>
+      <input id="apiToken" type="password" autocomplete="off" />
+
+      <label for="captureMode">Capture mode</label>
+      <select id="captureMode">
+        <option value="observe">Observe, alert, and record metadata</option>
+        <option value="warn_high_risk">Warn on high-risk signals</option>
+      </select>
+
+      <button id="save" type="button">Save connector settings</button>
+      <div id="status" role="status"></div>
+    </main>
+    <script src="../shared/webext.js"></script>
+    <script src="../shared/constants.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

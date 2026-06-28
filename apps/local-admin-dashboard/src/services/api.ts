@@ -45,6 +45,30 @@ export type GuardEventPage = {
   unavailable?: boolean;
 };
 
+export type PromptGuardCheckRequest = {
+  text: string;
+  direction?: "request" | "response";
+  agent_id?: string;
+  source?: string;
+  surface?: string;
+  session_id?: string;
+  url?: string;
+  persist?: boolean;
+};
+
+export type PromptGuardCheckResponse = {
+  schema_version: "pollek.prompt_guard.check.v1";
+  event_id: string;
+  action: GuardEvent["action"];
+  severity: GuardEvent["severity"];
+  persisted: boolean;
+  raw_prompt_or_response_stored: false;
+  storage_error?: string | null;
+  guard_event: GuardEvent;
+  recommended_actions: string[];
+  message: string;
+};
+
 export type LocalObserveRefreshRequest = {
   include_estimates?: boolean;
   sources?: string[];
@@ -983,6 +1007,13 @@ export const TelemetryApi = {
         items: [],
         unavailable: true,
       })),
+  checkPromptGuard: (
+    request: PromptGuardCheckRequest,
+  ): Promise<PromptGuardCheckResponse> =>
+    defaultClient.fetchApi<PromptGuardCheckResponse>("/prompt-guard/check", {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
   streamUrl: (
     channel:
       | "observations"

@@ -6,6 +6,7 @@ import {
   Outlet,
   useLocation,
 } from "react-router-dom";
+import { useEffect } from "react";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { Overview } from "./pages/Overview";
 import { SimpleOverviewPage } from "./pages/SimpleOverviewPage";
@@ -51,6 +52,8 @@ import ToolsResourcesV2 from "./pages/ToolsResourcesV2";
 import PoliciesV2 from "./pages/PoliciesV2";
 
 import { Toaster } from "sonner";
+import { ThemeProvider, useTheme } from "./context/ThemeContext";
+import { cleanupLegacyDashboardStorage } from "./lib/storageMigrations";
 
 const ModeGuard = () => {
   const { mode } = useMode();
@@ -76,11 +79,17 @@ const HomeRoute = () => {
 
 import { ConfirmProvider } from "./components/ui/ConfirmDialog";
 
-function App() {
+function AppContent() {
+  const { resolvedTheme } = useTheme();
+
+  useEffect(() => {
+    cleanupLegacyDashboardStorage();
+  }, []);
+
   return (
     <ModeProvider>
       <ConfirmProvider>
-        <Toaster position="top-right" theme="system" />
+        <Toaster position="top-right" theme={resolvedTheme} />
         <Router>
           <Routes>
             <Route path="/" element={<DashboardLayout />}>
@@ -194,6 +203,14 @@ function App() {
         </Router>
       </ConfirmProvider>
     </ModeProvider>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 

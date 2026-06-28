@@ -67,6 +67,10 @@
     --ring: 255 72% 46%;
 
     --radius: 0.75rem;
+    --duration: 180ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --elev-1: 0 1px 2px rgb(15 23 42 / 0.08);
+    --elev-2: 0 10px 24px rgb(15 23 42 / 0.12);
   }
 
   .dark {
@@ -98,6 +102,8 @@
     --border: 230 26% 22%;
     --input: 230 26% 22%;
     --ring: 260 85% 65%;
+    --elev-1: 0 1px 2px rgb(0 0 0 / 0.28);
+    --elev-2: 0 16px 34px rgb(0 0 0 / 0.32);
   }
 }
 
@@ -124,6 +130,17 @@
         transparent 40%
       );
     background-attachment: fixed;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
   }
 }
 

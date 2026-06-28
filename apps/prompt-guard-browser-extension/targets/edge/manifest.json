@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Pollek Prompt Guard Connector for Edge",
+  "short_name": "Pollek Guard",
+  "version": "0.1.0",
+  "description": "Connect supported AI web apps to the local Pollek Prompt Guard engine.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "http://127.0.0.1:43891/*",
+    "http://localhost:43891/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*",
+    "https://chat.deepseek.com/*",
+    "https://deepseek.com/*",
+    "https://gemini.google.com/*",
+    "https://aistudio.google.com/*",
+    "https://manus.im/*",
+    "https://*.manus.im/*"
+  ],
+  "background": {
+    "service_worker": "background/service_worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://chat.deepseek.com/*",
+        "https://deepseek.com/*",
+        "https://gemini.google.com/*",
+        "https://aistudio.google.com/*",
+        "https://manus.im/*",
+        "https://*.manus.im/*"
+      ],
+      "js": [
+        "shared/webext.js",
+        "shared/constants.js",
+        "shared/providerProfiles.js",
+        "content/editorDetector.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options/options.html",
+  "action": {
+    "default_title": "Pollek Prompt Guard"
+  }
+}

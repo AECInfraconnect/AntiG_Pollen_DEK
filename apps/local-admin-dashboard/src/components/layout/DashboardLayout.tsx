@@ -1,12 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { FirstRunWizard } from "../FirstRunWizard";
+import { CommandPalette } from "../command/CommandPalette";
 
 export function DashboardLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const down = (event: KeyboardEvent) => {
+      if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+    };
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
@@ -16,14 +29,18 @@ export function DashboardLayout() {
         setMobileMenuOpen={setMobileMenuOpen}
       />
       <div className="flex flex-1 flex-col overflow-hidden relative">
-        <Header toggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)} />
+        <Header
+          toggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
+          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 relative z-10">
           <Breadcrumbs />
           <Outlet />
         </main>
-        {/* Decorative background glow */}
-        <div className="pointer-events-none absolute -top-[20%] -right-[10%] h-[500px] w-[500px] rounded-full bg-primary/20 blur-[120px]" />
-        <div className="pointer-events-none absolute -bottom-[20%] -left-[10%] h-[500px] w-[500px] rounded-full bg-accent/20 blur-[120px]" />
+        <CommandPalette
+          open={commandPaletteOpen}
+          onClose={() => setCommandPaletteOpen(false)}
+        />
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ pub mod governance;
 pub mod inventory_api;
 pub mod local_observe;
 pub mod policy;
+pub mod prompt_guard_api;
 pub mod push;
 pub mod registry;
 pub mod signing;

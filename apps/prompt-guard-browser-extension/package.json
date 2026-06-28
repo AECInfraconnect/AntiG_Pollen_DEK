@@ -1,0 +1,14 @@
+{
+  "name": "@pollek/prompt-guard-browser-extension",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-extension.mjs all",
+    "build:chromium": "node scripts/build-extension.mjs chromium",
+    "build:edge": "node scripts/build-extension.mjs edge",
+    "build:safari": "node scripts/build-extension.mjs safari",
+    "clean": "node scripts/build-extension.mjs clean",
+    "check": "node scripts/build-extension.mjs check"
+  }
+}

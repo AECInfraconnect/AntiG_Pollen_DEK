@@ -4,12 +4,17 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  Download,
   Eye,
+  Globe,
   Info,
   LockKeyhole,
+  Loader2,
   Radio,
+  Send,
   ShieldAlert,
   ShieldCheck,
+  Store,
   Wrench,
   XCircle,
 } from "lucide-react";
@@ -22,6 +27,30 @@ import type { GuardEvent, GuardIncidentEnvelope } from "../../types/guard";
 
 type FeedStatus = "loading" | "ready" | "unavailable";
 type StreamStatus = "connecting" | "live" | "disconnected";
+
+const BROWSER_CONNECTOR_OPTIONS = [
+  {
+    id: "chromium",
+    label: "Chrome / Chromium",
+    install: "Load unpacked from apps/prompt-guard-browser-extension/dist/chromium",
+    packagePath:
+      "apps/prompt-guard-browser-extension/packages/pollek-prompt-guard-chromium.zip",
+  },
+  {
+    id: "edge",
+    label: "Microsoft Edge",
+    install: "Load unpacked from apps/prompt-guard-browser-extension/dist/edge",
+    packagePath:
+      "apps/prompt-guard-browser-extension/packages/pollek-prompt-guard-edge.zip",
+  },
+  {
+    id: "safari",
+    label: "Safari",
+    install: "Convert dist/safari-webextension with Xcode, then enable in Safari Settings",
+    packagePath:
+      "apps/prompt-guard-browser-extension/packages/pollek-prompt-guard-safari-webextension.zip",
+  },
+];
 
 const SEVERITY_STYLE: Record<string, string> = {
   critical: "border-red-500/80 bg-red-500/10 text-red-950 dark:text-red-100",
@@ -195,6 +224,29 @@ function severityLabel(severity?: string | null) {
   return labelize(severity ?? "info");
 }
 
+function guardAnalysisModeLabel(mode?: string | null) {
+  if (mode === "local_only") return "Local only";
+  if (mode === "enterprise_cloud") return "Enterprise Cloud";
+  return labelize(mode ?? "Not reported");
+}
+
+function guardSourceLabel(ev: GuardEvent) {
+  if (ev.source === "dashboard_manual_check") return "Dashboard local check";
+  if (ev.source === "browser_extension") return "Browser extension";
+  if (ev.source === "cli_hook") return "CLI hook";
+  if (ev.source === "sdk_adapter") return "SDK adapter";
+  if (ev.source === "mcp_proxy") return "MCP proxy";
+  if (ev.source === "content_guard_local_engine") {
+    return "Local Content Guard engine";
+  }
+  if (ev.source) return labelize(ev.source);
+  if (ev.agent_id?.includes("plugin") || ev.agent_id?.includes("mcp")) {
+    return "MCP proxy or plugin telemetry";
+  }
+  if (ev.agent_id?.includes("browser")) return "Browser extension or proxy";
+  return "Local Prompt Guard telemetry";
+}
+
 function normalizeRecommendedAction(action: string) {
   const trimmed = action.trim();
   if (!trimmed) return "";
@@ -247,6 +299,7 @@ export function normalizeGuardEvent(
       severity: guardEvent.severity ?? "info",
       action: guardEvent.action ?? "allow",
       direction: guardEvent.direction ?? "request",
+      source: guardEvent.source ?? envelope.event_type ?? null,
     };
   }
 
@@ -330,6 +383,9 @@ export function GuardIncidentCard({ ev }: { ev: GuardEvent }) {
           <StatusChip ev={ev} />
           <span className="inline-flex items-center rounded-full border border-current/20 px-2 py-1 text-xs font-medium">
             {severityLabel(ev.severity)}
+          </span>
+          <span className="inline-flex items-center rounded-full border border-current/20 px-2 py-1 text-xs font-medium">
+            {guardSourceLabel(ev)}
           </span>
         </div>
       </div>
@@ -435,16 +491,275 @@ export function GuardIncidentCard({ ev }: { ev: GuardEvent }) {
               <dt className="text-muted-foreground">Injection score</dt>
               <dd className="font-medium">{ev.injection_score}</dd>
             </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Analysis mode</dt>
+              <dd className="font-medium">
+                {guardAnalysisModeLabel(ev.analysis_pipeline?.mode)}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Third-party NER</dt>
+              <dd className="font-medium">
+                {ev.analysis_pipeline?.enterprise_cloud_ner_enabled
+                  ? ev.analysis_pipeline.third_party_provider || "Enabled"
+                  : ev.analysis_pipeline?.enterprise_cloud_ner_supported
+                    ? "Enterprise-supported, off locally"
+                    : "Not configured"}
+              </dd>
+            </div>
             <div className="md:col-span-2">
               <dt className="text-muted-foreground">Raw categories</dt>
               <dd className="mt-1 break-words font-medium">
                 {ev.categories.join(", ") || "none"}
               </dd>
             </div>
+            {ev.analysis_pipeline?.steps?.length ? (
+              <div className="md:col-span-2">
+                <dt className="text-muted-foreground">Analysis steps</dt>
+                <dd className="mt-1 break-words font-medium">
+                  {ev.analysis_pipeline.steps.join(", ")}
+                </dd>
+              </div>
+            ) : null}
           </dl>
         </div>
       )}
     </article>
+  );
+}
+
+function PromptGuardCheckPanel({
+  onEvent,
+}: {
+  onEvent: (event: GuardEvent) => void;
+}) {
+  const [text, setText] = useState("");
+  const [direction, setDirection] = useState<"request" | "response">(
+    "request",
+  );
+  const [persistMetadata, setPersistMetadata] = useState(true);
+  const [checking, setChecking] = useState(false);
+  const [lastResult, setLastResult] = useState<GuardEvent | null>(null);
+
+  const canSubmit = text.trim().length > 0 && !checking;
+
+  const runCheck = async () => {
+    const value = text.trim();
+    if (!value) return;
+    setChecking(true);
+    try {
+      const response = await TelemetryApi.checkPromptGuard({
+        text: value,
+        direction,
+        source: "dashboard_manual_check",
+        surface: "local_dashboard",
+        persist: persistMetadata,
+      });
+      const normalized = normalizeGuardEvent(response.guard_event);
+      if (!normalized) {
+        throw new Error("Prompt Guard returned an unreadable event.");
+      }
+      setLastResult(normalized);
+      if (response.persisted) {
+        onEvent(normalized);
+      }
+      setText("");
+
+      if (response.storage_error) {
+        toast.error("Prompt Guard checked, but history was not saved", {
+          description: response.storage_error,
+        });
+      } else if (normalized.action === "deny") {
+        toast.error("Prompt Guard recommends blocking this text", {
+          description: "Raw text was checked locally and was not stored.",
+        });
+      } else if (normalized.action === "redact") {
+        toast.info("Prompt Guard found a safety signal", {
+          description: "Raw text was checked locally and was not stored.",
+        });
+      } else {
+        toast.success("Prompt Guard checked this text locally", {
+          description: "No configured prompt-injection signal was found.",
+        });
+      }
+    } catch (error) {
+      toast.error("Prompt Guard check failed", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "The Local Control Plane did not return a valid response.",
+      });
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <section className="rounded-lg border bg-card/70 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">
+            Check text with local Prompt Guard
+          </h3>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Paste a prompt or model output to run the real local guard engine.
+            Raw text is sent only to this device's Local Control Plane for the
+            check and is not stored in history.
+          </p>
+        </div>
+        <span className="inline-flex w-fit items-center rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-800 dark:text-emerald-200">
+          Local engine
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="space-y-3">
+          <textarea
+            aria-label="Text to check with Prompt Guard"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            placeholder="Paste a prompt, tool output, or model response to check locally..."
+            className="min-h-32 w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm leading-6 outline-none ring-primary/20 transition placeholder:text-muted-foreground/70 focus:ring-2"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDirection("request")}
+              className={`h-9 rounded-md border px-3 text-sm font-medium transition ${
+                direction === "request"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "hover:bg-muted"
+              }`}
+            >
+              Prompt before AI app
+            </button>
+            <button
+              type="button"
+              onClick={() => setDirection("response")}
+              className={`h-9 rounded-md border px-3 text-sm font-medium transition ${
+                direction === "response"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "hover:bg-muted"
+              }`}
+            >
+              AI output
+            </button>
+            <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={persistMetadata}
+                onChange={(event) => setPersistMetadata(event.target.checked)}
+                className="h-4 w-4 rounded border-border"
+              />
+              Keep metadata in timeline
+            </label>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-lg border bg-background/70 p-3">
+          <button
+            type="button"
+            onClick={runCheck}
+            disabled={!canSubmit}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {checking ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            Check with Prompt Guard
+          </button>
+          <div className="rounded-md border border-dashed p-3 text-xs leading-5 text-muted-foreground">
+            Timeline history stores categories, rule IDs, action, severity,
+            source, counts, and text length. It does not store the raw prompt or
+            raw response.
+          </div>
+          {lastResult && (
+            <div className="rounded-md border bg-card p-3 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">Latest check</span>
+                <StatusChip ev={lastResult} />
+              </div>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                {guardUserMessage(lastResult)}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BrowserConnectorInstallPanel() {
+  return (
+    <section className="rounded-lg border bg-card/70 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">
+            Connect real browser AI apps
+          </h3>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Use the browser connector to observe prompt submissions from
+            ChatGPT, Claude, DeepSeek, Gemini, and Manus web sessions. Chrome
+            and Edge use the same WebExtension core. Safari must be packaged as
+            a Safari Web Extension app with Xcode.
+          </p>
+        </div>
+        <span className="inline-flex w-fit items-center rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-1 text-xs font-medium text-sky-800 dark:text-sky-200">
+          User-approved install
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        {BROWSER_CONNECTOR_OPTIONS.map((option) => (
+          <div
+            key={option.id}
+            className="rounded-lg border bg-background/70 p-4"
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              {option.id === "safari" ? (
+                <Store className="h-4 w-4 text-primary" />
+              ) : (
+                <Globe className="h-4 w-4 text-primary" />
+              )}
+              {option.label}
+            </div>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {option.install}
+            </p>
+            <div className="mt-3 rounded-md border border-dashed p-2 text-xs leading-5 text-muted-foreground">
+              Package: {option.packagePath}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm leading-6 text-amber-950 dark:text-amber-100">
+        Browsers do not allow silent extension installation from a local
+        dashboard. Pollek can build the package and show the correct install
+        path, but the user or enterprise browser policy must approve
+        installation.
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link
+          to="/setup?category=safety"
+          className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          <Download className="h-4 w-4" />
+          Open setup guidance
+        </Link>
+        <Link
+          to="/activity?category=safety"
+          className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+        >
+          <ArrowRight className="h-4 w-4" />
+          Watch connector activity
+        </Link>
+      </div>
+    </section>
   );
 }
 
@@ -473,7 +788,7 @@ function EmptyState({
           ? "Pollek is checking stored incidents before listening for new ones."
           : unavailable || streamStatus === "disconnected"
             ? "Restart or update the Local Control Plane, then make sure the AI app is using a guarded prompt/output path."
-            : "This usually means nothing risky was observed, or the AI app is not routed through Prompt Guard yet."}
+            : "This usually means nothing risky was observed, or the AI app is not routed through Prompt Guard yet. Use the local check above to verify the guard engine now."}
       </p>
       {!loading && (
         <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -526,6 +841,12 @@ export function GuardIncidentFeed() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [feedStatus, setFeedStatus] = useState<FeedStatus>("loading");
   const [streamStatus, setStreamStatus] = useState<StreamStatus>("connecting");
+
+  const addCheckedEvent = (event: GuardEvent) => {
+    setFeedStatus("ready");
+    setEvents((current) => mergeGuardEvents(current, [event]));
+    setSelectedId(eventKey(event));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -582,122 +903,153 @@ export function GuardIncidentFeed() {
   }, [events, selectedId]);
 
   if (events.length === 0) {
-    return <EmptyState feedStatus={feedStatus} streamStatus={streamStatus} />;
+    return (
+      <div className="space-y-4">
+        <PromptGuardCheckPanel onEvent={addCheckedEvent} />
+        <BrowserConnectorInstallPanel />
+        <EmptyState feedStatus={feedStatus} streamStatus={streamStatus} />
+      </div>
+    );
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(260px,0.75fr)_minmax(0,1.2fr)_minmax(240px,0.7fr)]">
-      <section className="rounded-lg border bg-card/60">
-        <div className="border-b p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-semibold">Incident timeline</h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Stored history plus live Prompt Guard events.
+    <div className="space-y-4">
+      <PromptGuardCheckPanel onEvent={addCheckedEvent} />
+      <BrowserConnectorInstallPanel />
+      <div className="grid gap-4 xl:grid-cols-[minmax(260px,0.75fr)_minmax(0,1.2fr)_minmax(240px,0.7fr)]">
+        <section className="rounded-lg border bg-card/60">
+          <div className="border-b p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold">Incident timeline</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Stored history plus live Prompt Guard events.
+                </p>
+              </div>
+              <StreamBadge status={streamStatus} />
+            </div>
+          </div>
+          <div className="max-h-[42rem] space-y-2 overflow-auto p-3">
+            {events.map((event) => {
+              const active = selected && eventKey(selected) === eventKey(event);
+              return (
+                <button
+                  key={eventKey(event)}
+                  type="button"
+                  onClick={() => setSelectedId(eventKey(event))}
+                  className={`w-full cursor-pointer rounded-lg border p-3 text-left transition ${
+                    active
+                      ? "border-primary bg-primary/10"
+                      : "bg-background/70 hover:bg-muted/60"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">
+                        {guardActionHeadline(event)}
+                      </div>
+                      <div className="mt-1 truncate text-xs text-muted-foreground">
+                        {event.agent_id || "Local AI app"} -{" "}
+                        {formatDateTime(event.ts)}
+                      </div>
+                    </div>
+                    <StatusChip ev={event} />
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                    {guardUserMessage(event)}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="min-w-0">
+          {selected ? <GuardIncidentCard ev={selected} /> : null}
+        </section>
+
+        <aside className="space-y-3">
+          <section className="rounded-lg border bg-card/60 p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Info className="h-4 w-4 text-primary" />
+              What this means
+            </div>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Pollek records prompt and output safety events so you can see what
+              happened, which AI app was involved, and whether data was only
+              watched, redacted, or blocked.
+            </p>
+          </section>
+
+          <section className="rounded-lg border bg-card/60 p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <LockKeyhole className="h-4 w-4 text-primary" />
+              Control paths
+            </div>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Blocking and redaction require the AI app to use a guarded path.
+              Observation can still help you adjust the AI app's own permissions
+              when local blocking is not available.
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <Link
+                to="/protect?intent=enable_prompt_guard"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Enable Prompt Guard
+              </Link>
+              <Link
+                to="/setup?category=safety"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+              >
+                <Wrench className="h-4 w-4" />
+                Check setup
+              </Link>
+              <Link
+                to="/activity?category=safety"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+              >
+                <ArrowRight className="h-4 w-4" />
+                Open activity
+              </Link>
+            </div>
+          </section>
+
+          <section className="rounded-lg border bg-card/60 p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              Real app capture
+            </div>
+            <div className="mt-3 space-y-3 text-sm leading-6 text-muted-foreground">
+              <p>
+                Browser connector: ChatGPT, Claude, DeepSeek, Gemini, and
+                Manus web prompts.
+              </p>
+              <p>
+                Hooks and wrappers: Codex, Claude Code, SDK agents, and MCP
+                tools can send checks into this same timeline.
+              </p>
+              <p>
+                OS observe: processes, files, folders, commands, and network
+                metadata. It does not expose encrypted prompt bodies by itself.
               </p>
             </div>
-            <StreamBadge status={streamStatus} />
-          </div>
-        </div>
-        <div className="max-h-[42rem] space-y-2 overflow-auto p-3">
-          {events.map((event) => {
-            const active = selected && eventKey(selected) === eventKey(event);
-            return (
-              <button
-                key={eventKey(event)}
-                type="button"
-                onClick={() => setSelectedId(eventKey(event))}
-                className={`w-full rounded-lg border p-3 text-left transition ${
-                  active
-                    ? "border-primary bg-primary/10"
-                    : "bg-background/70 hover:bg-muted/60"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold">
-                      {guardActionHeadline(event)}
-                    </div>
-                    <div className="mt-1 truncate text-xs text-muted-foreground">
-                      {event.agent_id || "Local AI app"} -{" "}
-                      {formatDateTime(event.ts)}
-                    </div>
-                  </div>
-                  <StatusChip ev={event} />
-                </div>
-                <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                  {guardUserMessage(event)}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+          </section>
 
-      <section className="min-w-0">
-        {selected ? <GuardIncidentCard ev={selected} /> : null}
-      </section>
-
-      <aside className="space-y-3">
-        <section className="rounded-lg border bg-card/60 p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Info className="h-4 w-4 text-primary" />
-            What this means
-          </div>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Pollek records prompt and output safety events so you can see what
-            happened, which AI app was involved, and whether data was only
-            watched, redacted, or blocked.
-          </p>
-        </section>
-
-        <section className="rounded-lg border bg-card/60 p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <LockKeyhole className="h-4 w-4 text-primary" />
-            Control paths
-          </div>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Blocking and redaction require the AI app to use a guarded path.
-            Observation can still help you adjust the AI app's own permissions
-            when local blocking is not available.
-          </p>
-          <div className="mt-3 flex flex-col gap-2">
-            <Link
-              to="/protect?intent=enable_prompt_guard"
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              <ShieldCheck className="h-4 w-4" />
-              Enable Prompt Guard
-            </Link>
-            <Link
-              to="/setup?category=safety"
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
-            >
-              <Wrench className="h-4 w-4" />
-              Check setup
-            </Link>
-            <Link
-              to="/activity?category=safety"
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
-            >
-              <ArrowRight className="h-4 w-4" />
-              Open activity
-            </Link>
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-950 dark:text-amber-100">
-          <div className="flex items-center gap-2 font-semibold">
-            <AlertTriangle className="h-4 w-4" />
-            Setup reminder
-          </div>
-          <p className="mt-2 leading-6">
-            If this page stays empty while you test an AI app, connect that app
-            through Prompt Guard, a local proxy, or the app's supported safety
-            settings.
-          </p>
-        </section>
-      </aside>
+          <section className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-950 dark:text-amber-100">
+            <div className="flex items-center gap-2 font-semibold">
+              <AlertTriangle className="h-4 w-4" />
+              Setup reminder
+            </div>
+            <p className="mt-2 leading-6">
+              If this page stays empty while you test an AI app, connect that
+              app through Prompt Guard, a browser extension, a CLI hook, an SDK
+              wrapper, or the app's supported safety settings.
+            </p>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }

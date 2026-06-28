@@ -1,40 +1,29 @@
-import { Bell, Search, Moon, Sun, Languages, Menu } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Bell, Search, Moon, Sun, Languages, Menu, Monitor } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ModeSwitcher } from "./ModeSwitcher";
+import { useTheme } from "../../context/ThemeContext";
 
 export function Header({
   toggleMobileMenu,
+  onOpenCommandPalette,
 }: {
   toggleMobileMenu?: () => void;
+  onOpenCommandPalette?: () => void;
 }) {
   const { i18n } = useTranslation();
-  const [isDark, setIsDark] = useState(true);
-
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [isDark]);
-
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        document.getElementById("global-search-input")?.focus();
-      }
-    };
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
-  }, []);
+  const { theme, resolvedTheme, cycleTheme } = useTheme();
 
   const toggleLanguage = () => {
     const nextLang = i18n.language === "en" ? "th" : "en";
     i18n.changeLanguage(nextLang);
     localStorage.setItem("i18nextLng", nextLang);
   };
+  const themeLabel =
+    theme === "system"
+      ? `System (${resolvedTheme})`
+      : theme === "dark"
+        ? "Dark"
+        : "Light";
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card/50 px-4 md:px-6 backdrop-blur-xl shrink-0">
@@ -54,7 +43,11 @@ export function Header({
             id="global-search-input"
             type="search"
             placeholder="Search resources, policies, or agents... (Ctrl K)"
-            className="h-9 w-full rounded-md border bg-background pl-9 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+            readOnly
+            onFocus={onOpenCommandPalette}
+            onClick={onOpenCommandPalette}
+            aria-label="Open command palette"
+            className="h-9 w-full cursor-pointer rounded-md border bg-background pl-9 pr-16 text-sm outline-none transition-all hover:border-primary/60 focus:border-primary focus:ring-1 focus:ring-primary"
           />
           <kbd className="pointer-events-none absolute right-2.5 top-2.5 hidden h-4 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex text-muted-foreground">
             Ctrl K
@@ -72,11 +65,18 @@ export function Header({
           <span className="uppercase">{i18n.language}</span>
         </button>
         <button
-          onClick={() => setIsDark(!isDark)}
-          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          onClick={cycleTheme}
+          aria-label={`Change theme. Current theme: ${themeLabel}`}
+          title={`Theme: ${themeLabel}`}
           className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
-          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          {theme === "system" ? (
+            <Monitor className="h-5 w-5" />
+          ) : resolvedTheme === "dark" ? (
+            <Sun className="h-5 w-5" />
+          ) : (
+            <Moon className="h-5 w-5" />
+          )}
         </button>
         <button
           aria-label="Notifications"
