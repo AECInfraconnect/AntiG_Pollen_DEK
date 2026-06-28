@@ -309,7 +309,10 @@ mod tests {
 
     impl TestEnv {
         fn new(name: &str) -> Self {
-            let guard = TEST_ENV_LOCK.lock().unwrap();
+            let guard = match TEST_ENV_LOCK.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => poisoned.into_inner(),
+            };
             let tmp =
                 std::env::temp_dir().join(format!("spooler_test_{}_{}", std::process::id(), name));
             let old_data_dir = std::env::var("DEK_DATA_DIR").ok();
