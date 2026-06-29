@@ -1605,12 +1605,18 @@ mod tests {
             .iter()
             .find(|candidate| {
                 candidate.matched_signature_id.as_deref() == Some("gemini_pro_antigravity")
-            })
-            .expect("parent candidate");
+            });
         let child = candidates
             .iter()
-            .find(|candidate| candidate.canonical_service_id == "google_ai_studio")
-            .expect("child candidate");
+            .find(|candidate| candidate.canonical_service_id == "google_ai_studio");
+
+        let (parent, child) = match (parent, child) {
+            (Some(parent), Some(child)) => (parent, child),
+            _ => {
+                assert!(false, "parent and child candidates should exist");
+                return;
+            }
+        };
 
         assert_eq!(child.duplicate_policy, DuplicatePolicy::ChildSurface);
         assert_eq!(
