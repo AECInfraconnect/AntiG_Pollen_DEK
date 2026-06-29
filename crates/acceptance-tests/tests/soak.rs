@@ -11,7 +11,7 @@ use anyhow::{Context, Result};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::{Duration, Instant};
-use sysinfo::{Pid, System};
+use sysinfo::{Pid, ProcessesToUpdate, System};
 use tokio::process::{Child, Command};
 use tokio::time::sleep;
 
@@ -159,7 +159,7 @@ async fn soak_harness() -> Result<()> {
 
     let core_pid = core.1.context("dek-core pid not found")?;
     let mut sys = System::new_all();
-    sys.refresh_processes();
+    sys.refresh_processes(ProcessesToUpdate::All, true);
     let initial_rss = sys
         .process(Pid::from_u32(core_pid))
         .map(|p| p.memory())
@@ -234,7 +234,7 @@ async fn soak_harness() -> Result<()> {
     );
     anyhow::ensure!(err_rate < 0.10, "Error rate must be < 10%");
 
-    sys.refresh_processes();
+    sys.refresh_processes(ProcessesToUpdate::All, true);
     let final_rss = sys
         .process(Pid::from_u32(core_pid))
         .map(|p| p.memory())
