@@ -1608,12 +1608,17 @@ mod tests {
             .iter()
             .find(|candidate| candidate.canonical_service_id == "google_ai_studio");
 
-        let (parent, child) = match (parent, child) {
-            (Some(parent), Some(child)) => (parent, child),
-            _ => {
-                assert!(false, "parent and child candidates should exist");
-                return;
-            }
+        if parent.is_none() || child.is_none() {
+            assert!(parent.is_some(), "parent candidate should exist");
+            assert!(child.is_some(), "child candidate should exist");
+            return;
+        }
+
+        let Some(parent) = parent else {
+            return;
+        };
+        let Some(child) = child else {
+            return;
         };
 
         assert_eq!(child.duplicate_policy, DuplicatePolicy::ChildSurface);
