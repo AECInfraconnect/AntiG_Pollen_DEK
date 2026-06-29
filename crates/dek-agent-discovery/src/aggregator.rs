@@ -1601,11 +1601,9 @@ mod tests {
             ],
         );
 
-        let parent = candidates
-            .iter()
-            .find(|candidate| {
-                candidate.matched_signature_id.as_deref() == Some("gemini_pro_antigravity")
-            });
+        let parent = candidates.iter().find(|candidate| {
+            candidate.matched_signature_id.as_deref() == Some("gemini_pro_antigravity")
+        });
         let child = candidates
             .iter()
             .find(|candidate| candidate.canonical_service_id == "google_ai_studio");
