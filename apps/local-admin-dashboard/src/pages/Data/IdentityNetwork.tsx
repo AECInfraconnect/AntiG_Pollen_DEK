@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { UserCircle, Network, Activity, Info } from "lucide-react";
+import { UserCircle, Network, Activity, Trash } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { RegistryApi, TelemetryApi } from "../../services/api";
 import type {
@@ -11,6 +11,7 @@ import { MasterDetailLayout } from "../../components/master-detail/MasterDetailL
 import { EntityCard } from "../../components/master-detail/EntityCard";
 import { DetailPane } from "../../components/master-detail/DetailPane";
 import { EmptyState } from "../../components/master-detail/EmptyState";
+import { Collapsible } from "../../components/ui/Collapsible";
 import { formatDisplayValue } from "../../lib/displayValue";
 
 function SummaryMetric({
@@ -141,6 +142,17 @@ export function IdentityNetwork() {
       return p;
     });
 
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this identity?")) {
+      await RegistryApi.deleteEntity(id);
+      loadData();
+      setParams((p) => {
+        p.delete("selected");
+        return p;
+      });
+    }
+  };
+
   return (
     <div className="p-6 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
@@ -213,6 +225,14 @@ export function IdentityNetwork() {
                   : `${e.entity_type} identity from ${e.external_ids?.[0]?.provider ?? "registry"} is ready for relationship and policy targeting.`
               }
               icon={UserCircle}
+              actions={[
+                {
+                  label: "Delete",
+                  danger: true,
+                  icon: Trash,
+                  onClick: () => handleDelete(e.entity_id),
+                },
+              ]}
               status={isGoverned ? "ok" : e.is_observed ? "degraded" : "idle"}
               statusLabel={
                 isGoverned ? "Governed" : e.is_observed ? "Observed" : "Unmanaged"
@@ -327,12 +347,11 @@ export function IdentityNetwork() {
                       </div>
 
                       <div>
-                        <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
-                          <Info className="h-4 w-4" /> Raw Data
-                        </h4>
-                        <pre className="text-[10px] font-mono bg-muted/50 p-4 rounded-lg overflow-x-auto border">
-                          {JSON.stringify(e, null, 2)}
-                        </pre>
+                        <Collapsible title="Raw Data">
+                          <pre className="text-[10px] font-mono bg-transparent p-0 rounded-none overflow-x-auto border-0">
+                            {JSON.stringify(e, null, 2)}
+                          </pre>
+                        </Collapsible>
                       </div>
                     </div>
                   ),

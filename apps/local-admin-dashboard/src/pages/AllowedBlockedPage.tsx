@@ -26,6 +26,9 @@ import type { UiStatus } from "../lib/status";
 import { useMode } from "../context/ModeContext";
 import { isAdvanceMode } from "../lib/modes";
 import { cn } from "@/lib/utils";
+import { useConfirm } from "../components/ui/ConfirmDialog";
+import { toast } from "sonner";
+import { Collapsible } from "../components/ui";
 
 const toneClass: Record<string, string> = {
   success: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700",
@@ -264,6 +267,31 @@ function RuleRecordFrame({
     ? (row.policy.targets?.agent_ids?.length ?? 0) +
       (row.policy.targets?.resource_ids?.length ?? 0)
     : 0;
+  const { confirm } = useConfirm();
+
+  const handleDelete = async () => {
+    if (!row.policy?.policy_id) return;
+    if (
+      !(await confirm({
+        title: "Delete Policy",
+        description: `Are you sure you want to delete this policy? This cannot be undone.`,
+        confirmText: "Delete",
+        cancelText: "Cancel",
+      }))
+    ) {
+      return;
+    }
+    try {
+      await PolicyApi.delete(row.policy.policy_id);
+      toast.success("Policy deleted successfully");
+      // Trigger reload by mutating a global state or letting the parent handle it
+      // since this is just a UI update for the demo we'll emit a window event
+      window.dispatchEvent(new CustomEvent("refresh-policies"));
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete policy");
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -299,6 +327,17 @@ function RuleRecordFrame({
               <span className="h-1.5 w-1.5 rounded-full bg-primary" />
               Record Summary
             </h3>
+            {row.policy && (
+              <div className="mb-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/10 px-2.5 text-[11px] font-medium text-red-600 hover:bg-red-500/20"
+                >
+                  Delete Rule
+                </button>
+              </div>
+            )}
             <div className="space-y-2 text-sm">
               <div className="border-b border-border/40 pb-2">
                 <div className="text-xs text-muted-foreground">Group</div>
@@ -470,9 +509,11 @@ function RuleDetail({
                   id: "technical",
                   label: "Technical Details",
                   content: (
-                    <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
-                      {JSON.stringify(row.policy, null, 2)}
-                    </pre>
+                    <Collapsible title="Policy JSON">
+                      <pre className="overflow-auto rounded-none border-0 bg-transparent p-0 text-[11px]">
+                        {JSON.stringify(row.policy, null, 2)}
+                      </pre>
+                    </Collapsible>
                   ),
                 },
               ]
@@ -569,17 +610,19 @@ function RuleDetail({
         },
         ...(showTechnicalDetails
           ? [
-              {
-                id: "technical",
-                label: "Technical Details",
-                content: (
-                  <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
-                    {JSON.stringify(row.preset, null, 2)}
-                  </pre>
-                ),
-              },
-            ]
-          : []),
+                {
+                  id: "technical",
+                  label: "Technical Details",
+                  content: (
+                    <Collapsible title="Snapshot JSON">
+                      <pre className="overflow-auto rounded-none border-0 bg-transparent p-0 text-[11px]">
+                        {JSON.stringify(row.preset, null, 2)}
+                      </pre>
+                    </Collapsible>
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
     </RuleRecordFrame>
@@ -598,7 +641,8 @@ export function AllowedBlockedPage() {
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const selectedId = searchParams.get("selected") ?? undefined;
 
-  useEffect(() => {
+  const fetchData = () => {
+    setLoading(true);
     Promise.all([
       PolicyApi.list().catch(() => [] as PolicyDraft[]),
       CapabilityApi.getSnapshotV2("desktop_simple").catch(() => null),
@@ -608,6 +652,13 @@ export function AllowedBlockedPage() {
         setSnapshot(capabilitySnapshot);
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
+    const handleRefresh = () => fetchData();
+    window.addEventListener("refresh-policies", handleRefresh);
+    return () => window.removeEventListener("refresh-policies", handleRefresh);
   }, []);
 
   const activePolicies = useMemo(

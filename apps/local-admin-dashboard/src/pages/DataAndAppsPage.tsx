@@ -26,6 +26,9 @@ import type { UiStatus } from "../lib/status";
 import { useMode } from "../context/ModeContext";
 import { isAdvanceMode } from "../lib/modes";
 import { cn } from "@/lib/utils";
+import { useConfirm } from "../components/ui/ConfirmDialog";
+import { toast } from "sonner";
+import { Collapsible } from "../components/ui";
 
 type Tab =
   | "files"
@@ -245,13 +248,45 @@ function DataCard({ row, selected }: { row: DataAppRow; selected: boolean }) {
 function DataDetail({
   row,
   showTechnicalDetails,
+  onRefresh,
 }: {
   row: DataAppRow;
   showTechnicalDetails: boolean;
+  onRefresh: () => void;
 }) {
   const Icon = tabs.find((tab) => tab.id === row.tab)?.icon ?? Database;
   const status = rowStatus(row);
   const statusLabel = rowStatusLabel(row);
+  const { confirm } = useConfirm();
+
+  const handleDelete = async () => {
+    if (
+      !(await confirm({
+        title: "Delete Record",
+        description: `Are you sure you want to delete ${row.title}? This cannot be undone.`,
+        confirmText: "Delete",
+        cancelText: "Cancel",
+      }))
+    ) {
+      return;
+    }
+
+    try {
+      if (row.kind === "tool") {
+        await RegistryApi.deleteTool((row.raw as Tool).tool_id);
+      } else if (row.kind === "resource") {
+        await RegistryApi.deleteResource((row.raw as Resource).resource_id);
+      } else {
+        toast.error("Cannot delete observed items directly.");
+        return;
+      }
+      toast.success("Successfully deleted record");
+      onRefresh();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete record");
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -313,6 +348,11 @@ function DataDetail({
             subtitle="Plain-language context, activity links, rules, and technical details for this record."
             status={status}
             statusLabel={statusLabel}
+            actions={
+              (row.kind === "tool" || row.kind === "resource")
+                ? [{ label: "Delete", danger: true, onClick: handleDelete }]
+                : undefined
+            }
             tabs={[
         {
           id: "overview",
@@ -395,9 +435,11 @@ function DataDetail({
                 id: "technical",
                 label: "Technical Details",
                 content: (
-                  <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
-                    {JSON.stringify(row.raw ?? row, null, 2)}
-                  </pre>
+                  <Collapsible title="Raw Data">
+                    <pre className="overflow-auto rounded-none border-0 bg-transparent p-0 text-[11px]">
+                      {JSON.stringify(row.raw ?? row, null, 2)}
+                    </pre>
+                  </Collapsible>
                 ),
               },
             ]
@@ -458,7 +500,7 @@ export function DataAndAppsPage() {
   const [search, setSearch] = useState("");
   const selectedId = searchParams.get("selected") ?? undefined;
 
-  useEffect(() => {
+  const fetchItems = () => {
     void RegistryApi.listResources()
       .then(setResources)
       .catch(() => setResources([]));
@@ -475,6 +517,10 @@ export function DataAndAppsPage() {
         setToolInventory(data.items ?? data.tools ?? data ?? []),
       )
       .catch(() => setToolInventory([]));
+  };
+
+  useEffect(() => {
+    fetchItems();
   }, []);
 
   const rows = useMemo<DataAppRow[]>(() => {
@@ -664,6 +710,12 @@ export function DataAndAppsPage() {
             key={row.id}
             row={row}
             showTechnicalDetails={showTechnicalDetails}
+            onRefresh={() => {
+              const next = new URLSearchParams(searchParams);
+              next.delete("selected");
+              setSearchParams(next, { replace: true });
+              fetchItems();
+            }}
           />
         )}
       />

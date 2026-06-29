@@ -50,6 +50,7 @@ import { findAgentReferenceIntel } from "../lib/entityReferenceIntel";
 import type { UiStatus } from "../lib/status";
 import { useMode } from "../context/ModeContext";
 import { isAdvanceMode } from "../lib/modes";
+import { Collapsible } from "../components/ui";
 import { cn } from "@/lib/utils";
 
 type Filters = {
@@ -717,10 +718,11 @@ function ActivityDetail({
                     </dl>
                   </div>
                 </div>
-
-                <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
-                  {JSON.stringify(item.advanced ?? {}, null, 2)}
-                </pre>
+                <Collapsible title="Advanced Data">
+                  <pre className="overflow-auto rounded-none border-0 bg-transparent p-0 text-[11px]">
+                    {JSON.stringify(item.advanced ?? {}, null, 2)}
+                  </pre>
+                </Collapsible>
               </div>
             ),
           },

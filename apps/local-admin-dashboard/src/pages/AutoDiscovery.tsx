@@ -1,6 +1,6 @@
 import { useConfirm } from "../components/ui/ConfirmDialog";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Search,
   ShieldAlert,
@@ -36,6 +36,7 @@ import { ReferenceIntelGuide } from "../components/reference/ReferenceIntelGuide
 import { ContextualHelp } from "../components/help/ContextualHelp";
 import { useMode } from "../context/ModeContext";
 import { isAdvanceMode } from "../lib/modes";
+import { Collapsible } from "../components/ui";
 
 const DEEP_SCAN_SOURCES = [
   "process",
@@ -165,6 +166,8 @@ export function AutoDiscovery() {
   const [observeResult, setObserveResult] =
     useState<LocalObserveRefreshResponse | null>(null);
   const [scans, setScans] = useState<DiscoveryScanJob[]>([]);
+  const [scanFilter, setScanFilter] = useState<string>("latest");
+  const scanTriggered = useRef(false);
   const [capabilityInventories, setCapabilityInventories] = useState<
     Record<string, DiscoveryCapabilityInventory>
   >({});
@@ -287,6 +290,11 @@ export function AutoDiscovery() {
   useEffect(() => {
     void fetchCandidates();
     void fetchScans();
+
+    if (!scanTriggered.current) {
+      scanTriggered.current = true;
+      void triggerScan();
+    }
   }, []);
 
   useEffect(() => {
@@ -520,6 +528,15 @@ export function AutoDiscovery() {
       if (filter === "registered") return c.status === "registered";
       if (filter === "pending") return c.status !== "registered";
       return true;
+    })
+    .filter((c) => {
+      if (scanFilter === "all") return true;
+      const cScanId = scanIdForCandidate(c);
+      if (scanFilter === "latest") {
+        const latestScanId = scans[0]?.scan_id || scanJob?.scan_id;
+        return cScanId === latestScanId || (!latestScanId && !cScanId);
+      }
+      return cScanId === scanFilter;
     })
     .filter((c) => {
       const query = searchQuery.trim().toLowerCase();
@@ -868,20 +885,38 @@ export function AutoDiscovery() {
         detailBackLabel="Back to all discovered AI apps"
         toolbar={
           <div className="flex flex-col gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              {(["all", "pending", "registered"] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                    filter === f
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
+            <div className="flex flex-col md:flex-row md:items-center gap-2 justify-between">
+              <div className="flex items-center gap-2">
+                {(["all", "pending", "registered"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                      filter === f
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Scan:</span>
+                <select
+                  value={scanFilter}
+                  onChange={(e) => setScanFilter(e.target.value)}
+                  className="rounded-md border bg-background px-3 py-1 text-xs outline-none focus:ring-1 focus:ring-primary"
                 >
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
-                </button>
-              ))}
+                  <option value="latest">Latest Scan</option>
+                  <option value="all">All Scans</option>
+                  {scans.map((scan) => (
+                    <option key={scan.scan_id} value={scan.scan_id}>
+                      {new Date(scan.started_at || scan.finished_at || 0).toLocaleString()} • {scan.status}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -1364,15 +1399,19 @@ export function AutoDiscovery() {
                     Raw evidence details and system telemetry used to identify
                     this candidate.
                   </p>
-                  <pre className="text-[10px] font-mono bg-muted/50 p-4 rounded-lg overflow-x-auto border">
-                    {JSON.stringify(c.evidence, null, 2)}
-                  </pre>
+                  <Collapsible title="Raw Evidence JSON">
+                    <pre className="text-[10px] font-mono bg-transparent p-0 rounded-none overflow-x-auto border-0">
+                      {JSON.stringify(c.evidence, null, 2)}
+                    </pre>
+                  </Collapsible>
                   <h4 className="font-medium mt-4 mb-2 flex items-center gap-2 text-sm">
                     <Info className="h-4 w-4" /> Full JSON payload
                   </h4>
-                  <pre className="text-[10px] font-mono bg-muted/50 p-4 rounded-lg overflow-x-auto border">
-                    {JSON.stringify(c, null, 2)}
-                  </pre>
+                  <Collapsible title="Full JSON Payload">
+                    <pre className="text-[10px] font-mono bg-transparent p-0 rounded-none overflow-x-auto border-0">
+                      {JSON.stringify(c, null, 2)}
+                    </pre>
+                  </Collapsible>
                 </div>
               ),
             },
