@@ -229,6 +229,33 @@ fn token_matches(token: &str, text: &str) -> bool {
     !token.is_empty() && text.contains(&token)
 }
 
+fn is_known_non_ai_support_process(process_name: &str, exe_path: &str, cmdline: &str) -> bool {
+    let name = process_name.trim().to_ascii_lowercase();
+    let exe = exe_path.to_ascii_lowercase();
+    let cmd = cmdline.to_ascii_lowercase();
+    let joined = format!("{name} {exe} {cmd}");
+
+    const EXACT_PROCESS_NAMES: &[&str] = &[
+        "supportassistagent.exe",
+        "dell.supportassistagent.exe",
+        "useroobebroker.exe",
+    ];
+    if EXACT_PROCESS_NAMES.iter().any(|known| name == *known) {
+        return true;
+    }
+
+    const SUPPORT_PATH_MARKERS: &[(&str, &[&str])] = &[
+        ("supportassist", &["dell", "supportassist"]),
+        ("useroobebroker", &["windows", "system32"]),
+    ];
+    SUPPORT_PATH_MARKERS
+        .iter()
+        .any(|(process_marker, path_markers)| {
+            name.contains(process_marker)
+                && path_markers.iter().all(|marker| joined.contains(marker))
+        })
+}
+
 pub fn fingerprint_process_v2(
     facts: &ProcessFacts,
     sigs: &[AgentSignatureV2],
@@ -246,6 +273,17 @@ pub fn fingerprint_process_v2_with_hints(
     let pname = facts.process_name.to_lowercase();
     let exe = facts.exe_path.replace('\\', "/").to_lowercase();
     let cmd = facts.cmdline.to_lowercase();
+
+    if is_known_non_ai_support_process(&pname, &exe, &cmd) {
+        return ResolvedAgent {
+            confidence: 0.0,
+            display_name: None,
+            vendor: None,
+            matched_signature_id: None,
+            inferred_type: InferredAgentType::UnknownAiProcess,
+            capability_tags: vec![],
+        };
+    }
 
     let mut best = ResolvedAgent {
         confidence: 0.0,
@@ -402,5 +440,34 @@ mod tests {
         let r = fingerprint_process_v2_with_hints(&facts, &[], &[], Some(&hints));
         assert_eq!(r.confidence, 0.0);
         assert_eq!(r.display_name, None);
+    }
+
+    #[test]
+    fn known_support_processes_do_not_become_ai_candidates() {
+        for (process_name, exe_path) in [
+            (
+                "SupportAssistAgent.exe",
+                "C:/Program Files/Dell/SupportAssistAgent.exe",
+            ),
+            (
+                "UserOOBEBroker.exe",
+                "C:/Windows/System32/UserOOBEBroker.exe",
+            ),
+        ] {
+            let facts = ProcessFacts {
+                process_name,
+                exe_path,
+                cmdline: process_name,
+            };
+            let hints = AiProcessHints {
+                require_match: true,
+                name_tokens: vec!["agent".into(), "auto".into()],
+                cmd_tokens: vec!["agent".into()],
+                deny_tokens: vec![],
+            };
+            let r = fingerprint_process_v2_with_hints(&facts, &[], &[], Some(&hints));
+            assert_eq!(r.confidence, 0.0, "{process_name} must be ignored");
+            assert_eq!(r.display_name, None);
+        }
     }
 }

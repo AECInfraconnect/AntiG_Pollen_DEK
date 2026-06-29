@@ -253,15 +253,44 @@ export function CostLedger() {
       }
       for (const candidate of candidates) {
         const displayName = candidate.display_name || candidate.candidate_id;
+        const extended = candidate as typeof candidate & {
+          matched_signature_id?: string;
+        };
         names.set(candidate.candidate_id, {
           name: displayName,
           kind: candidate.inferred_agent_type,
         });
+        for (const key of [
+          candidate.canonical_service_id,
+          candidate.surface_group_id,
+          extended.matched_signature_id,
+          candidate.labels?.canonical_service_id,
+          candidate.labels?.surface_group_id,
+        ]) {
+          if (key) {
+            names.set(key, {
+              name: displayName,
+              kind: candidate.inferred_agent_type,
+            });
+          }
+        }
         const suggestedAgentId = candidate.suggested_registration?.agent_id;
         if (suggestedAgentId) {
           names.set(suggestedAgentId, {
             name: displayName,
             kind: candidate.inferred_agent_type,
+          });
+        }
+      }
+      for (const event of events.items ?? []) {
+        const resolved =
+          (event.shadow_candidate_id &&
+            names.get(event.shadow_candidate_id)?.name) ||
+          (event.agent_type && names.get(event.agent_type)?.name);
+        if (event.agent_id && resolved) {
+          names.set(event.agent_id, {
+            name: resolved,
+            kind: event.agent_type ?? undefined,
           });
         }
       }

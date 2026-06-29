@@ -44,9 +44,16 @@ import type {
 } from "../features/user-activity/types";
 import {
   LocalObserveApi,
+  RegistryApi,
+  UsageApi,
   type LocalObserveRefreshResponse,
 } from "../services/api";
 import { findAgentReferenceIntel } from "../lib/entityReferenceIntel";
+import {
+  addUsageEventAgentAliases,
+  buildAgentNameMap,
+  resolveActivityAgentNames,
+} from "../lib/agentNameResolver";
 import type { UiStatus } from "../lib/status";
 import { useMode } from "../context/ModeContext";
 import { isAdvanceMode } from "../lib/modes";
@@ -879,9 +886,16 @@ export function AiActivityPage() {
 
   const load = useCallback(() => {
     setLoading(true);
-    UserActivityApi.list({ limit: 300 })
-      .then((response) => {
-        setItems(response.items ?? []);
+    Promise.all([
+      UserActivityApi.list({ limit: 300 }),
+      RegistryApi.listAgents().catch(() => []),
+      RegistryApi.listDiscoveryCandidates().catch(() => []),
+      UsageApi.getEvents({ limit: 300 }).catch(() => ({ items: [] })),
+    ])
+      .then(([response, agents, candidates, usageEvents]) => {
+        const names = buildAgentNameMap(agents, candidates);
+        addUsageEventAgentAliases(names, usageEvents.items ?? []);
+        setItems(resolveActivityAgentNames(response.items ?? [], names));
         setDataSource(response.source ?? "local-control-plane-read-model");
         setError(null);
       })
@@ -1119,7 +1133,19 @@ export function AiActivityPage() {
             />
           </section>
 
-          <section className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
+          <Collapsible
+            defaultExpanded={false}
+            className="border-emerald-500/20 bg-emerald-500/10"
+            contentClassName="border-emerald-500/20 bg-background/70 p-4"
+            title={
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>Prompt Guard and private data safety</span>
+                <span className="rounded-full border border-emerald-500/25 bg-background/70 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-200">
+                  {summary.safety} safety / {summary.redacted} redacted
+                </span>
+              </div>
+            }
+          >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div className="flex items-start gap-3">
                 <div className="rounded-lg bg-emerald-500/15 p-2 text-emerald-700">
@@ -1178,7 +1204,7 @@ export function AiActivityPage() {
               </div>
               <GuardIncidentFeed />
             </div>
-          </section>
+          </Collapsible>
 
           <section className="rounded-lg border bg-card/60 p-4">
             <div className="grid gap-3 lg:grid-cols-[1.5fr_0.9fr_0.9fr_0.9fr]">

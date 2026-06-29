@@ -34,6 +34,7 @@ import {
 } from "../features/user-activity/userActivityModel";
 import type { UserCapabilityItem } from "../features/user-activity/types";
 import { cn } from "@/lib/utils";
+import { Collapsible } from "../components/ui";
 
 type DemoTarget = "host" | "windows" | "linux" | "macos";
 type DemoProfile = "ready" | "observe_only" | "needs_setup";
@@ -423,17 +424,24 @@ export function SetupCapabilitiesPage() {
         </div>
       </section>
 
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold">
-            What Pollek can see on this device
-          </h3>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-            This is the practical observe map for the current computer. It
-            separates what works now from what needs OS permission, an app
-            setting, a connector, or a plugin.
-          </p>
-        </div>
+      <Collapsible
+        title={
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>What Pollek can see on this device</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              {ready + partial} watchable / {needsSetup} need setup
+            </span>
+          </div>
+        }
+        defaultExpanded={false}
+        className="rounded-lg bg-card/60"
+        contentClassName="space-y-3"
+      >
+        <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+          This is the practical observe map for the current computer. It
+          separates what works now from what needs OS permission, an app
+          setting, a connector, or a plugin.
+        </p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {setupSurfaces.map((surface) => (
             <SetupSurfaceCard
@@ -445,7 +453,7 @@ export function SetupCapabilitiesPage() {
             />
           ))}
         </div>
-      </section>
+      </Collapsible>
 
       <section className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

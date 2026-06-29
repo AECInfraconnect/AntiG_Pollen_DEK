@@ -66,6 +66,26 @@ function agentStatus(agent: AiAgent) {
   };
 }
 
+function friendlyAgentType(type?: string) {
+  const normalized = (type ?? "").toLowerCase();
+  const compact = normalized.replace(/[^a-z0-9]+/g, "");
+  if (
+    normalized === "open_ai_agent" ||
+    normalized === "openai_agent" ||
+    compact === "openaiagent"
+  ) {
+    return "OpenAI agent";
+  }
+  if (normalized === "cli_agent") return "CLI agent";
+  if (normalized === "desktop_agent") return "Desktop agent";
+  if (normalized === "browser_agent") return "Browser agent";
+  if (normalized === "web_ai_app" || normalized === "web_a_i_app") {
+    return "Web AI app";
+  }
+  if (!normalized || normalized === "unknown") return "Unknown type";
+  return labelize(type);
+}
+
 function eventsForAgent(agent: AiAgent, activity: UserFriendlyActivityEvent[]) {
   const agentName = agent.name.toLowerCase();
   return activity.filter(
@@ -80,13 +100,16 @@ function AgentCard({
   activity,
   selected,
   onDelete,
+  expanded,
+  onExpandedChange,
 }: {
   agent: AiAgent;
   activity: UserFriendlyActivityEvent[];
   selected: boolean;
   onDelete: () => void;
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const status = agentStatus(agent);
   const StatusIcon = status.icon;
   const events = eventsForAgent(agent, activity);
@@ -135,7 +158,7 @@ function AgentCard({
             <div className="min-w-0">
               <h3 className="truncate text-sm font-semibold">{agent.name}</h3>
               <p className="mt-1 truncate text-xs text-muted-foreground">
-                {labelize(agent.agent_type)} /{" "}
+                {friendlyAgentType(agent.agent_type)} /{" "}
                 {agent.vendor ?? "Unknown vendor"}
               </p>
             </div>
@@ -154,7 +177,7 @@ function AgentCard({
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
-                  setExpanded((current) => !current);
+                  onExpandedChange(!expanded);
                 }}
                 className="inline-flex h-7 items-center gap-1 rounded-md border bg-background px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
                 aria-expanded={expanded}
@@ -277,6 +300,9 @@ export function MyAiAppsPage() {
   const [activity, setActivity] = useState<UserFriendlyActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(
+    () => new Set(),
+  );
   const selectedId = searchParams.get("selected") ?? undefined;
 
   const load = useCallback(() => {
@@ -423,6 +449,11 @@ export function MyAiAppsPage() {
         loading={loading && agents.length === 0}
         masterLayout="grid"
         masterListClassName="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"
+        itemClassName={(agent) =>
+          expandedCards.has(agent.agent_id)
+            ? "lg:col-span-2 2xl:col-span-3"
+            : undefined
+        }
         detailBackLabel="Back to all AI apps"
         emptyState={
           <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
@@ -434,6 +465,15 @@ export function MyAiAppsPage() {
             agent={agent}
             activity={activity}
             selected={selected}
+            expanded={expandedCards.has(agent.agent_id)}
+            onExpandedChange={(expanded) => {
+              setExpandedCards((current) => {
+                const next = new Set(current);
+                if (expanded) next.add(agent.agent_id);
+                else next.delete(agent.agent_id);
+                return next;
+              });
+            }}
             onDelete={() => {
               void deleteAgent(agent);
             }}

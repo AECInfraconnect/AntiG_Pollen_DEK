@@ -16,6 +16,7 @@ export function MasterDetailLayout<T>({
   masterLayout = "list",
   masterListClassName,
   detailBackLabel = "Back to all records",
+  itemClassName,
 }: {
   items: T[];
   selectedId?: string;
@@ -30,6 +31,7 @@ export function MasterDetailLayout<T>({
   masterLayout?: "list" | "grid";
   masterListClassName?: string;
   detailBackLabel?: string;
+  itemClassName?: (item: T, selected: boolean) => string | undefined;
 }) {
   const selected = selectedId
     ? items.find((i) => idSelector(i) === selectedId)
@@ -86,6 +88,7 @@ export function MasterDetailLayout<T>({
         {items.map((item, index) => {
           const id = idSelector(item);
           const prevItem = index > 0 ? items[index - 1] : null;
+          const extraItemClass = itemClassName?.(item, false);
           const groupHeader = renderGroupHeader
             ? renderGroupHeader(item, index, prevItem)
             : null;
@@ -93,7 +96,7 @@ export function MasterDetailLayout<T>({
           return (
             <div
               key={`${id}-${index}`}
-              className={groupHeader ? "contents" : undefined}
+              className={groupHeader ? "contents" : extraItemClass}
             >
               {groupHeader && (
                 <div className="col-span-full">{groupHeader}</div>
@@ -109,7 +112,10 @@ export function MasterDetailLayout<T>({
                     onSelect(id);
                   }
                 }}
-                className="block h-full w-full cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className={cn(
+                  "block h-full w-full cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                  groupHeader && extraItemClass,
+                )}
               >
                 {renderCard(item, false)}
               </div>

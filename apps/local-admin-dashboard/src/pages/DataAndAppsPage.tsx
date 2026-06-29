@@ -13,13 +13,19 @@ import {
   Terminal,
   Wrench,
 } from "lucide-react";
-import { RegistryApi, TelemetryApi } from "../services/api";
+import { RegistryApi, TelemetryApi, UsageApi } from "../services/api";
 import type { Resource, Tool } from "../services/types";
+import { UserActivityApi } from "../features/user-activity/api";
 import {
   categoryLabel,
   labelize,
 } from "../features/user-activity/userActivityModel";
 import type { UserActivityCategory } from "../features/user-activity/types";
+import {
+  addUsageEventAgentAliases,
+  buildAgentNameMap,
+  resolveActivityAgentNames,
+} from "../lib/agentNameResolver";
 import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayout";
 import { DetailPane } from "../components/master-detail/DetailPane";
 import type { UiStatus } from "../lib/status";
@@ -31,6 +37,7 @@ import { toast } from "sonner";
 import { Collapsible } from "../components/ui";
 
 type Tab =
+  | "all"
   | "files"
   | "web"
   | "email"
@@ -41,6 +48,7 @@ type Tab =
   | "safety";
 
 const tabs: Array<{ id: Tab; label: string; icon: any }> = [
+  { id: "all", label: "All", icon: Database },
   { id: "files", label: "Files & folders", icon: FolderOpen },
   { id: "web", label: "Websites", icon: Globe2 },
   { id: "email", label: "Email & calendar", icon: Mail },
@@ -58,7 +66,12 @@ type DataAppRow = {
   subtitle: string;
   category: UserActivityCategory;
   source: string;
-  kind: "resource" | "tool" | "observed_resource" | "observed_tool";
+  kind:
+    | "resource"
+    | "tool"
+    | "observed_resource"
+    | "observed_tool"
+    | "observed_activity";
   raw?: unknown;
 };
 
@@ -496,7 +509,8 @@ export function DataAndAppsPage() {
   const [tools, setTools] = useState<Tool[]>([]);
   const [resourceInventory, setResourceInventory] = useState<any[]>([]);
   const [toolInventory, setToolInventory] = useState<any[]>([]);
-  const [tab, setTab] = useState<Tab>("files");
+  const [activity, setActivity] = useState<any[]>([]);
+  const [tab, setTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
   const selectedId = searchParams.get("selected") ?? undefined;
 
@@ -517,6 +531,18 @@ export function DataAndAppsPage() {
         setToolInventory(data.items ?? data.tools ?? data ?? []),
       )
       .catch(() => setToolInventory([]));
+    void Promise.all([
+      UserActivityApi.list({ limit: 300 }),
+      RegistryApi.listAgents().catch(() => []),
+      RegistryApi.listDiscoveryCandidates().catch(() => []),
+      UsageApi.getEvents({ limit: 300 }).catch(() => ({ items: [] })),
+    ])
+      .then(([data, agents, candidates, usageEvents]) => {
+        const names = buildAgentNameMap(agents, candidates);
+        addUsageEventAgentAliases(names, usageEvents.items ?? []);
+        setActivity(resolveActivityAgentNames(data.items ?? [], names));
+      })
+      .catch(() => setActivity([]));
   };
 
   useEffect(() => {
@@ -610,17 +636,47 @@ export function DataAndAppsPage() {
         raw: row,
       };
     });
+    const observedActivity = activity
+      .filter((event) =>
+        [
+          "files",
+          "web",
+          "email",
+          "apps",
+          "commands",
+          "ai_models",
+          "tools",
+          "safety",
+          "cost",
+        ].includes(event.category),
+      )
+      .map((event) => {
+        const category = event.category as Tab;
+        const title =
+          event.target_label || event.plain_summary || "Observed AI activity";
+        return {
+          id: `activity:${event.event_id}`,
+          tab: category,
+          title,
+          subtitle: `${event.agent_name} - ${event.result_label}`,
+          category: event.category as UserActivityCategory,
+          source: "activity timeline",
+          kind: "observed_activity" as const,
+          raw: event,
+        };
+      });
 
     return [
       ...fromResources,
       ...fromTools,
       ...observedResources,
       ...observedTools,
+      ...observedActivity,
     ];
-  }, [resourceInventory, resources, toolInventory, tools]);
+  }, [activity, resourceInventory, resources, toolInventory, tools]);
 
   const filtered = rows.filter((row) => {
-    const matchesTab = row.tab === tab;
+    const matchesTab = tab === "all" || row.tab === tab;
     const query = search.trim().toLowerCase();
     const matchesSearch =
       !query ||

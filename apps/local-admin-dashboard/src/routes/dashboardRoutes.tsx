@@ -127,6 +127,12 @@ export const dashboardRoutes: DashboardRoute[] = [
     element: redirect("/activity-timeline"),
   },
   { key: "cost-ledger", path: "cost-ledger", element: <CostLedger /> },
+  { key: "cost", path: "cost", element: redirect("/cost-ledger") },
+  {
+    key: "activity-log",
+    path: "activity-log",
+    element: redirect("/activity"),
+  },
 
   { key: "bundles", path: "bundles", element: <Bundles /> },
   { key: "discovery", path: "discovery", element: <AutoDiscovery /> },

@@ -72,19 +72,37 @@ export function findReferenceIntel(input: {
       .join(" "),
   );
   const vendor = normalize(input.vendor);
+  const normalizedName = normalize(input.name);
+  const normalizedRuntime = normalize(input.runtimeName);
 
-  return REFERENCES.filter((reference) => {
+  return REFERENCES.map((reference) => {
     if (!reference.entityKinds.includes(input.entityKind)) return false;
-    const keywordMatch = reference.keywords.some((keyword) =>
-      haystack.includes(normalize(keyword)),
-    );
+    let score = 0;
+    for (const keyword of reference.keywords) {
+      const normalizedKeyword = normalize(keyword);
+      if (!normalizedKeyword || !haystack.includes(normalizedKeyword)) continue;
+      const specificKeyword = normalizedKeyword !== vendor;
+      score += specificKeyword ? 20 + normalizedKeyword.length : 3;
+      if (normalizedName.includes(normalizedKeyword)) score += 20;
+      if (normalizedRuntime.includes(normalizedKeyword)) score += 10;
+    }
+    const title = normalize(reference.title);
+    if (title && (normalizedName.includes(title) || haystack.includes(title))) {
+      score += 50;
+    }
     const vendorMatch =
       vendor &&
       reference.vendorKeywords?.some((keyword) =>
         vendor.includes(normalize(keyword)),
       );
-    return keywordMatch || vendorMatch;
-  });
+    if (vendorMatch) score += 2;
+    return score > 0 ? { reference, score } : false;
+  })
+    .filter((entry): entry is { reference: ReferenceIntel; score: number } =>
+      Boolean(entry),
+    )
+    .sort((left, right) => right.score - left.score)
+    .map((entry) => entry.reference);
 }
 
 export function findAgentReferenceIntel(input: {
