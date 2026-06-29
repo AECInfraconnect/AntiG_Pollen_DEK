@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pollek.ai/schemas/detection-rule.schema.json",
+  "title": "Pollek Detection Rule",
+  "type": "object",
+  "required": ["id", "name", "severity", "confidence", "maturity", "maps", "detect", "response"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^POLLEK-DET-[0-9]{4}$" },
+    "name": { "type": "string", "minLength": 4 },
+    "severity": { "enum": ["info", "low", "medium", "high", "critical"] },
+    "confidence": { "enum": ["low", "medium", "high"] },
+    "maturity": { "enum": ["experimental", "beta", "stable"] },
+    "enabled": { "type": "boolean", "default": true },
+    "maps": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Coverage proof. owasp_agentic is required; at least one of atlas/attack is required.",
+      "required": ["owasp_agentic"],
+      "anyOf": [
+        { "required": ["atlas"] },
+        { "required": ["attack"] }
+      ],
+      "properties": {
+        "owasp_llm": { "type": "array", "items": { "type": "string" } },
+        "owasp_agentic": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "atlas": { "type": "array", "items": { "type": "string" } },
+        "attack": { "type": "array", "items": { "type": "string" } },
+        "nist_rmf": { "type": "array", "items": { "enum": ["Govern", "Map", "Measure", "Manage"] } }
+      }
+    },
+    "detect": {
+      "type": "object",
+      "required": ["type", "steps"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["signature", "heuristic", "sequence", "anomaly"] },
+        "window": { "type": "string", "pattern": "^[0-9]+[smh]$" },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "activity": { "type": "string" },
+              "action": { "type": "string" },
+              "resource_classification": { "type": "string" },
+              "provenance_taint": { "type": "string" },
+              "path_matches": { "type": "array", "items": { "type": "string" } },
+              "host_reputation": { "type": "array", "items": { "type": "string" } },
+              "negate_allowlist": { "type": "boolean" },
+              "min_count": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "enum": ["sequence", "anomaly"] } } },
+          "then": { "required": ["window"] }
+        }
+      ]
+    },
+    "response": {
+      "type": "object",
+      "required": ["default", "observe_only_fallback", "user_message"],
+      "additionalProperties": false,
+      "properties": {
+        "default": { "enum": ["observe", "warn", "ask", "block", "redact", "isolate"] },
+        "enforce_if_capable": { "enum": ["observe", "warn", "ask", "block", "redact", "isolate"] },
+        "observe_only_fallback": { "const": true },
+        "user_message": { "type": "string", "minLength": 8 }
+      }
+    },
+    "tuning": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "baseline_learning_days": { "type": "integer", "minimum": 0 },
+        "suppress_if": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "agent_id_in": { "type": "string" },
+              "host_in": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+id: POLLEK-DET-0003
+name: Action taken right after reading untrusted web/email content (possible indirect prompt injection)
+severity: critical
+confidence: medium
+maturity: beta
+maps:
+  owasp_llm: [LLM01]
+  owasp_agentic: [agent-goal-hijack, agent-behavior-hijacking]
+  atlas: [llm-prompt-injection-indirect]
+  attack: [T1059]
+  nist_rmf: [Map, Measure, Manage]
+detect:
+  type: sequence
+  window: 180s
+  steps:
+    - activity: WebVisit
+      provenance_taint: any
+    - action: execute
+      negate_allowlist: true
+response:
+  default: ask
+  enforce_if_capable: block
+  observe_only_fallback: true
+  user_message: "An AI app read a web page or email, then tried to run an action. The content may have instructed it to."
+tuning:
+  baseline_learning_days: 7

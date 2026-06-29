@@ -1,0 +1,42 @@
+# .github/workflows/detection-content.yml
+# Gate: detection rules must validate, pass the coverage-map gate, and the
+# engine tests must be green before any pack can ship.
+name: detection-content
+
+on:
+  pull_request:
+    paths:
+      - "contracts/detections/**"
+      - "crates/dek-detection/**"
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (pinned MSRV)
+        uses: dtolnay/rust-toolchain@1.85.0
+
+      - name: Schema-validate every rule
+        run: |
+          pipx install check-jsonschema
+          for f in contracts/detections/packs/*/POLLEK-DET-*.yaml; do
+            check-jsonschema --schemafile contracts/detections/schema/detection-rule.schema.json "$f"
+          done
+
+      - name: Engine tests + coverage gate
+        run: cargo test --locked -p dek-detection
+
+      - name: Verify coverage.yaml is up to date
+        working-directory: crates/dek-detection
+        run: |
+          cargo run --quiet --example gen_coverage -- ../../contracts/detections/packs/core-v1 \
+            > /tmp/coverage.yaml
+          diff -u ../../contracts/detections/coverage.yaml /tmp/coverage.yaml
+
+      - name: Verify manifest hashes
+        run: |
+          cargo test --locked -p dek-detection manifest_integrity_verifies_and_loads

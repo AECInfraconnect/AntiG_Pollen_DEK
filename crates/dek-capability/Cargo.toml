@@ -1,0 +1,19 @@
+[package]
+name = "dek-capability"
+version.workspace = true
+edition.workspace = true
+description = "Pollek capability broker: per-(sensor x OS) probe -> consent -> install -> verify -> rollback state machine with honest enforceability reporting."
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+anyhow.workspace = true
+
+[lints]
+workspace = true

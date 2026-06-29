@@ -97,6 +97,14 @@ export const NAV: NavGroup[] = [
         modes: ALL,
       },
       {
+        id: "observe-coverage",
+        en: "Observe Coverage",
+        th: "Observe Coverage",
+        href: "/observe-coverage",
+        icon: ShieldCheck,
+        modes: ALL,
+      },
+      {
         id: "prompt-guard",
         en: "Prompt Guard",
         th: "Prompt Guard",

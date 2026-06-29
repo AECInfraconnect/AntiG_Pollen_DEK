@@ -715,6 +715,214 @@ const capabilitySnapshot = {
   },
 };
 
+const detectionSensors = [
+  {
+    id: "mcp_proxy",
+    title: "MCP proxy and tool wrapper",
+    os: ["windows", "macos", "linux"],
+    domains: ["tools", "files", "commands"],
+    layer: "application",
+    status: "ready",
+    achieved_level: "enforce",
+    achievable_level: "enforce",
+    deterministic_decision:
+      "This source can contribute enforce decisions. Other evidence sources still cross-check activity so policy does not depend on this source alone.",
+    evidence_sources: ["application", "domain:tools", "domain:files"],
+    missing_requirements: [],
+    remediation: [],
+    can_observe: true,
+    can_enforce: true,
+    requires_admin: false,
+    user_consent_required: true,
+    setup_action: "Route AI tools through the Pollek MCP proxy or wrapper.",
+    reason:
+      "MCP traffic is plaintext at the tool boundary, so Pollek can observe and block before the tool runs.",
+    fallback:
+      "If the agent cannot use MCP, keep OS/process observation and configure the AI app's own permissions.",
+    package_path: null,
+    setup_state: null,
+  },
+  {
+    id: "browser_ai_extension",
+    title: "Browser AI connector",
+    os: ["windows", "macos", "linux"],
+    domains: ["web", "prompts", "uploads", "safety"],
+    layer: "browser",
+    status: "package_available_user_install_required",
+    achieved_level: "none",
+    achievable_level: "observe_only",
+    deterministic_decision:
+      "This source contributes deterministic observe evidence after user approval. If it fails, Pollek keeps deciding from the remaining evidence matrix and lowers confidence/control level.",
+    evidence_sources: ["browser", "domain:web", "domain:prompts"],
+    missing_requirements: [
+      {
+        code: "browser.extension_installed",
+        description: "Pollek browser extension / native messaging host installed",
+      },
+    ],
+    remediation: [
+      {
+        action: "Install the Pollek browser extension",
+        requires_admin: false,
+      },
+    ],
+    can_observe: true,
+    can_enforce: true,
+    requires_admin: false,
+    user_consent_required: true,
+    setup_action:
+      "Build or install the browser connector, then approve it in Chrome, Edge, or Safari.",
+    reason:
+      "Browsers do not permit silent local extension install. User approval or enterprise browser policy is required.",
+    fallback:
+      "Without the extension, Pollek can still observe browser windows, domains, and process metadata.",
+    package_path: "apps/prompt-guard-browser-extension",
+    setup_state: null,
+  },
+  {
+    id: "windows_wfp_driver",
+    title: "Windows WFP network driver",
+    os: ["windows"],
+    domains: ["network", "dns", "egress"],
+    layer: "kernel",
+    status: "signed_driver_required",
+    achieved_level: "none",
+    achievable_level: "observe_only",
+    deterministic_decision:
+      "This source is unavailable on this host. Pollek excludes it from the current decision matrix and uses MCP, gateway, browser, process, local log, or registry evidence when available.",
+    evidence_sources: ["kernel", "domain:network", "unavailable-excluded"],
+    missing_requirements: [
+      {
+        code: "windows.driver_signed",
+        description: "A Microsoft-attested signed kernel driver to enforce",
+      },
+    ],
+    remediation: [
+      {
+        action: "Install the signed Pollek driver build",
+        requires_admin: true,
+      },
+    ],
+    can_observe: false,
+    can_enforce: false,
+    requires_admin: true,
+    user_consent_required: true,
+    setup_action:
+      "Install the signed Pollek WFP service/driver and approve the Windows administrator prompt.",
+    reason:
+      "Windows network blocking requires a running WFP callout/service plus OS approval.",
+    fallback:
+      "Use MCP/HTTP gateway enforcement or observe-only network metadata until WFP is active.",
+    package_path: "crates/dek-windows-wfp/driver",
+    setup_state: null,
+  },
+];
+
+const detectionRules = [
+  {
+    id: "POLLEK-DET-0001",
+    name: "AI agent read secret file",
+    severity: "high",
+    confidence: "high",
+    maturity: "beta",
+    detect_type: "signature",
+    default_response: "ask",
+    enforce_if_capable: "block",
+    observe_only_fallback: true,
+    user_message:
+      "An AI agent read a likely secret file such as .env, SSH keys, AWS credentials, or password databases.",
+    maps: {
+      owasp_llm: ["LLM02"],
+      owasp_agentic: ["Sensitive information disclosure"],
+      attack: ["T1552", "T1552.001"],
+      atlas: [],
+      nist_rmf: ["MEASURE", "MANAGE"],
+    },
+    setup_requirements: [
+      "File/process visibility needs local OS metadata, MCP wrapper, SDK wrapper, or structured agent logs.",
+    ],
+    can_stop_next_time: true,
+    privacy_note:
+      "Detection uses redacted metadata and rule IDs. It does not store raw prompt, response, email body, or file content.",
+  },
+  {
+    id: "POLLEK-DET-0003",
+    name: "Untrusted web content led to an action",
+    severity: "critical",
+    confidence: "medium",
+    maturity: "beta",
+    detect_type: "sequence",
+    default_response: "warn",
+    enforce_if_capable: "block",
+    observe_only_fallback: true,
+    user_message:
+      "An agent consumed untrusted web or email content and soon after executed a command, tool, or other action.",
+    maps: {
+      owasp_llm: ["LLM01"],
+      owasp_agentic: ["Prompt injection"],
+      attack: ["T1059"],
+      atlas: [],
+      nist_rmf: ["GOVERN", "MEASURE"],
+    },
+    setup_requirements: [
+      "Browser or network visibility needs browser connector, HTTP/MCP proxy, WFP, Network Extension, or eBPF.",
+      "Command execution visibility needs terminal wrapper, MCP tool proxy, process audit, or agent SDK hook.",
+    ],
+    can_stop_next_time: true,
+    privacy_note:
+      "Detection uses redacted metadata and rule IDs. It does not store raw prompt, response, email body, or file content.",
+  },
+];
+
+const detectionCoverage = {
+  schema_version: "pollek.detection.coverage.v1",
+  tenant_id: "local",
+  generated_at: now,
+  pack_id: "pollek-core",
+  pack_version: "2026.06.29",
+  manifest_integrity: "verified",
+  rule_count: detectionRules.length,
+  coverage: {
+    schema_version: "pollek.detection.coverage.v1",
+    rule_count: detectionRules.length,
+    frameworks: {
+      owasp_llm: { LLM01: ["POLLEK-DET-0003"], LLM02: ["POLLEK-DET-0001"] },
+      owasp_agentic: {
+        "Prompt injection": ["POLLEK-DET-0003"],
+        "Sensitive information disclosure": ["POLLEK-DET-0001"],
+      },
+      attack: {
+        T1059: ["POLLEK-DET-0003"],
+        T1552: ["POLLEK-DET-0001"],
+      },
+    },
+  },
+  rules: detectionRules,
+  sensors: detectionSensors,
+  research_basis: [
+    {
+      framework: "OWASP Top 10 for LLM Applications",
+      source: "https://genai.owasp.org/llm-top-10/",
+      implementation_use:
+        "Rule mappings for prompt injection, sensitive disclosure, supply chain, excessive agency, and unbounded consumption.",
+    },
+    {
+      framework: "NIST AI RMF / Generative AI Profile",
+      source: "https://doi.org/10.6028/NIST.AI.600-1",
+      implementation_use:
+        "Risk mapping, measurement, governance traceability, and user disclosure for AI activity monitoring.",
+    },
+  ],
+  privacy_guards: [
+    "No raw prompt, response, email body, or file content is stored by detection rules.",
+    "Rules operate on redacted metadata, classifications, hashes, timestamps, and provenance tags.",
+  ],
+  limitations: [
+    "Kernel-level enforcement depends on OS support, signed components, user or admin approval, and warm checks.",
+    "Encrypted HTTPS metadata alone cannot reveal prompt or response bodies.",
+  ],
+};
+
 const usageSummary = {
   schema_version: "ai-usage-summary.v1",
   tenant_id: "local",
@@ -920,6 +1128,34 @@ export async function installMockApi(page: Page) {
   await page.route(
     "**/v1/tenants/local/devices/local/capability-refresh**",
     (route) => json(route, capabilitySnapshot),
+  );
+  await page.route("**/v1/tenants/local/detections/coverage", (route) =>
+    json(route, detectionCoverage),
+  );
+  await page.route("**/v1/tenants/local/detections/sensors", (route) =>
+    json(route, {
+      schema_version: "pollek.observe.sensors.v1",
+      tenant_id: "local",
+      generated_at: now,
+      items: detectionSensors,
+    }),
+  );
+  await page.route(
+    "**/v1/tenants/local/detections/sensors/*/preflight",
+    (route) =>
+      json(route, {
+        schema_version: "pollek.observe.sensor.preflight.v1",
+        tenant_id: "local",
+        checked_at: now,
+      }),
+  );
+  await page.route(
+    "**/v1/tenants/local/detections/sensors/*/consent",
+    (route) => json(route, { status: "accepted" }),
+  );
+  await page.route(
+    "**/v1/tenants/local/detections/sensors/*/install",
+    (route) => json(route, { status: "waiting_for_user_or_os_approval" }),
   );
 
   await page.route("**/v1/tenants/local/registry/agents**", (route) =>

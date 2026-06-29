@@ -1,0 +1,24 @@
+id: POLLEK-DET-0005
+name: AI cost or tool-call loop spike (unbounded consumption)
+severity: medium
+confidence: medium
+maturity: beta
+maps:
+  owasp_llm: [LLM10]
+  owasp_agentic: [resource-overconsumption]
+  atlas: [cost-harvesting]
+  attack: [T1496]
+  nist_rmf: [Measure, Manage]
+detect:
+  type: anomaly
+  window: 60s
+  steps:
+    - activity: LlmApiCall
+      min_count: 50
+response:
+  default: warn
+  enforce_if_capable: ask
+  observe_only_fallback: true
+  user_message: "An AI app is making an unusually high number of calls in a short time. This can run up cost or indicate a loop."
+tuning:
+  baseline_learning_days: 7

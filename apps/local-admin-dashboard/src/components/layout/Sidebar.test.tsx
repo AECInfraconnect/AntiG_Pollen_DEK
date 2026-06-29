@@ -32,6 +32,7 @@ describe("Sidebar Configuration", () => {
       "scan",
       "my-ai-apps",
       "ai-activity",
+      "observe-coverage",
       "prompt-guard",
       "data-apps",
       "cost",

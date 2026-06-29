@@ -31,6 +31,7 @@ import { DataAndAppsPage } from "@/pages/DataAndAppsPage";
 import { HistoryReportsPage } from "@/pages/HistoryReportsPage";
 import { MyAiAppsPage } from "@/pages/MyAiAppsPage";
 import { SetupCapabilitiesPage } from "@/pages/SetupCapabilitiesPage";
+import { DetectionCoveragePage } from "@/pages/DetectionCoveragePage";
 import AgentsV2 from "@/pages/AgentsV2";
 import ToolsResourcesV2 from "@/pages/ToolsResourcesV2";
 import PoliciesV2 from "@/pages/PoliciesV2";
@@ -108,6 +109,11 @@ export const dashboardRoutes: DashboardRoute[] = [
   { key: "simulator", path: "simulator", element: <Simulator /> },
 
   { key: "activity", path: "activity", element: <AiActivityPage /> },
+  {
+    key: "observe-coverage",
+    path: "observe-coverage",
+    element: <DetectionCoveragePage />,
+  },
   {
     key: "activity-timeline",
     path: "activity-timeline",

@@ -1,0 +1,72 @@
+frameworks:
+  atlas:
+    ai-supply-chain-compromise:
+    - POLLEK-DET-0004
+    cost-harvesting:
+    - POLLEK-DET-0005
+    exfiltration-credentials:
+    - POLLEK-DET-0001
+    exfiltration-via-web:
+    - POLLEK-DET-0002
+    llm-prompt-injection-indirect:
+    - POLLEK-DET-0003
+  attack:
+    T1059:
+    - POLLEK-DET-0003
+    T1195:
+    - POLLEK-DET-0004
+    T1195.001:
+    - POLLEK-DET-0004
+    T1496:
+    - POLLEK-DET-0005
+    T1552:
+    - POLLEK-DET-0001
+    T1552.001:
+    - POLLEK-DET-0001
+    T1567:
+    - POLLEK-DET-0002
+  nist_rmf:
+    Govern:
+    - POLLEK-DET-0004
+    Manage:
+    - POLLEK-DET-0001
+    - POLLEK-DET-0002
+    - POLLEK-DET-0003
+    - POLLEK-DET-0004
+    - POLLEK-DET-0005
+    Map:
+    - POLLEK-DET-0003
+    Measure:
+    - POLLEK-DET-0001
+    - POLLEK-DET-0002
+    - POLLEK-DET-0003
+    - POLLEK-DET-0005
+  owasp_agentic:
+    agent-behavior-hijacking:
+    - POLLEK-DET-0003
+    agent-goal-hijack:
+    - POLLEK-DET-0003
+    identity-and-privilege-abuse:
+    - POLLEK-DET-0001
+    resource-overconsumption:
+    - POLLEK-DET-0005
+    sensitive-information-disclosure:
+    - POLLEK-DET-0001
+    - POLLEK-DET-0002
+    supply-chain:
+    - POLLEK-DET-0004
+    tool-misuse:
+    - POLLEK-DET-0002
+  owasp_llm:
+    LLM01:
+    - POLLEK-DET-0003
+    LLM02:
+    - POLLEK-DET-0001
+    - POLLEK-DET-0002
+    LLM03:
+    - POLLEK-DET-0004
+    LLM06:
+    - POLLEK-DET-0002
+    LLM10:
+    - POLLEK-DET-0005
+rule_count: 5

@@ -1,0 +1,21 @@
+[package]
+name = "dek-detection"
+version.workspace = true
+edition.workspace = true
+description = "Pollek detection-as-code engine: load, validate, and evaluate signed detection rule packs."
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_yaml = "0.9"
+serde_json.workspace = true
+sha2 = "0.10"
+
+[dev-dependencies]
+anyhow.workspace = true
+
+[lints]
+workspace = true

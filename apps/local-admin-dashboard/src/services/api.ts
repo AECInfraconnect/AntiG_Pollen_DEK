@@ -95,6 +95,71 @@ export type LocalObserveRefreshResponse = {
   }>;
 };
 
+export type DetectionRuleSummary = {
+  id: string;
+  name: string;
+  severity: string;
+  confidence: string;
+  maturity: string;
+  detect_type: string;
+  default_response: string;
+  enforce_if_capable?: string | null;
+  observe_only_fallback: boolean;
+  user_message: string;
+  maps: Record<string, string[]>;
+  setup_requirements: string[];
+  can_stop_next_time: boolean;
+  privacy_note: string;
+};
+
+export type ObserveSensor = {
+  id: string;
+  title: string;
+  os: string[];
+  domains: string[];
+  layer: string;
+  status: string;
+  achieved_level?: string;
+  achievable_level?: string;
+  deterministic_decision?: string;
+  evidence_sources?: string[];
+  missing_requirements?: Array<Record<string, unknown>>;
+  remediation?: Array<Record<string, unknown>>;
+  can_observe: boolean;
+  can_enforce: boolean;
+  requires_admin: boolean;
+  user_consent_required: boolean;
+  setup_action: string;
+  reason: string;
+  fallback: string;
+  package_path?: string | null;
+  setup_state?: Record<string, unknown> | null;
+};
+
+export type DetectionCoverageResponse = {
+  schema_version: string;
+  tenant_id: string;
+  generated_at: string;
+  pack_id: string;
+  pack_version: string;
+  manifest_integrity: string;
+  rule_count: number;
+  coverage: {
+    schema_version?: string;
+    rule_count: number;
+    frameworks: Record<string, Record<string, string[]>>;
+  };
+  rules: DetectionRuleSummary[];
+  sensors: ObserveSensor[];
+  research_basis: Array<{
+    framework: string;
+    source: string;
+    implementation_use: string;
+  }>;
+  privacy_guards: string[];
+  limitations: string[];
+};
+
 export const LOCAL_CONTROL_PLANE_DEFAULT_ORIGIN = "http://127.0.0.1:43891";
 export const MOCK_CLOUD_DEFAULT_ORIGIN = "https://127.0.0.1:43892";
 
@@ -784,6 +849,52 @@ export class ControlPlaneClient {
     const suffix = query.toString() ? `?${query}` : "";
     return this.fetchApi(`/usage/events${suffix}`);
   }
+
+  async getDetectionCoverage(): Promise<DetectionCoverageResponse> {
+    return this.fetchApi("/detections/coverage");
+  }
+
+  async listObserveSensors(): Promise<{
+    schema_version: string;
+    tenant_id: string;
+    generated_at: string;
+    items: ObserveSensor[];
+  }> {
+    return this.fetchApi("/detections/sensors");
+  }
+
+  async preflightObserveSensor(sensorId: string): Promise<unknown> {
+    return this.fetchApi(`/detections/sensors/${sensorId}/preflight`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  }
+
+  async consentObserveSensor(
+    sensorId: string,
+    accepted = true,
+  ): Promise<unknown> {
+    return this.fetchApi(`/detections/sensors/${sensorId}/consent`, {
+      method: "POST",
+      body: JSON.stringify({
+        accepted,
+        scopes: ["observe_metadata", "local_history"],
+      }),
+    });
+  }
+
+  async requestObserveSensorInstall(
+    sensorId: string,
+    requestedLevel: "observe" | "enforce" = "observe",
+  ): Promise<unknown> {
+    return this.fetchApi(`/detections/sensors/${sensorId}/install`, {
+      method: "POST",
+      body: JSON.stringify({
+        accepted: true,
+        requested_level: requestedLevel,
+      }),
+    });
+  }
 }
 
 // Store the active profile in localStorage to persist across reloads
@@ -940,6 +1051,19 @@ export const LocalObserveApi = {
         body: JSON.stringify(payload ?? { include_estimates: true }),
       },
     ),
+};
+
+export const DetectionApi = {
+  coverage: () => defaultClient.getDetectionCoverage(),
+  sensors: () => defaultClient.listObserveSensors(),
+  preflightSensor: (sensorId: string) =>
+    defaultClient.preflightObserveSensor(sensorId),
+  consentSensor: (sensorId: string, accepted = true) =>
+    defaultClient.consentObserveSensor(sensorId, accepted),
+  requestSensorInstall: (
+    sensorId: string,
+    requestedLevel: "observe" | "enforce" = "observe",
+  ) => defaultClient.requestObserveSensorInstall(sensorId, requestedLevel),
 };
 
 export const PolicyApi = {

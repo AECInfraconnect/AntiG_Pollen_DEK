@@ -1,0 +1,35 @@
+id: POLLEK-DET-0001
+name: AI agent read a secret file
+severity: high
+confidence: high
+maturity: stable
+# maps: owasp_llm / attack use real, stable control IDs. owasp_agentic / atlas
+# values are human-readable coverage slugs — a maintainer maps them to the exact
+# published IDs (ATLAS is a living matrix; confirm against the current version).
+maps:
+  owasp_llm: [LLM02]
+  owasp_agentic: [identity-and-privilege-abuse, sensitive-information-disclosure]
+  atlas: [exfiltration-credentials]
+  attack: [T1552, T1552.001]
+  nist_rmf: [Measure, Manage]
+detect:
+  type: signature
+  steps:
+    - activity: FileRead
+      action: read
+      path_matches:
+        - "**/.env"
+        - "**/.env.*"
+        - "**/id_rsa"
+        - "**/id_ed25519"
+        - "**/.ssh/**"
+        - "**/credentials.json"
+        - "**/*.kdbx"
+        - "**/.aws/credentials"
+response:
+  default: ask
+  enforce_if_capable: block
+  observe_only_fallback: true
+  user_message: "An AI app tried to read a secret file (keys or credentials)."
+tuning:
+  baseline_learning_days: 0

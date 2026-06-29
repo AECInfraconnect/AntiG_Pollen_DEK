@@ -1,0 +1,24 @@
+id: POLLEK-DET-0004
+name: AI agent installed a package or MCP server outside the allowlist
+severity: medium
+confidence: high
+maturity: stable
+maps:
+  owasp_llm: [LLM03]
+  owasp_agentic: [supply-chain]
+  atlas: [ai-supply-chain-compromise]
+  attack: [T1195, T1195.001]
+  nist_rmf: [Govern, Manage]
+detect:
+  type: heuristic
+  steps:
+    - activity: PackageInstall
+      action: install
+      negate_allowlist: true
+response:
+  default: ask
+  enforce_if_capable: block
+  observe_only_fallback: true
+  user_message: "An AI app tried to install software (package or MCP server) that is not on your allowlist."
+tuning:
+  baseline_learning_days: 3

@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "pack_id": "pollek-core",
+  "version": "1.0.0",
+  "created": "2026-06-29T00:00:00Z",
+  "min_engine": "0.1.0",
+  "rules": [
+    {
+      "id": "POLLEK-DET-0001",
+      "file": "POLLEK-DET-0001.yaml",
+      "sha256": "191ff2d2550e5c5509ebbc8e315100fe7573fb231f3f3b7c202dd74c8497f2c9"
+    },
+    {
+      "id": "POLLEK-DET-0002",
+      "file": "POLLEK-DET-0002.yaml",
+      "sha256": "7dd158d2dc9306d80c76934b2a4623e166fb478d5ba6b3e0402d04890f5f3b30"
+    },
+    {
+      "id": "POLLEK-DET-0003",
+      "file": "POLLEK-DET-0003.yaml",
+      "sha256": "b9116e167866bbeb6efdc3dfc87c59c489167e32c6ac69c70fb4fd486b46c30d"
+    },
+    {
+      "id": "POLLEK-DET-0004",
+      "file": "POLLEK-DET-0004.yaml",
+      "sha256": "c4118683bca98c63258175352ba1419e5283ab46d1bb119932a6b30714f7d413"
+    },
+    {
+      "id": "POLLEK-DET-0005",
+      "file": "POLLEK-DET-0005.yaml",
+      "sha256": "15d09fbe0a18ca0dcdff986521bcfe7c67252151ccd689a949709407fcea8bf3"
+    }
+  ],
+  "signature": {
+    "method": "sha256-manifest-ci",
+    "bundle": "not-issued-for-local-dev-pack"
+  }
+}

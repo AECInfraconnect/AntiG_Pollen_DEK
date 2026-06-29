@@ -20,6 +20,12 @@ export const qaRoutes: QaRoute[] = [
   { path: "/scan", name: "Find AI Apps", modes: ALL, seedScan: true },
   { path: "/my-ai-apps", name: "My AI Apps", modes: ALL, seedScan: true },
   { path: "/activity", name: "AI Activity", modes: ALL, seedScan: true },
+  {
+    path: "/observe-coverage",
+    name: "Observe Coverage",
+    modes: ALL,
+    seedScan: true,
+  },
   { path: "/alerts", name: "Prompt Guard", modes: ALL, seedScan: true },
   { path: "/protect", name: "Create Rule", modes: ALL, seedScan: true },
   {

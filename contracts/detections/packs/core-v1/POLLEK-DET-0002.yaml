@@ -1,0 +1,31 @@
+id: POLLEK-DET-0002
+name: Sensitive file read then upload to a new website
+severity: high
+confidence: medium
+maturity: stable
+maps:
+  owasp_llm: [LLM02, LLM06]
+  owasp_agentic: [sensitive-information-disclosure, tool-misuse]
+  atlas: [exfiltration-via-web]
+  attack: [T1567]
+  nist_rmf: [Measure, Manage]
+detect:
+  type: sequence
+  window: 120s
+  steps:
+    - activity: FileRead
+      action: read
+      resource_classification: sensitive
+    - activity: WebUpload
+      action: upload
+      host_reputation: [neutral, suspicious, blocked]
+      negate_allowlist: true
+response:
+  default: ask
+  enforce_if_capable: block
+  observe_only_fallback: true
+  user_message: "An AI app read a sensitive file, then tried to upload to a new website."
+tuning:
+  baseline_learning_days: 7
+  suppress_if:
+    - agent_id_in: learned_allowlist
