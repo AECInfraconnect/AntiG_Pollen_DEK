@@ -8,7 +8,24 @@ model ContractDiscoveryResponse {
   preferred: string;
   minimum_dek_version?: string;
   sunset?: Record<string>;
+  contract_version?: string;
+  compatible_cloud_contracts?: string[];
+  schemas?: Record<string>;
+  interfaces?: Record<ContractInterface>;
   capabilities: string[];
+}
+
+model ContractInterface {
+  schema?: string;
+  direction: "local_to_dashboard" | "local_to_cloud" | "cloud_to_local" | "shared" | "bidirectional";
+  hot_reload?: boolean;
+  requires_spiffe?: boolean;
+  requires_oauth?: boolean;
+  requires_mtls?: boolean;
+  tenant_scoped?: boolean;
+  paths?: string[];
+  controls?: string[];
+  purpose?: string;
 }
 
 @tag("Discovery")

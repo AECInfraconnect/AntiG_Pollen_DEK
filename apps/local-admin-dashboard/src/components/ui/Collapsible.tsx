@@ -20,7 +20,9 @@ export function Collapsible({
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
-    <div className={cn("border rounded-md bg-card/30 overflow-hidden", className)}>
+    <div
+      className={cn("border rounded-md bg-card/30 overflow-hidden", className)}
+    >
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -31,10 +33,15 @@ export function Collapsible({
         ) : (
           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
         )}
-        <span className="flex-1">{title}</span>
+        <div className="min-w-0 flex-1">{title}</div>
       </button>
       {expanded && (
-        <div className={cn("px-4 pb-3 pt-1 border-t bg-background/50", contentClassName)}>
+        <div
+          className={cn(
+            "px-4 pb-3 pt-1 border-t bg-background/50",
+            contentClassName,
+          )}
+        >
           {children}
         </div>
       )}

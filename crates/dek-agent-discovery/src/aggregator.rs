@@ -7,7 +7,204 @@ pub fn aggregate_evidence(
     evidence: Vec<DiscoveryEvidenceV2>,
 ) -> Vec<DiscoveredAgentCandidateV2> {
     let raw = aggregate_by_merge_key(tenant_id, device_id, evidence);
-    coalesce_by_identity(tenant_id, raw)
+    apply_surface_grouping(coalesce_by_identity(tenant_id, raw))
+}
+
+struct CandidateSemanticDefaults {
+    authority_boundary: AuthorityBoundary,
+    entity_role: EntityRole,
+    observe_scope: &'static str,
+    enforce_scope: &'static str,
+}
+
+fn parse_authority_boundary(value: &str) -> AuthorityBoundary {
+    match value {
+        "local_device" => AuthorityBoundary::LocalDevice,
+        "local_browser_profile" => AuthorityBoundary::LocalBrowserProfile,
+        "local_container" => AuthorityBoundary::LocalContainer,
+        "local_network" => AuthorityBoundary::LocalNetwork,
+        "remote_cloud_sandbox" => AuthorityBoundary::RemoteCloudSandbox,
+        "remote_workspace" => AuthorityBoundary::RemoteWorkspace,
+        "remote_model_api" => AuthorityBoundary::RemoteModelApi,
+        "mcp_remote_server" => AuthorityBoundary::McpRemoteServer,
+        _ => AuthorityBoundary::Unknown,
+    }
+}
+
+fn parse_entity_role(value: &str) -> EntityRole {
+    match value {
+        "local_agent_host" => EntityRole::LocalAgentHost,
+        "web_ai_surface" => EntityRole::WebAiSurface,
+        "cloud_agent_runtime" => EntityRole::CloudAgentRuntime,
+        "remote_workspace" => EntityRole::RemoteWorkspace,
+        "model_api_endpoint" => EntityRole::ModelApiEndpoint,
+        "mcp_tool_surface" => EntityRole::McpToolSurface,
+        "browser_profile" => EntityRole::BrowserProfile,
+        "generated_app_preview" => EntityRole::GeneratedAppPreview,
+        "integration_endpoint" => EntityRole::IntegrationEndpoint,
+        _ => EntityRole::Unknown,
+    }
+}
+
+fn parse_duplicate_policy(value: &str) -> DuplicatePolicy {
+    match value {
+        "child_surface" => DuplicatePolicy::ChildSurface,
+        "related_endpoint" => DuplicatePolicy::RelatedEndpoint,
+        "provider_endpoint" => DuplicatePolicy::ProviderEndpoint,
+        "merged_duplicate" => DuplicatePolicy::MergedDuplicate,
+        "needs_human_confirmation" => DuplicatePolicy::NeedsHumanConfirmation,
+        _ => DuplicatePolicy::Standalone,
+    }
+}
+
+fn duplicate_policy_for_collapse(collapse_as: &str) -> DuplicatePolicy {
+    match collapse_as {
+        "child_surface" => DuplicatePolicy::ChildSurface,
+        "remote_tool_surface" | "related_endpoint" => DuplicatePolicy::RelatedEndpoint,
+        "provider_endpoint" => DuplicatePolicy::ProviderEndpoint,
+        "merged_duplicate" => DuplicatePolicy::MergedDuplicate,
+        _ => DuplicatePolicy::ChildSurface,
+    }
+}
+
+fn semantic_defaults_for_agent_type(agent_type: &InferredAgentType) -> CandidateSemanticDefaults {
+    match agent_type {
+        InferredAgentType::DesktopAgent
+        | InferredAgentType::IdeAgent
+        | InferredAgentType::CliAgent
+        | InferredAgentType::AutomationAgent
+        | InferredAgentType::CustomScriptAgent => CandidateSemanticDefaults {
+            authority_boundary: AuthorityBoundary::LocalDevice,
+            entity_role: EntityRole::LocalAgentHost,
+            observe_scope: "local_process_file_network_tool_metadata",
+            enforce_scope: "local_policy_pep_when_installed",
+        },
+        InferredAgentType::BrowserAgent | InferredAgentType::WebAIApp => {
+            CandidateSemanticDefaults {
+                authority_boundary: AuthorityBoundary::LocalBrowserProfile,
+                entity_role: EntityRole::WebAiSurface,
+                observe_scope: "browser_metadata_network_and_prompt_guard_extension",
+                enforce_scope: "browser_extension_or_agent_settings",
+            }
+        }
+        InferredAgentType::McpServer => CandidateSemanticDefaults {
+            authority_boundary: AuthorityBoundary::LocalDevice,
+            entity_role: EntityRole::McpToolSurface,
+            observe_scope: "mcp_config_and_tool_call_metadata",
+            enforce_scope: "mcp_wrapper_or_proxy_when_installed",
+        },
+        InferredAgentType::McpClient => CandidateSemanticDefaults {
+            authority_boundary: AuthorityBoundary::LocalDevice,
+            entity_role: EntityRole::LocalAgentHost,
+            observe_scope: "local_process_and_mcp_client_metadata",
+            enforce_scope: "mcp_client_config_or_agent_settings",
+        },
+        InferredAgentType::LocalModelServer => CandidateSemanticDefaults {
+            authority_boundary: AuthorityBoundary::LocalNetwork,
+            entity_role: EntityRole::ModelApiEndpoint,
+            observe_scope: "local_model_endpoint_metadata",
+            enforce_scope: "local_network_proxy_or_model_server_settings",
+        },
+        InferredAgentType::IdeExtension => CandidateSemanticDefaults {
+            authority_boundary: AuthorityBoundary::LocalDevice,
+            entity_role: EntityRole::IntegrationEndpoint,
+            observe_scope: "ide_extension_metadata_and_declared_capabilities",
+            enforce_scope: "ide_extension_settings_or_local_policy_pep",
+        },
+        InferredAgentType::UnknownAiProcess => CandidateSemanticDefaults {
+            authority_boundary: AuthorityBoundary::Unknown,
+            entity_role: EntityRole::Unknown,
+            observe_scope: "metadata_only_until_confirmed",
+            enforce_scope: "not_enforceable_until_confirmed",
+        },
+    }
+}
+
+fn service_slug(value: &str) -> String {
+    let slug = value
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() {
+                ch.to_ascii_lowercase()
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>()
+        .split('_')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("_");
+    if slug.is_empty() {
+        "unknown".into()
+    } else {
+        slug
+    }
+}
+
+fn default_canonical_service_id(
+    agent_type: &InferredAgentType,
+    matched_signature_id: Option<&str>,
+    display_name: &str,
+    process_hash: Option<&str>,
+) -> String {
+    if let Some(signature_id) = matched_signature_id {
+        return signature_id.to_string();
+    }
+    let prefix = match agent_type {
+        InferredAgentType::WebAIApp | InferredAgentType::BrowserAgent => "web_ai",
+        InferredAgentType::McpServer | InferredAgentType::McpClient => "mcp",
+        InferredAgentType::LocalModelServer => "local_model",
+        InferredAgentType::IdeExtension => "ide_extension",
+        InferredAgentType::UnknownAiProcess => "unknown_ai",
+        _ => "local_agent",
+    };
+    let mut id = format!("{prefix}_{}", service_slug(display_name));
+    if let Some(hash) = process_hash {
+        id.push('_');
+        id.push_str(&hash.chars().take(8).collect::<String>());
+    }
+    id
+}
+
+fn merge_candidate_semantics(
+    existing: &mut DiscoveredAgentCandidateV2,
+    incoming: &DiscoveredAgentCandidateV2,
+) {
+    if existing.authority_boundary == AuthorityBoundary::Unknown
+        && incoming.authority_boundary != AuthorityBoundary::Unknown
+    {
+        existing.authority_boundary = incoming.authority_boundary.clone();
+    }
+    if existing.entity_role == EntityRole::Unknown && incoming.entity_role != EntityRole::Unknown {
+        existing.entity_role = incoming.entity_role.clone();
+    }
+    if existing.duplicate_policy == DuplicatePolicy::Standalone
+        && incoming.duplicate_policy != DuplicatePolicy::Standalone
+    {
+        existing.duplicate_policy = incoming.duplicate_policy.clone();
+    }
+    if existing.control_parent_id.is_none() {
+        existing.control_parent_id = incoming.control_parent_id.clone();
+    }
+    if existing.grouping_reason.is_none() {
+        existing.grouping_reason = incoming.grouping_reason.clone();
+    }
+    if existing.observe_scope == "metadata_only_until_confirmed" {
+        existing.observe_scope = incoming.observe_scope.clone();
+    }
+    if existing.enforce_scope == "not_enforceable_until_confirmed" {
+        existing.enforce_scope = incoming.enforce_scope.clone();
+    }
+    for surface in &incoming.related_surfaces {
+        if !existing
+            .related_surfaces
+            .iter()
+            .any(|existing_surface| existing_surface.service_id == surface.service_id)
+        {
+            existing.related_surfaces.push(surface.clone());
+        }
+    }
 }
 
 fn coalesce_by_identity(
@@ -18,13 +215,7 @@ fn coalesce_by_identity(
     let mut by_key: HashMap<String, DiscoveredAgentCandidateV2> = HashMap::new();
 
     for mut c in raw {
-        let key = crate::identity_key::identity_key(
-            c.matched_signature_id.as_deref(),
-            c.vendor.as_deref(),
-            c.product.as_deref(),
-            c.suggested_registration.process_path_hash.as_deref(),
-            &c.display_name,
-        );
+        let key = candidate_identity_bucket(&c);
         c.candidate_id = crate::identity_key::deterministic_candidate_id(tenant, &key);
         // Also update the target_candidate_id in suggested control bindings
         for cb in &mut c.suggested_control_bindings {
@@ -37,6 +228,7 @@ fn coalesce_by_identity(
                 existing.confidence = existing.confidence.max(c.confidence);
                 existing.risk_score = existing.risk_score.max(c.risk_score);
                 existing.instance_count = existing.instance_count.saturating_add(1);
+                merge_candidate_semantics(existing, &c);
 
                 for _cap in c
                     .suggested_registration
@@ -70,6 +262,158 @@ fn coalesce_by_identity(
         }
     }
     by_key.into_values().collect()
+}
+
+fn candidate_identity_bucket(candidate: &DiscoveredAgentCandidateV2) -> String {
+    if matches!(
+        candidate.authority_boundary,
+        AuthorityBoundary::LocalBrowserProfile
+    ) || matches!(candidate.inferred_agent_type, InferredAgentType::WebAIApp)
+    {
+        if let Some(merge_key) = candidate
+            .evidence
+            .iter()
+            .find_map(|ev| ev.merge_key.as_deref())
+        {
+            return merge_key.to_string();
+        }
+    }
+
+    crate::identity_key::identity_key(
+        candidate.matched_signature_id.as_deref(),
+        candidate.vendor.as_deref(),
+        candidate.product.as_deref(),
+        candidate
+            .suggested_registration
+            .process_path_hash
+            .as_deref(),
+        &candidate.display_name,
+    )
+}
+
+fn apply_surface_grouping(
+    mut candidates: Vec<DiscoveredAgentCandidateV2>,
+) -> Vec<DiscoveredAgentCandidateV2> {
+    let baseline = dek_fingerprint_defs::load_latest_baseline();
+    let mut actions: Vec<(usize, usize, String, DuplicatePolicy, bool)> = Vec::new();
+
+    for rule in &baseline.collapse_rules {
+        let parent_indices = if let Some(parent_sig) = &rule.when_parent_signature_id {
+            candidates
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, candidate)| {
+                    (candidate.matched_signature_id.as_deref() == Some(parent_sig.as_str()))
+                        .then_some(idx)
+                })
+                .collect::<Vec<_>>()
+        } else {
+            candidates
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, candidate)| {
+                    let signature_match = candidate
+                        .matched_signature_id
+                        .as_deref()
+                        .is_some_and(|sig| rule.parent_client_candidates.iter().any(|p| p == sig));
+                    let canonical_match = rule
+                        .parent_client_candidates
+                        .iter()
+                        .any(|p| p == &candidate.canonical_service_id);
+                    (signature_match || canonical_match).then_some(idx)
+                })
+                .collect::<Vec<_>>()
+        };
+
+        if parent_indices.is_empty() {
+            continue;
+        }
+
+        let child_indices = candidates
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, candidate)| {
+                rule.child_service_ids
+                    .iter()
+                    .any(|child| child == &candidate.canonical_service_id)
+                    .then_some(idx)
+            })
+            .collect::<Vec<_>>();
+
+        for parent_idx in parent_indices {
+            for child_idx in &child_indices {
+                if parent_idx == *child_idx {
+                    continue;
+                }
+                actions.push((
+                    parent_idx,
+                    *child_idx,
+                    rule.id.clone(),
+                    duplicate_policy_for_collapse(&rule.collapse_as),
+                    rule.control_parent_only,
+                ));
+            }
+        }
+    }
+
+    for (parent_idx, child_idx, rule_id, duplicate_policy, control_parent_only) in actions {
+        if parent_idx >= candidates.len() || child_idx >= candidates.len() {
+            continue;
+        }
+
+        let parent_id = candidates[parent_idx].candidate_id.clone();
+        let parent_name = candidates[parent_idx].display_name.clone();
+        let evidence_sources = {
+            let mut sources = candidates[child_idx]
+                .evidence
+                .iter()
+                .map(|ev| ev.source.clone())
+                .collect::<Vec<_>>();
+            sources.sort_by_key(|source| format!("{:?}", source));
+            sources.dedup();
+            sources
+        };
+        let surface = RelatedSurfaceRef {
+            service_id: candidates[child_idx].canonical_service_id.clone(),
+            display_name: candidates[child_idx].display_name.clone(),
+            entity_role: candidates[child_idx].entity_role.clone(),
+            authority_boundary: candidates[child_idx].authority_boundary.clone(),
+            evidence_sources,
+            confidence: candidates[child_idx].confidence,
+            control_parent_id: Some(parent_id.clone()),
+            grouping_reason: Some(rule_id.clone()),
+        };
+
+        {
+            let child = &mut candidates[child_idx];
+            child.duplicate_policy = duplicate_policy.clone();
+            child.control_parent_id = Some(parent_id.clone());
+            child.grouping_reason =
+                Some(format!("{}; controlled through {}", rule_id, parent_name));
+            if control_parent_only {
+                child.suggested_control_bindings.clear();
+            }
+            child.labels.insert("control_parent_id".into(), parent_id);
+            child
+                .labels
+                .insert("grouping_rule_id".into(), rule_id.clone());
+            child.labels.insert(
+                "duplicate_policy".into(),
+                format!("{:?}", child.duplicate_policy),
+            );
+        }
+
+        let parent = &mut candidates[parent_idx];
+        if !parent
+            .related_surfaces
+            .iter()
+            .any(|existing| existing.service_id == surface.service_id)
+        {
+            parent.related_surfaces.push(surface);
+        }
+    }
+
+    candidates
 }
 
 fn is_better_name(new: &str, old: &str) -> bool {
@@ -111,6 +455,17 @@ fn aggregate_by_merge_key(
         let mut capability_tags = Vec::new();
         let mut matched_signals = Vec::new();
         let mut status = DiscoveryStatus::Discovered;
+        let mut canonical_service_id: Option<String> = None;
+        let mut surface_group_id: Option<String> = None;
+        let mut authority_boundary: Option<AuthorityBoundary> = None;
+        let mut entity_role: Option<EntityRole> = None;
+        let mut duplicate_policy: Option<DuplicatePolicy> = None;
+        let mut control_parent_id: Option<String> = None;
+        let mut grouping_reason: Option<String> = None;
+        let mut observe_scope: Option<String> = None;
+        let mut enforce_scope: Option<String> = None;
+        let related_surfaces: Vec<RelatedSurfaceRef> = Vec::new();
+        let mut evidence_requires_human_confirmation = false;
 
         let has_confirmed = group.iter().any(|e| {
             e.data
@@ -378,6 +733,58 @@ fn aggregate_by_merge_key(
                                 }
                             }
                         }
+                        if let Some(sig_id) =
+                            ev.data.get("matched_signature_id").and_then(|v| v.as_str())
+                        {
+                            matched_signature_id = Some(sig_id.to_string());
+                        }
+                        if let Some(value) =
+                            ev.data.get("canonical_service_id").and_then(|v| v.as_str())
+                        {
+                            canonical_service_id = Some(value.to_string());
+                        }
+                        if let Some(value) =
+                            ev.data.get("surface_group_id").and_then(|v| v.as_str())
+                        {
+                            surface_group_id = Some(value.to_string());
+                        }
+                        if let Some(value) =
+                            ev.data.get("authority_boundary").and_then(|v| v.as_str())
+                        {
+                            authority_boundary = Some(parse_authority_boundary(value));
+                        }
+                        if let Some(value) = ev.data.get("entity_role").and_then(|v| v.as_str()) {
+                            entity_role = Some(parse_entity_role(value));
+                        }
+                        if let Some(value) =
+                            ev.data.get("duplicate_policy").and_then(|v| v.as_str())
+                        {
+                            duplicate_policy = Some(parse_duplicate_policy(value));
+                        }
+                        if let Some(value) =
+                            ev.data.get("control_parent_id").and_then(|v| v.as_str())
+                        {
+                            control_parent_id = Some(value.to_string());
+                        }
+                        if let Some(value) = ev.data.get("grouping_reason").and_then(|v| v.as_str())
+                        {
+                            grouping_reason = Some(value.to_string());
+                        }
+                        if let Some(value) = ev.data.get("observe_scope").and_then(|v| v.as_str()) {
+                            observe_scope = Some(value.to_string());
+                        }
+                        if let Some(value) = ev.data.get("enforce_scope").and_then(|v| v.as_str()) {
+                            enforce_scope = Some(value.to_string());
+                        }
+                        if matches!(ev.source, EvidenceSource::NetworkSni)
+                            || ev
+                                .data
+                                .get("evidence_strength")
+                                .and_then(|v| v.as_str())
+                                .is_some_and(|v| v == "network_sni_only")
+                        {
+                            evidence_requires_human_confirmation = true;
+                        }
                         let detail = ev
                             .data
                             .get("matched_domain")
@@ -427,6 +834,20 @@ fn aggregate_by_merge_key(
                                     detail: w_sig.domain.clone(),
                                     weight: ev.confidence,
                                 });
+                                if matched_signature_id.is_none() {
+                                    matched_signature_id = Some(w_sig.id.clone());
+                                }
+                                canonical_service_id
+                                    .get_or_insert_with(|| w_sig.canonical_service_id.clone());
+                                surface_group_id
+                                    .get_or_insert_with(|| w_sig.surface_group_id.clone());
+                                authority_boundary.get_or_insert_with(|| {
+                                    parse_authority_boundary(&w_sig.authority_boundary)
+                                });
+                                entity_role
+                                    .get_or_insert_with(|| parse_entity_role(&w_sig.entity_role));
+                                observe_scope.get_or_insert_with(|| w_sig.observe_scope.clone());
+                                enforce_scope.get_or_insert_with(|| w_sig.enforce_scope.clone());
                                 found = true;
                                 break;
                             }
@@ -653,6 +1074,32 @@ fn aggregate_by_merge_key(
         if decision.needs_human {
             status = DiscoveryStatus::PendingApproval;
         }
+        if evidence_requires_human_confirmation {
+            status = DiscoveryStatus::PendingApproval;
+            duplicate_policy = Some(DuplicatePolicy::NeedsHumanConfirmation);
+            grouping_reason.get_or_insert_with(|| {
+                "Network-only evidence must be confirmed before Pollek treats this as a controllable AI app.".into()
+            });
+        }
+
+        let semantic_defaults = semantic_defaults_for_agent_type(&agent_type);
+        let canonical_service_id = canonical_service_id.unwrap_or_else(|| {
+            default_canonical_service_id(
+                &agent_type,
+                matched_signature_id.as_deref(),
+                &name,
+                process_hash.as_deref(),
+            )
+        });
+        let surface_group_id = surface_group_id.unwrap_or_else(|| canonical_service_id.clone());
+        let authority_boundary =
+            authority_boundary.unwrap_or_else(|| semantic_defaults.authority_boundary.clone());
+        let entity_role = entity_role.unwrap_or_else(|| semantic_defaults.entity_role.clone());
+        let duplicate_policy = duplicate_policy.unwrap_or(DuplicatePolicy::Standalone);
+        let observe_scope =
+            observe_scope.unwrap_or_else(|| semantic_defaults.observe_scope.to_string());
+        let enforce_scope =
+            enforce_scope.unwrap_or_else(|| semantic_defaults.enforce_scope.to_string());
 
         let mut control_bindings = Vec::new();
         let cand_id = String::new();
@@ -703,6 +1150,14 @@ fn aggregate_by_merge_key(
             observe_enforce_class_for_candidate(&agent_type).into(),
         );
         labels.insert("suggested_preset".into(), preset_id.to_string());
+        labels.insert("canonical_service_id".into(), canonical_service_id.clone());
+        labels.insert("surface_group_id".into(), surface_group_id.clone());
+        labels.insert(
+            "authority_boundary".into(),
+            format!("{:?}", authority_boundary),
+        );
+        labels.insert("entity_role".into(), format!("{:?}", entity_role));
+        labels.insert("duplicate_policy".into(), format!("{:?}", duplicate_policy));
 
         capability_tags.sort();
         capability_tags.dedup();
@@ -759,6 +1214,16 @@ fn aggregate_by_merge_key(
             tenant_id: tenant_id.to_string(),
             device_id: device_id.to_string(),
             status,
+            canonical_service_id,
+            surface_group_id,
+            authority_boundary,
+            entity_role,
+            duplicate_policy,
+            control_parent_id,
+            grouping_reason,
+            observe_scope,
+            enforce_scope,
+            related_surfaces,
             instance_count: 1,
             matched_signature_id,
             display_name: name.clone(),
@@ -820,15 +1285,27 @@ fn aggregate_by_merge_key(
     let mut final_candidates: std::collections::HashMap<String, DiscoveredAgentCandidateV2> =
         std::collections::HashMap::new();
     for cand in candidates {
-        let key = cand
-            .matched_signature_id
-            .clone()
-            .or_else(|| cand.evidence.first().and_then(|ev| ev.merge_key.clone()))
-            .unwrap_or_else(|| format!("name:{}", cand.display_name.to_lowercase()));
+        let key = if matches!(
+            cand.authority_boundary,
+            AuthorityBoundary::LocalBrowserProfile
+        ) || matches!(cand.inferred_agent_type, InferredAgentType::WebAIApp)
+        {
+            cand.evidence
+                .first()
+                .and_then(|ev| ev.merge_key.clone())
+                .or_else(|| cand.matched_signature_id.clone())
+                .unwrap_or_else(|| format!("name:{}", cand.display_name.to_lowercase()))
+        } else {
+            cand.matched_signature_id
+                .clone()
+                .or_else(|| cand.evidence.first().and_then(|ev| ev.merge_key.clone()))
+                .unwrap_or_else(|| format!("name:{}", cand.display_name.to_lowercase()))
+        };
         if let Some(existing) = final_candidates.get_mut(&key) {
             existing.evidence.extend(cand.evidence.clone());
             existing.confidence = f64::max(existing.confidence, cand.confidence);
             existing.labels.extend(cand.labels.clone());
+            merge_candidate_semantics(existing, &cand);
             existing
                 .discovered_endpoints
                 .extend(cand.discovered_endpoints.clone());
@@ -1071,5 +1548,78 @@ mod tests {
         assert_eq!(ids.len(), 2);
         assert!(names.contains("ChatGPT (Chrome)"));
         assert!(names.contains("ChatGPT (Edge)"));
+    }
+
+    #[test]
+    fn google_ai_studio_is_child_surface_of_antigravity_parent() {
+        let candidates = aggregate_evidence(
+            "local",
+            "device-local",
+            vec![
+                DiscoveryEvidenceV2 {
+                    evidence_id: "ev_antigravity_process".into(),
+                    source: EvidenceSource::ProcessScan,
+                    confidence: 0.95,
+                    observed_at: "2026-06-29T00:00:00Z".into(),
+                    privacy_class: PrivacyClass::InternalMetadata,
+                    redacted: true,
+                    data: serde_json::json!({
+                        "resolved_name": "Gemini Pro in Antigravity",
+                        "vendor": "Google",
+                        "matched_signature_id": "gemini_pro_antigravity",
+                        "capability_tags": ["code.agentic", "tool.use", "llm.call"]
+                    }),
+                    merge_key: Some("process:gemini_pro_antigravity".into()),
+                    source_path_hash: Some("antigravity_hash".into()),
+                    source_path_redacted: Some("<app>/Antigravity".into()),
+                },
+                DiscoveryEvidenceV2 {
+                    evidence_id: "ev_ai_studio_window".into(),
+                    source: EvidenceSource::BrowserWindow,
+                    confidence: 0.85,
+                    observed_at: "2026-06-29T00:00:01Z".into(),
+                    privacy_class: PrivacyClass::InternalMetadata,
+                    redacted: true,
+                    data: serde_json::json!({
+                        "origin": "https://aistudio.google.com",
+                        "name": "Google AI Studio (Chrome)",
+                        "vendor": "Google",
+                        "matched_signature_id": "google_ai_studio_web",
+                        "canonical_service_id": "google_ai_studio",
+                        "surface_group_id": "google_ai",
+                        "entity_role": "web_ai_surface",
+                        "authority_boundary": "local_browser_profile",
+                        "observe_scope": "browser_metadata_network_and_prompt_guard_extension",
+                        "enforce_scope": "browser_extension_or_google_agent_settings",
+                        "capability_tags": ["llm.chat", "net.egress.llm"],
+                        "matched_domain": "aistudio.google.com"
+                    }),
+                    merge_key: Some("webai:google_ai_studio_web:chrome".into()),
+                    source_path_hash: None,
+                    source_path_redacted: Some("chrome.exe".into()),
+                },
+            ],
+        );
+
+        let parent = candidates
+            .iter()
+            .find(|candidate| {
+                candidate.matched_signature_id.as_deref() == Some("gemini_pro_antigravity")
+            })
+            .expect("parent candidate");
+        let child = candidates
+            .iter()
+            .find(|candidate| candidate.canonical_service_id == "google_ai_studio")
+            .expect("child candidate");
+
+        assert_eq!(child.duplicate_policy, DuplicatePolicy::ChildSurface);
+        assert_eq!(
+            child.control_parent_id.as_deref(),
+            Some(parent.candidate_id.as_str())
+        );
+        assert!(parent
+            .related_surfaces
+            .iter()
+            .any(|surface| surface.service_id == "google_ai_studio"));
     }
 }

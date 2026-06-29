@@ -153,10 +153,123 @@ async fn delete_agent(
         .await
         .map_err(ApiError::Internal)?;
     if deleted {
+        cleanup_deleted_agent(&state, &tenant_id, &agent_id).await?;
         Ok((axum::http::StatusCode::NO_CONTENT, Json(json!({}))))
     } else {
         Err(ApiError::NotFound(agent_id))
     }
+}
+
+async fn cleanup_deleted_agent(state: &AppState, tenant_id: &str, agent_id: &str) -> ApiResult<()> {
+    let _ = state
+        .registry_store
+        .delete_agent_inventory(tenant_id, agent_id)
+        .await
+        .map_err(ApiError::Internal)?;
+
+    let mut cleaned_candidate_ids = Vec::new();
+    let candidates = state
+        .registry_store
+        .list_raw(tenant_id, "discovery_candidate")
+        .await
+        .map_err(ApiError::Internal)?;
+
+    for raw in candidates {
+        let Ok(mut candidate) =
+            serde_json::from_value::<dek_agent_discovery::model::DiscoveredAgentCandidateV2>(raw)
+        else {
+            continue;
+        };
+
+        if !candidate_belongs_to_agent(&candidate, agent_id) {
+            continue;
+        }
+
+        cleaned_candidate_ids.push(candidate.candidate_id.clone());
+        candidate.status = dek_agent_discovery::model::DiscoveryStatus::PendingApproval;
+        candidate.labels.remove("registered_agent_id");
+        let value =
+            serde_json::to_value(candidate).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+        state
+            .registry_store
+            .upsert_raw(
+                tenant_id,
+                "discovery_candidate",
+                value
+                    .get("candidate_id")
+                    .and_then(|id| id.as_str())
+                    .unwrap_or(agent_id),
+                &value,
+            )
+            .await
+            .map_err(ApiError::Internal)?;
+    }
+
+    for policy in state
+        .policy_store
+        .list_policies(tenant_id)
+        .await
+        .map_err(ApiError::Internal)?
+    {
+        if policy
+            .targets
+            .agent_ids
+            .iter()
+            .any(|target| target == agent_id)
+        {
+            let _ = state
+                .policy_store
+                .delete_policy(tenant_id, &policy.policy_id)
+                .await
+                .map_err(ApiError::Internal)?;
+        }
+    }
+
+    if !cleaned_candidate_ids.is_empty() {
+        for binding in state
+            .registry_store
+            .list_raw(tenant_id, "agent_binding")
+            .await
+            .map_err(ApiError::Internal)?
+        {
+            let belongs_to_deleted_candidate = binding
+                .get("agent_instance_id")
+                .and_then(|id| id.as_str())
+                .is_some_and(|id| {
+                    cleaned_candidate_ids
+                        .iter()
+                        .any(|candidate_id| candidate_id == id)
+                });
+            let owned_by_deleted_agent = binding
+                .get("owner")
+                .and_then(|id| id.as_str())
+                .is_some_and(|owner| owner == agent_id);
+
+            if belongs_to_deleted_candidate || owned_by_deleted_agent {
+                if let Some(binding_id) = binding.get("binding_id").and_then(|id| id.as_str()) {
+                    let _ = state
+                        .registry_store
+                        .delete_raw(tenant_id, "agent_binding", binding_id)
+                        .await
+                        .map_err(ApiError::Internal)?;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn candidate_belongs_to_agent(
+    candidate: &dek_agent_discovery::model::DiscoveredAgentCandidateV2,
+    agent_id: &str,
+) -> bool {
+    dek_agent_discovery::stable_agent_key(candidate) == agent_id
+        || candidate.suggested_registration.agent_id == agent_id
+        || candidate
+            .labels
+            .get("registered_agent_id")
+            .is_some_and(|id| id == agent_id)
 }
 
 // -----------------------------------------------------------------------------

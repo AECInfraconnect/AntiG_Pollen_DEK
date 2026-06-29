@@ -423,6 +423,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/enrichment/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Start a safe local definition enrichment session for a discovery candidate. */
+        post: operations["DiscoveryApi_startCandidateEnrichment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/ignore": {
         parameters: {
             query?: never;
@@ -485,6 +502,57 @@ export interface paths {
         put?: never;
         /** @description Retrieve and persist canonical capabilities for a discovery candidate. */
         post: operations["DiscoveryApi_retrieveCandidateCapabilities"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/discovery/enrichment/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a discovery enrichment session. */
+        get: operations["DiscoveryApi_getCandidateEnrichment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/discovery/enrichment/{session_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Approve the safe source plan for a discovery enrichment session. */
+        post: operations["DiscoveryApi_approveCandidateEnrichment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/discovery/enrichment/{session_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Persist the learned local discovery profile from an enrichment session. */
+        post: operations["DiscoveryApi_submitCandidateEnrichment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1837,7 +1905,24 @@ export interface components {
             preferred: string;
             minimum_dek_version?: string;
             sunset?: Record<string, never>;
+            contract_version?: string;
+            compatible_cloud_contracts?: string[];
+            schemas?: Record<string, never>;
+            interfaces?: Record<string, never>;
             capabilities: string[];
+        };
+        ContractInterface: {
+            schema?: string;
+            /** @enum {string} */
+            direction: "local_to_dashboard" | "local_to_cloud" | "cloud_to_local" | "shared" | "bidirectional";
+            hot_reload?: boolean;
+            requires_spiffe?: boolean;
+            requires_oauth?: boolean;
+            requires_mtls?: boolean;
+            tenant_scoped?: boolean;
+            paths?: string[];
+            controls?: string[];
+            purpose?: string;
         };
         ControlBindingChangedPayload: {
             agent_id: string;
@@ -1904,21 +1989,57 @@ export interface components {
             evidence_ids: string[];
         };
         DiscoveryCandidate: {
+            schema_version: string;
             candidate_id: string;
             tenant_id: string;
-            surface: string;
-            first_seen_at: string;
-            last_seen_at: string;
-            /** Format: int64 */
-            observation_count: number;
-            inferred_name?: string;
-            inferred_provider?: string;
+            device_id: string;
             status: string;
+            canonical_service_id: string;
+            surface_group_id: string;
+            authority_boundary: string;
+            entity_role: string;
+            duplicate_policy: string;
+            control_parent_id?: string;
+            grouping_reason?: string;
+            observe_scope: string;
+            enforce_scope: string;
+            related_surfaces: components["schemas"]["DiscoveryRelatedSurface"][];
+            /** Format: int32 */
+            instance_count?: number;
+            matched_signature_id?: string;
+            display_name: string;
+            vendor?: string;
+            product?: string;
+            inferred_agent_type: string;
+            /** Format: float */
+            confidence: number;
+            /** Format: int32 */
+            risk_score: number;
+            capability_tags?: string[];
+            matched_signals?: unknown[];
+            first_seen: string;
+            last_seen: string;
+            evidence?: unknown[];
+            discovered_configs?: unknown[];
+            discovered_endpoints?: unknown[];
+            discovered_mcp_servers?: unknown[];
+            suggested_registration?: unknown;
+            suggested_observation_profile?: unknown;
+            suggested_control_bindings?: unknown[];
+            telemetry_plan?: unknown;
+            labels?: Record<string, never>;
             scan_ids?: string[];
             last_scan_id?: string;
         };
         DiscoveryCandidateListResponse: {
-            items: components["schemas"]["DiscoveryCandidate"][];
+            /** @enum {string} */
+            schema_version: "agent-discovery-candidate-list.v1";
+            candidates: components["schemas"]["DiscoveryCandidate"][];
+            items?: components["schemas"]["DiscoveryCandidate"][];
+            /** Format: int64 */
+            next_cursor?: number;
+            /** Format: int64 */
+            total: number;
         };
         DiscoveryCapabilityInventoryResponse: {
             /** @enum {string} */
@@ -1930,6 +2051,41 @@ export interface components {
             retrieval_status: string;
             source: string;
             privacy_note?: string;
+        };
+        DiscoveryEnrichmentApproveRequest: {
+            accepted_sources: string[];
+        };
+        DiscoveryEnrichmentFact: {
+            fact: string;
+            value: string;
+            /** Format: float */
+            confidence: number;
+            source: string;
+        };
+        DiscoveryEnrichmentSession: {
+            /** @enum {string} */
+            schema_version: "pollek.discovery.enrichment_session.v1";
+            session_id: string;
+            tenant_id: string;
+            candidate_id: string;
+            status: string;
+            created_at: string;
+            consent_required: boolean;
+            privacy_guardrails: string[];
+            local_evidence_summary: unknown;
+            source_plan: components["schemas"]["DiscoveryEnrichmentSourcePlan"][];
+            extracted_facts: components["schemas"]["DiscoveryEnrichmentFact"][];
+            definition_candidate: unknown;
+            accepted_sources?: string[];
+            research_result?: unknown;
+            learned_profile_id?: string;
+        };
+        DiscoveryEnrichmentSourcePlan: {
+            source_id: string;
+            label: string;
+            allowed: boolean;
+            network_access: string;
+            safety: string;
         };
         DiscoveryEntityCandidateV1: {
             /** @enum {string} */
@@ -1964,6 +2120,17 @@ export interface components {
             next_cursor?: number;
             /** Format: int64 */
             total: number;
+        };
+        DiscoveryRelatedSurface: {
+            service_id: string;
+            display_name: string;
+            entity_role: string;
+            authority_boundary: string;
+            evidence_sources: string[];
+            /** Format: float */
+            confidence: number;
+            control_parent_id?: string;
+            grouping_reason?: string;
         };
         /** @enum {string} */
         EnforcePlaneState: "enforcing" | "observing" | "degraded" | "failed";
@@ -3536,6 +3703,46 @@ export interface operations {
             };
         };
     };
+    DiscoveryApi_startCandidateEnrichment: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveryEnrichmentSession"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
     DiscoveryApi_ignoreCandidate: {
         parameters: {
             query?: never;
@@ -3661,6 +3868,118 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiscoveryCapabilityInventoryResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    DiscoveryApi_getCandidateEnrichment: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveryEnrichmentSession"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    DiscoveryApi_approveCandidateEnrichment: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiscoveryEnrichmentApproveRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveryEnrichmentSession"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    DiscoveryApi_submitCandidateEnrichment: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveryEnrichmentSession"];
                 };
             };
             /** @description An unexpected error response. */

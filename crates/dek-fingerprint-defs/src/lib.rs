@@ -8,9 +8,9 @@ pub mod verify;
 use model::*;
 
 pub fn embedded_baseline() -> FingerprintDefinition {
-    const BASELINE: &str = include_str!("../data/baseline.v3.json");
+    const BASELINE: &str = include_str!("../data/baseline.v4.json");
     serde_json::from_str(BASELINE).unwrap_or_else(|_| FingerprintDefinition {
-        schema_version: "pollek.def.v3".into(),
+        schema_version: "pollek.def.v4".into(),
         definition_version: 0,
         released_at: "1970-01-01T00:00:00Z".into(),
         min_engine_version: "0.0.0".into(),
@@ -25,6 +25,7 @@ pub fn embedded_baseline() -> FingerprintDefinition {
         browser_processes: vec![],
         ai_process_hints: AiProcessHints::default(),
         cloud_resource_signatures: vec![],
+        collapse_rules: vec![],
     })
 }
 
@@ -55,15 +56,15 @@ pub fn load_latest_baseline() -> FingerprintDefinition {
     // Attempt to load dynamically from bundle
     let bundle_dir = get_data_dir().join("bundles").join("latest");
 
-    let baseline_path = bundle_dir.join("baseline.v3.json");
+    let baseline_path = bundle_dir.join("baseline.v4.json");
     if baseline_path.exists() {
         if let Ok(content) = std::fs::read_to_string(&baseline_path) {
             if let Ok(parsed) = serde_json::from_str::<FingerprintDefinition>(&content) {
-                tracing::info!("Loaded dynamic baseline.v3.json from bundle");
+                tracing::info!("Loaded dynamic baseline.v4.json from bundle");
                 return parsed;
             } else {
                 tracing::warn!(
-                    "Failed to parse dynamic baseline.v3.json, falling back to embedded"
+                    "Failed to parse dynamic baseline.v4.json, falling back to embedded"
                 );
             }
         }
@@ -77,8 +78,10 @@ mod tests {
     #[test]
     fn embedded_baseline_has_browser_ai_definition_sections() -> anyhow::Result<()> {
         let baseline: crate::model::FingerprintDefinition =
-            serde_json::from_str(include_str!("../data/baseline.v3.json"))?;
+            serde_json::from_str(include_str!("../data/baseline.v4.json"))?;
 
+        assert_eq!(baseline.schema_version, "pollek.def.v4");
+        assert!(!baseline.collapse_rules.is_empty());
         assert!(!baseline.browser_processes.is_empty());
         assert!(baseline.browser_processes.iter().any(|browser| browser
             .process_names
@@ -89,6 +92,15 @@ mod tests {
             .web_ai_signatures
             .iter()
             .any(|sig| sig.id == "chatgpt_web" && sig.name == "ChatGPT (Web)"));
+        assert!(baseline
+            .web_ai_signatures
+            .iter()
+            .any(|sig| sig.id == "google_ai_studio_web"
+                && sig.canonical_service_id == "google_ai_studio"
+                && sig
+                    .not_alias_domains
+                    .iter()
+                    .any(|d| d == "gemini.google.com")));
         Ok(())
     }
 }

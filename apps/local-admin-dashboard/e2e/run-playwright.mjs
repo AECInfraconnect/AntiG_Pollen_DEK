@@ -1,13 +1,36 @@
 import { spawn, spawnSync } from 'node:child_process';
+import net from 'node:net';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const externalServer = process.env.DEK_PLAYWRIGHT_EXTERNAL_SERVER === '1';
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? (
-  externalServer ? 'http://127.0.0.1:3000' : 'http://127.0.0.1:5173'
+let baseURL = process.env.PLAYWRIGHT_BASE_URL ?? (
+  externalServer ? 'http://127.0.0.1:3000' : undefined
 );
 
 let vite;
+
+function reservePort(preferredPort) {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on('error', () => {
+      const fallback = net.createServer();
+      fallback.unref();
+      fallback.on('error', reject);
+      fallback.listen(0, '127.0.0.1', () => {
+        const address = fallback.address();
+        const port = typeof address === 'object' && address ? address.port : 0;
+        fallback.close(() => resolve(port));
+      });
+    });
+    server.listen(preferredPort, '127.0.0.1', () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : preferredPort;
+      server.close(() => resolve(port));
+    });
+  });
+}
 
 async function waitForServer(url) {
   const deadline = Date.now() + 120_000;
@@ -59,8 +82,10 @@ process.on('SIGTERM', () => {
 });
 
 if (!externalServer) {
+  const port = await reservePort(Number(process.env.DEK_PLAYWRIGHT_PORT ?? 5173));
+  baseURL = `http://127.0.0.1:${port}`;
   const viteCli = path.resolve('node_modules', 'vite', 'bin', 'vite.js');
-  vite = spawn(process.execPath, [viteCli, '--host', '127.0.0.1', '--port', '5173'], {
+  vite = spawn(process.execPath, [viteCli, '--host', '127.0.0.1', '--port', String(port), '--strictPort'], {
     stdio: 'inherit',
     env: process.env,
   });

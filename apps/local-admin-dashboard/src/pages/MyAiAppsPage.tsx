@@ -3,6 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import {
   Activity,
   Bot,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   Clock3,
   Eye,
@@ -10,6 +12,7 @@ import {
   Search,
   ShieldCheck,
   ShieldX,
+  Trash2,
 } from "lucide-react";
 import { RegistryApi, type AiAgent } from "../services/api";
 import { UserActivityApi } from "../features/user-activity/api";
@@ -24,6 +27,8 @@ import { findAgentReferenceIntel } from "../lib/entityReferenceIntel";
 import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayout";
 import { cn } from "@/lib/utils";
 import { AgentDetailView } from "./AgentsV2";
+import { useConfirm } from "../components/ui/ConfirmDialog";
+import { toast } from "sonner";
 
 function agentSource(agent: AiAgent) {
   const source = agent.meta?.source ?? "registry";
@@ -74,11 +79,14 @@ function AgentCard({
   agent,
   activity,
   selected,
+  onDelete,
 }: {
   agent: AiAgent;
   activity: UserFriendlyActivityEvent[];
   selected: boolean;
+  onDelete: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const status = agentStatus(agent);
   const StatusIcon = status.icon;
   const events = eventsForAgent(agent, activity);
@@ -131,85 +139,131 @@ function AgentCard({
                 {agent.vendor ?? "Unknown vendor"}
               </p>
             </div>
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
-                status.className,
-              )}
-            >
-              <StatusIcon className="h-3 w-3" />
-              {status.label}
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
+                  status.className,
+                )}
+              >
+                <StatusIcon className="h-3 w-3" />
+                {status.label}
+              </span>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setExpanded((current) => !current);
+                }}
+                className="inline-flex h-7 items-center gap-1 rounded-md border bg-background px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-expanded={expanded}
+              >
+                {expanded ? (
+                  <>
+                    Collapse <ChevronUp className="h-3 w-3" />
+                  </>
+                ) : (
+                  <>
+                    Expand <ChevronDown className="h-3 w-3" />
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onDelete();
+                }}
+                className="inline-flex h-7 items-center gap-1 rounded-md border border-red-500/25 bg-red-500/10 px-2 text-[11px] font-medium text-red-600 hover:bg-red-500/20"
+              >
+                <Trash2 className="h-3 w-3" />
+                Delete
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
+            <span className="rounded-full border bg-background px-2 py-0.5">
+              Activity:{" "}
+              <span className="font-medium text-foreground">
+                {events.length}
+              </span>
             </span>
-          </div>
-
-          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
-            <div className="rounded-md border bg-background/60 p-3">
-              <div className="text-muted-foreground">Activity</div>
-              <div className="mt-1 text-sm font-semibold">{events.length}</div>
-            </div>
-            <div className="rounded-md border bg-background/60 p-3">
-              <div className="text-muted-foreground">Blocked</div>
-              <div className="mt-1 text-sm font-semibold">{blocked}</div>
-            </div>
-            <div className="rounded-md border bg-background/60 p-3">
-              <div className="text-muted-foreground">Trust</div>
-              <div className="mt-1 text-sm font-semibold capitalize">
+            <span className="rounded-full border bg-background px-2 py-0.5">
+              Blocked:{" "}
+              <span className="font-medium text-foreground">{blocked}</span>
+            </span>
+            <span className="rounded-full border bg-background px-2 py-0.5">
+              Trust:{" "}
+              <span className="font-medium capitalize text-foreground">
                 {agent.trust_level}
-              </div>
-            </div>
-          </div>
-
-          <p className="mt-3 text-xs leading-5 text-muted-foreground">
-            {lastEvent
-              ? `Last seen: ${lastEvent.plain_summary} (${formatDateTime(
-                  lastEvent.timestamp,
-                )})`
-              : "No recent activity is linked to this AI app yet."}
-          </p>
-
-          <div className="mt-3">
-            <ReferenceIntelGuide
-              reference={reference}
-              observedTerms={observedTerms}
-              compact
-            />
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Link
-              to={`/activity?q=${encodeURIComponent(agent.name)}`}
-              className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-xs hover:bg-muted"
-            >
-              <Activity className="h-3.5 w-3.5" />
-              Activity
-            </Link>
-            <Link
-              to={`/allowed-blocked?q=${encodeURIComponent(agent.name)}`}
-              className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-xs hover:bg-muted"
-            >
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Rules
-            </Link>
-            <Link
-              to="/setup"
-              className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-xs hover:bg-muted"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Setup
-            </Link>
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="rounded-full border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
+              </span>
+            </span>
+            <span className="rounded-full border bg-background px-2 py-0.5">
               {agentSource(agent)}
             </span>
-            <span className="rounded-full border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
-              {agent.runtime?.runtime_name ?? "Unknown runtime"}
-            </span>
-            <span className="rounded-full border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
-              {agent.declared_tools?.length ?? 0} tools
-            </span>
           </div>
+
+          {expanded && (
+            <>
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                {lastEvent
+                  ? `Last seen: ${lastEvent.plain_summary} (${formatDateTime(
+                      lastEvent.timestamp,
+                    )})`
+                  : "No recent activity is linked to this AI app yet."}
+              </p>
+
+              <div className="mt-3">
+                <ReferenceIntelGuide
+                  reference={reference}
+                  observedTerms={observedTerms}
+                  compact
+                />
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link
+                  to={`/activity?q=${encodeURIComponent(agent.name)}`}
+                  onClick={(event) => event.stopPropagation()}
+                  className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-xs hover:bg-muted"
+                >
+                  <Activity className="h-3.5 w-3.5" />
+                  Activity
+                </Link>
+                <Link
+                  to={`/allowed-blocked?q=${encodeURIComponent(agent.name)}`}
+                  onClick={(event) => event.stopPropagation()}
+                  className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-xs hover:bg-muted"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Rules
+                </Link>
+                <Link
+                  to="/setup"
+                  onClick={(event) => event.stopPropagation()}
+                  className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-xs hover:bg-muted"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Setup
+                </Link>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <span className="rounded-full border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
+                  {agent.runtime?.runtime_name ?? "Unknown runtime"}
+                </span>
+                <span className="rounded-full border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
+                  {agent.declared_tools?.length ?? 0} tools
+                </span>
+                <span className="rounded-full border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
+                  {agent.declared_resources?.length ?? 0} resources
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </article>
@@ -217,6 +271,7 @@ function AgentCard({
 }
 
 export function MyAiAppsPage() {
+  const { confirm } = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
   const [agents, setAgents] = useState<AiAgent[]>([]);
   const [activity, setActivity] = useState<UserFriendlyActivityEvent[]>([]);
@@ -267,6 +322,34 @@ export function MyAiAppsPage() {
       setSearchParams(next, { replace: true });
     },
     [searchParams, setSearchParams],
+  );
+
+  const deleteAgent = useCallback(
+    async (agent: AiAgent) => {
+      if (
+        !(await confirm({
+          title: "Delete AI app",
+          description: `Delete ${agent.name}? Pollek will remove this registered AI app, its linked policies, setup properties, and local registry metadata. If a later scan finds the same app again, it will appear as Pending and can be registered again.`,
+          confirmText: "Delete",
+          danger: true,
+        }))
+      ) {
+        return;
+      }
+
+      try {
+        await RegistryApi.deleteAgent(agent.agent_id);
+        if (selectedId === agent.agent_id) {
+          setSearchParams(new URLSearchParams(), { replace: true });
+        }
+        load();
+        toast.success("AI app deleted");
+      } catch (error) {
+        console.error("Failed to delete AI app:", error);
+        toast.error("Failed to delete AI app");
+      }
+    },
+    [confirm, load, selectedId, setSearchParams],
   );
 
   return (
@@ -347,14 +430,21 @@ export function MyAiAppsPage() {
           </div>
         }
         renderCard={(agent, selected) => (
-          <AgentCard agent={agent} activity={activity} selected={selected} />
+          <AgentCard
+            agent={agent}
+            activity={activity}
+            selected={selected}
+            onDelete={() => {
+              void deleteAgent(agent);
+            }}
+          />
         )}
         renderDetail={(agent) => (
           <AgentDetailView
             key={agent.agent_id}
             agent={agent}
             onDelete={() => {
-              void RegistryApi.deleteAgent(agent.agent_id).then(load);
+              void deleteAgent(agent);
             }}
           />
         )}

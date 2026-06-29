@@ -154,6 +154,30 @@ const candidate = {
   tenant_id: "local",
   device_id: "DELL-WINDOWS",
   status: "registered",
+  canonical_service_id: "google.antigravity",
+  surface_group_id: "google.ai",
+  authority_boundary: "local_device",
+  entity_role: "local_agent_host",
+  duplicate_policy: "standalone",
+  observe_scope:
+    "Local process, filesystem metadata, MCP/tool activity, and linked browser surfaces.",
+  enforce_scope:
+    "Use local wrappers, MCP control bindings, and OS observers where available.",
+  related_surfaces: [
+    {
+      service_id: "google.ai_studio",
+      display_name: "Google AI Studio (Chrome)",
+      entity_role: "web_ai_surface",
+      authority_boundary: "local_browser_profile",
+      evidence_sources: ["browser_window"],
+      confidence: 0.86,
+      control_parent_id: agent.agent_id,
+      grouping_reason:
+        "Google AI Studio is a related web surface, not a duplicate Antigravity agent.",
+    },
+  ],
+  instance_count: 1,
+  matched_signature_id: "google_antigravity",
   display_name: agent.name,
   vendor: agent.vendor,
   product: "Antigravity",
@@ -232,8 +256,142 @@ const candidate = {
   },
   labels: {
     reference_intel: "google-antigravity",
+    canonical_service_id: "google.antigravity",
+    surface_group_id: "google.ai",
+    entity_role: "local_agent_host",
+    duplicate_policy: "standalone",
   },
 };
+
+const googleAiStudioCandidate = {
+  ...candidate,
+  candidate_id: "candidate-google-ai-studio-chrome",
+  status: "pending_approval",
+  canonical_service_id: "google.ai_studio",
+  surface_group_id: "google.ai",
+  authority_boundary: "local_browser_profile",
+  entity_role: "web_ai_surface",
+  duplicate_policy: "child_surface",
+  control_parent_id: agent.agent_id,
+  grouping_reason:
+    "Google AI Studio is related to Google AI surfaces but remains its own browser-scoped surface.",
+  observe_scope:
+    "Browser tab/window metadata and extension telemetry when installed.",
+  enforce_scope:
+    "Ask the user to configure the browser extension or the parent local agent; do not treat this as a standalone OS process.",
+  related_surfaces: [],
+  matched_signature_id: "google_ai_studio",
+  display_name: "Google AI Studio (Chrome)",
+  vendor: "Google",
+  product: "AI Studio",
+  inferred_agent_type: "web_a_i_app",
+  confidence: 0.86,
+  risk_score: 60,
+  evidence: [
+    {
+      evidence_id: "ev-web-google-ai-studio",
+      source: "browser_window",
+      confidence: 0.86,
+      observed_at: now,
+      privacy_class: "metadata_only",
+      redacted: true,
+      merge_key: "browser:Chrome:google_ai_studio",
+      data: {
+        browser_name: "Chrome",
+        url_host: "aistudio.google.com",
+        matched_signature_id: "google_ai_studio",
+        canonical_service_id: "google.ai_studio",
+        evidence_strength: "browser_surface",
+        duplicate_policy: "child_surface",
+        scan_id: "scan-e2e-1",
+      },
+    },
+  ],
+  matched_signals: [
+    { kind: "domain", detail: "aistudio.google.com", weight: 0.5 },
+    { kind: "browser_title", detail: "Google AI Studio", weight: 0.3 },
+  ],
+  capability_tags: ["llm.chat", "web.chat", "net.egress.llm"],
+  discovered_mcp_servers: [],
+  suggested_registration: {
+    agent_id: "candidate-google-ai-studio-chrome",
+    display_name: "Google AI Studio (Chrome)",
+  },
+  suggested_control_bindings: [],
+  telemetry_plan: {
+    exact_usage_sources: ["browser_extension"],
+    fallback_sources: ["browser_window_metadata"],
+  },
+  labels: {
+    reference_intel: "google-ai-studio",
+    canonical_service_id: "google.ai_studio",
+    surface_group_id: "google.ai",
+    entity_role: "web_ai_surface",
+    duplicate_policy: "child_surface",
+  },
+};
+
+const enrichmentSession = (status = "waiting_for_consent") => ({
+  schema_version: "pollek.discovery.enrichment_session.v1",
+  session_id: "enrich-google-ai-studio",
+  tenant_id: "local",
+  candidate_id: googleAiStudioCandidate.candidate_id,
+  status,
+  created_at: now,
+  consent_required: status === "waiting_for_consent",
+  privacy_guardrails: [
+    "Uses local metadata only by default",
+    "Does not read prompts or responses",
+    "No package install or code execution",
+  ],
+  local_evidence_summary: {
+    display_name: googleAiStudioCandidate.display_name,
+    evidence_count: googleAiStudioCandidate.evidence.length,
+    authority_boundary: googleAiStudioCandidate.authority_boundary,
+  },
+  source_plan: [
+    {
+      source_id: "local_evidence",
+      label: "Local evidence",
+      allowed: true,
+      network_access: "none",
+      safety: "local_metadata_only",
+    },
+    {
+      source_id: "official_docs",
+      label: "Official product documentation",
+      allowed: true,
+      network_access: "requires_user_approval",
+      safety: "public_metadata_only",
+    },
+  ],
+  extracted_facts: [
+    {
+      fact: "canonical_service_id",
+      value: googleAiStudioCandidate.canonical_service_id,
+      confidence: 0.92,
+      source: "local_evidence",
+    },
+  ],
+  definition_candidate: {
+    canonical_service_id: googleAiStudioCandidate.canonical_service_id,
+    surface_group_id: googleAiStudioCandidate.surface_group_id,
+    duplicate_policy: googleAiStudioCandidate.duplicate_policy,
+  },
+  accepted_sources:
+    status === "waiting_for_consent"
+      ? undefined
+      : ["local_evidence", "official_docs"],
+  research_result:
+    status === "waiting_for_consent"
+      ? undefined
+      : {
+          summary:
+            "Google AI Studio should stay as a browser-scoped child surface, not a duplicate Antigravity agent.",
+        },
+  learned_profile_id:
+    status === "submitted" ? "learned-google-ai-studio" : undefined,
+});
 
 const canonicalCapability = {
   capability_id: "cap-workspace-file-access",
@@ -1132,6 +1290,7 @@ export async function installMockApi(page: Page) {
 
   let scanStarted = false;
   let suggestionsGenerated = false;
+  let enrichmentStatus = "waiting_for_consent";
   const policies = [policy];
   let installedPlugins = [installedPlugin];
 
@@ -1206,7 +1365,13 @@ export async function installMockApi(page: Page) {
       suggestionsGenerated = false;
       return json(route, { ok: true });
     }
-    return json(route, { items: scanStarted ? [candidate] : [] });
+    const candidates = scanStarted ? [candidate, googleAiStudioCandidate] : [];
+    return json(route, {
+      schema_version: "agent-discovery-candidate-list.v1",
+      candidates,
+      items: candidates,
+      total: candidates.length,
+    });
   });
   await page.route("**/v1/tenants/local/discovery/entities", (route) =>
     json(route, { items: scanStarted ? [capabilityInventory.entity] : [] }),
@@ -1218,6 +1383,30 @@ export async function installMockApi(page: Page) {
   await page.route(
     "**/v1/tenants/local/discovery/candidates/*/retrieve-capabilities",
     (route) => json(route, capabilityInventory),
+  );
+  await page.route(
+    "**/v1/tenants/local/discovery/candidates/*/enrichment/start",
+    (route) => {
+      enrichmentStatus = "waiting_for_consent";
+      return json(route, enrichmentSession(enrichmentStatus));
+    },
+  );
+  await page.route("**/v1/tenants/local/discovery/enrichment/*", (route) =>
+    json(route, enrichmentSession(enrichmentStatus)),
+  );
+  await page.route(
+    "**/v1/tenants/local/discovery/enrichment/*/approve",
+    (route) => {
+      enrichmentStatus = "researched";
+      return json(route, enrichmentSession(enrichmentStatus));
+    },
+  );
+  await page.route(
+    "**/v1/tenants/local/discovery/enrichment/*/submit",
+    (route) => {
+      enrichmentStatus = "submitted";
+      return json(route, enrichmentSession(enrichmentStatus));
+    },
   );
   await page.route(
     "**/v1/tenants/local/discovery/candidates/*/register",
@@ -1236,7 +1425,7 @@ export async function installMockApi(page: Page) {
         started_at: "2026-06-27T10:14:50Z",
         finished_at: now,
         sources: ["process", "filesystem", "mcp_config"],
-        candidates_found: 1,
+        candidates_found: 2,
       });
     }
     return json(route, {
@@ -1249,7 +1438,7 @@ export async function installMockApi(page: Page) {
               started_at: "2026-06-27T10:14:50Z",
               finished_at: now,
               sources: ["process", "filesystem", "mcp_config"],
-              candidates_found: 1,
+              candidates_found: 2,
             },
           ]
         : [],
@@ -1263,7 +1452,7 @@ export async function installMockApi(page: Page) {
       started_at: "2026-06-27T10:14:50Z",
       finished_at: now,
       sources: ["process", "filesystem", "mcp_config"],
-      candidates_found: 1,
+      candidates_found: 2,
     }),
   );
 
@@ -1793,7 +1982,7 @@ export async function installMockApi(page: Page) {
       schema_version: "local-observe-refresh.v1",
       tenant_id: "local",
       scan_id: "scan-e2e-1",
-      candidates_found: 1,
+      candidates_found: 2,
       resource_events: 1,
       identity_events: 1,
       tool_events: 1,
@@ -1827,6 +2016,9 @@ export async function installMockApi(page: Page) {
   );
   await page.route("**/v1/tenants/local/discovery/scan", (route) => {
     scanStarted = true;
-    return json(route, { status: "completed", findings: [candidate] });
+    return json(route, {
+      status: "completed",
+      findings: [candidate, googleAiStudioCandidate],
+    });
   });
 }

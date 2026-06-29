@@ -36,16 +36,27 @@
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema", "direction"],
+        "required": ["direction"],
         "properties": {
           "schema": { "type": "string" },
           "direction": {
             "type": "string",
-            "enum": ["local_to_dashboard", "local_to_cloud", "cloud_to_local", "shared"]
+            "enum": ["local_to_dashboard", "local_to_cloud", "cloud_to_local", "shared", "bidirectional"]
           },
           "hot_reload": { "type": "boolean" },
           "requires_spiffe": { "type": "boolean" },
-          "requires_oauth": { "type": "boolean" }
+          "requires_oauth": { "type": "boolean" },
+          "requires_mtls": { "type": "boolean" },
+          "tenant_scoped": { "type": "boolean" },
+          "paths": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "controls": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "purpose": { "type": "string" }
         }
       }
     }

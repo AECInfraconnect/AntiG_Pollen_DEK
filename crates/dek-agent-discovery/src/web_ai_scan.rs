@@ -110,6 +110,18 @@ fn scan_history(
                                                 "browser_id": browser_id,
                                                 "browser_name": browser_name,
                                                 "matched_domain": matched_domain.clone(),
+                                                "matched_signature_id": sig.id.clone(),
+                                                "canonical_service_id": sig.canonical_service_id.clone(),
+                                                "surface_group_id": sig.surface_group_id.clone(),
+                                                "entity_role": sig.entity_role.clone(),
+                                                "authority_boundary": sig.authority_boundary.clone(),
+                                                "observe_scope": sig.observe_scope.clone(),
+                                                "enforce_scope": sig.enforce_scope.clone(),
+                                                "ui_class": sig.ui_class.clone(),
+                                                "related_domains": sig.related_domains.clone(),
+                                                "not_alias_domains": sig.not_alias_domains.clone(),
+                                                "evidence_strength": "browser_history",
+                                                "duplicate_policy": "standalone",
                                                 "capability_tags": sig.capability_tags.clone(),
                                             }),
                                             merge_key: Some(merge_key),
@@ -214,6 +226,18 @@ fn scan_sessions(
                             "browser_name": browser_name,
                             "capability_tags": sig.capability_tags.clone(),
                             "detected_via": "browser_session_open_tab",
+                            "matched_signature_id": sig.id.clone(),
+                            "canonical_service_id": sig.canonical_service_id.clone(),
+                            "surface_group_id": sig.surface_group_id.clone(),
+                            "entity_role": sig.entity_role.clone(),
+                            "authority_boundary": sig.authority_boundary.clone(),
+                            "observe_scope": sig.observe_scope.clone(),
+                            "enforce_scope": sig.enforce_scope.clone(),
+                            "ui_class": sig.ui_class.clone(),
+                            "related_domains": sig.related_domains.clone(),
+                            "not_alias_domains": sig.not_alias_domains.clone(),
+                            "evidence_strength": "browser_session",
+                            "duplicate_policy": "standalone",
                             "matched_domain": matched_domain,
                         }),
                         merge_key: Some(merge_key),
@@ -267,7 +291,7 @@ fn scan_network_sni(
                 evidence.push(DiscoveryEvidenceV2 {
                     evidence_id: uuid::Uuid::new_v4().to_string(),
                     source: EvidenceSource::NetworkSni,
-                    confidence: 1.0,
+                    confidence: 0.55,
                     observed_at: chrono::Utc::now().to_rfc3339(),
                     privacy_class: PrivacyClass::InternalMetadata,
                     redacted: true,
@@ -282,6 +306,18 @@ fn scan_network_sni(
                         "browser": browser_process,
                         "capability_tags": sig.capability_tags.clone(),
                         "browser_pid": flow.browser_pid,
+                        "matched_signature_id": sig.id.clone(),
+                        "canonical_service_id": sig.canonical_service_id.clone(),
+                        "surface_group_id": sig.surface_group_id.clone(),
+                        "entity_role": sig.entity_role.clone(),
+                        "authority_boundary": sig.authority_boundary.clone(),
+                        "observe_scope": sig.observe_scope.clone(),
+                        "enforce_scope": sig.enforce_scope.clone(),
+                        "ui_class": sig.ui_class.clone(),
+                        "related_domains": sig.related_domains.clone(),
+                        "not_alias_domains": sig.not_alias_domains.clone(),
+                        "evidence_strength": "network_sni_only",
+                        "duplicate_policy": "needs_human_confirmation",
                         "matched_domain": matched_domain,
                     }),
                     merge_key: Some(merge_key),
@@ -336,6 +372,18 @@ fn scan_bookmarks(
                                 "browser_id": browser_id,
                                 "browser_name": browser_name,
                                 "capability_tags": sig.capability_tags.clone(),
+                                "matched_signature_id": sig.id.clone(),
+                                "canonical_service_id": sig.canonical_service_id.clone(),
+                                "surface_group_id": sig.surface_group_id.clone(),
+                                "entity_role": sig.entity_role.clone(),
+                                "authority_boundary": sig.authority_boundary.clone(),
+                                "observe_scope": sig.observe_scope.clone(),
+                                "enforce_scope": sig.enforce_scope.clone(),
+                                "ui_class": sig.ui_class.clone(),
+                                "related_domains": sig.related_domains.clone(),
+                                "not_alias_domains": sig.not_alias_domains.clone(),
+                                "evidence_strength": "browser_bookmark",
+                                "duplicate_policy": "needs_human_confirmation",
                                 "matched_domain": matched_domain,
                             }),
                             merge_key: Some(merge_key),
@@ -546,23 +594,6 @@ fn get_browser_history_paths() -> Vec<PathBuf> {
 
 fn web_ai_domains(sig: &dek_fingerprint_defs::model::WebAiSignatureDef) -> Vec<&str> {
     let mut domains = sig.domains();
-
-    match sig.domain.as_str() {
-        "chatgpt.com" => domains.push("chat.openai.com"),
-        "chat.openai.com" => domains.push("chatgpt.com"),
-        "gemini.google.com" => {
-            domains.push("bard.google.com");
-            domains.push("aistudio.google.com");
-        }
-        "aistudio.google.com" => domains.push("gemini.google.com"),
-        "chat.deepseek.com" => {
-            domains.push("deepseek.com");
-            domains.push("api.deepseek.com");
-        }
-        "deepseek.com" => domains.push("chat.deepseek.com"),
-        _ => {}
-    }
-
     domains.sort_unstable();
     domains.dedup();
     domains
@@ -812,8 +843,19 @@ mod tests {
     fn sig(domain: &str) -> dek_fingerprint_defs::model::WebAiSignatureDef {
         dek_fingerprint_defs::model::WebAiSignatureDef {
             id: domain.replace('.', "_"),
+            canonical_service_id: domain.replace('.', "_"),
+            surface_group_id: "test_web".to_string(),
+            entity_role: "web_ai_surface".to_string(),
+            authority_boundary: "local_browser_profile".to_string(),
             domain: domain.to_string(),
             alias_domains: Vec::new(),
+            related_domains: Vec::new(),
+            not_alias_domains: Vec::new(),
+            exclusive_match: true,
+            parent_precedence: vec!["browser_profile".to_string()],
+            observe_scope: "browser_metadata_network_and_prompt_guard_extension".to_string(),
+            enforce_scope: "browser_extension_or_agent_settings".to_string(),
+            ui_class: "web_chat".to_string(),
             name: "Test AI".to_string(),
             vendor: "Test".to_string(),
             title_patterns: Vec::new(),
@@ -839,23 +881,27 @@ mod tests {
     }
 
     #[test]
-    fn signature_matching_handles_known_web_ai_aliases() {
-        let chatgpt = sig("chatgpt.com");
-        let deepseek = sig("chat.deepseek.com");
-        let gemini = sig("gemini.google.com");
+    fn signature_matching_uses_definition_aliases_only() {
+        let mut chatgpt = sig("chatgpt.com");
+        chatgpt.alias_domains = vec!["chat.openai.com".into()];
+        let mut gemini = sig("gemini.google.com");
+        gemini.alias_domains = vec!["bard.google.com".into()];
+        gemini.related_domains = vec!["aistudio.google.com".into()];
+        gemini.not_alias_domains = vec!["aistudio.google.com".into()];
+        let mut ai_studio = sig("aistudio.google.com");
+        ai_studio.related_domains = vec!["gemini.google.com".into()];
+        ai_studio.not_alias_domains = vec!["gemini.google.com".into()];
 
         assert_eq!(
             bytes_match_signature(b"https://chat.openai.com/c/123", &chatgpt).as_deref(),
             Some("chat.openai.com")
         );
         assert_eq!(
-            host_matches_signature("deepseek.com", &deepseek).as_deref(),
-            Some("deepseek.com")
-        );
-        assert_eq!(
             host_matches_signature("bard.google.com", &gemini).as_deref(),
             Some("bard.google.com")
         );
+        assert!(host_matches_signature("aistudio.google.com", &gemini).is_none());
+        assert!(host_matches_signature("gemini.google.com", &ai_studio).is_none());
     }
 
     #[test]

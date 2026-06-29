@@ -30,6 +30,7 @@ pub struct FingerprintDefinition {
     pub ai_process_hints: AiProcessHints,
     #[serde(default)]
     pub cloud_resource_signatures: Vec<CloudResourceSignatureDef>,
+    pub collapse_rules: Vec<CollapseRuleDef>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -96,11 +97,20 @@ pub struct InstalledAppMarker {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebAiSignatureDef {
-    #[serde(default)]
     pub id: String,
+    pub canonical_service_id: String,
+    pub surface_group_id: String,
+    pub entity_role: String,
+    pub authority_boundary: String,
     pub domain: String,
-    #[serde(default)]
     pub alias_domains: Vec<String>,
+    pub related_domains: Vec<String>,
+    pub not_alias_domains: Vec<String>,
+    pub exclusive_match: bool,
+    pub parent_precedence: Vec<String>,
+    pub observe_scope: String,
+    pub enforce_scope: String,
+    pub ui_class: String,
     pub name: String,
     pub vendor: String,
     #[serde(default)]
@@ -129,6 +139,20 @@ impl WebAiSignatureDef {
         domains.dedup();
         domains
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CollapseRuleDef {
+    pub id: String,
+    pub when_parent_signature_id: Option<String>,
+    pub when_endpoint: Option<String>,
+    pub child_service_ids: Vec<String>,
+    pub parent_client_candidates: Vec<String>,
+    pub same_window_seconds: Option<u64>,
+    pub same_user_or_profile_required: bool,
+    pub collapse_as: String,
+    pub control_parent_only: bool,
+    pub keep_child_visible: bool,
 }
 
 fn default_web_risk() -> f64 {

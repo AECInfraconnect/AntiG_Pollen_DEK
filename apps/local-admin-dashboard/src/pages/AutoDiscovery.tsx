@@ -1,6 +1,6 @@
 import { useConfirm } from "../components/ui/ConfirmDialog";
 import { toast } from "sonner";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   ShieldAlert,
@@ -16,10 +16,12 @@ import { useSearchParams } from "react-router-dom";
 import {
   LocalObserveApi,
   RegistryApi,
+  type AiAgent,
   type LocalObserveRefreshResponse,
 } from "../services/api";
 import type {
   DiscoveredAgentCandidateV2,
+  DiscoveryEnrichmentSession,
   DiscoveryCapabilityInventory,
   DiscoveryScanJob,
 } from "../services/types";
@@ -86,7 +88,8 @@ const SOURCE_LABELS: Record<string, { label: string; detail: string }> = {
   },
   web_ai: {
     label: "AI websites",
-    detail: "Browser/window metadata for ChatGPT, Claude, DeepSeek, and similar surfaces.",
+    detail:
+      "Browser/window metadata for ChatGPT, Claude, DeepSeek, and similar surfaces.",
   },
   python_framework: {
     label: "Frameworks",
@@ -141,6 +144,133 @@ function friendlyCapabilityDetail(tag: string) {
   return "Reference or discovery metadata suggests this capability, but local activity still needs observation.";
 }
 
+function friendlySemanticLabel(value?: string) {
+  if (!value) return "Unknown";
+  return value
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_.:-]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function friendlyAuthorityDetail(value?: string) {
+  switch (value) {
+    case "local_device":
+      return "Pollek saw a local app, process, CLI, or installed component on this device.";
+    case "local_browser_profile":
+      return "Pollek saw a browser tab, window, session, or domain on this browser profile.";
+    case "remote_workspace":
+      return "The AI work likely runs in a cloud workspace; local visibility comes from browser or connector metadata.";
+    case "remote_model_api":
+      return "This looks like a provider/API endpoint, not a local controllable app by itself.";
+    case "local_network":
+      return "Pollek saw a local network endpoint or local model server.";
+    case "mcp_remote_server":
+      return "Pollek saw an MCP or tool surface that may be controlled through the calling AI app.";
+    default:
+      return "Pollek needs more evidence or user confirmation before treating this as a controllable AI app.";
+  }
+}
+
+function friendlyDuplicatePolicy(value?: string) {
+  switch (value) {
+    case "child_surface":
+      return "Controlled through parent";
+    case "related_endpoint":
+      return "Related surface";
+    case "provider_endpoint":
+      return "Provider endpoint";
+    case "merged_duplicate":
+      return "Merged duplicate";
+    case "needs_human_confirmation":
+      return "Needs review";
+    default:
+      return "Standalone";
+  }
+}
+
+function normalizedRegistrationKey(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim().toLowerCase()
+    : undefined;
+}
+
+function isRegistrationKey(value: string | undefined): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+function candidateRegistrationKeys(candidate: DiscoveredAgentCandidateV2) {
+  const labels = candidate.labels ?? {};
+  const keys = [
+    candidate.candidate_id,
+    candidate.suggested_registration?.agent_id,
+    labels.registered_agent_id,
+    labels.discovery_candidate_id,
+    labels.discovery_candidate_merge_key,
+    candidate.evidence?.find((evidence) => evidence.merge_key)?.merge_key,
+    [
+      candidate.display_name,
+      candidate.vendor,
+      candidate.suggested_registration?.runtime_name,
+    ]
+      .filter(Boolean)
+      .join("|"),
+  ];
+
+  return Array.from(
+    new Set(keys.map(normalizedRegistrationKey).filter(isRegistrationKey)),
+  );
+}
+
+function agentRegistrationKeys(agent: AiAgent) {
+  const labels = agent.labels ?? {};
+  const keys = [
+    agent.agent_id,
+    labels.discovery_candidate_id,
+    labels.discovery_candidate_merge_key,
+    [agent.name, agent.vendor, agent.runtime?.runtime_name]
+      .filter(Boolean)
+      .join("|"),
+  ];
+
+  return Array.from(
+    new Set(keys.map(normalizedRegistrationKey).filter(isRegistrationKey)),
+  );
+}
+
+function scanIdsForCandidate(candidate: DiscoveredAgentCandidateV2) {
+  return Array.from(
+    new Set(
+      [
+        ...(candidate.scan_ids ?? []),
+        candidate.last_scan_id,
+        ...(candidate.evidence ?? []).map((evidence) => evidence.data?.scan_id),
+      ].filter(
+        (id): id is string => typeof id === "string" && id.length > 0,
+      ),
+    ),
+  );
+}
+
+function latestScanIdForCandidate(candidate: DiscoveredAgentCandidateV2) {
+  return (
+    candidate.last_scan_id ||
+    candidate.scan_ids?.[candidate.scan_ids.length - 1] ||
+    candidate.evidence
+      ?.map((evidence) => evidence.data?.scan_id)
+      .find((id) => typeof id === "string" && id.length > 0)
+  );
+}
+
+function candidateHasScanId(
+  candidate: DiscoveredAgentCandidateV2,
+  scanId: string,
+) {
+  return scanIdsForCandidate(candidate).includes(scanId);
+}
+
 export function AutoDiscovery() {
   const { confirm } = useConfirm();
   const { mode } = useMode();
@@ -167,13 +297,16 @@ export function AutoDiscovery() {
     useState<LocalObserveRefreshResponse | null>(null);
   const [scans, setScans] = useState<DiscoveryScanJob[]>([]);
   const [scanFilter, setScanFilter] = useState<string>("latest");
-  const scanTriggered = useRef(false);
   const [capabilityInventories, setCapabilityInventories] = useState<
     Record<string, DiscoveryCapabilityInventory>
   >({});
   const [capabilityLoadingId, setCapabilityLoadingId] = useState<string | null>(
     null,
   );
+  const [enrichmentSessions, setEnrichmentSessions] = useState<
+    Record<string, DiscoveryEnrichmentSession>
+  >({});
+  const [enrichmentBusyId, setEnrichmentBusyId] = useState<string | null>(null);
 
   const scanBusy =
     isScanning ||
@@ -218,34 +351,42 @@ export function AutoDiscovery() {
         RegistryApi.listAgents(),
       ]);
       const agentIds = new Set(agents.map((a) => a.agent_id));
-
-      const registeredFingerprints = new Set(
-        discovered
-          .filter(
-            (c) => agentIds.has(c.candidate_id) || c.status === "registered",
-          )
-          .map((c) => c.evidence?.[0]?.merge_key || c.display_name),
-      );
+      const registeredKeyToAgentId = new Map<string, string>();
+      for (const agent of agents) {
+        for (const key of agentRegistrationKeys(agent)) {
+          registeredKeyToAgentId.set(key, agent.agent_id);
+        }
+      }
 
       const mergedCandidates = discovered.map((c) => {
-        const fp = c.evidence?.[0]?.merge_key || c.display_name;
-        if (agentIds.has(c.candidate_id)) {
-          return { ...c, status: "registered", _agent_id: c.candidate_id };
-        }
-        const registeredPeer = discovered.find(
-          (peer) =>
-            agentIds.has(peer.candidate_id) &&
-            (peer.evidence?.[0]?.merge_key || peer.display_name) === fp,
-        );
-        if (registeredPeer) {
+        const directAgentId =
+          (agentIds.has(c.candidate_id) && c.candidate_id) ||
+          (c.labels?.registered_agent_id &&
+          agentIds.has(c.labels.registered_agent_id)
+            ? c.labels.registered_agent_id
+            : undefined);
+        const mappedAgentId =
+          directAgentId ||
+          candidateRegistrationKeys(c)
+            .map((key) => registeredKeyToAgentId.get(key))
+            .find(Boolean);
+
+        if (mappedAgentId) {
           return {
             ...c,
             status: "registered",
-            _agent_id: registeredPeer.candidate_id,
+            labels: {
+              ...(c.labels ?? {}),
+              registered_agent_id: mappedAgentId,
+            },
+            _agent_id: mappedAgentId,
           };
         }
-        if (registeredFingerprints.has(fp)) {
-          return { ...c, status: "registered" };
+
+        if (c.status === "registered") {
+          const labels = { ...(c.labels ?? {}) };
+          delete labels.registered_agent_id;
+          return { ...c, status: "pending_approval", labels };
         }
         return c;
       });
@@ -290,11 +431,6 @@ export function AutoDiscovery() {
   useEffect(() => {
     void fetchCandidates();
     void fetchScans();
-
-    if (!scanTriggered.current) {
-      scanTriggered.current = true;
-      void triggerScan();
-    }
   }, []);
 
   useEffect(() => {
@@ -327,7 +463,78 @@ export function AutoDiscovery() {
     }
   };
 
-  const settleScanResults = async (expectedCount = 0) => {
+  const startEnrichment = async (candidateId: string) => {
+    setEnrichmentBusyId(candidateId);
+    try {
+      const session = await RegistryApi.startDiscoveryCandidateEnrichment(
+        candidateId,
+        {
+          sources: [
+            "official_site",
+            "package_registry",
+            "github_metadata",
+            "mcp_manifest",
+          ],
+        },
+      );
+      setEnrichmentSessions((prev) => ({
+        ...prev,
+        [candidateId]: session,
+      }));
+      toast.success("Definition enrichment is ready for review");
+    } catch (error) {
+      console.error("Failed to start enrichment:", error);
+      toast.error("Failed to prepare enrichment");
+    } finally {
+      setEnrichmentBusyId(null);
+    }
+  };
+
+  const approveEnrichment = async (candidateId: string) => {
+    const session = enrichmentSessions[candidateId];
+    if (!session) return;
+    setEnrichmentBusyId(candidateId);
+    try {
+      const approved = await RegistryApi.approveDiscoveryCandidateEnrichment(
+        session.session_id,
+        session.source_plan.map((source) => source.source_id),
+      );
+      setEnrichmentSessions((prev) => ({
+        ...prev,
+        [candidateId]: approved,
+      }));
+      toast.success("Safe source plan approved");
+    } catch (error) {
+      console.error("Failed to approve enrichment:", error);
+      toast.error("Failed to approve enrichment");
+    } finally {
+      setEnrichmentBusyId(null);
+    }
+  };
+
+  const submitEnrichment = async (candidateId: string) => {
+    const session = enrichmentSessions[candidateId];
+    if (!session) return;
+    setEnrichmentBusyId(candidateId);
+    try {
+      const submitted = await RegistryApi.submitDiscoveryCandidateEnrichment(
+        session.session_id,
+      );
+      setEnrichmentSessions((prev) => ({
+        ...prev,
+        [candidateId]: submitted,
+      }));
+      await fetchCandidates({ showLoading: false });
+      toast.success("Learned profile saved locally");
+    } catch (error) {
+      console.error("Failed to save learned profile:", error);
+      toast.error("Failed to save learned profile");
+    } finally {
+      setEnrichmentBusyId(null);
+    }
+  };
+
+  const settleScanResults = async (expectedCount = 0, expectedScanId?: string) => {
     setIsFinalizingScan(true);
     let previousDigest = "";
     let stableReads = 0;
@@ -335,7 +542,12 @@ export function AutoDiscovery() {
     try {
       for (let attempt = 0; attempt < 10; attempt += 1) {
         const next = await fetchCandidates({ showLoading: attempt === 0 });
-        const digest = next
+        const scoped = expectedScanId
+          ? next.filter((candidate) =>
+              candidateHasScanId(candidate, expectedScanId),
+            )
+          : next;
+        const digest = scoped
           .map(
             (c) =>
               `${c.candidate_id}:${c.status}:${c.last_seen}:${c.evidence?.length ?? 0}`,
@@ -344,7 +556,7 @@ export function AutoDiscovery() {
           .join("|");
 
         const hasExpectedCount =
-          expectedCount === 0 || next.length >= expectedCount;
+          expectedCount === 0 || scoped.length >= expectedCount;
         if (attempt > 0 && digest === previousDigest && hasExpectedCount) {
           stableReads += 1;
         } else {
@@ -380,7 +592,7 @@ export function AutoDiscovery() {
           ) {
             if (interval) clearInterval(interval);
             if (!cancelled) {
-              await settleScanResults(status.candidates_found);
+              await settleScanResults(status.candidates_found, status.scan_id);
               await fetchScans();
             }
           }
@@ -487,11 +699,7 @@ export function AutoDiscovery() {
     })[0];
 
   const scanIdForCandidate = (candidate: DiscoveredAgentCandidateV2) =>
-    candidate.last_scan_id ||
-    candidate.scan_ids?.[candidate.scan_ids.length - 1] ||
-    candidate.evidence
-      ?.map((e) => e.data?.scan_id)
-      .find((id) => typeof id === "string" && id.length > 0);
+    latestScanIdForCandidate(candidate);
 
   const scanForCandidate = (candidate: DiscoveredAgentCandidateV2) => {
     const scanId = scanIdForCandidate(candidate);
@@ -513,7 +721,7 @@ export function AutoDiscovery() {
           minute: "2-digit",
         })
       : scan.scan_id.slice(0, 12);
-    return `${timeLabel} • ${scan.status}`;
+    return `${timeLabel} - ${scan.status}`;
   };
 
   const scanSortTime = (candidate: DiscoveredAgentCandidateV2) => {
@@ -523,20 +731,29 @@ export function AutoDiscovery() {
     ).getTime();
   };
 
-  const visibleCandidates = candidates
+  const latestScanId = scans[0]?.scan_id || scanJob?.scan_id;
+  const selectedScanId =
+    scanFilter === "latest"
+      ? latestScanId
+      : scanFilter === "all"
+        ? undefined
+        : scanFilter;
+  const selectedScan =
+    selectedScanId != null
+      ? scans.find((scan) => scan.scan_id === selectedScanId) ||
+        (scanJob?.scan_id === selectedScanId ? scanJob : undefined)
+      : scans[0] ?? scanJob ?? undefined;
+  const scanScopedCandidates = candidates.filter((candidate) => {
+    if (scanFilter === "all") return true;
+    if (!selectedScanId) return false;
+    return candidateHasScanId(candidate, selectedScanId);
+  });
+
+  const visibleCandidates = scanScopedCandidates
     .filter((c) => {
       if (filter === "registered") return c.status === "registered";
       if (filter === "pending") return c.status !== "registered";
       return true;
-    })
-    .filter((c) => {
-      if (scanFilter === "all") return true;
-      const cScanId = scanIdForCandidate(c);
-      if (scanFilter === "latest") {
-        const latestScanId = scans[0]?.scan_id || scanJob?.scan_id;
-        return cScanId === latestScanId || (!latestScanId && !cScanId);
-      }
-      return cScanId === scanFilter;
     })
     .filter((c) => {
       const query = searchQuery.trim().toLowerCase();
@@ -545,6 +762,14 @@ export function AutoDiscovery() {
         displayNameForCandidate(c),
         c.vendor,
         c.inferred_agent_type,
+        c.canonical_service_id,
+        c.surface_group_id,
+        c.authority_boundary,
+        c.entity_role,
+        c.duplicate_policy,
+        c.observe_scope,
+        c.enforce_scope,
+        c.grouping_reason,
         browserNameForCandidate(c),
         evidenceSourcesForCandidate(c),
         ...(capabilityTags(c) ?? []),
@@ -562,19 +787,19 @@ export function AutoDiscovery() {
       return new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime();
     });
 
-  const registeredCount = candidates.filter(
+  const registeredCount = scanScopedCandidates.filter(
     (candidate) => candidate.status === "registered",
   ).length;
-  const pendingCount = candidates.length - registeredCount;
-  const knownCount = candidates.filter(
+  const pendingCount = scanScopedCandidates.length - registeredCount;
+  const knownCount = scanScopedCandidates.filter(
     (candidate) => referenceForCandidate(candidate) != null,
   ).length;
-  const evidenceCount = candidates.reduce(
+  const evidenceCount = scanScopedCandidates.reduce(
     (total, candidate) => total + (candidate.evidence?.length ?? 0),
     0,
   );
-  const latestScan = scans[0] ?? scanJob ?? null;
-  const latestScanSources = new Set(latestScan?.sources ?? []);
+  const coverageScan = selectedScan ?? scans[0] ?? scanJob ?? null;
+  const latestScanSources = new Set(coverageScan?.sources ?? []);
   const checkedSourceCount = DEEP_SCAN_SOURCES.filter((source) =>
     latestScanSources.has(source),
   ).length;
@@ -628,7 +853,10 @@ export function AutoDiscovery() {
         result.status === "partial" ||
         result.status === "failed"
       ) {
-        await settleScanResults((result as any).candidates_found ?? 0);
+        await settleScanResults(
+          (result as any).candidates_found ?? 0,
+          result.scan_id,
+        );
         await fetchScans();
       } else {
         void fetchScans();
@@ -668,6 +896,14 @@ export function AutoDiscovery() {
     displayNameForCandidate(candidate),
     candidate.vendor,
     candidate.inferred_agent_type,
+    candidate.canonical_service_id,
+    candidate.surface_group_id,
+    candidate.authority_boundary,
+    candidate.entity_role,
+    candidate.duplicate_policy,
+    candidate.observe_scope,
+    candidate.enforce_scope,
+    candidate.grouping_reason,
     browserNameForCandidate(candidate),
     evidenceSourcesForCandidate(candidate),
     ...(candidate.capability_tags ?? []),
@@ -687,7 +923,7 @@ export function AutoDiscovery() {
   ];
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
+    <div className="space-y-4">
       {!selectedId && (
         <>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -757,59 +993,103 @@ export function AutoDiscovery() {
             </section>
           )}
 
-          <section className="grid gap-3 md:grid-cols-4">
-            <div className="rounded-xl border bg-card/60 p-4">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <Search className="h-3.5 w-3.5" />
-                Found
+          <Collapsible
+            className="rounded-xl bg-card/60"
+            title={
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold">Discovery summary</div>
+                  <div className="text-xs text-muted-foreground">
+                    Found, registered, known profiles, and evidence signals for
+                    the selected scan view.
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span className="rounded-full border bg-background px-2.5 py-1">
+                    {scanScopedCandidates.length} found
+                  </span>
+                  <span className="rounded-full border bg-background px-2.5 py-1">
+                    {registeredCount} registered
+                  </span>
+                  <span className="rounded-full border bg-background px-2.5 py-1">
+                    {evidenceCount} evidence
+                  </span>
+                </div>
               </div>
-              <div className="mt-2 text-2xl font-semibold">
-                {candidates.length}
+            }
+          >
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="rounded-xl border bg-card/60 p-4">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Search className="h-3.5 w-3.5" />
+                  Found
+                </div>
+                <div className="mt-2 text-2xl font-semibold">
+                  {scanScopedCandidates.length}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  discovery candidates
+                </p>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                discovery candidates
-              </p>
+              <div className="rounded-xl border bg-card/60 p-4">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  Registered
+                </div>
+                <div className="mt-2 text-2xl font-semibold">
+                  {registeredCount}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {pendingCount} still need review
+                </p>
+              </div>
+              <div className="rounded-xl border bg-card/60 p-4">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Info className="h-3.5 w-3.5" />
+                  Known
+                </div>
+                <div className="mt-2 text-2xl font-semibold">{knownCount}</div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  matched reference profiles
+                </p>
+              </div>
+              <div className="rounded-xl border bg-card/60 p-4">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Eye className="h-3.5 w-3.5" />
+                  Evidence
+                </div>
+                <div className="mt-2 text-2xl font-semibold">
+                  {evidenceCount}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  local metadata signals
+                </p>
+              </div>
             </div>
-            <div className="rounded-xl border bg-card/60 p-4">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <CheckCircle className="h-3.5 w-3.5" />
-                Registered
-              </div>
-              <div className="mt-2 text-2xl font-semibold">
-                {registeredCount}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {pendingCount} still need review
-              </p>
-            </div>
-            <div className="rounded-xl border bg-card/60 p-4">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <Info className="h-3.5 w-3.5" />
-                Known
-              </div>
-              <div className="mt-2 text-2xl font-semibold">{knownCount}</div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                matched reference profiles
-              </p>
-            </div>
-            <div className="rounded-xl border bg-card/60 p-4">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <Eye className="h-3.5 w-3.5" />
-                Evidence
-              </div>
-              <div className="mt-2 text-2xl font-semibold">
-                {evidenceCount}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                local metadata signals
-              </p>
-            </div>
-          </section>
+          </Collapsible>
 
-          <section className="rounded-xl border bg-card/60 p-4">
+          <Collapsible
+            className="rounded-xl bg-card/60"
+            title={
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold">
+                    Scan source coverage
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    What was checked, what needs setup, and what remains
+                    metadata-only.
+                  </div>
+                </div>
+                <span className="w-fit rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground">
+                  {checkedSourceCount}/{DEEP_SCAN_SOURCES.length} sources
+                  checked
+                </span>
+              </div>
+            }
+          >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h3 className="text-sm font-semibold">Scan source coverage</h3>
                 <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
                   Discovery means Pollek found AI apps or surfaces from local
                   metadata. Observe means Pollek later saw real activity. This
@@ -817,9 +1097,6 @@ export function AutoDiscovery() {
                   and what remains metadata-only.
                 </p>
               </div>
-              <span className="rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground">
-                {checkedSourceCount}/{DEEP_SCAN_SOURCES.length} sources checked
-              </span>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
               {DEEP_SCAN_SOURCES.map((source) => {
@@ -829,8 +1106,8 @@ export function AutoDiscovery() {
                 };
                 const checked = latestScanSources.has(source);
                 const running =
-                  latestScan?.status === "queued" ||
-                  latestScan?.status === "running";
+                  coverageScan?.status === "queued" ||
+                  coverageScan?.status === "running";
                 const label = checked
                   ? running
                     ? "Checking"
@@ -870,7 +1147,7 @@ export function AutoDiscovery() {
               read prompts, responses, email bodies, or file contents for this
               view.
             </p>
-          </section>
+          </Collapsible>
         </>
       )}
 
@@ -913,7 +1190,10 @@ export function AutoDiscovery() {
                   <option value="all">All Scans</option>
                   {scans.map((scan) => (
                     <option key={scan.scan_id} value={scan.scan_id}>
-                      {new Date(scan.started_at || scan.finished_at || 0).toLocaleString()} • {scan.status}
+                      {new Date(
+                        scan.started_at || scan.finished_at || 0,
+                      ).toLocaleString()}{" "}
+                      - {scan.status}
                     </option>
                   ))}
                 </select>
@@ -935,8 +1215,9 @@ export function AutoDiscovery() {
             icon={Search}
             title="No candidates discovered"
             description="Run a Deep Scan to automatically find AI components running locally."
-            actionLabel="Deep Scan"
+            actionLabel={scanButtonLabel}
             onAction={triggerScan}
+            actionBusy={scanBusy}
           />
         }
         renderGroupHeader={(c, _, prev) => {
@@ -958,6 +1239,13 @@ export function AutoDiscovery() {
           const isRegistered = c.status === "registered";
           const browserName = browserNameForCandidate(c);
           const primaryReference = referenceForCandidate(c);
+          const candidateStatusLabel = isRegistered
+            ? "Registered"
+            : c.duplicate_policy === "needs_human_confirmation"
+              ? "Needs review"
+              : c.control_parent_id
+                ? "Child surface"
+                : "Pending";
 
           return (
             <EntityCard
@@ -976,8 +1264,16 @@ export function AutoDiscovery() {
                 ) : undefined
               }
               status={status}
-              statusLabel={isRegistered ? "Registered" : "Pending"}
+              statusLabel={candidateStatusLabel}
               meta={[
+                {
+                  label: "Control",
+                  value: friendlyDuplicatePolicy(c.duplicate_policy),
+                },
+                {
+                  label: "Boundary",
+                  value: friendlySemanticLabel(c.authority_boundary),
+                },
                 {
                   label: "Evidence",
                   value: `${c.evidence?.length ?? 0} signal(s)`,
@@ -995,6 +1291,18 @@ export function AutoDiscovery() {
                     minute: "2-digit",
                   }),
                 },
+                {
+                  label: "Scan",
+                  value: scanLabelForCandidate(c),
+                },
+                ...(c.control_parent_id
+                  ? [
+                      {
+                        label: "Parent",
+                        value: c.control_parent_id,
+                      },
+                    ]
+                  : []),
                 {
                   label: "Capabilities",
                   value:
@@ -1024,8 +1332,8 @@ export function AutoDiscovery() {
                       {
                         label:
                           confirmingId === c.candidate_id
-                            ? "Confirming..."
-                            : "Confirm Agent",
+                            ? "Registering..."
+                            : "Register Agent",
                         icon: CheckCircle,
                         primary: true,
                         disabled: confirmingId === c.candidate_id,
@@ -1051,6 +1359,15 @@ export function AutoDiscovery() {
           const canonicalCapabilities = inventory?.capabilities ?? [];
           const relationships = inventory?.relationships ?? [];
           const capabilityLoading = capabilityLoadingId === c.candidate_id;
+          const enrichmentSession = enrichmentSessions[c.candidate_id];
+          const enrichmentBusy = enrichmentBusyId === c.candidate_id;
+          const candidateStatusLabel = isRegistered
+            ? "Registered"
+            : c.duplicate_policy === "needs_human_confirmation"
+              ? "Needs review"
+              : c.control_parent_id
+                ? "Child surface"
+                : "Pending";
 
           const actions = [
             ...(isRegistered
@@ -1059,8 +1376,8 @@ export function AutoDiscovery() {
                   {
                     label:
                       confirmingId === c.candidate_id
-                        ? "Confirming..."
-                        : "Confirm Agent",
+                        ? "Registering..."
+                        : "Register Agent",
                     primary: true,
                     icon: CheckCircle,
                     disabled: confirmingId === c.candidate_id,
@@ -1121,7 +1438,247 @@ export function AutoDiscovery() {
                           {scanLabelForCandidate(c)}
                         </span>
                       </div>
+                      <div>
+                        <span className="text-muted-foreground block">
+                          Control relationship
+                        </span>
+                        <span className="font-medium">
+                          {friendlyDuplicatePolicy(c.duplicate_policy)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block">
+                          Boundary
+                        </span>
+                        <span className="font-medium">
+                          {friendlySemanticLabel(c.authority_boundary)}
+                        </span>
+                      </div>
                     </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="rounded-xl border bg-muted/30 p-4">
+                      <h4 className="text-sm font-semibold">
+                        What Pollek can see here
+                      </h4>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {friendlyAuthorityDetail(c.authority_boundary)}
+                      </p>
+                      <div className="mt-3 grid gap-2 text-xs">
+                        <div className="rounded-lg border bg-background/70 p-3">
+                          <span className="block text-muted-foreground">
+                            Observe scope
+                          </span>
+                          <span className="font-medium">
+                            {friendlySemanticLabel(c.observe_scope)}
+                          </span>
+                        </div>
+                        <div className="rounded-lg border bg-background/70 p-3">
+                          <span className="block text-muted-foreground">
+                            Control path
+                          </span>
+                          <span className="font-medium">
+                            {friendlySemanticLabel(c.enforce_scope)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border bg-muted/30 p-4">
+                      <h4 className="text-sm font-semibold">
+                        Identity and grouping
+                      </h4>
+                      <div className="mt-2 space-y-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">
+                            Canonical service:
+                          </span>{" "}
+                          <span className="font-medium">
+                            {friendlySemanticLabel(c.canonical_service_id)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">
+                            Surface group:
+                          </span>{" "}
+                          <span className="font-medium">
+                            {friendlySemanticLabel(c.surface_group_id)}
+                          </span>
+                        </div>
+                        {c.control_parent_id && (
+                          <div>
+                            <span className="text-muted-foreground">
+                              Controlled through:
+                            </span>{" "}
+                            <span className="break-all font-medium">
+                              {c.control_parent_id}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      {c.grouping_reason && (
+                        <p className="mt-3 rounded-lg border bg-background/70 p-3 text-xs leading-5 text-muted-foreground">
+                          {c.grouping_reason}
+                        </p>
+                      )}
+                      {c.duplicate_policy === "needs_human_confirmation" && (
+                        <p className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-700">
+                          This was detected from weak or network-only evidence.
+                          Review it before registering or applying controls.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {c.related_surfaces?.length > 0 && (
+                    <div className="rounded-xl border bg-muted/30 p-4">
+                      <h4 className="text-sm font-semibold">
+                        Related surfaces
+                      </h4>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        These surfaces were seen with this AI app and may be
+                        controlled through the parent app instead of separately.
+                      </p>
+                      <div className="mt-3 grid gap-2 md:grid-cols-2">
+                        {c.related_surfaces.map((surface) => (
+                          <div
+                            key={`${surface.service_id}-${surface.control_parent_id ?? "self"}`}
+                            className="rounded-lg border bg-background/70 p-3"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="text-sm font-medium">
+                                  {surface.display_name}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {friendlySemanticLabel(surface.entity_role)} ·{" "}
+                                  {friendlySemanticLabel(
+                                    surface.authority_boundary,
+                                  )}
+                                </div>
+                              </div>
+                              <span className="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">
+                                {(surface.confidence * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                            {surface.grouping_reason && (
+                              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                                {surface.grouping_reason}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-xl border bg-muted/30 p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h4 className="text-sm font-semibold">
+                          Improve this definition
+                        </h4>
+                        <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                          Build a local learned profile from this candidate,
+                          safe public metadata source choices, and the current
+                          evidence. This does not install packages, execute
+                          code, invoke MCP tools, or read prompts.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void startEnrichment(c.candidate_id)}
+                        disabled={enrichmentBusy}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+                      >
+                        <RefreshCw
+                          className={`h-4 w-4 ${
+                            enrichmentBusy ? "animate-spin" : ""
+                          }`}
+                        />
+                        {enrichmentSession ? "Rebuild profile" : "Enrich"}
+                      </button>
+                    </div>
+
+                    {enrichmentSession && (
+                      <div className="mt-4 space-y-3">
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {enrichmentSession.source_plan.map((source) => (
+                            <div
+                              key={source.source_id}
+                              className="rounded-lg border bg-background/70 p-3"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <div className="text-sm font-medium">
+                                    {source.label}
+                                  </div>
+                                  <div className="mt-1 text-xs text-muted-foreground">
+                                    {friendlySemanticLabel(source.safety)}
+                                  </div>
+                                </div>
+                                <span className="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">
+                                  {source.allowed ? "Selected" : "Optional"}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="rounded-lg border bg-background/70 p-3 text-xs leading-5 text-muted-foreground">
+                          <div className="font-medium text-foreground">
+                            Privacy guardrails
+                          </div>
+                          <div className="mt-1">
+                            {enrichmentSession.privacy_guardrails.join(" · ")}
+                          </div>
+                        </div>
+
+                        {enrichmentSession.research_result && (
+                          <div className="rounded-lg border bg-background/70 p-3 text-sm">
+                            <div className="font-medium">
+                              Enrichment result
+                            </div>
+                            <p className="mt-1 text-muted-foreground">
+                              {enrichmentSession.research_result.summary}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                          {enrichmentSession.status ===
+                            "waiting_for_consent" && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void approveEnrichment(c.candidate_id)
+                              }
+                              disabled={enrichmentBusy}
+                              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                            >
+                              Approve safe sources
+                            </button>
+                          )}
+                          {enrichmentSession.status === "researched" && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void submitEnrichment(c.candidate_id)
+                              }
+                              disabled={enrichmentBusy}
+                              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                            >
+                              Save local profile
+                            </button>
+                          )}
+                          {enrichmentSession.status === "submitted" && (
+                            <span className="rounded-full bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-700">
+                              Local learned profile saved
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <ReferenceIntelGuide
@@ -1436,7 +1993,7 @@ export function AutoDiscovery() {
                   </div>
                   <StatusChip
                     status={status}
-                    label={isRegistered ? "Registered" : "Pending"}
+                    label={candidateStatusLabel}
                   />
                 </div>
               </div>
@@ -1628,7 +2185,7 @@ export function AutoDiscovery() {
           />
           <div className="relative z-50 w-full max-w-md rounded-xl border bg-card p-6 shadow-lg">
             <h3 className="text-lg font-semibold mb-4">
-              Confirm Agent Registration
+              Register AI app
             </h3>
             <div className="space-y-4">
               <div>
@@ -1644,8 +2201,8 @@ export function AutoDiscovery() {
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                This agent will be registered and appear in the Agents & Models
-                inventory.
+                This AI app will appear in My AI Apps and can be managed with
+                rules, setup, and activity history.
               </p>
               <div className="flex justify-end gap-2 mt-6">
                 <button
@@ -1660,8 +2217,8 @@ export function AutoDiscovery() {
                   className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   {confirmingId === confirmTarget.candidate_id
-                    ? "Confirming..."
-                    : "Confirm"}
+                    ? "Registering..."
+                    : "Register Agent"}
                 </button>
               </div>
             </div>

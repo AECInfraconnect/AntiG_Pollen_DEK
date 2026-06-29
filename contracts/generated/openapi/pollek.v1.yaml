@@ -718,6 +718,44 @@ paths:
                 $ref: '#/components/schemas/PollekError'
       tags:
         - Discovery
+  /v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/enrichment/start:
+    post:
+      operationId: DiscoveryApi_startCandidateEnrichment
+      description: Start a safe local definition enrichment session for a discovery candidate.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: candidate_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryEnrichmentSession'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {}
   /v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/ignore:
     post:
       operationId: DiscoveryApi_ignoreCandidate
@@ -830,6 +868,111 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DiscoveryCapabilityInventoryResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+  /v1/tenants/{tenant_id}/discovery/enrichment/{session_id}:
+    get:
+      operationId: DiscoveryApi_getCandidateEnrichment
+      description: Get a discovery enrichment session.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryEnrichmentSession'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+  /v1/tenants/{tenant_id}/discovery/enrichment/{session_id}/approve:
+    post:
+      operationId: DiscoveryApi_approveCandidateEnrichment
+      description: Approve the safe source plan for a discovery enrichment session.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryEnrichmentSession'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Discovery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscoveryEnrichmentApproveRequest'
+  /v1/tenants/{tenant_id}/discovery/enrichment/{session_id}/submit:
+    post:
+      operationId: DiscoveryApi_submitCandidateEnrichment
+      description: Persist the learned local discovery profile from an enrichment session.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryEnrichmentSession'
         default:
           description: An unexpected error response.
           content:
@@ -4146,10 +4289,59 @@ components:
           type: object
           unevaluatedProperties:
             type: string
+        contract_version:
+          type: string
+        compatible_cloud_contracts:
+          type: array
+          items:
+            type: string
+        schemas:
+          type: object
+          unevaluatedProperties:
+            type: string
+        interfaces:
+          type: object
+          unevaluatedProperties:
+            $ref: '#/components/schemas/ContractInterface'
         capabilities:
           type: array
           items:
             type: string
+    ContractInterface:
+      type: object
+      required:
+        - direction
+      properties:
+        schema:
+          type: string
+        direction:
+          type: string
+          enum:
+            - local_to_dashboard
+            - local_to_cloud
+            - cloud_to_local
+            - shared
+            - bidirectional
+        hot_reload:
+          type: boolean
+        requires_spiffe:
+          type: boolean
+        requires_oauth:
+          type: boolean
+        requires_mtls:
+          type: boolean
+        tenant_scoped:
+          type: boolean
+        paths:
+          type: array
+          items:
+            type: string
+        controls:
+          type: array
+          items:
+            type: string
+        purpose:
+          type: string
     ControlBindingChangedPayload:
       type: object
       required:
@@ -4343,33 +4535,110 @@ components:
     DiscoveryCandidate:
       type: object
       required:
+        - schema_version
         - candidate_id
         - tenant_id
-        - surface
-        - first_seen_at
-        - last_seen_at
-        - observation_count
+        - device_id
         - status
+        - canonical_service_id
+        - surface_group_id
+        - authority_boundary
+        - entity_role
+        - duplicate_policy
+        - observe_scope
+        - enforce_scope
+        - related_surfaces
+        - display_name
+        - inferred_agent_type
+        - confidence
+        - risk_score
+        - first_seen
+        - last_seen
       properties:
+        schema_version:
+          type: string
         candidate_id:
           type: string
         tenant_id:
           type: string
-        surface:
-          type: string
-        first_seen_at:
-          type: string
-        last_seen_at:
-          type: string
-        observation_count:
-          type: integer
-          format: int64
-        inferred_name:
-          type: string
-        inferred_provider:
+        device_id:
           type: string
         status:
           type: string
+        canonical_service_id:
+          type: string
+        surface_group_id:
+          type: string
+        authority_boundary:
+          type: string
+        entity_role:
+          type: string
+        duplicate_policy:
+          type: string
+        control_parent_id:
+          type: string
+        grouping_reason:
+          type: string
+        observe_scope:
+          type: string
+        enforce_scope:
+          type: string
+        related_surfaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveryRelatedSurface'
+        instance_count:
+          type: integer
+          format: int32
+        matched_signature_id:
+          type: string
+        display_name:
+          type: string
+        vendor:
+          type: string
+        product:
+          type: string
+        inferred_agent_type:
+          type: string
+        confidence:
+          type: number
+          format: float
+        risk_score:
+          type: integer
+          format: int32
+        capability_tags:
+          type: array
+          items:
+            type: string
+        matched_signals:
+          type: array
+          items: {}
+        first_seen:
+          type: string
+        last_seen:
+          type: string
+        evidence:
+          type: array
+          items: {}
+        discovered_configs:
+          type: array
+          items: {}
+        discovered_endpoints:
+          type: array
+          items: {}
+        discovered_mcp_servers:
+          type: array
+          items: {}
+        suggested_registration: {}
+        suggested_observation_profile: {}
+        suggested_control_bindings:
+          type: array
+          items: {}
+        telemetry_plan: {}
+        labels:
+          type: object
+          unevaluatedProperties:
+            type: string
         scan_ids:
           type: array
           items:
@@ -4379,12 +4648,28 @@ components:
     DiscoveryCandidateListResponse:
       type: object
       required:
-        - items
+        - schema_version
+        - candidates
+        - total
       properties:
+        schema_version:
+          type: string
+          enum:
+            - agent-discovery-candidate-list.v1
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveryCandidate'
         items:
           type: array
           items:
             $ref: '#/components/schemas/DiscoveryCandidate'
+        next_cursor:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
     DiscoveryCapabilityInventoryResponse:
       type: object
       required:
@@ -4417,6 +4702,104 @@ components:
         source:
           type: string
         privacy_note:
+          type: string
+    DiscoveryEnrichmentApproveRequest:
+      type: object
+      required:
+        - accepted_sources
+      properties:
+        accepted_sources:
+          type: array
+          items:
+            type: string
+    DiscoveryEnrichmentFact:
+      type: object
+      required:
+        - fact
+        - value
+        - confidence
+        - source
+      properties:
+        fact:
+          type: string
+        value:
+          type: string
+        confidence:
+          type: number
+          format: float
+        source:
+          type: string
+    DiscoveryEnrichmentSession:
+      type: object
+      required:
+        - schema_version
+        - session_id
+        - tenant_id
+        - candidate_id
+        - status
+        - created_at
+        - consent_required
+        - privacy_guardrails
+        - local_evidence_summary
+        - source_plan
+        - extracted_facts
+        - definition_candidate
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - pollek.discovery.enrichment_session.v1
+        session_id:
+          type: string
+        tenant_id:
+          type: string
+        candidate_id:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+        consent_required:
+          type: boolean
+        privacy_guardrails:
+          type: array
+          items:
+            type: string
+        local_evidence_summary: {}
+        source_plan:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveryEnrichmentSourcePlan'
+        extracted_facts:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveryEnrichmentFact'
+        definition_candidate: {}
+        accepted_sources:
+          type: array
+          items:
+            type: string
+        research_result: {}
+        learned_profile_id:
+          type: string
+    DiscoveryEnrichmentSourcePlan:
+      type: object
+      required:
+        - source_id
+        - label
+        - allowed
+        - network_access
+        - safety
+      properties:
+        source_id:
+          type: string
+        label:
+          type: string
+        allowed:
+          type: boolean
+        network_access:
+          type: string
+        safety:
           type: string
     DiscoveryEntityCandidateV1:
       type: object
@@ -4510,6 +4893,35 @@ components:
         total:
           type: integer
           format: int64
+    DiscoveryRelatedSurface:
+      type: object
+      required:
+        - service_id
+        - display_name
+        - entity_role
+        - authority_boundary
+        - evidence_sources
+        - confidence
+      properties:
+        service_id:
+          type: string
+        display_name:
+          type: string
+        entity_role:
+          type: string
+        authority_boundary:
+          type: string
+        evidence_sources:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: number
+          format: float
+        control_parent_id:
+          type: string
+        grouping_reason:
+          type: string
     EnforcePlaneState:
       type: string
       enum:

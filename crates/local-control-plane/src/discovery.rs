@@ -10,8 +10,8 @@ async fn get_discovery() -> Json<serde_json::Value> {
         "schema_version": "contract-discovery.v1",
         "supported": ["1.0"],
         "preferred": "1.0",
-        "contract_version": "2026.06.26",
-        "compatible_cloud_contracts": [">=2026.06.01 <2026.09.00"],
+        "contract_version": "2026.06.29",
+        "compatible_cloud_contracts": [">=2026.06.29 <2026.09.00"],
         "minimum_dek_version": "1.0.0-beta.6",
         "sunset": { "0.9": "2026-10-01T00:00:00Z" },
         "schemas": {
@@ -53,7 +53,110 @@ async fn get_discovery() -> Json<serde_json::Value> {
                 "direction": "cloud_to_local",
                 "hot_reload": true,
                 "requires_spiffe": true,
-                "requires_oauth": true
+                "requires_oauth": true,
+                "requires_mtls": true,
+                "tenant_scoped": true,
+                "paths": [
+                    "/v1/tenants/{tenant_id}/bundles/hot-reload",
+                    "/v1/tenants/{tenant_id}/policy-bundles/hot-reload",
+                    "/v1/policy-bundles/{bundle_id}/hot-reload"
+                ],
+                "controls": [
+                    "signed-control-envelope",
+                    "nonce",
+                    "expiry",
+                    "payload_hash",
+                    "allowlisted_paths",
+                    "replay_record",
+                    "audit_event"
+                ]
+            },
+            "pollek.cloud.connection_update": {
+                "schema": "pollek.cloud.connection-update.v1",
+                "direction": "cloud_to_local",
+                "hot_reload": true,
+                "requires_spiffe": true,
+                "requires_oauth": true,
+                "requires_mtls": true,
+                "tenant_scoped": true,
+                "paths": [
+                    "/v1/tenants/{tenant_id}/pdp/cloud",
+                    "/v1/tenants/{tenant_id}/pdp/cloud/probe"
+                ],
+                "controls": [
+                    "signed-control-envelope",
+                    "payload_hash",
+                    "allowlisted_paths",
+                    "replay_record"
+                ]
+            },
+            "pollek.cloud.secure_control_channel": {
+                "direction": "bidirectional",
+                "hot_reload": true,
+                "requires_spiffe": true,
+                "requires_oauth": true,
+                "requires_mtls": true,
+                "tenant_scoped": true,
+                "paths": [
+                    "/v1/tenants/{tenant_id}/pdp/cloud",
+                    "/v1/tenants/{tenant_id}/bundles/hot-reload",
+                    "/v1/tenants/{tenant_id}/policy-bundles/hot-reload",
+                    "/v1/policy-bundles/{bundle_id}/hot-reload"
+                ],
+                "controls": [
+                    "signed-control-envelope",
+                    "nonce",
+                    "expiry",
+                    "payload_hash",
+                    "allowlisted_paths",
+                    "replay_record",
+                    "audit_event",
+                    "secret_redaction"
+                ],
+                "purpose": "Accept least-privilege Pollek Cloud control dispatches and apply local configuration or hot-reload updates without treating unsupported paths as success."
+            },
+            "local.discovery.grouped_surfaces": {
+                "direction": "local_to_dashboard",
+                "hot_reload": true,
+                "requires_spiffe": false,
+                "requires_oauth": false,
+                "tenant_scoped": true,
+                "paths": [
+                    "/v1/tenants/{tenant_id}/discovery/candidates",
+                    "/v1/tenants/{tenant_id}/discovery/entities"
+                ],
+                "controls": [
+                    "canonical_service_id",
+                    "surface_group_id",
+                    "authority_boundary",
+                    "entity_role",
+                    "duplicate_policy",
+                    "control_parent_id",
+                    "related_surfaces"
+                ],
+                "purpose": "Expose typed discovery identity and grouping semantics so dashboard and cloud consumers do not infer identity from labels."
+            },
+            "local.discovery.interactive_enrichment": {
+                "direction": "local_to_dashboard",
+                "hot_reload": true,
+                "requires_spiffe": false,
+                "requires_oauth": false,
+                "tenant_scoped": true,
+                "paths": [
+                    "/v1/tenants/{tenant_id}/discovery/candidates/{candidate_id}/enrichment/start",
+                    "/v1/tenants/{tenant_id}/discovery/enrichment/{session_id}",
+                    "/v1/tenants/{tenant_id}/discovery/enrichment/{session_id}/approve",
+                    "/v1/tenants/{tenant_id}/discovery/enrichment/{session_id}/submit"
+                ],
+                "controls": [
+                    "user_consent_required",
+                    "safe_public_metadata_source_plan",
+                    "no_package_install",
+                    "no_code_execution",
+                    "no_prompt_or_secret_capture",
+                    "local_learned_profile"
+                ],
+                "purpose": "Let users improve unknown discovery definitions through a consent-first local enrichment workflow."
             }
         },
         "capabilities": [
@@ -63,6 +166,8 @@ async fn get_discovery() -> Json<serde_json::Value> {
             "user-message.catalog.v1",
             "registered-agent.identity-binding.v1",
             "scan-session.v2",
+            "discovery.grouped-surfaces.v1",
+            "discovery.interactive-enrichment.v1",
             "bundle.signed-envelope.v1",
             "telemetry.batch.v1",
             "policy.opa-wasm.v1",
@@ -75,7 +180,10 @@ async fn get_discovery() -> Json<serde_json::Value> {
             "plugin.marketplace.v1",
             "pdp.routing.v1",
             "pdp.cloud-sync.v1",
-            "pdp.system-managed-runtimes.v1"
+            "pdp.system-managed-runtimes.v1",
+            "pdp.cloud-config-dispatch.v1",
+            "pdp.cloud-hot-reload-apply.v1",
+            "secure-control.signed-envelope.v1"
         ]
     }))
 }

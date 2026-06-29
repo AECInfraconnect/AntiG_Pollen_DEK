@@ -291,6 +291,26 @@ fn relationships_for_candidate(
         });
     }
 
+    for surface in &candidate.related_surfaces {
+        let object_id = capability_id(&candidate.candidate_id, "surface", &surface.service_id);
+        relationships.push(DiscoveredRelationship {
+            relationship_id: capability_id(
+                &candidate.candidate_id,
+                "rel_related_surface",
+                &object_id,
+            ),
+            subject_candidate_id: candidate.candidate_id.clone(),
+            relation: "has_related_surface".into(),
+            object_candidate_id: object_id,
+            confidence: surface.confidence,
+            evidence_ids: candidate
+                .evidence
+                .iter()
+                .map(|evidence| evidence.evidence_id.clone())
+                .collect(),
+        });
+    }
+
     relationships
 }
 
@@ -439,9 +459,9 @@ fn performance_cost_class(candidate: &DiscoveredAgentCandidateV2) -> String {
 mod tests {
     use super::*;
     use crate::model::{
-        ControlBindingPlan, DiscoveredConfigRef, DiscoveredEndpointRef, DiscoveredMcpServerRef,
-        DiscoveryStatus, InferredAgentType, ObservationMode, ObservationProfile,
-        SuggestedAgentRegistration, TelemetryPlan,
+        AuthorityBoundary, ControlBindingPlan, DiscoveredConfigRef, DiscoveredEndpointRef,
+        DiscoveredMcpServerRef, DiscoveryStatus, DuplicatePolicy, EntityRole, InferredAgentType,
+        ObservationMode, ObservationProfile, SuggestedAgentRegistration, TelemetryPlan,
     };
 
     #[test]
@@ -482,6 +502,16 @@ mod tests {
             tenant_id: "local".into(),
             device_id: "device".into(),
             status: DiscoveryStatus::Discovered,
+            canonical_service_id: "demo_agent".into(),
+            surface_group_id: "demo_agent".into(),
+            authority_boundary: AuthorityBoundary::LocalDevice,
+            entity_role: EntityRole::LocalAgentHost,
+            duplicate_policy: DuplicatePolicy::Standalone,
+            control_parent_id: None,
+            grouping_reason: None,
+            observe_scope: "local_process_file_network_tool_metadata".into(),
+            enforce_scope: "local_policy_pep_when_installed".into(),
+            related_surfaces: vec![],
             instance_count: 1,
             matched_signature_id: None,
             display_name: "Demo Agent".into(),

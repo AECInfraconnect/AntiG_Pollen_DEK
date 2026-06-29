@@ -26,7 +26,7 @@ export function Breadcrumbs() {
   let title = currentNavItem
     ? labelForLanguage(currentNavItem, i18n.language)
     : undefined;
-  
+
   if (!title && pathParts.length > 0) {
     // try to match the first part
     for (const group of NAV) {
@@ -50,12 +50,12 @@ export function Breadcrumbs() {
   const isHome = location.pathname === "/";
 
   return (
-    <div className="flex items-center gap-4 mb-6">
+    <div className="mb-3 flex items-center gap-3">
       <button
         onClick={() => navigate(-1)}
         disabled={isHome}
         aria-label={t("common.goBack")}
-        className="p-2 hover:bg-muted rounded-md border text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-card shadow-sm"
+        className="rounded-md border bg-card p-2 text-muted-foreground shadow-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
         title={t("common.goBack")}
       >
         <ArrowLeft className="w-4 h-4" />
@@ -63,13 +63,13 @@ export function Breadcrumbs() {
       <nav className="flex items-center text-sm text-muted-foreground gap-2">
         <button
           type="button"
-          className="flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors"
+          className="flex cursor-pointer items-center gap-1.5 transition-colors hover:text-foreground"
           onClick={() => navigate("/")}
         >
           <Home className="w-4 h-4" />
           <span>{t("nav.home")}</span>
         </button>
-        
+
         {!isHome && title && (
           <>
             <ChevronRight className="w-4 h-4" />

@@ -81,18 +81,22 @@ function useDeleteAgent() {
     if (
       !(await confirm({
         title: "Delete Agent",
-        description: "Are you sure you want to delete this agent?",
+        description:
+          "Delete this agent? Pollek will remove its local registry record, linked policies, setup properties, and registration metadata. If Auto Discovery finds it again later, it will appear as Pending and can be registered again.",
+        confirmText: "Delete",
         danger: true,
       }))
     ) {
-      return;
+      return false;
     }
 
     try {
       await RegistryApi.deleteAgent(id);
       toast.success("Agent deleted");
+      return true;
     } catch {
       toast.error("Failed to delete agent");
+      return false;
     }
   };
 }
@@ -1539,8 +1543,9 @@ export default function AgentsV2() {
                 agent={agent}
                 activity={activity}
                 onDelete={() => {
-                  void deleteAgent(agent.agent_id);
-                  setSearchParams({});
+                  void deleteAgent(agent.agent_id).then((deleted) => {
+                    if (deleted) setSearchParams({});
+                  });
                 }}
               />
             )}

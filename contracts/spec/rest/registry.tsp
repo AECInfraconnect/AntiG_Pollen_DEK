@@ -107,17 +107,92 @@ model PolicySuggestion {
 }
 
 model DiscoveryCandidate {
+  schema_version: string;
   candidate_id: string;
   tenant_id: string;
-  surface: string;
-  first_seen_at: string;
-  last_seen_at: string;
-  observation_count: int64;
-  inferred_name?: string;
-  inferred_provider?: string;
+  device_id: string;
   status: string;
+  canonical_service_id: string;
+  surface_group_id: string;
+  authority_boundary: string;
+  entity_role: string;
+  duplicate_policy: string;
+  control_parent_id?: string;
+  grouping_reason?: string;
+  observe_scope: string;
+  enforce_scope: string;
+  related_surfaces: DiscoveryRelatedSurface[];
+  instance_count?: int32;
+  matched_signature_id?: string;
+  display_name: string;
+  vendor?: string;
+  product?: string;
+  inferred_agent_type: string;
+  confidence: float32;
+  risk_score: int32;
+  capability_tags?: string[];
+  matched_signals?: unknown[];
+  first_seen: string;
+  last_seen: string;
+  evidence?: unknown[];
+  discovered_configs?: unknown[];
+  discovered_endpoints?: unknown[];
+  discovered_mcp_servers?: unknown[];
+  suggested_registration?: unknown;
+  suggested_observation_profile?: unknown;
+  suggested_control_bindings?: unknown[];
+  telemetry_plan?: unknown;
+  labels?: Record<string>;
   scan_ids?: string[];
   last_scan_id?: string;
+}
+
+model DiscoveryRelatedSurface {
+  service_id: string;
+  display_name: string;
+  entity_role: string;
+  authority_boundary: string;
+  evidence_sources: string[];
+  confidence: float32;
+  control_parent_id?: string;
+  grouping_reason?: string;
+}
+
+model DiscoveryEnrichmentSourcePlan {
+  source_id: string;
+  label: string;
+  allowed: boolean;
+  network_access: string;
+  safety: string;
+}
+
+model DiscoveryEnrichmentFact {
+  fact: string;
+  value: string;
+  confidence: float32;
+  source: string;
+}
+
+model DiscoveryEnrichmentSession {
+  schema_version: "pollek.discovery.enrichment_session.v1";
+  session_id: string;
+  tenant_id: string;
+  candidate_id: string;
+  status: string;
+  created_at: string;
+  consent_required: boolean;
+  privacy_guardrails: string[];
+  local_evidence_summary: unknown;
+  source_plan: DiscoveryEnrichmentSourcePlan[];
+  extracted_facts: DiscoveryEnrichmentFact[];
+  definition_candidate: unknown;
+  accepted_sources?: string[];
+  research_result?: unknown;
+  learned_profile_id?: string;
+}
+
+model DiscoveryEnrichmentApproveRequest {
+  accepted_sources: string[];
 }
 
 model CanonicalDiscoveryCapability {
@@ -254,7 +329,11 @@ model PolicySuggestionListResponse {
 }
 
 model DiscoveryCandidateListResponse {
-  items: DiscoveryCandidate[];
+  schema_version: "agent-discovery-candidate-list.v1";
+  candidates: DiscoveryCandidate[];
+  items?: DiscoveryCandidate[];
+  next_cursor?: int64;
+  total: int64;
 }
 
 model PolicyCoverageSummary {
@@ -420,6 +499,22 @@ interface DiscoveryApi {
   @doc("Get canonical capabilities for a discovery candidate without invoking tools or reading resources.")
   @route("candidates/{candidate_id}/capabilities")
   @get getCandidateCapabilities(@path tenant_id: string, @path candidate_id: string, ...PollekHeaders): DiscoveryCapabilityInventoryResponse | PollekError;
+
+  @doc("Start a safe local definition enrichment session for a discovery candidate.")
+  @route("candidates/{candidate_id}/enrichment/start")
+  @post startCandidateEnrichment(@path tenant_id: string, @path candidate_id: string, ...PollekHeaders, @body body: unknown): DiscoveryEnrichmentSession | PollekError;
+
+  @doc("Get a discovery enrichment session.")
+  @route("enrichment/{session_id}")
+  @get getCandidateEnrichment(@path tenant_id: string, @path session_id: string, ...PollekHeaders): DiscoveryEnrichmentSession | PollekError;
+
+  @doc("Approve the safe source plan for a discovery enrichment session.")
+  @route("enrichment/{session_id}/approve")
+  @post approveCandidateEnrichment(@path tenant_id: string, @path session_id: string, ...PollekHeaders, @body body: DiscoveryEnrichmentApproveRequest): DiscoveryEnrichmentSession | PollekError;
+
+  @doc("Persist the learned local discovery profile from an enrichment session.")
+  @route("enrichment/{session_id}/submit")
+  @post submitCandidateEnrichment(@path tenant_id: string, @path session_id: string, ...PollekHeaders): DiscoveryEnrichmentSession | PollekError;
 
   @doc("Retrieve and persist canonical capabilities for a discovery candidate.")
   @route("candidates/{candidate_id}/retrieve-capabilities")

@@ -278,6 +278,20 @@ pub fn to_registry_agent_v2(
         labels: {
             let mut l: std::collections::HashMap<String, String> =
                 candidate.labels.clone().into_iter().collect();
+            l.insert(
+                "discovery_candidate_id".into(),
+                candidate.candidate_id.clone(),
+            );
+            if let Some(scan_id) = &candidate.last_scan_id {
+                l.insert("registered_from_scan_id".into(), scan_id.clone());
+            }
+            if let Some(merge_key) = candidate
+                .evidence
+                .iter()
+                .find_map(|ev| ev.merge_key.clone())
+            {
+                l.insert("discovery_candidate_merge_key".into(), merge_key);
+            }
             for (i, c) in candidate.discovered_configs.iter().enumerate() {
                 l.insert(
                     format!("config_{}_{}", i, c.config_type),
@@ -297,6 +311,31 @@ pub fn to_registry_agent_v2(
             if let Some(sig) = &candidate.matched_signature_id {
                 l.insert("matched_signature_id".into(), sig.clone());
             }
+            l.insert(
+                "canonical_service_id".into(),
+                candidate.canonical_service_id.clone(),
+            );
+            l.insert(
+                "surface_group_id".into(),
+                candidate.surface_group_id.clone(),
+            );
+            l.insert(
+                "authority_boundary".into(),
+                format!("{:?}", candidate.authority_boundary),
+            );
+            l.insert("entity_role".into(), format!("{:?}", candidate.entity_role));
+            l.insert(
+                "duplicate_policy".into(),
+                format!("{:?}", candidate.duplicate_policy),
+            );
+            if let Some(parent_id) = &candidate.control_parent_id {
+                l.insert("control_parent_id".into(), parent_id.clone());
+            }
+            if let Some(reason) = &candidate.grouping_reason {
+                l.insert("grouping_reason".into(), reason.clone());
+            }
+            l.insert("observe_scope".into(), candidate.observe_scope.clone());
+            l.insert("enforce_scope".into(), candidate.enforce_scope.clone());
             l.insert(
                 "suggested_pep".into(),
                 format!("{:?}", candidate.suggested_observation_profile),
@@ -384,6 +423,16 @@ mod tests {
             tenant_id: "local".into(),
             device_id: "device-local".into(),
             status: DiscoveryStatus::Discovered,
+            canonical_service_id: "openai_codex_desktop".into(),
+            surface_group_id: "openai_codex".into(),
+            authority_boundary: AuthorityBoundary::LocalDevice,
+            entity_role: EntityRole::LocalAgentHost,
+            duplicate_policy: DuplicatePolicy::Standalone,
+            control_parent_id: None,
+            grouping_reason: None,
+            observe_scope: "local_process_file_network_tool_metadata".into(),
+            enforce_scope: "local_policy_pep_when_installed".into(),
+            related_surfaces: vec![],
             instance_count: 1,
             matched_signature_id: Some("openai_codex_desktop".into()),
             display_name: "OpenAI Codex (Desktop)".into(),

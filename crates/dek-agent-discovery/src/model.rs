@@ -148,6 +148,58 @@ pub struct DiscoveryEvidenceV2 {
     pub source_path_redacted: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AuthorityBoundary {
+    LocalDevice,
+    LocalBrowserProfile,
+    LocalContainer,
+    LocalNetwork,
+    RemoteCloudSandbox,
+    RemoteWorkspace,
+    RemoteModelApi,
+    McpRemoteServer,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum EntityRole {
+    LocalAgentHost,
+    WebAiSurface,
+    CloudAgentRuntime,
+    RemoteWorkspace,
+    ModelApiEndpoint,
+    McpToolSurface,
+    BrowserProfile,
+    GeneratedAppPreview,
+    IntegrationEndpoint,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DuplicatePolicy {
+    Standalone,
+    ChildSurface,
+    RelatedEndpoint,
+    ProviderEndpoint,
+    MergedDuplicate,
+    NeedsHumanConfirmation,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RelatedSurfaceRef {
+    pub service_id: String,
+    pub display_name: String,
+    pub entity_role: EntityRole,
+    pub authority_boundary: AuthorityBoundary,
+    pub evidence_sources: Vec<EvidenceSource>,
+    pub confidence: f64,
+    pub control_parent_id: Option<String>,
+    pub grouping_reason: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveryEvidenceV3 {
     pub evidence_id: String,
@@ -209,6 +261,16 @@ pub struct DiscoveredAgentCandidateV2 {
     pub tenant_id: String,
     pub device_id: String,
     pub status: DiscoveryStatus,
+    pub canonical_service_id: String,
+    pub surface_group_id: String,
+    pub authority_boundary: AuthorityBoundary,
+    pub entity_role: EntityRole,
+    pub duplicate_policy: DuplicatePolicy,
+    pub control_parent_id: Option<String>,
+    pub grouping_reason: Option<String>,
+    pub observe_scope: String,
+    pub enforce_scope: String,
+    pub related_surfaces: Vec<RelatedSurfaceRef>,
     #[serde(default)]
     pub instance_count: u32,
     #[serde(default)]

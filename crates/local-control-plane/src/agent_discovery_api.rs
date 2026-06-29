@@ -83,6 +83,22 @@ pub fn router() -> Router<AppState> {
             get(get_candidate_capabilities),
         )
         .route(
+            "/v1/tenants/:tenant/discovery/candidates/:candidate_id/enrichment/start",
+            post(start_candidate_enrichment),
+        )
+        .route(
+            "/v1/tenants/:tenant/discovery/enrichment/:session_id",
+            get(get_candidate_enrichment),
+        )
+        .route(
+            "/v1/tenants/:tenant/discovery/enrichment/:session_id/approve",
+            post(approve_candidate_enrichment),
+        )
+        .route(
+            "/v1/tenants/:tenant/discovery/enrichment/:session_id/submit",
+            post(submit_candidate_enrichment),
+        )
+        .route(
             "/v1/tenants/:tenant/discovery/candidates/:candidate_id/retrieve-capabilities",
             post(retrieve_candidate_capabilities),
         )
@@ -127,6 +143,9 @@ async fn confirm_candidate(
     let mut candidate: dek_agent_discovery::model::DiscoveredAgentCandidateV2 =
         serde_json::from_value(raw).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
 
+    reconcile_candidate_registered_status(&st, &tenant, &mut candidate)
+        .await
+        .map_err(ApiError::Internal)?;
     if candidate.status == dek_agent_discovery::model::DiscoveryStatus::Registered {
         return Err(ApiError::BadRequest(
             "Agent is already registered".to_string(),
@@ -169,6 +188,305 @@ async fn confirm_candidate(
         "status": "confirmed",
         "applied_preset": preset_id,
     })))
+}
+
+async fn start_candidate_enrichment(
+    Path((tenant, candidate_id)): Path<(String, String)>,
+    State(st): State<AppState>,
+    Json(req): Json<serde_json::Value>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let candidate = load_candidate(&st, &tenant, &candidate_id).await?;
+    let session_id = format!("enrich_{}", uuid::Uuid::new_v4());
+    let requested_sources = req
+        .get("sources")
+        .and_then(|value| value.as_array())
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(|value| value.as_str().map(str::to_string))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let session = build_enrichment_session(
+        &session_id,
+        &tenant,
+        &candidate,
+        "waiting_for_consent",
+        requested_sources,
+    );
+
+    st.registry_store
+        .upsert_raw(
+            &tenant,
+            "discovery_enrichment_session",
+            &session_id,
+            &session,
+        )
+        .await
+        .map_err(ApiError::Internal)?;
+
+    Ok(Json(session))
+}
+
+async fn get_candidate_enrichment(
+    Path((tenant, session_id)): Path<(String, String)>,
+    State(st): State<AppState>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let raw = st
+        .registry_store
+        .get_raw(&tenant, "discovery_enrichment_session", &session_id)
+        .await
+        .map_err(ApiError::Internal)?
+        .ok_or_else(|| ApiError::NotFound(session_id.clone()))?;
+    Ok(Json(raw))
+}
+
+async fn approve_candidate_enrichment(
+    Path((tenant, session_id)): Path<(String, String)>,
+    State(st): State<AppState>,
+    Json(req): Json<serde_json::Value>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let mut session = st
+        .registry_store
+        .get_raw(&tenant, "discovery_enrichment_session", &session_id)
+        .await
+        .map_err(ApiError::Internal)?
+        .ok_or_else(|| ApiError::NotFound(session_id.clone()))?;
+    let accepted_sources = req
+        .get("accepted_sources")
+        .and_then(|value| value.as_array())
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(|value| value.as_str().map(str::to_string))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    if let Some(obj) = session.as_object_mut() {
+        obj.insert("status".into(), serde_json::json!("researched"));
+        obj.insert(
+            "approved_at".into(),
+            serde_json::json!(chrono::Utc::now().to_rfc3339()),
+        );
+        obj.insert(
+            "accepted_sources".into(),
+            serde_json::json!(accepted_sources),
+        );
+        obj.insert(
+            "research_result".into(),
+            serde_json::json!({
+                "mode": "local_safe_manifest",
+                "network_fetch": "not_performed_by_default",
+                "summary": "Pollek prepared a learned profile from local evidence and the selected safe source plan. Online metadata fetches require explicit source-specific connector support.",
+                "facts_source": "candidate_local_evidence_and_definition_baseline"
+            }),
+        );
+    }
+
+    st.registry_store
+        .upsert_raw(
+            &tenant,
+            "discovery_enrichment_session",
+            &session_id,
+            &session,
+        )
+        .await
+        .map_err(ApiError::Internal)?;
+
+    Ok(Json(session))
+}
+
+async fn submit_candidate_enrichment(
+    Path((tenant, session_id)): Path<(String, String)>,
+    State(st): State<AppState>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let mut session = st
+        .registry_store
+        .get_raw(&tenant, "discovery_enrichment_session", &session_id)
+        .await
+        .map_err(ApiError::Internal)?
+        .ok_or_else(|| ApiError::NotFound(session_id.clone()))?;
+    let candidate_id = session
+        .get("candidate_id")
+        .and_then(|value| value.as_str())
+        .ok_or_else(|| ApiError::BadRequest("Enrichment session has no candidate_id".into()))?
+        .to_string();
+    let learned_profile_id = format!("profile_{}", candidate_id);
+    let definition_candidate = session
+        .get("definition_candidate")
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!({}));
+    let learned_profile = serde_json::json!({
+        "schema_version": "pollek.discovery.learned_profile.v1",
+        "profile_id": learned_profile_id,
+        "candidate_id": candidate_id,
+        "session_id": session_id,
+        "created_at": chrono::Utc::now().to_rfc3339(),
+        "definition_candidate": definition_candidate,
+        "source_session": session
+    });
+
+    st.registry_store
+        .upsert_raw(
+            &tenant,
+            "learned_discovery_profile",
+            learned_profile
+                .get("profile_id")
+                .and_then(|value| value.as_str())
+                .unwrap_or("profile_unknown"),
+            &learned_profile,
+        )
+        .await
+        .map_err(ApiError::Internal)?;
+
+    if let Ok(mut candidate) = load_candidate(&st, &tenant, &candidate_id).await {
+        candidate
+            .labels
+            .insert("learned_profile_id".into(), learned_profile_id.clone());
+        candidate
+            .labels
+            .insert("definition_candidate_status".into(), "submitted".into());
+        let value = serde_json::to_value(&candidate)
+            .map_err(|error| ApiError::Internal(anyhow::anyhow!(error)))?;
+        st.registry_store
+            .upsert_raw(&tenant, "discovery_candidate", &candidate_id, &value)
+            .await
+            .map_err(ApiError::Internal)?;
+    }
+
+    if let Some(obj) = session.as_object_mut() {
+        obj.insert("status".into(), serde_json::json!("submitted"));
+        obj.insert(
+            "submitted_at".into(),
+            serde_json::json!(chrono::Utc::now().to_rfc3339()),
+        );
+        obj.insert(
+            "learned_profile_id".into(),
+            serde_json::json!(learned_profile_id),
+        );
+    }
+    st.registry_store
+        .upsert_raw(
+            &tenant,
+            "discovery_enrichment_session",
+            &session_id,
+            &session,
+        )
+        .await
+        .map_err(ApiError::Internal)?;
+
+    Ok(Json(session))
+}
+
+fn build_enrichment_session(
+    session_id: &str,
+    tenant: &str,
+    candidate: &dek_agent_discovery::model::DiscoveredAgentCandidateV2,
+    status: &str,
+    requested_sources: Vec<String>,
+) -> serde_json::Value {
+    let evidence_sources = candidate
+        .evidence
+        .iter()
+        .map(|evidence| format!("{:?}", evidence.source))
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    let source_plan = serde_json::json!([
+        {
+            "source_id": "official_site",
+            "label": "Official website or documentation",
+            "allowed": requested_sources.iter().any(|source| source == "official_site"),
+            "network_access": "requires_user_approval",
+            "safety": "https_only_public_metadata"
+        },
+        {
+            "source_id": "package_registry",
+            "label": "npm, PyPI, VS Code, or browser extension registry metadata",
+            "allowed": requested_sources.iter().any(|source| source == "package_registry"),
+            "network_access": "requires_user_approval",
+            "safety": "metadata_only_no_install_no_execution"
+        },
+        {
+            "source_id": "github_metadata",
+            "label": "GitHub repository metadata",
+            "allowed": requested_sources.iter().any(|source| source == "github_metadata"),
+            "network_access": "requires_user_approval",
+            "safety": "metadata_only_no_code_execution"
+        },
+        {
+            "source_id": "mcp_manifest",
+            "label": "MCP manifest or connector metadata",
+            "allowed": requested_sources.iter().any(|source| source == "mcp_manifest"),
+            "network_access": "requires_user_approval",
+            "safety": "manifest_only_no_tool_invocation"
+        }
+    ]);
+
+    serde_json::json!({
+        "schema_version": "pollek.discovery.enrichment_session.v1",
+        "session_id": session_id,
+        "tenant_id": tenant,
+        "candidate_id": candidate.candidate_id,
+        "status": status,
+        "created_at": chrono::Utc::now().to_rfc3339(),
+        "consent_required": true,
+        "privacy_guardrails": [
+            "No package installation",
+            "No code execution",
+            "No MCP tool invocation",
+            "No prompt, response, email body, secret, or file content collection",
+            "HTTPS/public metadata sources only after source approval"
+        ],
+        "local_evidence_summary": {
+            "display_name": candidate.display_name,
+            "vendor": candidate.vendor,
+            "canonical_service_id": candidate.canonical_service_id,
+            "surface_group_id": candidate.surface_group_id,
+            "authority_boundary": candidate.authority_boundary,
+            "entity_role": candidate.entity_role,
+            "duplicate_policy": candidate.duplicate_policy,
+            "confidence": candidate.confidence,
+            "evidence_count": candidate.evidence.len(),
+            "evidence_sources": evidence_sources,
+            "capability_tags": candidate.capability_tags
+        },
+        "source_plan": source_plan,
+        "extracted_facts": [
+            {
+                "fact": "canonical_service_id",
+                "value": candidate.canonical_service_id,
+                "confidence": candidate.confidence,
+                "source": "local_discovery_candidate"
+            },
+            {
+                "fact": "authority_boundary",
+                "value": format!("{:?}", candidate.authority_boundary),
+                "confidence": candidate.confidence,
+                "source": "local_discovery_candidate"
+            },
+            {
+                "fact": "observe_scope",
+                "value": candidate.observe_scope,
+                "confidence": candidate.confidence,
+                "source": "local_discovery_candidate"
+            }
+        ],
+        "definition_candidate": {
+            "schema_version": "pollek.discovery.definition_candidate.v1",
+            "canonical_service_id": candidate.canonical_service_id,
+            "display_name": candidate.display_name,
+            "vendor": candidate.vendor,
+            "surface_group_id": candidate.surface_group_id,
+            "authority_boundary": candidate.authority_boundary,
+            "entity_role": candidate.entity_role,
+            "observe_scope": candidate.observe_scope,
+            "enforce_scope": candidate.enforce_scope,
+            "capability_tags": candidate.capability_tags,
+            "related_surfaces": candidate.related_surfaces
+        }
+    })
 }
 
 async fn start_scan(
@@ -298,28 +616,119 @@ async fn merge_and_persist_candidate(
             dek_agent_discovery::model::DiscoveredAgentCandidateV2,
         >(existing_raw)
         {
-            candidate.first_seen = existing.first_seen;
-            for scan_id in existing.scan_ids {
-                if !candidate.scan_ids.iter().any(|id| id == &scan_id) {
-                    candidate.scan_ids.push(scan_id);
+            candidate.first_seen = existing.first_seen.clone();
+            for scan_id in &existing.scan_ids {
+                if !candidate.scan_ids.iter().any(|id| id == scan_id) {
+                    candidate.scan_ids.push(scan_id.clone());
                 }
             }
             if matches!(
-                existing.status,
+                &existing.status,
                 dek_agent_discovery::model::DiscoveryStatus::Registered
                     | dek_agent_discovery::model::DiscoveryStatus::Ignored
             ) {
-                candidate.status = existing.status;
-                candidate.display_name = existing.display_name;
-                candidate.suggested_registration.name = existing.suggested_registration.name;
+                if matches!(
+                    &existing.status,
+                    dek_agent_discovery::model::DiscoveryStatus::Registered
+                ) {
+                    if let Some(agent_id) =
+                        registered_agent_id_for_candidate(st, tenant, &existing).await?
+                    {
+                        candidate.status = existing.status.clone();
+                        candidate.display_name = existing.display_name.clone();
+                        candidate.suggested_registration.name =
+                            existing.suggested_registration.name.clone();
+                        candidate
+                            .labels
+                            .insert("registered_agent_id".to_string(), agent_id);
+                    }
+                } else {
+                    candidate.status = existing.status.clone();
+                    candidate.display_name = existing.display_name.clone();
+                    candidate.suggested_registration.name =
+                        existing.suggested_registration.name.clone();
+                }
             }
         }
     }
 
+    reconcile_candidate_registered_status(st, tenant, candidate).await?;
     let val = serde_json::to_value(&*candidate)?;
     st.registry_store
         .upsert_raw(tenant, "discovery_candidate", &candidate.candidate_id, &val)
         .await?;
+    Ok(())
+}
+
+async fn registered_agent_id_for_candidate(
+    st: &AppState,
+    tenant: &str,
+    candidate: &dek_agent_discovery::model::DiscoveredAgentCandidateV2,
+) -> anyhow::Result<Option<String>> {
+    let mut direct_ids = vec![dek_agent_discovery::stable_agent_key(candidate)];
+    if !candidate.suggested_registration.agent_id.is_empty() {
+        direct_ids.push(candidate.suggested_registration.agent_id.clone());
+    }
+    if let Some(agent_id) = candidate.labels.get("registered_agent_id") {
+        direct_ids.push(agent_id.clone());
+    }
+
+    direct_ids.sort();
+    direct_ids.dedup();
+    for agent_id in direct_ids {
+        if st
+            .registry_store
+            .get_raw(tenant, "agent", &agent_id)
+            .await?
+            .is_some()
+        {
+            return Ok(Some(agent_id));
+        }
+    }
+
+    let candidate_merge_key = candidate
+        .evidence
+        .iter()
+        .find_map(|ev| ev.merge_key.as_deref());
+    for agent in st.registry_store.list_agents(tenant).await? {
+        if agent
+            .labels
+            .get("discovery_candidate_id")
+            .is_some_and(|id| id == &candidate.candidate_id)
+        {
+            return Ok(Some(agent.agent_id));
+        }
+        if let (Some(agent_merge_key), Some(candidate_merge_key)) = (
+            agent.labels.get("discovery_candidate_merge_key"),
+            candidate_merge_key,
+        ) {
+            if agent_merge_key == candidate_merge_key {
+                return Ok(Some(agent.agent_id));
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+async fn reconcile_candidate_registered_status(
+    st: &AppState,
+    tenant: &str,
+    candidate: &mut dek_agent_discovery::model::DiscoveredAgentCandidateV2,
+) -> anyhow::Result<()> {
+    if let Some(agent_id) = registered_agent_id_for_candidate(st, tenant, candidate).await? {
+        candidate.status = dek_agent_discovery::model::DiscoveryStatus::Registered;
+        candidate
+            .labels
+            .insert("registered_agent_id".to_string(), agent_id);
+    } else if matches!(
+        candidate.status,
+        dek_agent_discovery::model::DiscoveryStatus::Registered
+    ) {
+        candidate.status = dek_agent_discovery::model::DiscoveryStatus::PendingApproval;
+        candidate.labels.remove("registered_agent_id");
+    }
+
     Ok(())
 }
 
@@ -328,11 +737,34 @@ async fn list_candidates(
     Query(query): Query<PaginationQuery>,
     State(st): State<AppState>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let mut items = st
+    let raw_items = st
         .registry_store
         .list_raw(&tenant, "discovery_candidate")
         .await
         .map_err(ApiError::Internal)?;
+    let mut items = Vec::new();
+
+    for raw in raw_items {
+        match serde_json::from_value::<dek_agent_discovery::model::DiscoveredAgentCandidateV2>(
+            raw.clone(),
+        ) {
+            Ok(mut candidate) => {
+                reconcile_candidate_registered_status(&st, &tenant, &mut candidate)
+                    .await
+                    .map_err(ApiError::Internal)?;
+                items.push(
+                    serde_json::to_value(candidate)
+                        .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?,
+                );
+            }
+            Err(error) => {
+                tracing::warn!(
+                    %error,
+                    "skipping incompatible discovery candidate; clear discovery history to remove stale development records"
+                );
+            }
+        }
+    }
 
     let limit = query.limit.unwrap_or(100);
     let cursor = query.cursor.unwrap_or(0);
@@ -342,7 +774,8 @@ async fn list_candidates(
 
     Ok(Json(serde_json::json!({
         "schema_version": "agent-discovery-candidate-list.v1",
-        "candidates": items,
+        "candidates": items.clone(),
+        "items": items,
         "next_cursor": if cursor + limit < total { Some(cursor + limit) } else { None },
         "total": total
     })))
@@ -619,6 +1052,9 @@ async fn register_candidate(
     let mut candidate: dek_agent_discovery::model::DiscoveredAgentCandidateV2 =
         serde_json::from_value(raw).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
 
+    reconcile_candidate_registered_status(&st, &tenant, &mut candidate)
+        .await
+        .map_err(ApiError::Internal)?;
     if candidate.status == dek_agent_discovery::model::DiscoveryStatus::Registered {
         return Err(ApiError::BadRequest(
             "Agent is already registered".to_string(),
@@ -704,6 +1140,10 @@ async fn register_candidate(
     }
 
     candidate.status = dek_agent_discovery::model::DiscoveryStatus::Registered;
+    candidate.labels.insert(
+        "registered_agent_id".to_string(),
+        registered.agent_id.clone(),
+    );
     let updated_candidate_value =
         serde_json::to_value(&candidate).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
 

@@ -418,12 +418,64 @@ export interface MatchedSignal {
   weight: number;
 }
 
+export type DiscoveryAuthorityBoundary =
+  | "local_device"
+  | "local_browser_profile"
+  | "local_container"
+  | "local_network"
+  | "remote_cloud_sandbox"
+  | "remote_workspace"
+  | "remote_model_api"
+  | "mcp_remote_server"
+  | "unknown";
+
+export type DiscoveryEntityRole =
+  | "local_agent_host"
+  | "web_ai_surface"
+  | "cloud_agent_runtime"
+  | "remote_workspace"
+  | "model_api_endpoint"
+  | "mcp_tool_surface"
+  | "browser_profile"
+  | "generated_app_preview"
+  | "integration_endpoint"
+  | "unknown";
+
+export type DiscoveryDuplicatePolicy =
+  | "standalone"
+  | "child_surface"
+  | "related_endpoint"
+  | "provider_endpoint"
+  | "merged_duplicate"
+  | "needs_human_confirmation";
+
+export interface RelatedSurfaceRef {
+  service_id: string;
+  display_name: string;
+  entity_role: DiscoveryEntityRole;
+  authority_boundary: DiscoveryAuthorityBoundary;
+  evidence_sources: string[];
+  confidence: number;
+  control_parent_id?: string;
+  grouping_reason?: string;
+}
+
 export interface DiscoveredAgentCandidateV2 {
   schema_version: string;
   candidate_id: string;
   tenant_id: string;
   device_id: string;
   status: string; // 'pending_approval' | 'registered' | etc
+  canonical_service_id: string;
+  surface_group_id: string;
+  authority_boundary: DiscoveryAuthorityBoundary;
+  entity_role: DiscoveryEntityRole;
+  duplicate_policy: DiscoveryDuplicatePolicy;
+  control_parent_id?: string;
+  grouping_reason?: string;
+  observe_scope: string;
+  enforce_scope: string;
+  related_surfaces: RelatedSurfaceRef[];
   display_name: string;
   vendor?: string;
   product?: string;
@@ -445,6 +497,35 @@ export interface DiscoveredAgentCandidateV2 {
   suggested_control_bindings: ControlBindingPlan[];
   telemetry_plan: any;
   labels: Record<string, string>;
+}
+
+export interface DiscoveryEnrichmentSession {
+  schema_version: string;
+  session_id: string;
+  tenant_id: string;
+  candidate_id: string;
+  status: "waiting_for_consent" | "researched" | "submitted" | string;
+  created_at: string;
+  consent_required: boolean;
+  privacy_guardrails: string[];
+  local_evidence_summary: Record<string, any>;
+  source_plan: Array<{
+    source_id: string;
+    label: string;
+    allowed: boolean;
+    network_access: string;
+    safety: string;
+  }>;
+  extracted_facts: Array<{
+    fact: string;
+    value: string;
+    confidence: number;
+    source: string;
+  }>;
+  definition_candidate: Record<string, any>;
+  accepted_sources?: string[];
+  research_result?: Record<string, any>;
+  learned_profile_id?: string;
 }
 
 export type DiscoveryEntityKind =

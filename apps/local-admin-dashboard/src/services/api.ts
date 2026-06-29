@@ -15,6 +15,7 @@ import type {
   PdpRouteRule,
   CloudPdpProfile,
   DiscoveryCapabilityInventory,
+  DiscoveryEnrichmentSession,
   DiscoveryEntityCandidate,
   DiscoveryScanJob,
   DiscoveredAgentCandidateV2,
@@ -745,6 +746,43 @@ export class ControlPlaneClient {
     );
   }
 
+  async startDiscoveryCandidateEnrichment(
+    candidateId: string,
+    payload: { sources?: string[] } = {},
+  ): Promise<DiscoveryEnrichmentSession> {
+    return this.fetchApi(
+      `/discovery/candidates/${candidateId}/enrichment/start`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
+  }
+
+  async getDiscoveryCandidateEnrichment(
+    sessionId: string,
+  ): Promise<DiscoveryEnrichmentSession> {
+    return this.fetchApi(`/discovery/enrichment/${sessionId}`);
+  }
+
+  async approveDiscoveryCandidateEnrichment(
+    sessionId: string,
+    acceptedSources: string[],
+  ): Promise<DiscoveryEnrichmentSession> {
+    return this.fetchApi(`/discovery/enrichment/${sessionId}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ accepted_sources: acceptedSources }),
+    });
+  }
+
+  async submitDiscoveryCandidateEnrichment(
+    sessionId: string,
+  ): Promise<DiscoveryEnrichmentSession> {
+    return this.fetchApi(`/discovery/enrichment/${sessionId}/submit`, {
+      method: "POST",
+    });
+  }
+
   async confirmCandidate(
     candidateId: string,
     payload: IdentityConfirmation,
@@ -1046,6 +1084,18 @@ export const RegistryApi = {
     defaultClient.getDiscoveryCandidateCapabilities(candidateId),
   retrieveDiscoveryCandidateCapabilities: (candidateId: string) =>
     defaultClient.retrieveDiscoveryCandidateCapabilities(candidateId),
+  startDiscoveryCandidateEnrichment: (
+    candidateId: string,
+    payload?: { sources?: string[] },
+  ) => defaultClient.startDiscoveryCandidateEnrichment(candidateId, payload),
+  getDiscoveryCandidateEnrichment: (sessionId: string) =>
+    defaultClient.getDiscoveryCandidateEnrichment(sessionId),
+  approveDiscoveryCandidateEnrichment: (
+    sessionId: string,
+    acceptedSources: string[],
+  ) => defaultClient.approveDiscoveryCandidateEnrichment(sessionId, acceptedSources),
+  submitDiscoveryCandidateEnrichment: (sessionId: string) =>
+    defaultClient.submitDiscoveryCandidateEnrichment(sessionId),
   confirmCandidate: (candidateId: string, payload: IdentityConfirmation) =>
     defaultClient.confirmCandidate(candidateId, payload),
   triggerDiscoveryScan: (req?: any) => defaultClient.triggerDiscoveryScan(req),

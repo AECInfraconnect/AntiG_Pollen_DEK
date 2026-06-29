@@ -26,6 +26,7 @@ import {
   type AiAgent,
   type LocalObserveRefreshResponse,
 } from "../services/api";
+import { Collapsible } from "../components/ui";
 import type { LocalCapabilitySnapshotV2 } from "../services/types";
 import { UserActivityApi } from "../features/user-activity/api";
 import {
@@ -301,6 +302,7 @@ export function SimpleOverviewPage() {
   const needsSetup = matrix.filter(
     (item) => item.status === "needs_setup",
   ).length;
+  const watchReady = matrix.filter((item) => item.can_watch).length;
   const recent = activity.slice(0, 4);
 
   return (
@@ -359,27 +361,44 @@ export function SimpleOverviewPage() {
         </section>
       )}
 
-      <section className="space-y-3">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 className="text-sm font-semibold">
-              What Pollek can see on this device
-            </h2>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Coverage depends on this OS, permissions, connectors, and how each
-              AI app is launched. Pollek labels watch-only or setup-required
-              areas so you know when to configure the AI app itself.
-            </p>
+      <Collapsible
+        className="rounded-lg bg-card/60"
+        title={
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold">
+                What Pollek can see on this device
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Coverage areas and setup requirements.
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full border bg-background px-2.5 py-1">
+                {watchReady} watchable
+              </span>
+              <span className="rounded-full border bg-background px-2.5 py-1">
+                {needsSetup} need setup
+              </span>
+            </div>
           </div>
+        }
+      >
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+            Coverage depends on this OS, permissions, connectors, and how each
+            AI app is launched. Pollek labels watch-only or setup-required areas
+            so you know when to configure the AI app itself.
+          </p>
           <Link
             to="/setup"
-            className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+            className="inline-flex h-9 w-fit items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
           >
             <Wrench className="h-4 w-4" />
             Setup details
           </Link>
         </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {observeSurfaces.map(({ surface, item }) => (
             <ObserveSurfaceCard
               key={surface.category}
@@ -388,7 +407,7 @@ export function SimpleOverviewPage() {
             />
           ))}
         </div>
-      </section>
+      </Collapsible>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-lg border bg-card/60 p-4">

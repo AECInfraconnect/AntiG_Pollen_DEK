@@ -9,6 +9,7 @@ pub struct FingerprintDb {
     pub browser_processes: Vec<BrowserProcessDef>,
     pub ai_process_hints: AiProcessHints,
     pub cloud_resource_signatures: HashMap<String, CloudResourceSignatureDef>,
+    pub collapse_rules: Vec<CollapseRuleDef>,
 }
 
 impl FingerprintDb {
@@ -40,6 +41,7 @@ impl FingerprintDb {
                 .into_iter()
                 .map(|s| (s.name.clone(), s))
                 .collect(),
+            collapse_rules: base.collapse_rules,
         }
     }
 
@@ -68,6 +70,7 @@ impl FingerprintDb {
                     .into_iter()
                     .map(|s| (s.name.clone(), s))
                     .collect();
+                self.collapse_rules = def.collapse_rules;
             }
             DefinitionKind::Delta => {
                 if def.base_version != Some(self.version) {
@@ -92,6 +95,9 @@ impl FingerprintDb {
                 for browser in def.browser_processes {
                     upsert_browser_process(&mut self.browser_processes, browser);
                 }
+                for rule in def.collapse_rules {
+                    upsert_collapse_rule(&mut self.collapse_rules, rule);
+                }
                 if !def.ai_process_hints.name_tokens.is_empty()
                     || !def.ai_process_hints.cmd_tokens.is_empty()
                     || !def.ai_process_hints.deny_tokens.is_empty()
@@ -104,6 +110,7 @@ impl FingerprintDb {
                     self.web_ai.remove(id);
                     self.installed_apps.remove(id);
                     self.cloud_resource_signatures.remove(id);
+                    self.collapse_rules.retain(|rule| rule.id != *id);
                     self.browser_processes.retain(|b| {
                         !b.process_names
                             .iter()
@@ -114,6 +121,14 @@ impl FingerprintDb {
         }
         self.version = def.definition_version;
         Ok(())
+    }
+}
+
+fn upsert_collapse_rule(items: &mut Vec<CollapseRuleDef>, incoming: CollapseRuleDef) {
+    if let Some(existing) = items.iter_mut().find(|rule| rule.id == incoming.id) {
+        *existing = incoming;
+    } else {
+        items.push(incoming);
     }
 }
 
@@ -199,6 +214,7 @@ mod tests {
             browser_processes: vec![],
             ai_process_hints: AiProcessHints::default(),
             cloud_resource_signatures: vec![],
+            collapse_rules: vec![],
         };
         let mut db = FingerprintDb::from_baseline(base);
         let delta = FingerprintDefinition {
@@ -217,6 +233,7 @@ mod tests {
             browser_processes: vec![],
             ai_process_hints: AiProcessHints::default(),
             cloud_resource_signatures: vec![],
+            collapse_rules: vec![],
         };
         db.apply(delta)?;
         assert!(db.by_id.contains_key("goose_cli"));
@@ -235,6 +252,7 @@ mod tests {
             browser_processes: vec![],
             ai_process_hints: AiProcessHints::default(),
             cloud_resource_signatures: std::collections::HashMap::new(),
+            collapse_rules: vec![],
         };
         let bad = FingerprintDefinition {
             schema_version: "v2".into(),
@@ -252,6 +270,7 @@ mod tests {
             browser_processes: vec![],
             ai_process_hints: AiProcessHints::default(),
             cloud_resource_signatures: vec![],
+            collapse_rules: vec![],
         };
         assert!(db.apply(bad).is_err());
     }
