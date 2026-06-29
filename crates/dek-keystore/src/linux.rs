@@ -67,7 +67,7 @@ impl Keystore for KernelKeystore {
 
         // Try Kernel Keyring first
         let keyring = KeyRing::from_special_id(KeyRingIdentifier::User, false)
-            .context("Failed to access User Keyring")?;
+            .map_err(|err| anyhow::anyhow!("Failed to access User Keyring: {err}"))?;
 
         match keyring.search(&key_desc) {
             Ok(key) => {
@@ -100,7 +100,7 @@ impl Keystore for KernelKeystore {
 
         // Try deleting from Kernel Keyring
         let keyring = KeyRing::from_special_id(KeyRingIdentifier::User, false)
-            .context("Failed to access User Keyring")?;
+            .map_err(|err| anyhow::anyhow!("Failed to access User Keyring: {err}"))?;
 
         if let Ok(key) = keyring.search(&key_desc) {
             let _ = key.invalidate();
