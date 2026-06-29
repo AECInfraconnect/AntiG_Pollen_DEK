@@ -1,6 +1,9 @@
-# Pollek Plugin SDK Draft
+# Pollek Plugin SDK
 
-This document describes the first stable draft of the local Pollek plugin model. The goal is to let third-party extensions improve discovery, observe coverage, definitions, telemetry, and selected control paths without weakening the local privacy and capability model.
+This document describes the local Pollek plugin model. The goal is to let
+third-party extensions improve discovery, observe coverage, definitions,
+telemetry, and selected control paths without weakening the local privacy and
+capability model.
 
 ## Extension Points
 
@@ -43,6 +46,9 @@ Recommended fields:
 - `config_schema`: JSON schema for plugin settings.
 - `author`, `homepage`, `license`.
 - `signature`, `sbom`, and `checksum`.
+- `registry`: source, OCI/private registry reference, update channel, rollback versions, and revocation id.
+- `governance`: review requirements, marketplace eligibility, and trust labels.
+- `limits`: memory, fuel, timeout, and maximum output size.
 
 ## Capability Consent
 
@@ -59,6 +65,28 @@ Sensitive examples:
 
 The local dashboard must explain these capabilities in human language before install. For example, `http_out:splunk.example.com:443` should appear as "Sends selected telemetry to splunk.example.com".
 
+## Trust, Signing, and Review
+
+Plugin loading is fail-closed for signature state. A plugin with
+`signature.status` other than `valid` cannot be loaded by the host without an
+explicit developer-preview or sideload risk decision.
+
+Marketplace and local registry records should expose these trust labels to the
+dashboard:
+
+- `verified`: publisher and artifact are trusted by the configured root.
+- `local_only`: the plugin does not request outbound HTTP capability.
+- `sends_data_out`: the plugin can send approved telemetry or requests off device.
+- `reviewed_native`: native capability use has passed review.
+- `developer_preview`: local test or private development artifact.
+- `private_registry`: installed from a configured enterprise/private registry.
+- `unverified`: no configured trust proof.
+
+Checksums use the `sha256:<hex>` form. Signature metadata can include issuer,
+subject, certificate reference, and transparency log reference so future
+marketplace tooling can verify Sigstore or enterprise signing flows without
+changing the manifest shape.
+
 ## Local Testing
 
 During local development:
@@ -66,9 +94,51 @@ During local development:
 1. Create a manifest that validates against `contracts/schemas/pollek-plugin.v1.schema.json`.
 2. Implement one of the WIT worlds in `contracts/wit/`.
 3. Use only capabilities listed in the manifest.
-4. Install through the local marketplace or sideload path once available.
+4. Validate, pack, and optionally publish the plugin to the local registry.
 5. Confirm the Installed Plugins view shows the granted capabilities and health.
 6. Verify plugin activity appears in user-facing Activity or History when the plugin uses a capability.
+
+Helper commands:
+
+```bash
+node scripts/pollek-plugin.mjs new tmp/my-plugin com.example.my-plugin
+node scripts/pollek-plugin.mjs test-manifest tmp/my-plugin
+node scripts/pollek-plugin.mjs checksum tmp/my-plugin/plugin.wasm
+node scripts/pollek-plugin.mjs pack tmp/my-plugin
+node scripts/pollek-plugin.mjs publish-local tmp/my-plugin
+```
+
+`publish-local` writes to `pollek-local-data/plugin-registry` by default. The
+Local Control Plane reads that index at runtime. Set
+`POLLEK_PLUGIN_REGISTRY_DIR` if a developer or enterprise install keeps the
+local plugin registry somewhere else.
+
+Rust helpers are available in the `pollek-pdk` crate:
+
+- `ManifestDraft` creates a manifest with conservative local defaults.
+- `parse_manifest` and `validate_manifest_basics` validate manifest shape.
+- `sha256_checksum` produces the canonical checksum string.
+- `capability_description` turns requested capabilities into user-facing copy.
+
+Example plugin packages live under `examples/plugins/`.
+
+## Lifecycle Operations
+
+Installed plugins are persisted in the Local Control Plane registry and emit
+audit events into Activity/History. The local API and dashboard support:
+
+- install with explicit consent
+- enable and disable
+- health probe
+- update
+- staged canary rollout
+- rollback to the previous local version
+- revoke and remove granted capabilities
+- uninstall and clear the local plugin namespace
+
+The dashboard must not call a plugin "enforcing" unless the host capability has
+passed the relevant OS readiness probe. Plugins can increase observe coverage
+even when enforce is unavailable.
 
 ## Marketplace Submission
 
@@ -89,6 +159,14 @@ Native or enforcement plugins require stricter review. They must not claim block
 
 ## Current Status
 
-This SDK is a draft contract. The repository now includes WIT draft worlds, a manifest schema, SDK manifest fields, a deny-by-default capability broker, generated marketplace contract models, local persistent installed-plugin registry storage, and user-facing plugin audit events in Activity and History.
+The repository now includes WIT worlds, a manifest schema, SDK manifest fields,
+a PDK helper crate, a deny-by-default capability broker, fail-closed signature
+state checks, generated marketplace contract models, local persistent
+installed-plugin registry storage, lifecycle APIs, example plugins, developer
+CLI scaffolding, and user-facing plugin audit events in Activity and History.
 
-Future work still includes signing hardening, remote registry trust roots, update and rollback workflows, richer plugin health checks, examples, PDK/templates, and production submission tooling.
+Still external to the open-source local repo: production public marketplace
+operations, commercial cloud approval queues, store billing, and enterprise
+trust-root distribution. The local interfaces are intentionally present so
+those services can be added without changing the Local Dashboard dependency
+boundary.

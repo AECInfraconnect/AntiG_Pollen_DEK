@@ -1,0 +1,37 @@
+{
+  "schema_version": "pollek.plugin.v1",
+  "id": "com.example.rust-discovery-signature",
+  "name": "Rust Discovery Signature Example",
+  "version": "0.1.0",
+  "kind": "discovery.signature",
+  "wit_world": "pollek:discovery/discovery-plugin@0.1.0",
+  "abi": "component",
+  "min_engine_version": "1.0.0",
+  "os": ["windows", "linux", "macos"],
+  "entry": "plugin.wasm",
+  "capabilities": {
+    "host": ["logging", "clock"],
+    "http_out": [],
+    "kv": [],
+    "native": [],
+    "data_scope": ["candidates:write"]
+  },
+  "author": {
+    "name": "Example Labs",
+    "verified": false
+  },
+  "signature": {
+    "type": "developer",
+    "status": "missing"
+  },
+  "registry": {
+    "source": "sideload",
+    "update_channel": "local",
+    "rollback_versions": []
+  },
+  "governance": {
+    "review_required": true,
+    "public_marketplace_allowed": false,
+    "trust_labels": ["developer_preview"]
+  }
+}

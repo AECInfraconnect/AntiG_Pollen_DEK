@@ -1,6 +1,7 @@
 pub mod anomaly_detector;
 pub mod app;
 pub mod auth;
+pub mod browser_extension_api;
 pub mod bundle;
 pub mod compiler;
 pub mod config;

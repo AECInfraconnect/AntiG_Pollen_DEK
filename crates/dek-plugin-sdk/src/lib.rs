@@ -135,6 +135,14 @@ pub struct PluginSignature {
     pub signature_type: Option<String>,
     pub bundle: Option<String>,
     pub status: Option<String>,
+    #[serde(default)]
+    pub issuer: Option<String>,
+    #[serde(default)]
+    pub subject: Option<String>,
+    #[serde(default)]
+    pub certificate_ref: Option<String>,
+    #[serde(default)]
+    pub transparency_log_ref: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -143,6 +151,44 @@ pub struct PluginAuthor {
     pub url: Option<String>,
     #[serde(default)]
     pub verified: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum PluginSource {
+    #[default]
+    LocalCatalog,
+    Marketplace,
+    Sideload,
+    PrivateRegistry,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PluginRegistry {
+    #[serde(default)]
+    pub source: PluginSource,
+    #[serde(default)]
+    pub oci_ref: Option<String>,
+    #[serde(default)]
+    pub private_registry_ref: Option<String>,
+    #[serde(default)]
+    pub update_channel: Option<String>,
+    #[serde(default)]
+    pub rollback_versions: Vec<String>,
+    #[serde(default)]
+    pub revocation_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PluginGovernance {
+    #[serde(default)]
+    pub review_required: bool,
+    #[serde(default)]
+    pub native_review_required: bool,
+    #[serde(default)]
+    pub public_marketplace_allowed: bool,
+    #[serde(default)]
+    pub trust_labels: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -368,6 +414,10 @@ pub struct PluginManifest {
     pub sbom: Option<String>,
     #[serde(default)]
     pub checksum: Option<String>,
+    #[serde(default)]
+    pub registry: Option<PluginRegistry>,
+    #[serde(default)]
+    pub governance: Option<PluginGovernance>,
     #[serde(rename = "type", default)]
     pub plugin_type: PluginType,
     #[serde(default)]

@@ -35,6 +35,18 @@ select {
   font: inherit;
 }
 
+fieldset {
+  margin: 18px 0 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+  border-radius: 8px;
+}
+
+legend {
+  padding: 0 6px;
+  font-weight: 750;
+}
+
 button {
   margin-top: 18px;
   padding: 10px 14px;

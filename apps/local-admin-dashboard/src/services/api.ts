@@ -69,6 +69,11 @@ export type PromptGuardCheckResponse = {
   message: string;
 };
 
+export type BrowserExtensionStatusItem =
+  components["schemas"]["BrowserExtensionStatusItem"];
+export type BrowserExtensionStatusResponse =
+  components["schemas"]["BrowserExtensionStatusResponse"];
+
 export type LocalObserveRefreshRequest = {
   include_estimates?: boolean;
   sources?: string[];
@@ -562,6 +567,42 @@ export class ControlPlaneClient {
 
   async uninstallPlugin(id: string): Promise<unknown> {
     return this.fetchApi(`/plugins/${id}`, { method: "DELETE" });
+  }
+
+  async checkPluginHealth(id: string): Promise<unknown> {
+    return this.fetchApi(`/plugins/${id}/health`, { method: "POST" });
+  }
+
+  async updatePlugin(id: string, payload: Record<string, unknown> = {}) {
+    return this.fetchApi(`/plugins/${id}/update`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async rollbackPlugin(id: string, payload: Record<string, unknown> = {}) {
+    return this.fetchApi(`/plugins/${id}/rollback`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async canaryPlugin(id: string, payload: Record<string, unknown> = {}) {
+    return this.fetchApi(`/plugins/${id}/canary`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async revokePlugin(id: string, payload: Record<string, unknown> = {}) {
+    return this.fetchApi(`/plugins/${id}/revoke`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getBrowserExtensionStatus(): Promise<BrowserExtensionStatusResponse> {
+    return this.fetchApi("/browser-extension/status");
   }
 
   // PDP Runtimes
@@ -1194,6 +1235,19 @@ export const PluginApi = {
   toggle: (id: string, enabled: boolean) =>
     defaultClient.togglePlugin(id, enabled),
   uninstall: (id: string) => defaultClient.uninstallPlugin(id),
+  health: (id: string) => defaultClient.checkPluginHealth(id),
+  update: (id: string, payload?: Record<string, unknown>) =>
+    defaultClient.updatePlugin(id, payload),
+  rollback: (id: string, payload?: Record<string, unknown>) =>
+    defaultClient.rollbackPlugin(id, payload),
+  canary: (id: string, payload?: Record<string, unknown>) =>
+    defaultClient.canaryPlugin(id, payload),
+  revoke: (id: string, payload?: Record<string, unknown>) =>
+    defaultClient.revokePlugin(id, payload),
+};
+
+export const BrowserExtensionApi = {
+  status: () => defaultClient.getBrowserExtensionStatus(),
 };
 
 export const PdpRuntimeApi = {

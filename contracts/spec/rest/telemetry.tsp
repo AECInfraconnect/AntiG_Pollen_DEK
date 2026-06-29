@@ -26,6 +26,7 @@ enum TelemetryEventType {
   tool_usage,
   identity_access,
   guard_incident,
+  browser_extension_observe,
 }
 
 enum ControlLevel { observe, warn, ask, enforce }

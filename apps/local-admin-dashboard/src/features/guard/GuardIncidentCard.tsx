@@ -22,7 +22,8 @@ import { toast } from "sonner";
 
 import { useMode } from "../../context/ModeContext";
 import { isAdvanceMode } from "../../lib/modes";
-import { TelemetryApi } from "../../services/api";
+import { BrowserExtensionApi, TelemetryApi } from "../../services/api";
+import type { BrowserExtensionStatusItem } from "../../services/api";
 import type { GuardEvent, GuardIncidentEnvelope } from "../../types/guard";
 
 type FeedStatus = "loading" | "ready" | "unavailable";
@@ -257,6 +258,25 @@ function severityLabel(severity?: string | null) {
   if (severity === "warn") return "Review soon";
   if (severity === "info") return "Informational";
   return labelize(severity ?? "info");
+}
+
+function connectorStatusName(item: BrowserExtensionStatusItem) {
+  return (
+    item.browser_name ??
+    item.browser_id ??
+    item.extension_id ??
+    "Browser connector"
+  );
+}
+
+function connectorEventLabel(value?: string | null) {
+  if (!value) return "No event yet";
+  if (value === "tab_loaded") return "Tab opened";
+  if (value === "tab_visible") return "Tab visible";
+  if (value === "prompt_submitted") return "Prompt submitted metadata";
+  if (value === "attachment_detected") return "Attachment metadata";
+  if (value === "visible_response_metadata") return "Response metadata";
+  return labelize(value);
 }
 
 function guardAnalysisModeLabel(mode?: string | null) {
@@ -728,6 +748,34 @@ function PromptGuardCheckPanel({
 }
 
 function BrowserConnectorInstallPanel() {
+  const [statusItems, setStatusItems] = useState<BrowserExtensionStatusItem[]>(
+    [],
+  );
+  const [limitations, setLimitations] = useState<string[]>([]);
+  const [statusLoaded, setStatusLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    BrowserExtensionApi.status()
+      .then((status) => {
+        if (cancelled) return;
+        setStatusItems(status.items ?? []);
+        setLimitations(status.limitations ?? []);
+        setStatusLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setStatusItems([]);
+        setLimitations([
+          "Local browser extension status is unavailable. Start the Local Control Plane and reload this page.",
+        ]);
+        setStatusLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section className="rounded-lg border bg-card/70 p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -737,14 +785,94 @@ function BrowserConnectorInstallPanel() {
           </h3>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
             Use the browser connector to observe prompt submissions from
-            ChatGPT, Claude, DeepSeek, Gemini, and Manus web sessions. Chrome
-            and Edge use the same WebExtension core. Safari must be packaged as
-            a Safari Web Extension app with Xcode.
+            ChatGPT, Claude, DeepSeek, Gemini, Manus, Copilot, and Perplexity
+            web sessions. Chrome and Edge use the same WebExtension core.
+            Safari must be packaged as a Safari Web Extension app with Xcode.
           </p>
         </div>
-        <span className="inline-flex w-fit items-center rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-1 text-xs font-medium text-sky-800 dark:text-sky-200">
-          User-approved install
+        <span
+          className={`inline-flex w-fit items-center rounded-full border px-2 py-1 text-xs font-medium ${
+            statusItems.length
+              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200"
+              : "border-sky-500/25 bg-sky-500/10 text-sky-800 dark:text-sky-200"
+          }`}
+        >
+          {statusItems.length
+            ? `${statusItems.length} connector seen`
+            : statusLoaded
+              ? "Waiting for connector event"
+              : "Checking connector"}
         </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
+        <div className="rounded-lg border bg-background/70 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Radio className="h-4 w-4 text-primary" />
+            Browser Observe status
+          </div>
+          {statusItems.length ? (
+            <div className="mt-3 space-y-2">
+              {statusItems.map((item, index) => (
+                <div
+                  key={`${item.extension_id ?? "extension"}-${item.browser_id ?? index}`}
+                  className="rounded-md border bg-card/70 p-3"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-sm font-medium">
+                      {connectorStatusName(item)}
+                    </div>
+                    <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-700 dark:text-emerald-200">
+                      Metadata only
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Last saw {item.last_provider_label ?? "an AI web app"}:{" "}
+                    {connectorEventLabel(item.last_event_type)}.
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formatDateTime(item.last_seen)}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {(item.capabilities ?? []).map((capability) => (
+                      <span
+                        key={capability}
+                        className="rounded-full border bg-background px-2 py-0.5 text-[11px]"
+                      >
+                        {labelize(capability)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              No browser connector has reported yet. Install or reload the
+              extension, open a supported AI web app, then submit or receive a
+              message to create observe metadata.
+            </p>
+          )}
+        </div>
+
+        <div className="rounded-lg border bg-background/70 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Eye className="h-4 w-4 text-primary" />
+            What it can observe
+          </div>
+          <div className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
+            <p>
+              Prompt submit length/hash, visible response length/hash,
+              attachment counts/extensions, tab lifecycle, browser, provider,
+              and session metadata.
+            </p>
+            <p>
+              Raw prompt and response bodies are not accepted by the browser
+              observe endpoint. Prompt Guard checks can still evaluate raw text
+              locally without storing it.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
@@ -777,6 +905,17 @@ function BrowserConnectorInstallPanel() {
         path, but the user or enterprise browser policy must approve
         installation.
       </div>
+
+      {limitations.length > 0 && (
+        <div className="mt-3 rounded-lg border bg-background/70 p-3 text-sm leading-6 text-muted-foreground">
+          <div className="font-medium text-foreground">Known limits</div>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {limitations.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Link

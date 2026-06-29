@@ -10,8 +10,9 @@
       <h1>Pollek Prompt Guard Connector</h1>
       <p class="hint">
         This extension sends prompts from supported AI web apps to the Local
-        Control Plane on this device. Pollek stores guard metadata only; raw
-        prompt text is not stored in history by the Local Control Plane.
+        Control Plane on this device and records browser AI activity metadata.
+        Pollek stores guard metadata only; raw prompt text is not stored in
+        history by the Local Control Plane.
       </p>
 
       <label class="row">
@@ -19,8 +20,16 @@
         Enable browser prompt capture
       </label>
 
+      <label class="row">
+        <input id="observeEnabled" type="checkbox" />
+        Record browser AI activity metadata
+      </label>
+
       <label for="endpoint">Local Control Plane endpoint</label>
       <input id="endpoint" type="url" />
+
+      <label for="observeEndpoint">Browser Observe endpoint</label>
+      <input id="observeEndpoint" type="url" />
 
       <label for="apiToken">Bearer token, if local auth is enabled</label>
       <input id="apiToken" type="password" autocomplete="off" />
@@ -30,6 +39,18 @@
         <option value="observe">Observe, alert, and record metadata</option>
         <option value="warn_high_risk">Warn on high-risk signals</option>
       </select>
+
+      <fieldset>
+        <legend>Metadata categories</legend>
+        <label class="row">
+          <input id="responseMetadataEnabled" type="checkbox" />
+          Response length and hash metadata
+        </label>
+        <label class="row">
+          <input id="attachmentMetadataEnabled" type="checkbox" />
+          Attachment count, size, and file-type metadata
+        </label>
+      </fieldset>
 
       <button id="save" type="button">Save connector settings</button>
       <div id="status" role="status"></div>

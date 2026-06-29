@@ -3,7 +3,7 @@
   "name": "Pollek Prompt Guard Connector",
   "short_name": "Pollek Guard",
   "version": "0.1.0",
-  "description": "Connect supported AI web apps to the local Pollek Prompt Guard engine.",
+  "description": "Connect supported AI web apps to local Pollek Prompt Guard and browser observe metadata.",
   "permissions": ["storage"],
   "host_permissions": [
     "http://127.0.0.1:43891/*",
@@ -16,7 +16,10 @@
     "https://gemini.google.com/*",
     "https://aistudio.google.com/*",
     "https://manus.im/*",
-    "https://*.manus.im/*"
+    "https://*.manus.im/*",
+    "https://copilot.microsoft.com/*",
+    "https://perplexity.ai/*",
+    "https://www.perplexity.ai/*"
   ],
   "background": {
     "service_worker": "background/service_worker.js"
@@ -32,7 +35,10 @@
         "https://gemini.google.com/*",
         "https://aistudio.google.com/*",
         "https://manus.im/*",
-        "https://*.manus.im/*"
+        "https://*.manus.im/*",
+        "https://copilot.microsoft.com/*",
+        "https://perplexity.ai/*",
+        "https://www.perplexity.ai/*"
       ],
       "js": [
         "shared/webext.js",

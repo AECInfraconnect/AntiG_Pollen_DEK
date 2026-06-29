@@ -19,6 +19,10 @@ Load for local testing:
 
 For Chrome Web Store submission, upload `apps/prompt-guard-browser-extension/packages/pollek-prompt-guard-chromium.zip`.
 
+After loading, open a supported AI site, submit or receive a message, then open
+Pollek > Prompt Guard. The Browser Observe status panel should show the
+connector and its latest metadata-only event.
+
 ## Microsoft Edge
 
 Build:
@@ -36,6 +40,10 @@ Load for local testing:
 
 For Microsoft Edge Add-ons submission, upload `apps/prompt-guard-browser-extension/packages/pollek-prompt-guard-edge.zip`.
 
+After loading, open a supported AI site, submit or receive a message, then open
+Pollek > Prompt Guard. The Browser Observe status panel should show Edge and
+the latest metadata-only event.
+
 ## Safari on macOS
 
 Build the Safari-compatible WebExtension source:
@@ -52,8 +60,27 @@ xcrun safari-web-extension-converter apps/prompt-guard-browser-extension/dist/sa
 
 Open the generated Xcode project, sign it with an Apple Developer account if needed, run the app, then enable the extension in Safari Settings > Extensions.
 
+After enabling, open a supported AI site, submit or receive a message, then
+open Pollek > Prompt Guard. The Browser Observe status panel should show Safari
+after the first metadata-only event arrives.
+
 ## About automatic installation
 
 Chrome, Edge, and Safari do not allow a local web dashboard to silently install a browser extension. Users must approve installation, or an organization must deploy it with managed browser policy.
 
 Pollek can prepare the package, open the right setup instructions, and detect connector telemetry after installation. Silent install is intentionally not part of this connector.
+
+## What the connector sends
+
+Browser observe events contain metadata only:
+
+- provider and browser identifiers
+- tab/session lifecycle
+- prompt length and SHA-256 hash
+- visible response length and SHA-256 hash
+- attachment count, extensions, and total bytes
+
+The browser observe endpoint rejects raw prompt, response, completion, or
+content fields. Prompt Guard checks still send raw text to the local check
+endpoint for local evaluation, but the Local Control Plane persists guard
+metadata rather than raw prompt bodies.

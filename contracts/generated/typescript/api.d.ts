@@ -321,6 +321,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/{tenant_id}/browser-extension/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Ingest a metadata-only browser observe event from the Prompt Guard browser extension. */
+        post: operations["BrowserExtensionApi_ingestBrowserExtensionEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/browser-extension/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List installed browser observe connectors that have emitted metadata-only events. */
+        get: operations["BrowserExtensionApi_getBrowserExtensionStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/{tenant_id}/devices/{device_id}/bundles/latest": {
         parameters: {
             query?: never;
@@ -869,6 +903,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/{tenant_id}/plugins/{plugin_id}/canary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Move an installed plugin into a staged canary rollout. */
+        post: operations["InstalledPluginsApi_canaryPlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugins/{plugin_id}/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Check plugin health and record a local audit event. */
+        post: operations["InstalledPluginsApi_checkPluginHealth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugins/{plugin_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Revoke a plugin locally, disable it, and mark granted capabilities as unavailable. */
+        post: operations["InstalledPluginsApi_revokePlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugins/{plugin_id}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Rollback an installed plugin to the previous local version. */
+        post: operations["InstalledPluginsApi_rollbackPlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/{tenant_id}/plugins/{plugin_id}/toggle": {
         parameters: {
             query?: never;
@@ -880,6 +982,23 @@ export interface paths {
         put?: never;
         /** @description Toggle an installed plugin. */
         post: operations["InstalledPluginsApi_togglePlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugins/{plugin_id}/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Update an installed plugin to a locally available or private-registry version. */
+        post: operations["InstalledPluginsApi_updatePlugin"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1542,6 +1661,69 @@ export interface components {
             candidate_id?: string;
             discovery_candidate_id?: string;
         };
+        BrowserExtensionIngestResponse: {
+            /** @enum {string} */
+            schema_version: "pollek.browser_extension.ingest.v1";
+            status: string;
+            event_id: string;
+            telemetry_recorded: boolean;
+            raw_prompt_or_response_stored: boolean;
+            capture_quality: string;
+        };
+        BrowserExtensionObserveEvent: {
+            /** @enum {string} */
+            schema_version?: "pollek.browser_observe_event.v1";
+            event_type: components["schemas"]["BrowserObserveEventType"] | string;
+            extension_id?: string;
+            extension_version?: string;
+            browser_id?: string;
+            browser_name?: string;
+            provider_id?: string;
+            provider_label?: string;
+            /** Format: int64 */
+            tab_id?: number;
+            /** Format: int64 */
+            window_id?: number;
+            url?: string;
+            title?: string;
+            session_id?: string;
+            occurred_at?: string;
+            /** Format: int64 */
+            text_length?: number;
+            text_hash?: string;
+            /** Format: int64 */
+            response_length?: number;
+            /** Format: int64 */
+            attachment_count?: number;
+            attachment_extensions?: string[];
+            page_visibility?: string;
+            capture_mode?: string;
+            metadata?: Record<string, never>;
+        };
+        BrowserExtensionStatusItem: {
+            /** @enum {string} */
+            schema_version?: "pollek.browser_extension.status_item.v1";
+            extension_id?: string;
+            extension_version?: string;
+            browser_id?: string;
+            browser_name?: string;
+            last_provider_id?: string;
+            last_provider_label?: string;
+            last_event_type?: string;
+            last_seen?: string;
+            capture_mode?: string;
+            raw_prompt_or_response_stored: boolean;
+            capabilities: string[];
+        };
+        BrowserExtensionStatusResponse: {
+            /** @enum {string} */
+            schema_version: "pollek.browser_extension.status.v1";
+            tenant_id: string;
+            items: components["schemas"]["BrowserExtensionStatusItem"][];
+            limitations: string[];
+        };
+        /** @enum {string} */
+        BrowserObserveEventType: "tab_loaded" | "tab_visible" | "prompt_submitted" | "attachment_detected" | "visible_response_metadata" | "tool_surface_detected";
         BudgetPolicy: {
             /** @enum {string} */
             schema_version: "budget-policy.v1";
@@ -1877,6 +2059,7 @@ export interface components {
             id: string;
             name?: string;
             version?: string;
+            latest_version?: string;
             kind?: components["schemas"]["PluginKind"];
             enabled: boolean;
             granted_caps: string[];
@@ -1887,6 +2070,17 @@ export interface components {
             privacy_note?: string;
             installed_at?: string;
             last_seen?: string;
+            previous_versions?: string[];
+            rollback_version?: string;
+            update_available?: boolean;
+            rollback_available?: boolean;
+            revoked?: boolean;
+            rollout?: string;
+            /** Format: int32 */
+            canary_percent?: number;
+            trust_labels?: components["schemas"]["PluginTrustLevel"][];
+            health_metrics?: Record<string, never>;
+            lifecycle_state?: components["schemas"]["PluginLifecycleState"];
         };
         InstalledPluginListResponse: {
             /** @enum {string} */
@@ -2067,13 +2261,34 @@ export interface components {
         PluginInstallRequest: {
             id: string;
             granted_caps: string[];
+            accept_risk?: boolean;
+            source?: components["schemas"]["PluginSource"];
         };
         /** @enum {string} */
         PluginKind: "discovery.scanner" | "discovery.signature" | "observe.collector" | "enforce.method" | "policy.evaluator" | "policy.preset" | "telemetry.exporter" | "telemetry.transform" | "resource.classifier" | "risk.scorer" | "definition.feed" | "notify.channel" | "compliance.profile" | "unknown";
+        PluginLifecycleRequest: {
+            target_version?: string;
+            /** Format: int32 */
+            canary_percent?: number;
+            reason?: string;
+            accept_risk?: boolean;
+        };
+        PluginLifecycleResponse: {
+            /** @enum {string} */
+            schema_version: "pollek.plugin_lifecycle.v1";
+            status: string;
+            action: string;
+            plugin: components["schemas"]["InstalledPlugin"];
+            audit_event_id?: string;
+            message: string;
+        };
+        /** @enum {string} */
+        PluginLifecycleState: "available" | "installed" | "enabled" | "disabled" | "canary" | "revoked" | "update_available" | "rollback_available" | "failed";
         PluginMarketItem: {
             id: string;
             name: string;
             version: string;
+            latest_version?: string;
             kind: components["schemas"]["PluginKind"];
             publisher: string;
             verified: boolean;
@@ -2091,6 +2306,12 @@ export interface components {
             description_th?: string;
             privacy_note?: string;
             source: components["schemas"]["PluginSource"];
+            registry_ref?: string;
+            release_notes?: string;
+            update_available?: boolean;
+            rollback_supported?: boolean;
+            trust_labels?: components["schemas"]["PluginTrustLevel"][];
+            lifecycle_state?: components["schemas"]["PluginLifecycleState"];
         };
         PluginMarketplaceItemResponse: {
             /** @enum {string} */
@@ -2109,6 +2330,8 @@ export interface components {
         PluginToggleRequest: {
             enabled: boolean;
         };
+        /** @enum {string} */
+        PluginTrustLevel: "verified" | "reviewed_native" | "local_only" | "sends_data_out" | "developer_preview" | "private_registry" | "unverified";
         PluginUninstallResponse: {
             status: string;
             id: string;
@@ -2309,7 +2532,7 @@ export interface components {
             }[];
         };
         /** @enum {string} */
-        TelemetryEventType: "agent_observation" | "enforcement_result" | "control_binding_changed" | "health" | "resource_access" | "tool_usage" | "identity_access" | "guard_incident";
+        TelemetryEventType: "agent_observation" | "enforcement_result" | "control_binding_changed" | "health" | "resource_access" | "tool_usage" | "identity_access" | "guard_incident" | "browser_extension_observe";
         TelemetryIngestResponse: {
             /** @enum {string} */
             schema_version: "telemetry-ingest-response.v1";
@@ -3075,6 +3298,80 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    BrowserExtensionApi_ingestBrowserExtensionEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrowserExtensionObserveEvent"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrowserExtensionIngestResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    BrowserExtensionApi_getBrowserExtensionStatus: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrowserExtensionStatusResponse"];
+                };
             };
             /** @description An unexpected error response. */
             default: {
@@ -4396,6 +4693,162 @@ export interface operations {
             };
         };
     };
+    InstalledPluginsApi_canaryPlugin: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginLifecycleRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginLifecycleResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    InstalledPluginsApi_checkPluginHealth: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginLifecycleResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    InstalledPluginsApi_revokePlugin: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginLifecycleRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginLifecycleResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    InstalledPluginsApi_rollbackPlugin: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginLifecycleRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginLifecycleResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
     InstalledPluginsApi_togglePlugin: {
         parameters: {
             query?: never;
@@ -4423,6 +4876,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstalledPlugin"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollekError"];
+                };
+            };
+        };
+    };
+    InstalledPluginsApi_updatePlugin: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Pollek-Contract-Version": components["parameters"]["PollekHeaders.contractVersion"];
+                "X-Pollek-Device-Id"?: components["parameters"]["PollekHeaders.deviceId"];
+                "X-Pollek-Tenant-Id"?: components["parameters"]["PollekHeaders.tenantId"];
+            };
+            path: {
+                tenant_id: string;
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginLifecycleRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginLifecycleResponse"];
                 };
             };
             /** @description An unexpected error response. */

@@ -15,6 +15,16 @@
     ".ProseMirror",
   ];
 
+  const DEFAULT_RESPONSE_SELECTORS = [
+    '[data-message-author-role="assistant"]',
+    '[data-testid*="conversation-turn" i]',
+    '[class*="assistant" i]',
+    "article",
+    "main",
+  ];
+
+  const DEFAULT_ATTACHMENT_SELECTORS = ['input[type="file"]'];
+
   const PROVIDERS = [
     {
       id: "chatgpt-browser",
@@ -22,6 +32,8 @@
       hosts: ["chatgpt.com", "chat.openai.com"],
       editorSelectors: DEFAULT_EDITOR_SELECTORS,
       sendButtonSelectors: DEFAULT_SEND_BUTTON_SELECTORS,
+      responseSelectors: DEFAULT_RESPONSE_SELECTORS,
+      attachmentSelectors: DEFAULT_ATTACHMENT_SELECTORS,
     },
     {
       id: "claude-browser",
@@ -29,6 +41,8 @@
       hosts: ["claude.ai"],
       editorSelectors: DEFAULT_EDITOR_SELECTORS,
       sendButtonSelectors: DEFAULT_SEND_BUTTON_SELECTORS,
+      responseSelectors: DEFAULT_RESPONSE_SELECTORS,
+      attachmentSelectors: DEFAULT_ATTACHMENT_SELECTORS,
     },
     {
       id: "deepseek-browser",
@@ -36,6 +50,8 @@
       hosts: ["chat.deepseek.com", "deepseek.com"],
       editorSelectors: DEFAULT_EDITOR_SELECTORS,
       sendButtonSelectors: DEFAULT_SEND_BUTTON_SELECTORS,
+      responseSelectors: DEFAULT_RESPONSE_SELECTORS,
+      attachmentSelectors: DEFAULT_ATTACHMENT_SELECTORS,
     },
     {
       id: "gemini-browser",
@@ -43,6 +59,8 @@
       hosts: ["gemini.google.com", "aistudio.google.com"],
       editorSelectors: DEFAULT_EDITOR_SELECTORS,
       sendButtonSelectors: DEFAULT_SEND_BUTTON_SELECTORS,
+      responseSelectors: DEFAULT_RESPONSE_SELECTORS,
+      attachmentSelectors: DEFAULT_ATTACHMENT_SELECTORS,
     },
     {
       id: "manus-browser",
@@ -50,6 +68,26 @@
       hosts: ["manus.im", "*.manus.im"],
       editorSelectors: DEFAULT_EDITOR_SELECTORS,
       sendButtonSelectors: DEFAULT_SEND_BUTTON_SELECTORS,
+      responseSelectors: DEFAULT_RESPONSE_SELECTORS,
+      attachmentSelectors: DEFAULT_ATTACHMENT_SELECTORS,
+    },
+    {
+      id: "copilot-browser",
+      label: "Microsoft Copilot",
+      hosts: ["copilot.microsoft.com"],
+      editorSelectors: DEFAULT_EDITOR_SELECTORS,
+      sendButtonSelectors: DEFAULT_SEND_BUTTON_SELECTORS,
+      responseSelectors: DEFAULT_RESPONSE_SELECTORS,
+      attachmentSelectors: DEFAULT_ATTACHMENT_SELECTORS,
+    },
+    {
+      id: "perplexity-browser",
+      label: "Perplexity",
+      hosts: ["perplexity.ai", "www.perplexity.ai"],
+      editorSelectors: DEFAULT_EDITOR_SELECTORS,
+      sendButtonSelectors: DEFAULT_SEND_BUTTON_SELECTORS,
+      responseSelectors: DEFAULT_RESPONSE_SELECTORS,
+      attachmentSelectors: DEFAULT_ATTACHMENT_SELECTORS,
     },
   ];
 
@@ -96,6 +134,8 @@
     PROVIDERS,
     DEFAULT_EDITOR_SELECTORS,
     DEFAULT_SEND_BUTTON_SELECTORS,
+    DEFAULT_RESPONSE_SELECTORS,
+    DEFAULT_ATTACHMENT_SELECTORS,
     providerForHost,
     extensionMatches,
     hostPermissions,

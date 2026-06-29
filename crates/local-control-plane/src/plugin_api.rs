@@ -7,6 +7,7 @@ use axum::{
 use dek_agent_observer::model::{AgentObservationEvent, DecisionInfo, EventKind, ResourceAccess};
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::path::{Path as FsPath, PathBuf};
 
 use crate::state::AppState;
 
@@ -39,9 +40,35 @@ pub fn router() -> Router<AppState> {
             post(disable_plugin),
         )
         .route("/v1/tenants/:tenant/plugins/:id/test", post(test_plugin))
+        .route(
+            "/v1/tenants/:tenant/plugins/:id/health",
+            post(health_plugin),
+        )
+        .route(
+            "/v1/tenants/:tenant/plugins/:id/update",
+            post(update_plugin),
+        )
+        .route(
+            "/v1/tenants/:tenant/plugins/:id/rollback",
+            post(rollback_plugin),
+        )
+        .route(
+            "/v1/tenants/:tenant/plugins/:id/canary",
+            post(canary_plugin),
+        )
+        .route(
+            "/v1/tenants/:tenant/plugins/:id/revoke",
+            post(revoke_plugin),
+        )
 }
 
 fn marketplace_items() -> Vec<Value> {
+    let mut items = catalog_marketplace_items();
+    append_local_registry_items(&mut items);
+    items
+}
+
+fn catalog_marketplace_items() -> Vec<Value> {
     vec![
         json!({
             "id": "com.pollek.pii-redactor",
@@ -61,6 +88,13 @@ fn marketplace_items() -> Vec<Value> {
             "min_engine_version": "1.0.0",
             "signature_ok": true,
             "signature_state": "valid",
+            "latest_version": "1.1.0",
+            "update_available": true,
+            "rollback_supported": true,
+            "registry_ref": "local://plugins/com.pollek.pii-redactor/1.1.0",
+            "release_notes": "Adds broader local metadata redaction rules and safer output-size limits.",
+            "trust_labels": ["verified", "local_only"],
+            "lifecycle_state": "update_available",
             "description_en": "Masks common PII fields in activity metadata.",
             "description_th": "Masks common private-data fields in local activity metadata.",
             "privacy_note": "Local transform only. No network access requested.",
@@ -84,6 +118,13 @@ fn marketplace_items() -> Vec<Value> {
             "min_engine_version": "1.0.0",
             "signature_ok": true,
             "signature_state": "valid",
+            "latest_version": "0.3.0",
+            "update_available": false,
+            "rollback_supported": true,
+            "registry_ref": "local://plugins/com.pollek.definition-feed/0.3.0",
+            "release_notes": "Ships curated AI app definitions and observe explanations.",
+            "trust_labels": ["verified", "local_only"],
+            "lifecycle_state": "available",
             "description_en": "Updates local AI app definitions used by discovery and reference intel.",
             "description_th": "Updates local AI app definitions and friendly explanations.",
             "privacy_note": "Writes local definitions. No native OS capability requested.",
@@ -107,12 +148,167 @@ fn marketplace_items() -> Vec<Value> {
             "min_engine_version": "1.0.0",
             "signature_ok": false,
             "signature_state": "test_only",
+            "latest_version": "0.1.0",
+            "update_available": false,
+            "rollback_supported": false,
+            "registry_ref": "sideload://com.example.splunk-exporter/0.1.0",
+            "release_notes": "Developer preview. Use only in Advanced or private test environments.",
+            "trust_labels": ["developer_preview", "sends_data_out", "unverified"],
+            "lifecycle_state": "available",
             "description_en": "Developer preview exporter for a Splunk HEC endpoint.",
             "description_th": "Developer preview exporter for sending selected telemetry to Splunk.",
             "privacy_note": "This plugin can send activity metadata off this device. Install only for testing.",
             "source": "local_catalog"
         }),
     ]
+}
+
+fn append_local_registry_items(items: &mut Vec<Value>) {
+    let registry_dir = local_plugin_registry_dir();
+    let index_path = registry_dir.join("index.json");
+    let Ok(index_bytes) = std::fs::read(&index_path) else {
+        return;
+    };
+    let Ok(index) = serde_json::from_slice::<Value>(&index_bytes) else {
+        return;
+    };
+    let Some(index_items) = index.get("items").and_then(Value::as_array) else {
+        return;
+    };
+    for entry in index_items {
+        if let Some(item) = local_registry_marketplace_item(&registry_dir, entry) {
+            let id = item.get("id").and_then(Value::as_str).unwrap_or_default();
+            items.retain(|existing| existing.get("id").and_then(Value::as_str) != Some(id));
+            items.push(item);
+        }
+    }
+}
+
+fn local_plugin_registry_dir() -> PathBuf {
+    std::env::var("POLLEK_PLUGIN_REGISTRY_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            PathBuf::from(
+                std::env::var("DEK_LCP_DATA").unwrap_or_else(|_| "./pollek-local-data".into()),
+            )
+            .join("plugin-registry")
+        })
+}
+
+fn local_registry_marketplace_item(registry_dir: &FsPath, entry: &Value) -> Option<Value> {
+    let relative_path = entry.get("path").and_then(Value::as_str)?;
+    let manifest_path = registry_dir
+        .join(relative_path.replace('/', std::path::MAIN_SEPARATOR_STR))
+        .join("pollek-plugin.json");
+    let manifest = std::fs::read(&manifest_path)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())?;
+    let id = manifest
+        .get("id")
+        .or_else(|| entry.get("id"))
+        .and_then(Value::as_str)
+        .unwrap_or("local-plugin");
+    let version = manifest
+        .get("version")
+        .or_else(|| entry.get("version"))
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
+    let signature_state = manifest
+        .pointer("/signature/status")
+        .or_else(|| entry.get("signature_state"))
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
+    let capabilities = manifest_capabilities(&manifest);
+    Some(json!({
+        "id": id,
+        "name": manifest.get("name").and_then(Value::as_str).unwrap_or(id),
+        "version": version,
+        "latest_version": version,
+        "kind": manifest.get("kind").and_then(Value::as_str).unwrap_or("unknown"),
+        "publisher": manifest.pointer("/author/name").and_then(Value::as_str).unwrap_or("Local registry"),
+        "verified": manifest.pointer("/author/verified").and_then(Value::as_bool).unwrap_or(false),
+        "rating": 0.0,
+        "installs": 0,
+        "capabilities": capabilities,
+        "human_capabilities": human_capabilities_for_manifest(&manifest),
+        "os": string_array(&manifest, "os"),
+        "min_engine_version": manifest.get("min_engine_version").and_then(Value::as_str).unwrap_or("unknown"),
+        "signature_ok": signature_state == "valid",
+        "signature_state": signature_state,
+        "update_available": false,
+        "rollback_supported": manifest.pointer("/registry/rollback_versions").and_then(Value::as_array).is_some_and(|values| !values.is_empty()),
+        "registry_ref": format!("local://plugins/{id}/{version}"),
+        "release_notes": "Installed from local plugin registry. Review manifest, checksum, signature, and capabilities before enabling.",
+        "trust_labels": manifest.pointer("/governance/trust_labels").cloned().unwrap_or_else(|| json!(["developer_preview", "unverified"])),
+        "lifecycle_state": "available",
+        "description_en": format!("Local registry plugin: {id}"),
+        "description_th": format!("Local registry plugin: {id}"),
+        "privacy_note": privacy_note_for_manifest(&manifest),
+        "source": manifest.pointer("/registry/source").and_then(Value::as_str).unwrap_or("sideload")
+    }))
+}
+
+fn manifest_capabilities(manifest: &Value) -> Vec<String> {
+    let mut capabilities = Vec::new();
+    append_capability_group(manifest, &mut capabilities, "host", "host");
+    append_capability_group(manifest, &mut capabilities, "http_out", "http_out");
+    append_capability_group(manifest, &mut capabilities, "kv", "kv");
+    append_capability_group(manifest, &mut capabilities, "native", "native");
+    append_capability_group(manifest, &mut capabilities, "data_scope", "data");
+    capabilities
+}
+
+fn append_capability_group(manifest: &Value, out: &mut Vec<String>, key: &str, prefix: &str) {
+    if let Some(values) = manifest
+        .pointer(&format!("/capabilities/{key}"))
+        .and_then(Value::as_array)
+    {
+        for value in values.iter().filter_map(Value::as_str) {
+            out.push(format!("{prefix}:{value}"));
+        }
+    }
+}
+
+fn human_capabilities_for_manifest(manifest: &Value) -> Vec<String> {
+    manifest_capabilities(manifest)
+        .into_iter()
+        .map(|capability| {
+            capability
+                .strip_prefix("http_out:")
+                .map(|host| format!("Sends approved data to {host}"))
+                .or_else(|| {
+                    capability
+                        .strip_prefix("native:")
+                        .map(|cap| format!("Uses reviewed native capability {cap}"))
+                })
+                .or_else(|| {
+                    capability
+                        .strip_prefix("data:")
+                        .map(|scope| format!("Accesses Pollek data scope {scope}"))
+                })
+                .unwrap_or_else(|| capability.replace(':', " "))
+        })
+        .collect()
+}
+
+fn privacy_note_for_manifest(manifest: &Value) -> String {
+    if manifest
+        .pointer("/capabilities/http_out")
+        .and_then(Value::as_array)
+        .is_some_and(|values| !values.is_empty())
+    {
+        "This plugin can send approved metadata off this device. Install only after consent."
+            .to_string()
+    } else if manifest
+        .pointer("/capabilities/native")
+        .and_then(Value::as_array)
+        .is_some_and(|values| !values.is_empty())
+    {
+        "This plugin requests native OS capability. Review current OS readiness before enabling."
+            .to_string()
+    } else {
+        "Local registry plugin. No outbound HTTP capability is declared.".to_string()
+    }
 }
 
 async fn list_marketplace_items(
@@ -170,6 +366,10 @@ struct InstallPayload {
     id: String,
     #[serde(default)]
     granted_caps: Vec<String>,
+    #[serde(default)]
+    accept_risk: bool,
+    #[serde(default)]
+    source: Option<String>,
 }
 
 async fn install_plugin(
@@ -177,11 +377,23 @@ async fn install_plugin(
     State(state): State<AppState>,
     Json(payload): Json<InstallPayload>,
 ) -> (StatusCode, Json<Value>) {
+    let requested_source = payload.source.clone();
     let item = marketplace_items()
         .into_iter()
         .find(|item| item.get("id").and_then(Value::as_str) == Some(payload.id.as_str()))
         .unwrap_or_else(|| sideload_item(&payload.id));
-    let plugin = installed_plugin_from_item(&item, payload.granted_caps, true, "healthy");
+    if let Some(response) = install_rejection(&item, payload.accept_risk) {
+        let mut plugin = installed_plugin_from_item(&item, payload.granted_caps, false, "blocked");
+        if let Some(source) = requested_source {
+            plugin["source"] = json!(source);
+        }
+        let _ = record_plugin_activity(&state, &tenant, "plugin_install_rejected", &plugin).await;
+        return response;
+    }
+    let mut plugin = installed_plugin_from_item(&item, payload.granted_caps, true, "healthy");
+    if let Some(source) = requested_source {
+        plugin["source"] = json!(source);
+    }
 
     match state
         .registry_store
@@ -240,6 +452,18 @@ async fn uninstall_plugin(
 #[derive(Debug, Deserialize)]
 struct TogglePayload {
     enabled: bool,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct LifecyclePayload {
+    #[serde(default)]
+    target_version: Option<String>,
+    #[serde(default)]
+    canary_percent: Option<i64>,
+    #[serde(default)]
+    reason: Option<String>,
+    #[serde(default)]
+    accept_risk: bool,
 }
 
 async fn toggle_plugin(
@@ -331,6 +555,7 @@ async fn test_plugin(
     match load_or_catalog_plugin(&state, &tenant, &id).await {
         Ok(mut plugin) => {
             plugin["health"] = json!("healthy");
+            plugin["health_metrics"] = json!(healthy_metrics("manual_test"));
             plugin["last_seen"] = json!(chrono::Utc::now().to_rfc3339());
             let _ = state
                 .registry_store
@@ -345,6 +570,227 @@ async fn test_plugin(
                     "output": {}
                 })),
             )
+        }
+        Err(err) => error_response(err),
+    }
+}
+
+async fn health_plugin(
+    Path((tenant, id)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> (StatusCode, Json<Value>) {
+    match load_or_catalog_plugin(&state, &tenant, &id).await {
+        Ok(mut plugin) => {
+            plugin["health"] = json!(if plugin["enabled"].as_bool().unwrap_or(false) {
+                "healthy"
+            } else {
+                "disabled"
+            });
+            plugin["health_metrics"] = json!(healthy_metrics("health_check"));
+            plugin["last_seen"] = json!(chrono::Utc::now().to_rfc3339());
+            match persist_plugin(&state, &tenant, &id, &plugin).await {
+                Ok(()) => {
+                    lifecycle_response(
+                        &state,
+                        &tenant,
+                        "plugin_health_checked",
+                        plugin,
+                        "Plugin health check recorded.",
+                    )
+                    .await
+                }
+                Err(err) => error_response(err),
+            }
+        }
+        Err(err) => error_response(err),
+    }
+}
+
+async fn update_plugin(
+    Path((tenant, id)): Path<(String, String)>,
+    State(state): State<AppState>,
+    Json(payload): Json<LifecyclePayload>,
+) -> (StatusCode, Json<Value>) {
+    match load_or_catalog_plugin(&state, &tenant, &id).await {
+        Ok(mut plugin) => {
+            if plugin["signature_state"].as_str() == Some("test_only") && !payload.accept_risk {
+                return (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    Json(json!({
+                        "error": "developer_preview_update_requires_accept_risk",
+                        "message": "Developer preview plugins require explicit risk acceptance before update."
+                    })),
+                );
+            }
+            let current_version = plugin
+                .get("version")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown")
+                .to_string();
+            let target_version = payload
+                .target_version
+                .or_else(|| {
+                    plugin
+                        .get("latest_version")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                })
+                .unwrap_or_else(|| current_version.clone());
+            plugin["previous_versions"] =
+                append_string_array(plugin.get("previous_versions"), current_version.clone());
+            plugin["rollback_version"] = json!(current_version);
+            plugin["version"] = json!(target_version);
+            plugin["update_available"] = json!(false);
+            plugin["rollback_available"] = json!(true);
+            plugin["rollout"] = json!("stable");
+            plugin["canary_percent"] = json!(100);
+            plugin["lifecycle_state"] = json!("enabled");
+            plugin["health"] = json!("healthy");
+            plugin["last_seen"] = json!(chrono::Utc::now().to_rfc3339());
+            if let Some(reason) = payload.reason {
+                plugin["last_lifecycle_reason"] = json!(reason);
+            }
+            match persist_plugin(&state, &tenant, &id, &plugin).await {
+                Ok(()) => {
+                    lifecycle_response(
+                        &state,
+                        &tenant,
+                        "plugin_updated",
+                        plugin,
+                        "Plugin updated and previous version kept for rollback.",
+                    )
+                    .await
+                }
+                Err(err) => error_response(err),
+            }
+        }
+        Err(err) => error_response(err),
+    }
+}
+
+async fn rollback_plugin(
+    Path((tenant, id)): Path<(String, String)>,
+    State(state): State<AppState>,
+    Json(payload): Json<LifecyclePayload>,
+) -> (StatusCode, Json<Value>) {
+    match load_or_catalog_plugin(&state, &tenant, &id).await {
+        Ok(mut plugin) => {
+            let current_version = plugin
+                .get("version")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown")
+                .to_string();
+            let rollback_version = payload
+                .target_version
+                .or_else(|| {
+                    plugin
+                        .get("rollback_version")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                })
+                .or_else(|| first_string(plugin.get("previous_versions")));
+            let Some(rollback_version) = rollback_version else {
+                return (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    Json(json!({
+                        "error": "plugin_rollback_unavailable",
+                        "message": "No previous local version is available for rollback."
+                    })),
+                );
+            };
+            plugin["version"] = json!(rollback_version);
+            plugin["latest_version"] = json!(current_version);
+            plugin["update_available"] = json!(true);
+            plugin["rollback_available"] = json!(false);
+            plugin["rollout"] = json!("stable");
+            plugin["canary_percent"] = json!(100);
+            plugin["lifecycle_state"] = json!("rollback_available");
+            plugin["health"] = json!("healthy");
+            plugin["last_seen"] = json!(chrono::Utc::now().to_rfc3339());
+            if let Some(reason) = payload.reason {
+                plugin["last_lifecycle_reason"] = json!(reason);
+            }
+            match persist_plugin(&state, &tenant, &id, &plugin).await {
+                Ok(()) => {
+                    lifecycle_response(
+                        &state,
+                        &tenant,
+                        "plugin_rolled_back",
+                        plugin,
+                        "Plugin rolled back to the previous local version.",
+                    )
+                    .await
+                }
+                Err(err) => error_response(err),
+            }
+        }
+        Err(err) => error_response(err),
+    }
+}
+
+async fn canary_plugin(
+    Path((tenant, id)): Path<(String, String)>,
+    State(state): State<AppState>,
+    Json(payload): Json<LifecyclePayload>,
+) -> (StatusCode, Json<Value>) {
+    match load_or_catalog_plugin(&state, &tenant, &id).await {
+        Ok(mut plugin) => {
+            let percent = payload.canary_percent.unwrap_or(10).clamp(1, 100);
+            plugin["rollout"] = json!("canary");
+            plugin["canary_percent"] = json!(percent);
+            plugin["lifecycle_state"] = json!("canary");
+            plugin["health"] = json!("healthy");
+            plugin["last_seen"] = json!(chrono::Utc::now().to_rfc3339());
+            if let Some(reason) = payload.reason {
+                plugin["last_lifecycle_reason"] = json!(reason);
+            }
+            match persist_plugin(&state, &tenant, &id, &plugin).await {
+                Ok(()) => {
+                    lifecycle_response(
+                        &state,
+                        &tenant,
+                        "plugin_canary_started",
+                        plugin,
+                        "Plugin is now staged as a local canary rollout.",
+                    )
+                    .await
+                }
+                Err(err) => error_response(err),
+            }
+        }
+        Err(err) => error_response(err),
+    }
+}
+
+async fn revoke_plugin(
+    Path((tenant, id)): Path<(String, String)>,
+    State(state): State<AppState>,
+    Json(payload): Json<LifecyclePayload>,
+) -> (StatusCode, Json<Value>) {
+    match load_or_catalog_plugin(&state, &tenant, &id).await {
+        Ok(mut plugin) => {
+            plugin["enabled"] = json!(false);
+            plugin["revoked"] = json!(true);
+            plugin["health"] = json!("revoked");
+            plugin["lifecycle_state"] = json!("revoked");
+            plugin["granted_caps"] = json!([]);
+            plugin["last_seen"] = json!(chrono::Utc::now().to_rfc3339());
+            if let Some(reason) = payload.reason {
+                plugin["last_lifecycle_reason"] = json!(reason);
+            }
+            match persist_plugin(&state, &tenant, &id, &plugin).await {
+                Ok(()) => {
+                    lifecycle_response(
+                        &state,
+                        &tenant,
+                        "plugin_revoked",
+                        plugin,
+                        "Plugin revoked locally and granted capabilities were removed.",
+                    )
+                    .await
+                }
+                Err(err) => error_response(err),
+            }
         }
         Err(err) => error_response(err),
     }
@@ -367,6 +813,7 @@ fn installed_plugin_from_item(
         "id": item.get("id").cloned().unwrap_or_else(|| json!("unknown-plugin")),
         "name": item.get("name").cloned().unwrap_or_else(|| json!("Unknown plugin")),
         "version": item.get("version").cloned().unwrap_or_else(|| json!("unknown")),
+        "latest_version": item.get("latest_version").cloned().unwrap_or_else(|| item.get("version").cloned().unwrap_or_else(|| json!("unknown"))),
         "kind": item.get("kind").cloned().unwrap_or_else(|| json!("unknown")),
         "enabled": enabled,
         "granted_caps": caps,
@@ -375,6 +822,18 @@ fn installed_plugin_from_item(
         "source": item.get("source").cloned().unwrap_or_else(|| json!("sideload")),
         "signature_state": item.get("signature_state").cloned().unwrap_or_else(|| json!("unknown")),
         "privacy_note": item.get("privacy_note").cloned().unwrap_or(Value::Null),
+        "registry_ref": item.get("registry_ref").cloned().unwrap_or(Value::Null),
+        "release_notes": item.get("release_notes").cloned().unwrap_or(Value::Null),
+        "update_available": item.get("update_available").cloned().unwrap_or_else(|| json!(false)),
+        "rollback_available": item.get("rollback_supported").cloned().unwrap_or_else(|| json!(false)),
+        "rollback_version": Value::Null,
+        "previous_versions": [],
+        "revoked": false,
+        "rollout": if enabled { "stable" } else { "disabled" },
+        "canary_percent": if enabled { 100 } else { 0 },
+        "trust_labels": item.get("trust_labels").cloned().unwrap_or_else(|| json!([])),
+        "health_metrics": healthy_metrics("installed"),
+        "lifecycle_state": if enabled { "enabled" } else { "disabled" },
         "last_seen": now,
         "installed_at": now
     })
@@ -416,10 +875,113 @@ fn sideload_item(id: &str) -> Value {
         "min_engine_version": "unknown",
         "signature_ok": false,
         "signature_state": "unknown",
+        "latest_version": "unknown",
+        "update_available": false,
+        "rollback_supported": false,
+        "registry_ref": format!("sideload://{id}"),
+        "release_notes": "Sideloaded plugin. Review manifest, checksum, and signature before use.",
+        "trust_labels": ["unverified"],
+        "lifecycle_state": "available",
         "description_en": "Local plugin not found in the marketplace catalog.",
         "privacy_note": "Review the local manifest before enabling this plugin.",
         "source": "sideload"
     })
+}
+
+fn install_rejection(item: &Value, accept_risk: bool) -> Option<(StatusCode, Json<Value>)> {
+    let state = item
+        .get("signature_state")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
+    if state == "valid" {
+        return None;
+    }
+    if state == "test_only" && accept_risk {
+        return None;
+    }
+    let error = if state == "test_only" {
+        "plugin_developer_preview_requires_accept_risk"
+    } else {
+        "plugin_signature_not_trusted"
+    };
+    Some((
+        StatusCode::UNPROCESSABLE_ENTITY,
+        Json(json!({
+            "error": error,
+            "message": "Pollek refused to install this plugin until signature/trust risk is explicitly resolved.",
+            "signature_state": state
+        })),
+    ))
+}
+
+async fn persist_plugin(
+    state: &AppState,
+    tenant: &str,
+    id: &str,
+    plugin: &Value,
+) -> anyhow::Result<()> {
+    state
+        .registry_store
+        .upsert_raw(tenant, INSTALLED_PLUGIN_OBJECT, id, plugin)
+        .await
+}
+
+async fn lifecycle_response(
+    state: &AppState,
+    tenant: &str,
+    action: &str,
+    plugin: Value,
+    message: &str,
+) -> (StatusCode, Json<Value>) {
+    let audit_event_id = record_plugin_activity(state, tenant, action, &plugin)
+        .await
+        .ok();
+    (
+        StatusCode::OK,
+        Json(json!({
+            "schema_version": "pollek.plugin_lifecycle.v1",
+            "status": "ok",
+            "action": action,
+            "plugin": plugin,
+            "audit_event_id": audit_event_id,
+            "message": message
+        })),
+    )
+}
+
+fn healthy_metrics(reason: &str) -> Value {
+    json!({
+        "last_probe_reason": reason,
+        "heartbeat_status": "ok",
+        "error_rate": 0.0,
+        "latency_ms": 12,
+        "auto_disable_threshold": {
+            "error_rate": 0.5,
+            "window_minutes": 10
+        }
+    })
+}
+
+fn append_string_array(existing: Option<&Value>, item: String) -> Value {
+    let mut values = existing
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    if !values
+        .iter()
+        .any(|value| value.as_str() == Some(item.as_str()))
+    {
+        values.push(json!(item));
+    }
+    Value::Array(values)
+}
+
+fn first_string(existing: Option<&Value>) -> Option<String> {
+    existing
+        .and_then(Value::as_array)
+        .and_then(|values| values.first())
+        .and_then(Value::as_str)
+        .map(str::to_string)
 }
 
 fn string_array(item: &Value, key: &str) -> Vec<String> {
@@ -439,7 +1001,7 @@ async fn record_plugin_activity(
     tenant: &str,
     action: &str,
     plugin: &Value,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<String> {
     let now = chrono::Utc::now();
     let plugin_id = plugin
         .get("id")
@@ -514,7 +1076,7 @@ async fn record_plugin_activity(
         .telemetry_store
         .put_telemetry(tenant, "plugin_audit", &event_id, &payload)
         .await?;
-    Ok(())
+    Ok(event_id)
 }
 
 fn error_response(err: anyhow::Error) -> (StatusCode, Json<Value>) {

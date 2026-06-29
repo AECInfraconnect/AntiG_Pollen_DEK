@@ -21,6 +21,7 @@ tags:
   - name: PDPConfig
   - name: LocalDashboard
   - name: Plugins
+  - name: Browser Extension
 paths:
   /.well-known/pollek-contract:
     get:
@@ -524,6 +525,68 @@ paths:
                 $ref: '#/components/schemas/PollekError'
       tags:
         - LocalDashboard
+  /v1/tenants/{tenant_id}/browser-extension/events:
+    post:
+      operationId: BrowserExtensionApi_ingestBrowserExtensionEvent
+      description: Ingest a metadata-only browser observe event from the Prompt Guard browser extension.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserExtensionIngestResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Browser Extension
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrowserExtensionObserveEvent'
+  /v1/tenants/{tenant_id}/browser-extension/status:
+    get:
+      operationId: BrowserExtensionApi_getBrowserExtensionStatus
+      description: List installed browser observe connectors that have emitted metadata-only events.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserExtensionStatusResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Browser Extension
   /v1/tenants/{tenant_id}/devices/{device_id}/bundles/latest:
     post:
       operationId: BundleApi_fetchLatest
@@ -1657,6 +1720,156 @@ paths:
                 $ref: '#/components/schemas/PollekError'
       tags:
         - Plugins
+  /v1/tenants/{tenant_id}/plugins/{plugin_id}/canary:
+    post:
+      operationId: InstalledPluginsApi_canaryPlugin
+      description: Move an installed plugin into a staged canary rollout.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginLifecycleResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Plugins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginLifecycleRequest'
+  /v1/tenants/{tenant_id}/plugins/{plugin_id}/health:
+    post:
+      operationId: InstalledPluginsApi_checkPluginHealth
+      description: Check plugin health and record a local audit event.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginLifecycleResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Plugins
+  /v1/tenants/{tenant_id}/plugins/{plugin_id}/revoke:
+    post:
+      operationId: InstalledPluginsApi_revokePlugin
+      description: Revoke a plugin locally, disable it, and mark granted capabilities as unavailable.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginLifecycleResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Plugins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginLifecycleRequest'
+  /v1/tenants/{tenant_id}/plugins/{plugin_id}/rollback:
+    post:
+      operationId: InstalledPluginsApi_rollbackPlugin
+      description: Rollback an installed plugin to the previous local version.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginLifecycleResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Plugins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginLifecycleRequest'
   /v1/tenants/{tenant_id}/plugins/{plugin_id}/toggle:
     post:
       operationId: InstalledPluginsApi_togglePlugin
@@ -1696,6 +1909,45 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/PluginToggleRequest'
+  /v1/tenants/{tenant_id}/plugins/{plugin_id}/update:
+    post:
+      operationId: InstalledPluginsApi_updatePlugin
+      description: Update an installed plugin to a locally available or private-registry version.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PollekHeaders.contractVersion'
+        - $ref: '#/components/parameters/PollekHeaders.deviceId'
+        - $ref: '#/components/parameters/PollekHeaders.tenantId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginLifecycleResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollekError'
+      tags:
+        - Plugins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginLifecycleRequest'
   /v1/tenants/{tenant_id}/policy-presets:
     get:
       operationId: PolicyPresetsApi_listPresets
@@ -3471,6 +3723,156 @@ components:
           type: string
         discovery_candidate_id:
           type: string
+    BrowserExtensionIngestResponse:
+      type: object
+      required:
+        - schema_version
+        - status
+        - event_id
+        - telemetry_recorded
+        - raw_prompt_or_response_stored
+        - capture_quality
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - pollek.browser_extension.ingest.v1
+        status:
+          type: string
+        event_id:
+          type: string
+        telemetry_recorded:
+          type: boolean
+        raw_prompt_or_response_stored:
+          type: boolean
+        capture_quality:
+          type: string
+    BrowserExtensionObserveEvent:
+      type: object
+      required:
+        - event_type
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - pollek.browser_observe_event.v1
+        event_type:
+          anyOf:
+            - $ref: '#/components/schemas/BrowserObserveEventType'
+            - type: string
+        extension_id:
+          type: string
+        extension_version:
+          type: string
+        browser_id:
+          type: string
+        browser_name:
+          type: string
+        provider_id:
+          type: string
+        provider_label:
+          type: string
+        tab_id:
+          type: integer
+          format: int64
+        window_id:
+          type: integer
+          format: int64
+        url:
+          type: string
+        title:
+          type: string
+        session_id:
+          type: string
+        occurred_at:
+          type: string
+        text_length:
+          type: integer
+          format: int64
+        text_hash:
+          type: string
+        response_length:
+          type: integer
+          format: int64
+        attachment_count:
+          type: integer
+          format: int64
+        attachment_extensions:
+          type: array
+          items:
+            type: string
+        page_visibility:
+          type: string
+        capture_mode:
+          type: string
+        metadata:
+          type: object
+          unevaluatedProperties: {}
+    BrowserExtensionStatusItem:
+      type: object
+      required:
+        - raw_prompt_or_response_stored
+        - capabilities
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - pollek.browser_extension.status_item.v1
+        extension_id:
+          type: string
+        extension_version:
+          type: string
+        browser_id:
+          type: string
+        browser_name:
+          type: string
+        last_provider_id:
+          type: string
+        last_provider_label:
+          type: string
+        last_event_type:
+          type: string
+        last_seen:
+          type: string
+        capture_mode:
+          type: string
+        raw_prompt_or_response_stored:
+          type: boolean
+        capabilities:
+          type: array
+          items:
+            type: string
+    BrowserExtensionStatusResponse:
+      type: object
+      required:
+        - schema_version
+        - tenant_id
+        - items
+        - limitations
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - pollek.browser_extension.status.v1
+        tenant_id:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BrowserExtensionStatusItem'
+        limitations:
+          type: array
+          items:
+            type: string
+    BrowserObserveEventType:
+      type: string
+      enum:
+        - tab_loaded
+        - tab_visible
+        - prompt_submitted
+        - attachment_detected
+        - visible_response_metadata
+        - tool_surface_detected
     BudgetPolicy:
       type: object
       required:
@@ -4371,6 +4773,8 @@ components:
           type: string
         version:
           type: string
+        latest_version:
+          type: string
         kind:
           $ref: '#/components/schemas/PluginKind'
         enabled:
@@ -4395,6 +4799,32 @@ components:
           type: string
         last_seen:
           type: string
+        previous_versions:
+          type: array
+          items:
+            type: string
+        rollback_version:
+          type: string
+        update_available:
+          type: boolean
+        rollback_available:
+          type: boolean
+        revoked:
+          type: boolean
+        rollout:
+          type: string
+        canary_percent:
+          type: integer
+          format: int32
+        trust_labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/PluginTrustLevel'
+        health_metrics:
+          type: object
+          unevaluatedProperties: {}
+        lifecycle_state:
+          $ref: '#/components/schemas/PluginLifecycleState'
     InstalledPluginListResponse:
       type: object
       required:
@@ -4894,6 +5324,10 @@ components:
           type: array
           items:
             type: string
+        accept_risk:
+          type: boolean
+        source:
+          $ref: '#/components/schemas/PluginSource'
     PluginKind:
       type: string
       enum:
@@ -4911,6 +5345,53 @@ components:
         - notify.channel
         - compliance.profile
         - unknown
+    PluginLifecycleRequest:
+      type: object
+      properties:
+        target_version:
+          type: string
+        canary_percent:
+          type: integer
+          format: int32
+        reason:
+          type: string
+        accept_risk:
+          type: boolean
+    PluginLifecycleResponse:
+      type: object
+      required:
+        - schema_version
+        - status
+        - action
+        - plugin
+        - message
+      properties:
+        schema_version:
+          type: string
+          enum:
+            - pollek.plugin_lifecycle.v1
+        status:
+          type: string
+        action:
+          type: string
+        plugin:
+          $ref: '#/components/schemas/InstalledPlugin'
+        audit_event_id:
+          type: string
+        message:
+          type: string
+    PluginLifecycleState:
+      type: string
+      enum:
+        - available
+        - installed
+        - enabled
+        - disabled
+        - canary
+        - revoked
+        - update_available
+        - rollback_available
+        - failed
     PluginMarketItem:
       type: object
       required:
@@ -4935,6 +5416,8 @@ components:
         name:
           type: string
         version:
+          type: string
+        latest_version:
           type: string
         kind:
           $ref: '#/components/schemas/PluginKind'
@@ -4974,6 +5457,20 @@ components:
           type: string
         source:
           $ref: '#/components/schemas/PluginSource'
+        registry_ref:
+          type: string
+        release_notes:
+          type: string
+        update_available:
+          type: boolean
+        rollback_supported:
+          type: boolean
+        trust_labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/PluginTrustLevel'
+        lifecycle_state:
+          $ref: '#/components/schemas/PluginLifecycleState'
     PluginMarketplaceItemResponse:
       type: object
       required:
@@ -5021,6 +5518,16 @@ components:
       properties:
         enabled:
           type: boolean
+    PluginTrustLevel:
+      type: string
+      enum:
+        - verified
+        - reviewed_native
+        - local_only
+        - sends_data_out
+        - developer_preview
+        - private_registry
+        - unverified
     PluginUninstallResponse:
       type: object
       required:
@@ -5571,6 +6078,7 @@ components:
         - tool_usage
         - identity_access
         - guard_incident
+        - browser_extension_observe
     TelemetryIngestResponse:
       type: object
       required:

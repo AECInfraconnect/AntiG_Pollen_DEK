@@ -2,9 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Activity,
+  Ban,
   CheckCircle,
   Download,
+  Gauge,
   Power,
+  RefreshCw,
+  RotateCcw,
   ShieldAlert,
   ShieldCheck,
   Trash2,
@@ -42,6 +46,23 @@ function signatureLabel(item: PluginMarketItem) {
   if (item.signature_state === "missing") return "Missing signature";
   if (item.signature_state === "invalid") return "Signature invalid";
   return "Signature unknown";
+}
+
+function lifecycleLabel(item: PluginMarketItem | InstalledPlugin) {
+  const state = (item as { lifecycle_state?: string }).lifecycle_state;
+  if (state === "canary") return "Canary rollout";
+  if (state === "revoked") return "Revoked";
+  if (state === "update_available") return "Update available";
+  if (state === "rollback_available") return "Rollback available";
+  if ((item as InstalledPlugin).enabled) return "Enabled";
+  if ("enabled" in item && !item.enabled) return "Disabled";
+  return state ?? "Available";
+}
+
+function trustLabels(item: PluginMarketItem | InstalledPlugin) {
+  return ((item as { trust_labels?: string[] }).trust_labels ?? []).map((label) =>
+    label.replaceAll("_", " "),
+  );
 }
 
 function MarketCard({
@@ -88,6 +109,9 @@ function MarketCard({
         <span className="rounded-full border bg-background px-2 py-0.5 text-[11px]">
           {item.kind}
         </span>
+        <span className="rounded-full border bg-background px-2 py-0.5 text-[11px]">
+          {lifecycleLabel(item)}
+        </span>
         <span
           className={cn(
             "rounded-full border px-2 py-0.5 text-[11px]",
@@ -103,6 +127,14 @@ function MarketCard({
             Needs consent
           </span>
         )}
+        {trustLabels(item).map((label) => (
+          <span
+            key={label}
+            className="rounded-full border bg-background px-2 py-0.5 text-[11px]"
+          >
+            {label}
+          </span>
+        ))}
       </div>
 
       <div className="mt-3 space-y-1.5">
@@ -121,6 +153,11 @@ function MarketCard({
       <p className="mt-3 text-xs leading-5 text-muted-foreground">
         {item.privacy_note}
       </p>
+      {item.release_notes && (
+        <p className="mt-2 rounded-md border bg-background/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
+          {item.release_notes}
+        </p>
+      )}
 
       <div className="mt-auto pt-4">
         {installed ? (
@@ -149,11 +186,27 @@ function InstalledRow({
   plugin,
   onToggle,
   onUninstall,
+  onHealth,
+  onUpdate,
+  onRollback,
+  onCanary,
+  onRevoke,
 }: {
   plugin: InstalledPlugin;
   onToggle: () => void;
   onUninstall: () => void;
+  onHealth: () => void;
+  onUpdate: () => void;
+  onRollback: () => void;
+  onCanary: () => void;
+  onRevoke: () => void;
 }) {
+  const updateAvailable = Boolean(
+    (plugin as { update_available?: boolean }).update_available,
+  );
+  const rollbackAvailable = Boolean(
+    (plugin as { rollback_available?: boolean }).rollback_available,
+  );
   return (
     <article className="rounded-lg border bg-card/70 p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -161,8 +214,28 @@ function InstalledRow({
           <h3 className="text-sm font-semibold">{plugin.name ?? plugin.id}</h3>
           <p className="mt-1 text-xs text-muted-foreground">
             {plugin.kind ?? "plugin"} - {plugin.version ?? "unknown version"} -{" "}
-            {plugin.health}
+            {plugin.health} - {lifecycleLabel(plugin)}
           </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {updateAvailable && (
+              <span className="rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-[11px] text-blue-700">
+                Update available
+              </span>
+            )}
+            {rollbackAvailable && (
+              <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
+                Rollback ready
+              </span>
+            )}
+            {trustLabels(plugin).map((label) => (
+              <span
+                key={label}
+                className="rounded-full border bg-background px-2 py-0.5 text-[11px]"
+              >
+                {label}
+              </span>
+            ))}
+          </div>
           <div className="mt-3 flex flex-wrap gap-1.5">
             {(plugin.human_grants?.length
               ? plugin.human_grants
@@ -180,11 +253,53 @@ function InstalledRow({
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
+            onClick={onHealth}
+            className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+          >
+            <Gauge className="h-4 w-4" />
+            Health
+          </button>
+          <button
+            type="button"
             onClick={onToggle}
             className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
           >
             <Power className="h-4 w-4" />
             {plugin.enabled ? "Disable" : "Enable"}
+          </button>
+          <button
+            type="button"
+            onClick={onUpdate}
+            disabled={!updateAvailable}
+            className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Update
+          </button>
+          <button
+            type="button"
+            onClick={onCanary}
+            className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted"
+          >
+            <Activity className="h-4 w-4" />
+            Canary 10%
+          </button>
+          <button
+            type="button"
+            onClick={onRollback}
+            disabled={!rollbackAvailable}
+            className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Rollback
+          </button>
+          <button
+            type="button"
+            onClick={onRevoke}
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 text-sm font-medium text-amber-800 hover:bg-amber-500/15"
+          >
+            <Ban className="h-4 w-4" />
+            Revoke
           </button>
           <button
             type="button"
@@ -355,6 +470,7 @@ export function PluginMarketplace() {
       const plugin = await PluginApi.install({
         id: consentItem.id,
         granted_caps: consentItem.capabilities,
+        accept_risk: consentItem.signature_state !== "valid",
       });
       setInstalled((current) => [
         ...current.filter((item) => item.id !== plugin.id),
@@ -407,6 +523,36 @@ export function PluginMarketplace() {
     }
   };
 
+  const lifecycleAction = async (
+    plugin: InstalledPlugin,
+    action: "health" | "update" | "rollback" | "canary" | "revoke",
+  ) => {
+    try {
+      const response = await (action === "health"
+        ? PluginApi.health(plugin.id)
+        : action === "update"
+          ? PluginApi.update(plugin.id)
+          : action === "rollback"
+            ? PluginApi.rollback(plugin.id)
+            : action === "canary"
+              ? PluginApi.canary(plugin.id, { canary_percent: 10 })
+              : PluginApi.revoke(plugin.id, {
+                  reason: "User revoked plugin from dashboard",
+                }));
+      const updated = (response as { plugin?: InstalledPlugin }).plugin;
+      if (updated) {
+        setInstalled((current) =>
+          current.map((item) => (item.id === plugin.id ? updated : item)),
+        );
+      }
+      toast.success(`${plugin.name ?? plugin.id}: ${action} recorded`);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : `Failed to ${action} plugin`;
+      toast.error(message);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -432,6 +578,11 @@ export function PluginMarketplace() {
                 plugin={plugin}
                 onToggle={() => void toggleInstalled(plugin)}
                 onUninstall={() => void uninstall(plugin)}
+                onHealth={() => void lifecycleAction(plugin, "health")}
+                onUpdate={() => void lifecycleAction(plugin, "update")}
+                onRollback={() => void lifecycleAction(plugin, "rollback")}
+                onCanary={() => void lifecycleAction(plugin, "canary")}
+                onRevoke={() => void lifecycleAction(plugin, "revoke")}
               />
             ))
           ) : (

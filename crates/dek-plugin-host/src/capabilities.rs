@@ -98,6 +98,8 @@ mod tests {
             signature: None,
             sbom: None,
             checksum: None,
+            registry: None,
+            governance: None,
             plugin_type: PluginType::TelemetrySink,
             runtime: "wasm".into(),
             entrypoint: "plugin.wasm".into(),

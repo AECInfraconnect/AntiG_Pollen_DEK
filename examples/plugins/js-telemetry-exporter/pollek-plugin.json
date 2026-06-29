@@ -1,0 +1,43 @@
+{
+  "schema_version": "pollek.plugin.v1",
+  "id": "com.example.js-telemetry-exporter",
+  "name": "JavaScript Telemetry Exporter Example",
+  "version": "0.1.0",
+  "kind": "telemetry.exporter",
+  "wit_world": "pollek:telemetry/telemetry-exporter@0.1.0",
+  "abi": "component",
+  "min_engine_version": "1.0.0",
+  "os": ["windows", "linux", "macos"],
+  "entry": "plugin.wasm",
+  "capabilities": {
+    "host": ["logging", "clock"],
+    "http_out": ["splunk.example.com:443"],
+    "kv": ["plugin-config"],
+    "native": [],
+    "data_scope": ["telemetry:read"]
+  },
+  "author": {
+    "name": "Example Labs",
+    "verified": false
+  },
+  "signature": {
+    "type": "developer",
+    "status": "test_only"
+  },
+  "registry": {
+    "source": "sideload",
+    "update_channel": "local",
+    "rollback_versions": []
+  },
+  "governance": {
+    "review_required": true,
+    "public_marketplace_allowed": false,
+    "trust_labels": ["developer_preview", "sends_data_out", "unverified"]
+  },
+  "limits": {
+    "memory_bytes": 33554432,
+    "fuel": 2000000,
+    "timeout_ms": 500,
+    "max_output_bytes": 262144
+  }
+}

@@ -64,11 +64,67 @@
       "properties": {
         "type": { "type": "string" },
         "bundle": { "type": "string" },
-        "status": { "type": "string", "enum": ["valid", "invalid", "missing", "test_only", "unknown"] }
-      }
+        "status": { "type": "string", "enum": ["valid", "invalid", "missing", "test_only", "unknown"] },
+        "issuer": { "type": "string" },
+        "subject": { "type": "string" },
+        "certificate_ref": { "type": "string" },
+        "transparency_log_ref": { "type": "string" }
+      },
+      "additionalProperties": false
     },
     "sbom": { "type": "string" },
-    "checksum": { "type": "string", "pattern": "^sha256:[0-9a-fA-F]{64}$" }
+    "checksum": { "type": "string", "pattern": "^sha256:[0-9a-fA-F]{64}$" },
+    "registry": {
+      "type": "object",
+      "properties": {
+        "source": { "type": "string", "enum": ["local_catalog", "marketplace", "sideload", "private_registry"] },
+        "oci_ref": { "type": "string" },
+        "private_registry_ref": { "type": "string" },
+        "update_channel": { "type": "string", "enum": ["stable", "beta", "canary", "local"] },
+        "rollback_versions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "revocation_id": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "governance": {
+      "type": "object",
+      "properties": {
+        "review_required": { "type": "boolean", "default": false },
+        "native_review_required": { "type": "boolean", "default": false },
+        "public_marketplace_allowed": { "type": "boolean", "default": false },
+        "trust_labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "reviewed_native",
+              "local_only",
+              "sends_data_out",
+              "developer_preview",
+              "private_registry",
+              "unverified"
+            ]
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "memory_bytes": { "type": "integer", "minimum": 1048576 },
+        "fuel": { "type": "integer", "minimum": 1 },
+        "timeout_ms": { "type": "integer", "minimum": 1 },
+        "max_output_bytes": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
   },
   "additionalProperties": false
 }

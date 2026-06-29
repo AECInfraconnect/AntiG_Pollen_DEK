@@ -1006,6 +1006,7 @@ const pluginMarketItem = {
   id: "browser-observe-connector",
   name: "Browser Observe Connector",
   version: "0.1.0",
+  latest_version: "0.2.0",
   kind: "observe.collector",
   publisher: "Pollek",
   verified: true,
@@ -1020,6 +1021,13 @@ const pluginMarketItem = {
   min_engine_version: "0.1.0",
   signature_ok: true,
   signature_state: "valid",
+  update_available: true,
+  rollback_supported: true,
+  registry_ref: "local://plugins/browser-observe-connector/0.2.0",
+  release_notes:
+    "Adds tab lifecycle, prompt metadata, attachment metadata, and visible response metadata.",
+  trust_labels: ["verified", "local_only"],
+  lifecycle_state: "update_available",
   description_en:
     "Adds browser-tab observation for ChatGPT, Claude, DeepSeek, Manus, and similar AI websites without reading prompt text by default.",
   privacy_note:
@@ -1032,6 +1040,7 @@ const installedPlugin = {
   id: "prompt-guard-local",
   name: "Prompt Guard Local",
   version: "0.1.0",
+  latest_version: "0.1.0",
   kind: "resource.classifier",
   enabled: true,
   granted_caps: ["prompt_guard:check", "telemetry:guard_event:write"],
@@ -1042,6 +1051,20 @@ const installedPlugin = {
   health: "healthy",
   source: "local_catalog",
   signature_state: "valid",
+  update_available: false,
+  rollback_available: true,
+  previous_versions: ["0.0.9"],
+  rollback_version: "0.0.9",
+  revoked: false,
+  rollout: "stable",
+  canary_percent: 100,
+  trust_labels: ["verified", "local_only"],
+  lifecycle_state: "enabled",
+  health_metrics: {
+    heartbeat_status: "ok",
+    error_rate: 0,
+    latency_ms: 12,
+  },
   privacy_note:
     "Runs local deterministic checks and stores findings, counts, and redaction status without raw prompt text.",
   installed_at: now,
@@ -1535,6 +1558,115 @@ export async function installMockApi(page: Page) {
       installedPlugins.find((plugin) => plugin.id === id) ?? installedPlugin,
     );
   });
+  await page.route(/\/v1\/tenants\/local\/plugins\/[^/]+\/health$/, (route) => {
+    const id = route.request().url().split("/plugins/")[1].split("/")[0];
+    installedPlugins = installedPlugins.map((plugin) =>
+      plugin.id === id
+        ? {
+            ...plugin,
+            health: plugin.enabled ? "healthy" : "disabled",
+            health_metrics: {
+              heartbeat_status: "ok",
+              error_rate: 0,
+              latency_ms: 12,
+            },
+          }
+        : plugin,
+    );
+    const plugin = installedPlugins.find((item) => item.id === id) ?? installedPlugin;
+    return json(route, {
+      schema_version: "pollek.plugin_lifecycle.v1",
+      status: "ok",
+      action: "plugin_health_checked",
+      plugin,
+      message: "Plugin health check recorded.",
+    });
+  });
+  await page.route(/\/v1\/tenants\/local\/plugins\/[^/]+\/update$/, (route) => {
+    const id = route.request().url().split("/plugins/")[1].split("/")[0];
+    installedPlugins = installedPlugins.map((plugin) =>
+      plugin.id === id
+        ? {
+            ...plugin,
+            previous_versions: [plugin.version ?? "unknown"],
+            rollback_version: plugin.version,
+            version: plugin.latest_version ?? plugin.version,
+            update_available: false,
+            rollback_available: true,
+            lifecycle_state: "enabled",
+          }
+        : plugin,
+    );
+    const plugin = installedPlugins.find((item) => item.id === id) ?? installedPlugin;
+    return json(route, {
+      schema_version: "pollek.plugin_lifecycle.v1",
+      status: "ok",
+      action: "plugin_updated",
+      plugin,
+      message: "Plugin updated.",
+    });
+  });
+  await page.route(/\/v1\/tenants\/local\/plugins\/[^/]+\/rollback$/, (route) => {
+    const id = route.request().url().split("/plugins/")[1].split("/")[0];
+    installedPlugins = installedPlugins.map((plugin) =>
+      plugin.id === id
+        ? {
+            ...plugin,
+            version: plugin.rollback_version ?? plugin.version,
+            update_available: true,
+            rollback_available: false,
+            lifecycle_state: "rollback_available",
+          }
+        : plugin,
+    );
+    const plugin = installedPlugins.find((item) => item.id === id) ?? installedPlugin;
+    return json(route, {
+      schema_version: "pollek.plugin_lifecycle.v1",
+      status: "ok",
+      action: "plugin_rolled_back",
+      plugin,
+      message: "Plugin rolled back.",
+    });
+  });
+  await page.route(/\/v1\/tenants\/local\/plugins\/[^/]+\/canary$/, (route) => {
+    const id = route.request().url().split("/plugins/")[1].split("/")[0];
+    installedPlugins = installedPlugins.map((plugin) =>
+      plugin.id === id
+        ? { ...plugin, rollout: "canary", canary_percent: 10, lifecycle_state: "canary" }
+        : plugin,
+    );
+    const plugin = installedPlugins.find((item) => item.id === id) ?? installedPlugin;
+    return json(route, {
+      schema_version: "pollek.plugin_lifecycle.v1",
+      status: "ok",
+      action: "plugin_canary_started",
+      plugin,
+      message: "Plugin canary started.",
+    });
+  });
+  await page.route(/\/v1\/tenants\/local\/plugins\/[^/]+\/revoke$/, (route) => {
+    const id = route.request().url().split("/plugins/")[1].split("/")[0];
+    installedPlugins = installedPlugins.map((plugin) =>
+      plugin.id === id
+        ? {
+            ...plugin,
+            enabled: false,
+            health: "revoked",
+            revoked: true,
+            granted_caps: [],
+            lifecycle_state: "revoked",
+          }
+        : plugin,
+    );
+    const plugin = installedPlugins.find((item) => item.id === id) ?? installedPlugin;
+    return json(route, {
+      schema_version: "pollek.plugin_lifecycle.v1",
+      status: "ok",
+      action: "plugin_revoked",
+      plugin,
+      message: "Plugin revoked.",
+    });
+  });
   await page.route(/\/v1\/tenants\/local\/plugins\/(?!install$)[^/]+$/, (route) => {
     const id = route.request().url().split("/plugins/")[1];
     if (route.request().method() === "DELETE") {
@@ -1548,6 +1680,37 @@ export async function installMockApi(page: Page) {
     }
     return json(route, { error: "unsupported method" }, 405);
   });
+  await page.route("**/v1/tenants/local/browser-extension/status", (route) =>
+    json(route, {
+      schema_version: "pollek.browser_extension.status.v1",
+      tenant_id: "local",
+      items: [
+        {
+          schema_version: "pollek.browser_extension.status_item.v1",
+          extension_id: "pollek-prompt-guard-browser",
+          extension_version: "0.1.0",
+          browser_id: "chrome",
+          browser_name: "Chrome",
+          last_provider_id: "chatgpt-browser",
+          last_provider_label: "ChatGPT",
+          last_event_type: "prompt_submitted",
+          last_seen: new Date().toISOString(),
+          capture_mode: "observe",
+          raw_prompt_or_response_stored: false,
+          capabilities: [
+            "tab_lifecycle_metadata",
+            "prompt_submit_metadata",
+            "attachment_metadata",
+            "visible_response_metadata",
+          ],
+        },
+      ],
+      limitations: [
+        "Browsers require user or enterprise approval before a local extension can run.",
+        "Server-side AI tool calls require wrapper, proxy, SDK, MCP, or provider integrations.",
+      ],
+    }),
+  );
   await page.route("**/v1/tenants/local/usage/stream", (route) =>
     route.fulfill({
       status: 200,

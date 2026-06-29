@@ -37,10 +37,33 @@ union PluginSignatureState {
   "unknown",
 }
 
+union PluginLifecycleState {
+  "available",
+  "installed",
+  "enabled",
+  "disabled",
+  "canary",
+  "revoked",
+  "update_available",
+  "rollback_available",
+  "failed",
+}
+
+union PluginTrustLevel {
+  "verified",
+  "reviewed_native",
+  "local_only",
+  "sends_data_out",
+  "developer_preview",
+  "private_registry",
+  "unverified",
+}
+
 model PluginMarketItem {
   id: string;
   name: string;
   version: string;
+  latest_version?: string;
   kind: PluginKind;
   publisher: string;
   verified: boolean;
@@ -56,6 +79,12 @@ model PluginMarketItem {
   description_th?: string;
   privacy_note?: string;
   source: PluginSource;
+  registry_ref?: string;
+  release_notes?: string;
+  update_available?: boolean;
+  rollback_supported?: boolean;
+  trust_labels?: PluginTrustLevel[];
+  lifecycle_state?: PluginLifecycleState;
 }
 
 model PluginMarketplaceListResponse {
@@ -73,6 +102,7 @@ model InstalledPlugin {
   id: string;
   name?: string;
   version?: string;
+  latest_version?: string;
   kind?: PluginKind;
   enabled: boolean;
   granted_caps: string[];
@@ -83,6 +113,16 @@ model InstalledPlugin {
   privacy_note?: string;
   installed_at?: string;
   last_seen?: string;
+  previous_versions?: string[];
+  rollback_version?: string;
+  update_available?: boolean;
+  rollback_available?: boolean;
+  revoked?: boolean;
+  rollout?: string;
+  canary_percent?: int32;
+  trust_labels?: PluginTrustLevel[];
+  health_metrics?: Record<unknown>;
+  lifecycle_state?: PluginLifecycleState;
 }
 
 model InstalledPluginListResponse {
@@ -93,10 +133,28 @@ model InstalledPluginListResponse {
 model PluginInstallRequest {
   id: string;
   granted_caps: string[];
+  accept_risk?: boolean;
+  source?: PluginSource;
 }
 
 model PluginToggleRequest {
   enabled: boolean;
+}
+
+model PluginLifecycleRequest {
+  target_version?: string;
+  canary_percent?: int32;
+  reason?: string;
+  accept_risk?: boolean;
+}
+
+model PluginLifecycleResponse {
+  schema_version: "pollek.plugin_lifecycle.v1";
+  status: string;
+  action: string;
+  plugin: InstalledPlugin;
+  audit_event_id?: string;
+  message: string;
 }
 
 model PluginUninstallResponse {
@@ -131,6 +189,26 @@ interface InstalledPluginsApi {
   @doc("Toggle an installed plugin.")
   @route("{plugin_id}/toggle")
   @post togglePlugin(@path tenant_id: string, @path plugin_id: string, ...PollekHeaders, @body body: PluginToggleRequest): InstalledPlugin | PollekError;
+
+  @doc("Check plugin health and record a local audit event.")
+  @route("{plugin_id}/health")
+  @post checkPluginHealth(@path tenant_id: string, @path plugin_id: string, ...PollekHeaders): PluginLifecycleResponse | PollekError;
+
+  @doc("Update an installed plugin to a locally available or private-registry version.")
+  @route("{plugin_id}/update")
+  @post updatePlugin(@path tenant_id: string, @path plugin_id: string, ...PollekHeaders, @body body: PluginLifecycleRequest): PluginLifecycleResponse | PollekError;
+
+  @doc("Rollback an installed plugin to the previous local version.")
+  @route("{plugin_id}/rollback")
+  @post rollbackPlugin(@path tenant_id: string, @path plugin_id: string, ...PollekHeaders, @body body: PluginLifecycleRequest): PluginLifecycleResponse | PollekError;
+
+  @doc("Move an installed plugin into a staged canary rollout.")
+  @route("{plugin_id}/canary")
+  @post canaryPlugin(@path tenant_id: string, @path plugin_id: string, ...PollekHeaders, @body body: PluginLifecycleRequest): PluginLifecycleResponse | PollekError;
+
+  @doc("Revoke a plugin locally, disable it, and mark granted capabilities as unavailable.")
+  @route("{plugin_id}/revoke")
+  @post revokePlugin(@path tenant_id: string, @path plugin_id: string, ...PollekHeaders, @body body: PluginLifecycleRequest): PluginLifecycleResponse | PollekError;
 
   @doc("Uninstall a plugin and revoke local grants.")
   @route("{plugin_id}")
