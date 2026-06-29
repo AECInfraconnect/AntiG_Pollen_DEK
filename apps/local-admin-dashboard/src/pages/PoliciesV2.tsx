@@ -10,6 +10,7 @@ import {
   Gauge,
   ShieldCheck,
   Wrench,
+  Trash,
 } from "lucide-react";
 import {
   Entity360Page,
@@ -29,7 +30,10 @@ import type {
 import { useEntity360 } from "../features/entity-graph/useEntity360";
 import { formatDisplayValue, renderDisplayValue } from "../lib/displayValue";
 import { isAdvanceMode } from "../lib/modes";
-import { defaultClient } from "../services/api";
+import { defaultClient, PolicyApi } from "../services/api";
+import { Collapsible } from "../components/ui";
+import { useConfirm } from "../components/ui/ConfirmDialog";
+import { toast } from "sonner";
 
 interface PolicyItem {
   policy_id: string;
@@ -51,7 +55,8 @@ function usePolicies() {
   const [policies, setPolicies] = useState<PolicyItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchItems = () => {
+    setLoading(true);
     defaultClient
       .fetchApi("/policies")
       .then((data) => {
@@ -59,9 +64,13 @@ function usePolicies() {
       })
       .catch(() => setPolicies([]))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchItems();
   }, []);
 
-  return { policies, loading };
+  return { policies, loading, fetchItems };
 }
 
 function buildRelatedSections(
@@ -370,11 +379,35 @@ function PolicyMasterDetailPane({
   policy,
   onOpenRecord,
   showTechnicalDetails,
+  onRefresh,
 }: {
   policy: PolicyItem;
   onOpenRecord: () => void;
   showTechnicalDetails: boolean;
+  onRefresh: () => void;
 }) {
+  const { confirm } = useConfirm();
+  const handleDelete = async () => {
+    if (
+      !(await confirm({
+        title: "Delete Policy",
+        description: `Are you sure you want to delete policy ${policy.name}? This cannot be undone.`,
+        confirmText: "Delete",
+        cancelText: "Cancel",
+      }))
+    ) {
+      return;
+    }
+    try {
+      await PolicyApi.delete(policy.policy_id);
+      toast.success("Policy deleted successfully");
+      onRefresh();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete policy");
+    }
+  };
+
   return (
     <DetailPane
       title={policy.name}
@@ -387,6 +420,12 @@ function PolicyMasterDetailPane({
           primary: true,
           icon: BookOpen,
           onClick: onOpenRecord,
+        },
+        {
+          label: "Delete",
+          danger: true,
+          icon: Trash,
+          onClick: handleDelete,
         },
       ]}
       tabs={[
@@ -519,9 +558,11 @@ function PolicyMasterDetailPane({
                         value={policy.source ?? "-"}
                       />
                     </div>
-                    <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
-                      {JSON.stringify(policy, null, 2)}
-                    </pre>
+                    <Collapsible title="Policy JSON">
+                      <pre className="overflow-auto rounded-none border-0 bg-transparent p-0 text-[11px]">
+                        {JSON.stringify(policy, null, 2)}
+                      </pre>
+                    </Collapsible>
                   </div>
                 ),
               },
@@ -551,7 +592,7 @@ export default function PoliciesV2() {
   const showTechnicalDetails = isAdvanceMode(mode);
   const recordId =
     searchParams.get("id") ?? searchParams.get("selected") ?? undefined;
-  const { policies, loading } = usePolicies();
+  const { policies, loading, fetchItems } = usePolicies();
 
   const handleSelect = (id: string) => {
     if (!id) {
@@ -629,9 +670,17 @@ export default function PoliciesV2() {
         }}
         renderDetail={(policy) => (
           <PolicyMasterDetailPane
+            key={policy.policy_id}
             policy={policy}
             onOpenRecord={() => openFullRecord(policy.policy_id)}
             showTechnicalDetails={showTechnicalDetails}
+            onRefresh={() => {
+              const next = new URLSearchParams(searchParams);
+              next.delete("id");
+              next.delete("selected");
+              setSearchParams(next, { replace: true });
+              fetchItems();
+            }}
           />
         )}
       />

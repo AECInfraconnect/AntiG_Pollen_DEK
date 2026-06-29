@@ -6,6 +6,7 @@ import { MasterDetailLayout } from "../components/master-detail/MasterDetailLayo
 import { EntityCard } from "../components/master-detail/EntityCard";
 import { DetailPane } from "../components/master-detail/DetailPane";
 import { EmptyState } from "../components/master-detail/EmptyState";
+import { Collapsible } from "../components/ui";
 
 import { useConfirm } from "../components/ui/ConfirmDialog";
 import { toast } from "sonner";
@@ -285,9 +286,11 @@ export function Entities() {
                         <h4 className="font-medium mb-2 flex items-center gap-2">
                           <Info className="h-4 w-4" /> Raw Data
                         </h4>
-                        <pre className="text-[10px] font-mono bg-muted/50 p-4 rounded-lg overflow-x-auto">
-                          {JSON.stringify(e, null, 2)}
-                        </pre>
+                        <Collapsible title="Raw entity data">
+                          <pre className="text-[10px] font-mono bg-transparent p-0 rounded-none overflow-x-auto border-0">
+                            {JSON.stringify(e, null, 2)}
+                          </pre>
+                        </Collapsible>
                       </div>
                     </div>
                   ),

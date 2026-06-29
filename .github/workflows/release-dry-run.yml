@@ -15,15 +15,33 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+      - name: Install target for repository toolchain
+        run: rustup target add aarch64-unknown-linux-gnu
       - name: Install cross-compilation tools (Linux arm64)
-        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
-      - name: Set cross-compilation env (Linux arm64)
         run: |
-          # shellcheck disable=SC2086
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          sudo dpkg --add-architecture arm64
+          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+            sudo sed -i '/^Types: deb/a Architectures: amd64' /etc/apt/sources.list.d/ubuntu.sources
+          fi
+          sudo tee /etc/apt/sources.list.d/ubuntu-arm64.sources > /dev/null <<'EOF'
+          Types: deb
+          URIs: http://ports.ubuntu.com/ubuntu-ports
+          Suites: noble noble-updates noble-backports noble-security
+          Components: main restricted universe multiverse
+          Architectures: arm64
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu pkg-config libssl-dev:arm64
       - name: Build all artifacts (x86_64)
         run: cargo build --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --release
       - name: Build all artifacts (aarch64)
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          PKG_CONFIG_ALLOW_CROSS: "1"
+          PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig
         run: cargo build --workspace --exclude dek-ebpf-prog --exclude dek-ebpfd --exclude pii-redactor-plugin --release --target aarch64-unknown-linux-gnu
       - name: Compress binaries
         run: |

@@ -10,6 +10,7 @@ import {
   FolderTree,
   Gauge,
   Shield,
+  Trash2,
   Wrench,
 } from "lucide-react";
 import {
@@ -41,6 +42,9 @@ import {
 import { ReferenceIntelGuide } from "../components/reference/ReferenceIntelGuide";
 import { useMode } from "../context/ModeContext";
 import { isAdvanceMode } from "../lib/modes";
+import { toast } from "sonner";
+import { useConfirm } from "../components/ui/ConfirmDialog";
+import { Collapsible } from "../components/ui";
 
 interface ToolItem {
   tool_id: string;
@@ -74,8 +78,9 @@ function useToolsAndResources() {
   const [resources, setResources] = useState<ResourceItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    Promise.all([
+  const fetchItems = () => {
+    setLoading(true);
+    return Promise.all([
       defaultClient.fetchApi("/tools").catch(() => []),
       defaultClient.fetchApi("/resources").catch(() => []),
     ])
@@ -92,9 +97,13 @@ function useToolsAndResources() {
         );
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    void fetchItems();
   }, []);
 
-  return { tools, resources, loading };
+  return { tools, resources, loading, fetchItems };
 }
 
 function buildRelatedSections(
@@ -646,10 +655,12 @@ function ResourceDetailView({ resource }: { resource: ResourceItem }) {
 function ToolMasterDetailPane({
   tool,
   onOpenRecord,
+  onDelete,
   showTechnicalDetails,
 }: {
   tool: ToolItem;
   onOpenRecord: () => void;
+  onDelete?: () => void;
   showTechnicalDetails: boolean;
 }) {
   const reference = referencesForTool(tool)[0];
@@ -665,6 +676,16 @@ function ToolMasterDetailPane({
       status={tool.status === "active" ? "ok" : "info"}
       statusLabel={tool.status || "Registered"}
       actions={[
+        ...(onDelete
+          ? [
+              {
+                label: "Delete",
+                icon: Trash2,
+                onClick: onDelete,
+                danger: true,
+              },
+            ]
+          : []),
         {
           label: "Open full record",
           primary: true,
@@ -779,9 +800,11 @@ function ToolMasterDetailPane({
                       <PropertyRow label="Status" value={tool.status} />
                       <PropertyRow label="Source" value={tool.source ?? "-"} />
                     </div>
-                    <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
-                      {JSON.stringify(tool, null, 2)}
-                    </pre>
+                    <Collapsible title="Raw tool data">
+                      <pre className="overflow-auto rounded-none border-0 bg-transparent p-0 text-[11px]">
+                        {JSON.stringify(tool, null, 2)}
+                      </pre>
+                    </Collapsible>
                   </div>
                 ),
               },
@@ -795,10 +818,12 @@ function ToolMasterDetailPane({
 function ResourceMasterDetailPane({
   resource,
   onOpenRecord,
+  onDelete,
   showTechnicalDetails,
 }: {
   resource: ResourceItem;
   onOpenRecord: () => void;
+  onDelete?: () => void;
   showTechnicalDetails: boolean;
 }) {
   const reference = referencesForResource(resource)[0];
@@ -818,6 +843,16 @@ function ResourceMasterDetailPane({
       status={resource.status === "active" ? "ok" : "info"}
       statusLabel={resource.status || "Registered"}
       actions={[
+        ...(onDelete
+          ? [
+              {
+                label: "Delete",
+                icon: Trash2,
+                onClick: onDelete,
+                danger: true,
+              },
+            ]
+          : []),
         {
           label: "Open full record",
           primary: true,
@@ -927,13 +962,15 @@ function ResourceMasterDetailPane({
                         label="Resource ID"
                         value={resource.resource_id}
                       />
-                      <PropertyRow label="URI" value={resource.uri ?? "-"} />
-                      <PropertyRow label="Path" value={resource.path ?? "-"} />
-                      <PropertyRow label="Host" value={resource.host ?? "-"} />
+                      <PropertyRow label="Sensitivity" value={resource.sensitivity ?? "standard"} />
+                      <PropertyRow label="Status" value={resource.status} />
+                      <PropertyRow label="Source" value={resource.source ?? "-"} />
                     </div>
-                    <pre className="overflow-auto rounded-lg border bg-muted/40 p-4 text-[11px]">
-                      {JSON.stringify(resource, null, 2)}
-                    </pre>
+                    <Collapsible title="Raw resource data">
+                      <pre className="overflow-auto rounded-none border-0 bg-transparent p-0 text-[11px]">
+                        {JSON.stringify(resource, null, 2)}
+                      </pre>
+                    </Collapsible>
                   </div>
                 ),
               },
@@ -965,7 +1002,8 @@ export default function ToolsResourcesV2() {
     searchParams.get("tab") === "resources" ? "resources" : "tools";
   const recordId =
     searchParams.get("id") ?? searchParams.get("selected") ?? undefined;
-  const { tools, resources, loading } = useToolsAndResources();
+  const { tools, resources, loading, fetchItems } = useToolsAndResources();
+  const { confirm } = useConfirm();
 
   const updateTab = (tab: "tools" | "resources") => {
     setSearchParams({ tab });
@@ -1101,6 +1139,19 @@ export default function ToolsResourcesV2() {
             <ToolMasterDetailPane
               tool={tool}
               onOpenRecord={() => openFullRecord(tool.tool_id)}
+              onDelete={async () => {
+                if (await confirm({ title: "Delete Tool", description: "Are you sure you want to delete this tool?", danger: true })) {
+                  try {
+                    await defaultClient.deleteTool(tool.tool_id);
+                    toast.success("Tool deleted successfully");
+                    setSearchParams({});
+                    void fetchItems();
+                  } catch (e) {
+                    console.error("Failed to delete tool", e);
+                    toast.error("Failed to delete tool");
+                  }
+                }
+              }}
               showTechnicalDetails={showTechnicalDetails}
             />
           )}
@@ -1162,6 +1213,19 @@ export default function ToolsResourcesV2() {
             <ResourceMasterDetailPane
               resource={resource}
               onOpenRecord={() => openFullRecord(resource.resource_id)}
+              onDelete={async () => {
+                if (await confirm({ title: "Delete Resource", description: "Are you sure you want to delete this resource?", danger: true })) {
+                  try {
+                    await defaultClient.deleteResource(resource.resource_id);
+                    toast.success("Resource deleted successfully");
+                    setSearchParams({});
+                    void fetchItems();
+                  } catch (e) {
+                    console.error("Failed to delete resource", e);
+                    toast.error("Failed to delete resource");
+                  }
+                }
+              }}
               showTechnicalDetails={showTechnicalDetails}
             />
           )}

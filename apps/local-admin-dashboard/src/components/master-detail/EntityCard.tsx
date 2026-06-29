@@ -32,6 +32,7 @@ export function EntityCard({
     label: string;
     icon?: any;
     primary?: boolean;
+    danger?: boolean;
     disabled?: boolean;
     onClick: (event: MouseEvent<HTMLButtonElement>) => void;
   }[];
@@ -158,7 +159,9 @@ export function EntityCard({
                       "inline-flex h-8 items-center justify-center whitespace-nowrap gap-1.5 rounded-md px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                       action.primary
                         ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                        : "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+                        : action.danger
+                          ? "border border-red-500/20 bg-red-500/10 text-red-600 hover:bg-red-500/20"
+                          : "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
                       action.disabled && "cursor-not-allowed opacity-50",
                     )}
                   >
