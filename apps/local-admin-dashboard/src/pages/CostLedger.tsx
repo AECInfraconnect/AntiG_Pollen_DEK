@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  AlertTriangle,
   Bot,
   CircleDollarSign,
   Clock,
@@ -16,7 +17,6 @@ import {
   Wifi,
   Zap,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   LocalObserveApi,
@@ -27,8 +27,10 @@ import {
   type LocalObserveRefreshResponse,
 } from "../services/api";
 import { RegisterControlBar } from "../components/RegisterControlBar";
+import { ObserveAccuracyPanel } from "../components/observe/ObserveAccuracyPanel";
 import { useMode } from "../context/ModeContext";
 import { isAdvanceMode } from "../lib/modes";
+import type { ObserveInputKind } from "../services/api";
 
 type RangeKey = "5m" | "1h" | "24h" | "7d" | "month";
 
@@ -49,6 +51,32 @@ type UsageEvidence = {
   estimated: number;
   captureQuality: string[];
   latest?: string;
+};
+
+type ModelPoolStats = {
+  poolKey: string;
+  provider: string;
+  model: string;
+  calls: number;
+  tokens: number;
+  cost: number;
+  exact: number;
+  estimated: number;
+  sharedAgents: number;
+};
+
+type AgentAttributionRow = {
+  agentKey: string;
+  agentName: string;
+  agentType?: string;
+  surfaces: string[];
+  calls: number;
+  tokens: number;
+  cost: number;
+  exact: number;
+  estimated: number;
+  pools: ModelPoolStats[];
+  sharedPoolCount: number;
 };
 
 type AiUsageEvent = AiUsageEventPage["items"][number];
@@ -201,10 +229,212 @@ function buildUsageEvidence(
   };
 }
 
+function buildAgentAttribution(
+  events: AiUsageEvent[],
+  agentLabels: Map<string, AgentLabel>,
+): AgentAttributionRow[] {
+  const poolAgents = new Map<string, Set<string>>();
+  for (const event of events) {
+    const agentKey = usageAgentKey(event);
+    const poolKey = usagePoolKey(event);
+    if (!poolAgents.has(poolKey)) poolAgents.set(poolKey, new Set());
+    poolAgents.get(poolKey)!.add(agentKey);
+  }
+
+  const rows = new Map<
+    string,
+    Omit<AgentAttributionRow, "surfaces" | "pools"> & {
+      surfaces: Set<string>;
+      pools: Map<string, ModelPoolStats>;
+    }
+  >();
+
+  for (const event of events) {
+    const agentKey = usageAgentKey(event);
+    const label = agentLabels.get(agentKey);
+    const estimated = eventIsEstimated(event);
+    const provider = normalizedProvider(event.provider);
+    const model = event.model || "Unknown model";
+    const poolKey = usagePoolKey(event);
+    const tokens = event.tokens?.total_tokens ?? 0;
+    const cost = event.cost?.total_cost ?? 0;
+    const row =
+      rows.get(agentKey) ??
+      ({
+        agentKey,
+        agentName: agentName(agentKey, agentLabels),
+        agentType: label?.kind || event.agent_type || undefined,
+        surfaces: new Set<string>(),
+        calls: 0,
+        tokens: 0,
+        cost: 0,
+        exact: 0,
+        estimated: 0,
+        pools: new Map<string, ModelPoolStats>(),
+        sharedPoolCount: 0,
+      } satisfies Omit<AgentAttributionRow, "surfaces" | "pools"> & {
+        surfaces: Set<string>;
+        pools: Map<string, ModelPoolStats>;
+      });
+
+    row.calls += 1;
+    row.tokens += tokens;
+    row.cost += cost;
+    if (estimated) row.estimated += 1;
+    else row.exact += 1;
+    if (event.surface) row.surfaces.add(event.surface);
+    if (event.agent_type) row.surfaces.add(event.agent_type);
+
+    const pool =
+      row.pools.get(poolKey) ??
+      ({
+        poolKey,
+        provider,
+        model,
+        calls: 0,
+        tokens: 0,
+        cost: 0,
+        exact: 0,
+        estimated: 0,
+        sharedAgents: poolAgents.get(poolKey)?.size ?? 1,
+      } satisfies ModelPoolStats);
+    pool.calls += 1;
+    pool.tokens += tokens;
+    pool.cost += cost;
+    if (estimated) pool.estimated += 1;
+    else pool.exact += 1;
+    row.pools.set(poolKey, pool);
+    rows.set(agentKey, row);
+  }
+
+  return Array.from(rows.values())
+    .map((row) => {
+      const pools = Array.from(row.pools.values()).sort(
+        (a, b) => b.cost - a.cost || b.tokens - a.tokens || a.model.localeCompare(b.model),
+      );
+      return {
+        ...row,
+        surfaces: Array.from(row.surfaces).sort(),
+        pools,
+        sharedPoolCount: pools.filter((pool) => pool.sharedAgents > 1).length,
+      };
+    })
+    .sort((a, b) => b.cost - a.cost || b.tokens - a.tokens || a.agentName.localeCompare(b.agentName));
+}
+
+function usageAgentKey(event: AiUsageEvent) {
+  const extended = event as AiUsageEvent & {
+    shadow_candidate_id?: string | null;
+    app_id?: string | null;
+  };
+  return (
+    event.agent_id ||
+    extended.shadow_candidate_id ||
+    extended.app_id ||
+    event.surface ||
+    event.agent_type ||
+    "unknown-agent"
+  );
+}
+
+function normalizedProvider(provider?: string | null) {
+  const value = (provider || "Unknown provider").trim();
+  if (!value) return "Unknown provider";
+  if (value.toLowerCase() === "google") return "Google";
+  if (value.toLowerCase() === "openai") return "OpenAI";
+  return value;
+}
+
+function usagePoolKey(event: AiUsageEvent) {
+  const provider = normalizedProvider(event.provider).toLowerCase();
+  const model = (event.model || "unknown-model").toLowerCase();
+  const metadata = (event.metadata ?? {}) as Record<string, unknown>;
+  const explicitPool =
+    typeof metadata.billing_pool === "string"
+      ? metadata.billing_pool
+      : typeof metadata.billing_account === "string"
+        ? metadata.billing_account
+        : typeof metadata.project_id === "string"
+          ? metadata.project_id
+          : "";
+  return explicitPool
+    ? `${provider}:${explicitPool}:${model}`
+    : `${provider}:shared-credit:${model}`;
+}
+
+function providerBillingHint(provider: string) {
+  const normalized = provider.toLowerCase();
+  if (normalized.includes("azure")) {
+    return "Azure OpenAI usage can be billed by subscription, resource, deployment, region, and model. Keep local app attribution separate before cloud-resource rollup.";
+  }
+  if (normalized.includes("openai")) {
+    return "OpenAI usage can be grouped by project, API key, user, model, or service tier. Keep app-level attribution first, then reconcile with project/provider usage.";
+  }
+  if (normalized.includes("anthropic") || normalized.includes("claude")) {
+    return "Anthropic organization reports can group by model, workspace, description, geo, or speed; local app attribution should remain separate before workspace rollup.";
+  }
+  if (
+    normalized.includes("google") ||
+    normalized.includes("gemini") ||
+    normalized.includes("vertex")
+  ) {
+    return "Gemini/Vertex responses expose usage metadata; billed cost may still roll up under a Google Cloud project or shared credit pool.";
+  }
+  if (normalized.includes("bedrock") || normalized.includes("aws")) {
+    return "Amazon Bedrock usage is account/region/model based and may route through inference profiles, so shared credit pools need a separate rollup.";
+  }
+  if (normalized.includes("xai") || normalized.includes("grok")) {
+    return "xAI/Grok usage is usually OpenAI-compatible at response level, while billing may still roll up by API key, team, model, or account credit pool.";
+  }
+  if (normalized.includes("groq")) {
+    return "Groq chat responses are OpenAI-compatible, but provider billing and rate limits can be keyed to organization, project, model, or hardware tier.";
+  }
+  if (normalized.includes("together")) {
+    return "Together AI exposes OpenAI-compatible usage for many models; costs may pool by API key, organization, model owner, or routed endpoint.";
+  }
+  if (normalized.includes("openrouter")) {
+    return "OpenRouter routes one request to many possible upstream providers. Keep local app usage first, then reconcile by OpenRouter route, upstream model, and shared credit balance.";
+  }
+  if (normalized.includes("perplexity")) {
+    return "Perplexity/Sonar usage is usually OpenAI-compatible, while billing may combine model usage and search/reasoning tiers under one account.";
+  }
+  if (normalized.includes("fireworks")) {
+    return "Fireworks usage often follows OpenAI-compatible token fields, but billing can roll up by serverless endpoint, deployment, model, or account credits.";
+  }
+  if (normalized.includes("cerebras")) {
+    return "Cerebras inference can look OpenAI-compatible at response level; reconcile local usage against account/model billing before treating costs as exact.";
+  }
+  if (normalized.includes("cohere")) {
+    return "Cohere responses distinguish token counts and billed units; reconcile app-level usage before provider billed-unit rollup.";
+  }
+  if (normalized.includes("mistral")) {
+    return "Mistral chat responses include a usage object; billing can still be shared by key, workspace, or provider platform.";
+  }
+  if (normalized.includes("replicate")) {
+    return "Replicate billing can be hardware/runtime based instead of pure tokens. Treat token fields as usage evidence and reconcile with provider cost records.";
+  }
+  if (normalized.includes("huggingface")) {
+    return "Hugging Face inference can route through hosted endpoints, router providers, or local models; token usage and billed cost may come from different ledgers.";
+  }
+  if (
+    normalized.includes("deepseek") ||
+    normalized.includes("ollama") ||
+    normalized.includes("lm studio") ||
+    normalized.includes("local")
+  ) {
+    return "Local or OpenAI-compatible providers may expose response usage, but billed cost is often estimated unless a provider billing source is connected.";
+  }
+  return "Unknown or custom providers use generic response-usage and billing-pool grouping. Treat shared credits as a provider-level rollup, not an agent identity.";
+}
+
+function poolDisplayName(pool: ModelPoolStats) {
+  const suffix = pool.sharedAgents > 1 ? ` / shared by ${pool.sharedAgents} apps` : "";
+  return `${pool.provider} / ${pool.model}${suffix}`;
+}
+
 export function CostLedger() {
   const { mode } = useMode();
   const showTechnicalDetails = isAdvanceMode(mode);
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [observeLoading, setObserveLoading] = useState(false);
   const [range, setRange] = useState<RangeKey>("24h");
@@ -230,6 +460,8 @@ export function CostLedger() {
     failed: 0,
   });
   const [live, setLive] = useState(false);
+  const [accuracyDialogKind, setAccuracyDialogKind] =
+    useState<ObserveInputKind | null>(null);
 
   const activeRange = ranges.find((item) => item.key === range) ?? ranges[2];
 
@@ -376,6 +608,10 @@ export function CostLedger() {
     visibleUsageEvents.find((event) => event.event_id === selectedEventId) ??
     visibleUsageEvents[0] ??
     null;
+  const agentAttributionRows = useMemo(
+    () => buildAgentAttribution(usageEvents, agentLabels),
+    [agentLabels, usageEvents],
+  );
 
   const budgetStatus = useMemo(() => {
     const statuses = summary?.by_agent
@@ -489,7 +725,14 @@ export function CostLedger() {
       <UsageProvenancePanel
         evidence={usageEvidence}
         observeResult={observeResult}
-        onSetup={() => navigate("/capabilities")}
+        onImprove={() => setAccuracyDialogKind("local_usage_log_path")}
+      />
+
+      <ObserveAccuracyPanel
+        compact
+        forceDialogKind={accuracyDialogKind}
+        onForceDialogClosed={() => setAccuracyDialogKind(null)}
+        onChanged={() => void fetchUsage(false)}
       />
 
       <UsageEventLedger
@@ -503,7 +746,7 @@ export function CostLedger() {
         onFilter={setEventFilter}
         search={eventSearch}
         onSearch={setEventSearch}
-        onSetup={() => navigate("/setup")}
+        onSetup={() => setAccuracyDialogKind("local_usage_log_path")}
       />
 
       {showTechnicalDetails && (
@@ -556,55 +799,12 @@ export function CostLedger() {
         </div>
       )}
 
-      <section className="glass rounded-lg p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-semibold">Agents</h3>
-          <Bot className="h-4 w-4 text-muted-foreground" />
-        </div>
-        {!summary?.by_agent?.length ? (
-          <EmptyState />
-        ) : (
-          <div className="space-y-3">
-            {summary.by_agent.map((row, index) => {
-              const label = agentLabels.get(row.key);
-              const status = row.budget?.status || "ok";
-              return (
-                <div
-                  key={`${row.key}-${index}`}
-                  className="flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate font-medium">
-                      {label?.name || row.label || row.key}
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                      {(label?.kind || row.agent_type) && (
-                        <span>{label?.kind || row.agent_type}</span>
-                      )}
-                      <span className="font-mono">{row.key}</span>
-                      <span>{number(row.request_count)} calls</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="tabular-nums text-muted-foreground">
-                      {number(row.total_tokens)} tokens
-                    </span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {money(row.total_cost, currency)}
-                    </span>
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs ${statusClass(status)}`}
-                    >
-                      {status.replace("_", " ")}
-                    </span>
-                    <RegisterControlBar agentId={row.key} tenantId="local" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <AgentFirstAttributionSection
+        rows={agentAttributionRows}
+        summaryRows={summary?.by_agent ?? []}
+        agentLabels={agentLabels}
+        currency={currency}
+      />
 
       {showTechnicalDetails && (
         <div className="grid gap-3 xl:grid-cols-2">
@@ -631,11 +831,11 @@ export function CostLedger() {
 function UsageProvenancePanel({
   evidence,
   observeResult,
-  onSetup,
+  onImprove,
 }: {
   evidence: UsageEvidence;
   observeResult: LocalObserveRefreshResponse | null;
-  onSetup: () => void;
+  onImprove: () => void;
 }) {
   const exact = observeResult?.exact_usage_events ?? evidence.exact;
   const estimated = observeResult?.estimated_usage_events ?? evidence.estimated;
@@ -663,7 +863,7 @@ function UsageProvenancePanel({
         </div>
         <button
           type="button"
-          onClick={onSetup}
+          onClick={onImprove}
           className="inline-flex h-9 items-center justify-center rounded-md border bg-background px-3 text-sm font-medium hover:bg-muted"
         >
           Improve exact tracking
@@ -1054,6 +1254,171 @@ function UsageEventEmptyState({ onSetup }: { onSetup: () => void }) {
         Check setup
       </button>
     </div>
+  );
+}
+
+function AgentFirstAttributionSection({
+  rows,
+  summaryRows,
+  agentLabels,
+  currency,
+}: {
+  rows: AgentAttributionRow[];
+  summaryRows: NonNullable<AiUsageSummary["by_agent"]>;
+  agentLabels: Map<string, AgentLabel>;
+  currency: string;
+}) {
+  return (
+    <section className="glass rounded-lg p-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <Bot className="h-4 w-4 text-primary" />
+            <h3 className="font-semibold">Agent-first cost & tokens</h3>
+          </div>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Pollek separates usage by AI app, runtime, or agent first. Provider,
+            model, and shared-credit totals are secondary rollups so ChatGPT in a
+            browser, Codex in a terminal, Claude Code, Antigravity, and other
+            tools do not collapse into one model bill too early.
+          </p>
+        </div>
+        <div className="rounded-lg border bg-background/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
+          Same model, different app: separate first. Same provider credit pool:
+          reconcile second.
+        </div>
+      </div>
+
+      {rows.length ? (
+        <div className="mt-4 grid gap-3 xl:grid-cols-2">
+          {rows.map((row) => (
+            <article key={row.agentKey} className="rounded-lg border bg-card/60 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="break-words text-base font-semibold">
+                      {row.agentName}
+                    </h4>
+                    <span className="rounded-full border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
+                      {row.agentType || "AI app"}
+                    </span>
+                  </div>
+                  <p className="mt-1 break-words text-xs text-muted-foreground">
+                    {row.agentKey}
+                  </p>
+                </div>
+                <RegisterControlBar agentId={row.agentKey} tenantId="local" />
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-4">
+                <UsageMetric label="Calls" value={number(row.calls)} />
+                <UsageMetric label="Tokens" value={number(row.tokens)} />
+                <UsageMetric label="Cost" value={money(row.cost, currency)} />
+                <UsageMetric
+                  label="Exact / estimated"
+                  value={`${number(row.exact)} / ${number(row.estimated)}`}
+                />
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {row.surfaces.length ? (
+                  row.surfaces.map((surface) => (
+                    <span
+                      key={surface}
+                      className="rounded-md border bg-background px-2 py-0.5 text-[11px] text-muted-foreground"
+                    >
+                      {surface.replace(/_/g, " ")}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    No surface metadata yet
+                  </span>
+                )}
+              </div>
+
+              {row.sharedPoolCount > 0 && (
+                <div className="mt-3 flex gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    {row.sharedPoolCount} provider/model pool(s) are shared by
+                    more than one app. Pollek keeps this app separate here, but
+                    the provider invoice or credit balance may still be pooled.
+                  </span>
+                </div>
+              )}
+
+              <div className="mt-4 space-y-2">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Provider/model pools
+                </div>
+                {row.pools.map((pool) => (
+                  <div
+                    key={pool.poolKey}
+                    className="rounded-lg border bg-background/60 p-3"
+                  >
+                    <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                      <div className="min-w-0">
+                        <div className="break-words text-sm font-medium">
+                          {poolDisplayName(pool)}
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          {providerBillingHint(pool.provider)}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-2 text-xs text-muted-foreground">
+                        <span>{number(pool.calls)} calls</span>
+                        <span>{number(pool.tokens)} tokens</span>
+                        <span>{money(pool.cost, currency)}</span>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                      <span>{number(pool.exact)} exact</span>
+                      <span>{number(pool.estimated)} estimated</span>
+                      <span>{pool.poolKey.replace(/:/g, " / ")}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : summaryRows.length ? (
+        <div className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/10 p-4">
+          <div className="flex gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+            <div>
+              <h4 className="text-sm font-semibold">
+                Event-level provider/model split is not available yet
+              </h4>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Pollek has agent summary totals, but no per-event provider/model
+                ledger in this range. Connect a provider usage source, wrapper,
+                proxy, or local usage log to make this section exact.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {summaryRows.map((row) => (
+              <div
+                key={row.key}
+                className="rounded-lg border bg-background/70 p-3 text-sm"
+              >
+                <div className="font-medium">
+                  {agentName(row.key, agentLabels)}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span>{number(row.total_tokens)} tokens</span>
+                  <span>{money(row.total_cost, currency)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <EmptyState />
+      )}
+    </section>
   );
 }
 

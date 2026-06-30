@@ -110,6 +110,9 @@ async fn main() -> anyhow::Result<()> {
             dek_secure_spool::sqlite_spool::DEFAULT_MAX_ROWS,
         )?),
         telemetry_tx: tokio::sync::broadcast::channel(100).0,
+        observe_accuracy_store: Arc::new(
+            local_control_plane::observe_accuracy::ObserveAccuracyStore::new(&cfg.data_dir)?,
+        ),
     };
 
     // Spawn TelemetrySink Background Loop

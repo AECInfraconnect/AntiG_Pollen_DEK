@@ -101,6 +101,78 @@ export type LocalObserveRefreshResponse = {
   }>;
 };
 
+export type ObserveInputKind =
+  | "provider_usage_key"
+  | "local_usage_log_path"
+  | "cloud_read_role"
+  | "oauth_read_token"
+  | "proxy_ca_trust"
+  | "provider_admin_write";
+
+export type ObserveCredentialRequest = {
+  kind: ObserveInputKind;
+  title: string;
+  what_we_ask: string;
+  why: string;
+  unlocks: string[];
+  risk_level: "low" | "medium" | "high" | string;
+  required_scope: string;
+  least_privilege_tip: string;
+  data_handling: string[];
+  supported_now: boolean;
+};
+
+export type ObserveAccuracyInput = {
+  input_id: string;
+  kind: ObserveInputKind;
+  label: string;
+  provider?: string | null;
+  redacted_preview: string;
+  fingerprint: string;
+  scope_note?: string | null;
+  connected_at: string;
+  updated_at: string;
+  consent_statement: string;
+  status: string;
+  unlocks: string[];
+};
+
+export type ObserveAccuracyResponse = {
+  schema_version: "pollek.observe_accuracy.v1";
+  tenant_id: string;
+  generated_at: string;
+  active_level: string;
+  active_level_label: string;
+  ladder: Array<{
+    level: string;
+    label: string;
+    status: string;
+    description: string;
+  }>;
+  inputs: ObserveAccuracyInput[];
+  available_requests: ObserveCredentialRequest[];
+  suggested_local_log_paths: Array<{
+    label: string;
+    path: string;
+    redacted_path: string;
+    exists: boolean;
+    reason: string;
+  }>;
+  data_handling: string[];
+  next_steps: string[];
+};
+
+export type StoreObserveInputRequest = {
+  kind: ObserveInputKind;
+  input_value: string;
+  input_id?: string;
+  label?: string;
+  provider?: string;
+  scope_note?: string;
+  consent_ack: boolean;
+  consent_statement?: string;
+};
+
 export type DetectionRuleSummary = {
   id: string;
   name: string;
@@ -1142,6 +1214,32 @@ export const LocalObserveApi = {
         body: JSON.stringify(payload ?? { include_estimates: true }),
       },
     ),
+};
+
+export const ObserveAccuracyApi = {
+  get: () =>
+    defaultClient.fetchApi<ObserveAccuracyResponse>("/observe/accuracy"),
+  getRequest: (kind: ObserveInputKind) =>
+    defaultClient.fetchApi<ObserveCredentialRequest>(
+      `/observe/accuracy/requests/${kind}`,
+    ),
+  storeInput: (payload: StoreObserveInputRequest) =>
+    defaultClient.fetchApi<{
+      schema_version: string;
+      input: ObserveAccuracyInput;
+      message: string;
+    }>("/observe/accuracy/inputs", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  revokeInput: (inputId: string) =>
+    defaultClient.fetchApi<{
+      schema_version: string;
+      input_id: string;
+      revoked: boolean;
+    }>(`/observe/accuracy/inputs/${encodeURIComponent(inputId)}`, {
+      method: "DELETE",
+    }),
 };
 
 export const DetectionApi = {

@@ -779,7 +779,7 @@ async fn bridge_exact_usage_from_local_logs(
     counts: &mut ObserveCounts,
     exact_agents: &mut HashSet<String>,
 ) {
-    let paths = collect_usage_log_paths();
+    let paths = collect_usage_log_paths_with_user_inputs(state).await;
     for path in paths.into_iter().take(60) {
         let Ok(events) = extract_exact_usage_events_from_path(tenant, &path) else {
             continue;
@@ -807,7 +807,11 @@ async fn bridge_detailed_resource_traces_from_local_logs(
     counts: &mut ObserveCounts,
 ) {
     let mut seen = HashSet::new();
-    for path in collect_usage_log_paths().into_iter().take(60) {
+    for path in collect_usage_log_paths_with_user_inputs(state)
+        .await
+        .into_iter()
+        .take(60)
+    {
         let Ok(events) = extract_resource_trace_events_from_path(tenant, &path) else {
             continue;
         };
@@ -822,6 +826,14 @@ async fn bridge_detailed_resource_traces_from_local_logs(
                 .insert("resource_trace_local_log".to_string());
         }
     }
+}
+
+async fn collect_usage_log_paths_with_user_inputs(state: &AppState) -> Vec<PathBuf> {
+    let mut paths = state.observe_accuracy_store.local_usage_log_paths().await;
+    paths.extend(collect_usage_log_paths());
+    paths.sort();
+    paths.dedup();
+    paths
 }
 
 fn collect_usage_log_paths() -> Vec<PathBuf> {

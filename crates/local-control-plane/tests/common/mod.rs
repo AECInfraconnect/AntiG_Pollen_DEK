@@ -55,6 +55,10 @@ impl LocalControlPlaneHarness {
                     .unwrap(),
             ),
             telemetry_tx: tokio::sync::broadcast::channel(100).0,
+            observe_accuracy_store: Arc::new(
+                local_control_plane::observe_accuracy::ObserveAccuracyStore::new(tempdir.path())
+                    .unwrap(),
+            ),
         };
 
         let builder = metrics_exporter_prometheus::PrometheusBuilder::new();

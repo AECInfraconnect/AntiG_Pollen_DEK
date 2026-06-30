@@ -602,11 +602,11 @@ fn usage_event_from_provider_response(
     ctx.invocation_id = req.invocation_id.clone();
 
     let mut event = match provider.as_str() {
-        "openai" | "deepseek" | "xai" | "mistral" | "cohere" | "openrouter" => {
-            dek_agent_observer::providers::OpenAiUsageNormalizer
-                .normalize(&req.raw_response, ctx.clone())
-                .or_else(|_| usage_event_from_generic_usage_object(&provider, &req, ctx.clone()))
-        }
+        "openai" | "azure-openai" | "deepseek" | "xai" | "groq" | "together" | "mistral"
+        | "cohere" | "openrouter" | "perplexity" | "fireworks" | "cerebras" | "replicate"
+        | "huggingface" => dek_agent_observer::providers::OpenAiUsageNormalizer
+            .normalize(&req.raw_response, ctx.clone())
+            .or_else(|_| usage_event_from_generic_usage_object(&provider, &req, ctx.clone())),
         "anthropic" => dek_agent_observer::providers::AnthropicUsageNormalizer
             .normalize(&req.raw_response, ctx.clone())
             .or_else(|_| usage_event_from_generic_usage_object(&provider, &req, ctx.clone())),
@@ -746,7 +746,9 @@ fn local_device_id() -> String {
 
 fn provider_from_host(host: &str) -> Option<String> {
     let host = host.to_ascii_lowercase();
-    if host.contains("openai.com") || host.contains("chatgpt.com") {
+    if host.contains("openai.azure.com") || host.contains("azure.com/openai") {
+        Some("azure-openai".into())
+    } else if host.contains("openai.com") || host.contains("chatgpt.com") {
         Some("openai".into())
     } else if host.contains("anthropic.com") || host.contains("claude.ai") {
         Some("anthropic".into())
@@ -757,12 +759,28 @@ fn provider_from_host(host: &str) -> Option<String> {
         Some("google".into())
     } else if host.contains("deepseek.com") {
         Some("deepseek".into())
+    } else if host.contains("api.x.ai") || host.contains("x.ai") {
+        Some("xai".into())
+    } else if host.contains("api.groq.com") || host.contains("groq.com") {
+        Some("groq".into())
+    } else if host.contains("api.together.xyz") || host.contains("together.ai") {
+        Some("together".into())
     } else if host.contains("mistral.ai") {
         Some("mistral".into())
     } else if host.contains("cohere.com") {
         Some("cohere".into())
     } else if host.contains("openrouter.ai") {
         Some("openrouter".into())
+    } else if host.contains("perplexity.ai") {
+        Some("perplexity".into())
+    } else if host.contains("fireworks.ai") {
+        Some("fireworks".into())
+    } else if host.contains("cerebras.ai") {
+        Some("cerebras".into())
+    } else if host.contains("replicate.com") {
+        Some("replicate".into())
+    } else if host.contains("huggingface.co") {
+        Some("huggingface".into())
     } else if host.contains("11434") || host.contains("ollama") {
         Some("ollama".into())
     } else {
@@ -779,14 +797,26 @@ fn infer_provider_from_response(value: &Value) -> Option<String> {
         .to_ascii_lowercase();
     if blob.contains("claude") {
         Some("anthropic".into())
-    } else if blob.contains("gpt") || blob.contains("o1") || blob.contains("o3") {
+    } else if blob.contains("gpt")
+        || blob.contains("o1")
+        || blob.contains("o3")
+        || blob.contains("o4")
+    {
         Some("openai".into())
     } else if blob.contains("gemini") {
         Some("google".into())
     } else if blob.contains("deepseek") {
         Some("deepseek".into())
+    } else if blob.contains("grok") {
+        Some("xai".into())
+    } else if blob.contains("llama") && blob.contains("groq") {
+        Some("groq".into())
+    } else if blob.contains("sonar") {
+        Some("perplexity".into())
     } else if blob.contains("mistral") || blob.contains("mixtral") {
         Some("mistral".into())
+    } else if blob.contains("command") || blob.contains("embed-") {
+        Some("cohere".into())
     } else {
         None
     }
@@ -795,12 +825,21 @@ fn infer_provider_from_response(value: &Value) -> Option<String> {
 fn host_for_provider(provider: &str) -> &'static str {
     match provider {
         "openai" => "api.openai.com",
+        "azure-openai" => "openai.azure.com",
         "anthropic" => "api.anthropic.com",
         "google" | "gemini" => "generativelanguage.googleapis.com",
         "deepseek" => "api.deepseek.com",
+        "xai" => "api.x.ai",
+        "groq" => "api.groq.com",
+        "together" => "api.together.xyz",
         "mistral" => "api.mistral.ai",
         "cohere" => "api.cohere.com",
         "openrouter" => "openrouter.ai",
+        "perplexity" => "api.perplexity.ai",
+        "fireworks" => "api.fireworks.ai",
+        "cerebras" => "api.cerebras.ai",
+        "replicate" => "api.replicate.com",
+        "huggingface" => "router.huggingface.co",
         "ollama" => "127.0.0.1:11434",
         _ => "local",
     }
@@ -961,4 +1000,58 @@ fn window_start(window: &str) -> String {
 
 fn internal_error(err: anyhow::Error) -> (StatusCode, String) {
     (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn maps_broader_provider_hosts() {
+        for (host, expected) in [
+            ("https://api.x.ai/v1/chat/completions", "xai"),
+            ("https://api.groq.com/openai/v1/chat/completions", "groq"),
+            ("https://api.together.xyz/v1/chat/completions", "together"),
+            (
+                "https://openrouter.ai/api/v1/chat/completions",
+                "openrouter",
+            ),
+            ("https://api.perplexity.ai/chat/completions", "perplexity"),
+            (
+                "https://api.fireworks.ai/inference/v1/chat/completions",
+                "fireworks",
+            ),
+            ("https://api.cerebras.ai/v1/chat/completions", "cerebras"),
+            ("https://api.replicate.com/v1/predictions", "replicate"),
+            (
+                "https://router.huggingface.co/v1/chat/completions",
+                "huggingface",
+            ),
+        ] {
+            assert_eq!(
+                provider_from_host(host).as_deref(),
+                Some(expected),
+                "{host}"
+            );
+        }
+    }
+
+    #[test]
+    fn infers_common_model_provider_families() {
+        for (model, expected) in [
+            ("grok-4-latest", "xai"),
+            ("sonar-pro", "perplexity"),
+            ("mistral-large-latest", "mistral"),
+            ("command-r-plus", "cohere"),
+            ("gemini-2.5-pro", "google"),
+            ("deepseek-chat", "deepseek"),
+        ] {
+            assert_eq!(
+                infer_provider_from_response(&json!({ "model": model })).as_deref(),
+                Some(expected),
+                "{model}"
+            );
+        }
+    }
 }

@@ -28,6 +28,7 @@ pub mod control_binding;
 pub mod egress_simulator;
 pub mod enforcement_plan_api;
 pub mod observation_api;
+pub mod observe_accuracy;
 pub mod pep_capabilities_api;
 pub mod policy_presets_api;
 pub mod policy_suggestions_api;

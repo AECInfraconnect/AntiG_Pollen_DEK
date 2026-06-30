@@ -19,6 +19,22 @@ fn provider_from_host(host: &str) -> String {
         "deepseek".into()
     } else if host.contains("api.x.ai") {
         "xai".into()
+    } else if host.contains("api.groq.com") {
+        "groq".into()
+    } else if host.contains("api.together.xyz") {
+        "together".into()
+    } else if host.contains("api.perplexity.ai") || host.contains("sonar") {
+        "perplexity".into()
+    } else if host.contains("api.fireworks.ai") {
+        "fireworks".into()
+    } else if host.contains("api.cerebras.ai") {
+        "cerebras".into()
+    } else if host.contains("api.replicate.com") {
+        "replicate".into()
+    } else if host.contains("api-inference.huggingface.co")
+        || host.contains("router.huggingface.co")
+    {
+        "huggingface".into()
     } else if host.contains("api.cohere.com") {
         "cohere".into()
     } else if host.contains("openrouter.ai") {
@@ -261,6 +277,38 @@ mod tests {
         assert_eq!(usage.input_tokens, Some(101));
         assert_eq!(usage.output_tokens, Some(19));
         assert_eq!(usage.total_tokens, Some(120));
+        Ok(())
+    }
+
+    #[test]
+    fn parses_broader_openai_compatible_providers() -> Result<(), String> {
+        for (host, expected_provider) in [
+            ("api.groq.com", "groq"),
+            ("api.together.xyz", "together"),
+            ("api.perplexity.ai", "perplexity"),
+            ("api.fireworks.ai", "fireworks"),
+            ("api.cerebras.ai", "cerebras"),
+            ("api.replicate.com", "replicate"),
+            ("router.huggingface.co", "huggingface"),
+        ] {
+            let (provider, usage) = parse_llm_usage(
+                host,
+                &json!({
+                    "model": "provider-test-model",
+                    "usage": {
+                        "prompt_tokens": 21,
+                        "completion_tokens": 9,
+                        "total_tokens": 30
+                    }
+                }),
+            )
+            .ok_or_else(|| format!("usage for {host}"))?;
+
+            assert_eq!(provider, expected_provider);
+            assert_eq!(usage.input_tokens, Some(21));
+            assert_eq!(usage.output_tokens, Some(9));
+            assert_eq!(usage.total_tokens, Some(30));
+        }
         Ok(())
     }
 }

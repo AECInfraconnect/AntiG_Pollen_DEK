@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { CapabilityApi } from "../services/api";
+import { ObserveAccuracyPanel } from "../components/observe/ObserveAccuracyPanel";
 import type {
   LocalCapabilitySnapshotV2,
   RuntimeModeV2,
@@ -454,6 +455,8 @@ export function SetupCapabilitiesPage() {
           ))}
         </div>
       </Collapsible>
+
+      <ObserveAccuracyPanel />
 
       <section className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
