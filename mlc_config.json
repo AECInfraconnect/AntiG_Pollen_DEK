@@ -2,6 +2,7 @@
   "ignorePatterns": [
     { "pattern": "^http://127\\.0\\.0\\.1" },
     { "pattern": "^http://localhost" },
-    { "pattern": "^https://ai\\.google\\.dev/api/generate-content" }
+    { "pattern": "^https://ai\\.google\\.dev/api/generate-content" },
+    { "pattern": "^https://docs\\.cohere\\.com/reference/chat" }
   ]
 }
