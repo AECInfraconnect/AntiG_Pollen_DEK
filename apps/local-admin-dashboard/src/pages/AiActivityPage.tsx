@@ -33,6 +33,7 @@ import { StatusChip } from "../components/master-detail/StatusChip";
 import { ReferenceIntelGuide } from "../components/reference/ReferenceIntelGuide";
 import { ReferenceIntelMark } from "../components/reference/ReferenceIntelMark";
 import {
+  buildUserCapabilityMatrix,
   categoryLabel,
   formatDateTime,
   summarizeActivities,
@@ -43,17 +44,20 @@ import type {
   UserFriendlyActivityEvent,
 } from "../features/user-activity/types";
 import {
+  CapabilityApi,
   LocalObserveApi,
   RegistryApi,
   UsageApi,
   type LocalObserveRefreshResponse,
 } from "../services/api";
+import { ObservePostureMatrix } from "../components/observe/ObservePostureMatrix";
 import { findAgentReferenceIntel } from "../lib/entityReferenceIntel";
 import {
   addUsageEventAgentAliases,
   buildAgentNameMap,
   resolveActivityAgentNames,
 } from "../lib/agentNameResolver";
+import type { LocalCapabilitySnapshotV2 } from "../services/types";
 import type { UiStatus } from "../lib/status";
 import { useMode } from "../context/ModeContext";
 import { isAdvanceMode } from "../lib/modes";
@@ -868,6 +872,9 @@ export function AiActivityPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [dataSource, setDataSource] = useState<string>("loading");
+  const [snapshot, setSnapshot] = useState<LocalCapabilitySnapshotV2 | null>(
+    null,
+  );
   const [observing, setObserving] = useState(false);
   const [observeResult, setObserveResult] =
     useState<LocalObserveRefreshResponse | null>(null);
@@ -891,12 +898,14 @@ export function AiActivityPage() {
       RegistryApi.listAgents().catch(() => []),
       RegistryApi.listDiscoveryCandidates().catch(() => []),
       UsageApi.getEvents({ limit: 300 }).catch(() => ({ items: [] })),
+      CapabilityApi.getSnapshotV2("desktop_simple").catch(() => null),
     ])
-      .then(([response, agents, candidates, usageEvents]) => {
+      .then(([response, agents, candidates, usageEvents, capabilitySnapshot]) => {
         const names = buildAgentNameMap(agents, candidates);
         addUsageEventAgentAliases(names, usageEvents.items ?? []);
         setItems(resolveActivityAgentNames(response.items ?? [], names));
         setDataSource(response.source ?? "local-control-plane-read-model");
+        setSnapshot(capabilitySnapshot);
         setError(null);
       })
       .catch((err) =>
@@ -956,6 +965,7 @@ export function AiActivityPage() {
     });
   }, [filters, items]);
   const summary = useMemo(() => summarizeActivities(filtered), [filtered]);
+  const matrix = useMemo(() => buildUserCapabilityMatrix(snapshot), [snapshot]);
   const handleSelectEvent = useCallback(
     (eventId: string) => {
       const next = new URLSearchParams(searchParams);
@@ -1132,6 +1142,12 @@ export function AiActivityPage() {
               value={`$${summary.costUsd.toFixed(2)}`}
             />
           </section>
+
+          <ObservePostureMatrix
+            items={matrix}
+            title="Observe coverage matrix"
+            subtitle="A device-management style view of what this computer can see, control, or still needs setup for before events appear in the ledger."
+          />
 
           <Collapsible
             defaultExpanded={false}

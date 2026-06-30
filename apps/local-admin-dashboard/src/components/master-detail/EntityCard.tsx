@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,7 @@ export function EntityCard({
 }) {
   const s = statusToken(status);
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const detailsId = useId();
   const summaryText = summary === undefined ? "" : formatDisplayValue(summary);
   const hasLongSummary = summaryText.length > 140;
   const hasExtraMeta = meta.length > collapsedMetaCount;
@@ -91,37 +92,40 @@ export function EntityCard({
               {renderDisplayValue(subtitle)}
             </div>
           )}
-          {summary && (
-            <p
-              className={cn(
-                "mt-2 text-xs leading-5 text-muted-foreground",
-                !expanded && "line-clamp-2",
-              )}
-            >
-              {renderDisplayValue(summary)}
-            </p>
-          )}
-          {visibleMeta.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-              {visibleMeta.map((m, idx) => (
-                <span key={idx} className="flex items-center gap-1">
-                  {m.label}:{" "}
-                  <span className="text-foreground/80 font-medium">
-                    {renderDisplayValue(m.value)}
+          <div id={detailsId}>
+            {summary && (
+              <p
+                className={cn(
+                  "mt-2 text-xs leading-5 text-muted-foreground",
+                  !expanded && "line-clamp-2",
+                )}
+              >
+                {renderDisplayValue(summary)}
+              </p>
+            )}
+            {visibleMeta.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                {visibleMeta.map((m, idx) => (
+                  <span key={idx} className="flex items-center gap-1">
+                    {m.label}:{" "}
+                    <span className="text-foreground/80 font-medium">
+                      {renderDisplayValue(m.value)}
+                    </span>
                   </span>
-                </span>
-              ))}
-              {!expanded && hasExtraMeta && (
-                <span className="text-muted-foreground">
-                  +{meta.length - visibleMeta.length} more
-                </span>
-              )}
-            </div>
-          )}
+                ))}
+                {!expanded && hasExtraMeta && (
+                  <span className="text-muted-foreground">
+                    +{meta.length - visibleMeta.length} more
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
           {canExpand && (
             <button
               type="button"
               aria-expanded={expanded}
+              aria-controls={detailsId}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();

@@ -1160,8 +1160,8 @@ export function GuardIncidentFeed() {
       <BrowserConnectorInstallPanel />
       <PromptCaptureAdapterPanel />
       <EnterpriseNerExtensionPointPanel />
-      <div className="grid gap-4 xl:grid-cols-[minmax(260px,0.75fr)_minmax(0,1.2fr)_minmax(240px,0.7fr)]">
-        <section className="rounded-lg border bg-card/60">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(260px,0.75fr)_minmax(0,1.2fr)_minmax(240px,0.7fr)]">
+        <section className="min-w-0 rounded-lg border bg-card/60">
           <div className="border-b p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -1181,13 +1181,13 @@ export function GuardIncidentFeed() {
                   key={eventKey(event)}
                   type="button"
                   onClick={() => setSelectedId(eventKey(event))}
-                  className={`w-full cursor-pointer rounded-lg border p-3 text-left transition ${
+                  className={`w-full min-w-0 cursor-pointer rounded-lg border p-3 text-left transition ${
                     active
                       ? "border-primary bg-primary/10"
                       : "bg-background/70 hover:bg-muted/60"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold">
                         {guardActionHeadline(event)}
@@ -1212,7 +1212,7 @@ export function GuardIncidentFeed() {
           {selected ? <GuardIncidentCard ev={selected} /> : null}
         </section>
 
-        <aside className="space-y-3">
+        <aside className="min-w-0 space-y-3">
           <section className="rounded-lg border bg-card/60 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Info className="h-4 w-4 text-primary" />
